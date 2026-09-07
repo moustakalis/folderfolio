@@ -5,61 +5,63 @@ declare(strict_types=1);
 namespace FolderFolio;
 
 use FolderFolio\Database\Schema;
+use FolderFolio\Rest\FolderController;
 
-class Plugin
+final class Plugin
 {
     public function boot(): void
     {
-        // Load text domain.
-        add_action('init', function () {
-            load_plugin_textdomain('folderfolio', FOLDERFOLIO_PLUGIN_DIR . '/languages');
-        });
-
-        // Initialize core services.
-        add_action('init', function () {
-            // Future: register REST routes, admin integrations, etc.
-        }, 1);
-
-        // Enqueue admin assets.
+        add_action('init', [$this, 'loadTextDomain']);
+        add_action('rest_api_init', [$this, 'registerRestRoutes']);
         add_action('admin_enqueue_scripts', [$this, 'enqueueAdminAssets']);
     }
 
     public function activate(): void
     {
-        // Run database migrations.
-        $schema = new Schema();
-        $schema->migrate();
-
-        // Flush rewrite rules (if needed later).
-        flush_rewrite_rules(false);
+        (new Schema())->migrate();
     }
 
     public function deactivate(): void
     {
-        // No cleanup needed: folder metadata remains intact.
-        flush_rewrite_rules(false);
+        // Folder metadata is deliberately retained on deactivation.
+    }
+
+    public function loadTextDomain(): void
+    {
+        load_plugin_textdomain('folderfolio', false, dirname(plugin_basename(FOLDERFOLIO_PLUGIN_FILE)) . '/languages');
+    }
+
+    public function registerRestRoutes(): void
+    {
+        (new FolderController())->registerRoutes();
     }
 
     public function enqueueAdminAssets(string $hook): void
     {
-        // Only load on Media Library and related admin pages.
-        if ($hook !== 'upload.php' && $hook !== 'media-new.php') {
+        if (!in_array($hook, ['upload.php', 'media-new.php'], true)) {
             return;
         }
 
-        wp_enqueue_script(
-            'folderfolio-admin',
-            FOLDERFOLIO_PLUGIN_URL . 'assets/build/core/folder-tree.js',
-            ['wp-api-fetch', 'wp-dom-ready'],
-            FOLDERFOLIO_VERSION,
-            true
-        );
+        $scriptPath = FOLDERFOLIO_PLUGIN_DIR . 'assets/build/core/folder-tree.js';
+        $stylePath = FOLDERFOLIO_PLUGIN_DIR . 'assets/build/core/admin.css';
 
-        wp_enqueue_style(
-            'folderfolio-admin',
-            FOLDERFOLIO_PLUGIN_URL . 'assets/build/core/admin.css',
-            [],
-            FOLDERFOLIO_VERSION
-        );
+        if (file_exists($scriptPath)) {
+            wp_enqueue_script(
+                'folderfolio-admin',
+                FOLDERFOLIO_PLUGIN_URL . 'assets/build/core/folder-tree.js',
+                ['wp-api-fetch'],
+                FOLDERFOLIO_VERSION,
+                ['in_footer' => true]
+            );
+        }
+
+        if (file_exists($stylePath)) {
+            wp_enqueue_style(
+                'folderfolio-admin',
+                FOLDERFOLIO_PLUGIN_URL . 'assets/build/core/admin.css',
+                [],
+                FOLDERFOLIO_VERSION
+            );
+        }
     }
 }

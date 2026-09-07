@@ -1,18 +1,19 @@
-/**
- * Folder tree component for Media Library.
- * Phase 3 - to be implemented.
- */
+import { apiFetch, ApiEnvelope, Folder } from './api';
 
-import { apiFetch } from './api';
-
-export function initFolderTree(): void {
-    // TODO: Initialize folder tree UI.
-    console.log('FolderFolio: Folder tree initialized');
+export async function fetchFolderTree(): Promise<Folder[]> {
+  const response = await apiFetch<ApiEnvelope<Folder[]>>('/tree');
+  return response.data;
 }
 
-// Auto-init on DOM ready.
+export function initFolderFolio(): void {
+  void fetchFolderTree().catch((error: unknown) => {
+    // The visual Media Library integration ships in Phase 3.
+    console.error('FolderFolio could not load the folder tree.', error);
+  });
+}
+
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initFolderTree);
+  document.addEventListener('DOMContentLoaded', initFolderFolio, { once: true });
 } else {
-    initFolderTree();
+  initFolderFolio();
 }
