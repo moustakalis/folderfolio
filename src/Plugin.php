@@ -6,6 +6,7 @@ namespace FolderFolio;
 
 use FolderFolio\Database\Schema;
 use FolderFolio\Rest\FolderController;
+use FolderFolio\Admin\MediaLibraryIntegration;
 
 final class Plugin
 {
@@ -14,6 +15,11 @@ final class Plugin
         add_action('init', [$this, 'loadTextDomain']);
         add_action('rest_api_init', [$this, 'registerRestRoutes']);
         add_action('admin_enqueue_scripts', [$this, 'enqueueAdminAssets']);
+
+        // Register admin integrations
+        if (is_admin()) {
+            (new MediaLibraryIntegration())->register();
+        }
     }
 
     public function activate(): void
@@ -49,7 +55,7 @@ final class Plugin
             wp_enqueue_script(
                 'folderfolio-admin',
                 FOLDERFOLIO_PLUGIN_URL . 'assets/build/core/folder-tree.js',
-                ['wp-api-fetch'],
+                ['wp-api-fetch', 'jquery'],
                 FOLDERFOLIO_VERSION,
                 ['in_footer' => true]
             );
@@ -63,5 +69,32 @@ final class Plugin
                 FOLDERFOLIO_VERSION
             );
         }
+
+        // Inject folder tree container into Media Library sidebar
+        add_action('admin_print_scripts-upload.php', [$this, 'printFolderTreeContainer'], 1);
+    }
+
+    public function printFolderTreeContainer(): void
+    {
+        ?>
+        <style>
+            #folderfolio-sidebar {
+                margin: 20px 0;
+                padding: 0 10px;
+            }
+        </style>
+        <script>
+        (function($) {
+            $(document).ready(function() {
+                var $sidebar = $('#folderfolio-sidebar');
+                if ($sidebar.length === 0) {
+                    $sidebar = $('<div id="folderfolio-sidebar"></div>');
+                    $('.wp-filter').first().before($sidebar);
+                }
+                $sidebar.html('<div id="folderfolio-folder-tree"></div>');
+            });
+        })(jQuery);
+        </script>
+        <?php
     }
 }

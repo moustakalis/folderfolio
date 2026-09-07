@@ -1,9 +1,162 @@
 /**
- * FolderFolio admin styles.
- * Phase 3 - to be implemented.
+ * FolderFolio Admin Styles
+ * Phase 3: Media Library Integration
  */
 
-/* Placeholder: will be expanded with actual styles in Phase 3. */
-.folderfolio-folder-tree {
-    /* TODO: Implement folder tree styles */
+:root {
+  --ff-brand-700: #3047a8;
+  --ff-brand-600: #4059c7;
+  --ff-brand-100: #e8ecff;
+  --ff-ink-900: #1d2327;
+  --ff-ink-700: #50575e;
+  --ff-surface-0: #ffffff;
+  --ff-surface-50: #f6f7f7;
+  --ff-border: #dcdcde;
+  --ff-danger-600: #b32d2e;
+}
+
+/* Folder Tree Container */
+#folderfolio-folder-tree {
+  background: var(--ff-surface-0);
+  border: 1px solid var(--ff-border);
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 20px;
+  max-width: 300px;
+}
+
+/* Header */
+.folderfolio-tree-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--ff-border);
+}
+
+.folderfolio-tree-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ff-ink-900);
+}
+
+/* Search */
+.folderfolio-tree-search {
+  margin-bottom: 12px;
+}
+
+.folderfolio-tree-search input {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 13px;
+  border: 1px solid var(--ff-border);
+  border-radius: 3px;
+}
+
+/* Tree List */
+.folderfolio-tree-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.folderfolio-tree-item {
+  margin: 0;
+  padding: 0;
+}
+
+.folderfolio-folder-row {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background-color 0.15s ease;
+}
+
+.folderfolio-folder-row:hover {
+  background: var(--ff-surface-50);
+}
+
+.folderfolio-tree-item.active .folderfolio-folder-row {
+  background: var(--ff-brand-100);
+  border-left: 3px solid var(--ff-brand-700);
+  padding-left: 5px;
+}
+
+/* Toggle Icon */
+.folderfolio-toggle {
+  width: 20px;
+  height: 20px;
+  font-size: 16px;
+  color: var(--ff-ink-700);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.folderfolio-toggle:hover {
+  color: var(--ff-brand-600);
+}
+
+/* Folder Name */
+.folderfolio-folder-name {
+  flex: 1;
+  font-size: 13px;
+  color: var(--ff-ink-900);
+  margin-left: 4px;
+}
+
+/* Folder Count */
+.folderfolio-folder-count {
+  font-size: 11px;
+  color: var(--ff-ink-700);
+  background: var(--ff-surface-50);
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 8px;
+}
+
+/* Children */
+.folderfolio-children {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 20px;
+  display: none;
+}
+
+.folderfolio-children.expanded {
+  display: block;
+}
+
+/* Empty State */
+.folderfolio-empty {
+  padding: 12px 8px;
+  font-size: 13px;
+  color: var(--ff-ink-700);
+  font-style: italic;
+}
+
+/* Media Grid Integration */
+.media-folder-filter {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: var(--ff-surface-50);
+  border: 1px solid var(--ff-border);
+  border-radius: 4px;
+}
+
+.media-folder-filter .current-folder {
+  font-weight: 600;
+  color: var(--ff-brand-700);
+}
+
+/* Responsive */
+@media screen and (max-width: 782px) {
+  #folderfolio-folder-tree {
+    max-width: 100%;
+  }
 }
