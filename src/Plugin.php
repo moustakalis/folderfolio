@@ -7,6 +7,7 @@ namespace FolderFolio;
 use FolderFolio\Database\Schema;
 use FolderFolio\Rest\FolderController;
 use FolderFolio\Admin\MediaLibraryIntegration;
+use FolderFolio\Admin\MediaModalIntegration;
 
 final class Plugin
 {
@@ -19,6 +20,7 @@ final class Plugin
         // Register admin integrations
         if (is_admin()) {
             (new MediaLibraryIntegration())->register();
+            (new MediaModalIntegration())->register();
         }
     }
 
