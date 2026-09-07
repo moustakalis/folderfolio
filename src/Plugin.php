@@ -50,12 +50,23 @@ final class Plugin
 
         $scriptPath = FOLDERFOLIO_PLUGIN_DIR . 'assets/build/core/folder-tree.js';
         $stylePath = FOLDERFOLIO_PLUGIN_DIR . 'assets/build/core/admin.css';
+        $bulkPath = FOLDERFOLIO_PLUGIN_DIR . 'assets/build/core/bulk-actions.js';
 
         if (file_exists($scriptPath)) {
             wp_enqueue_script(
                 'folderfolio-admin',
                 FOLDERFOLIO_PLUGIN_URL . 'assets/build/core/folder-tree.js',
                 ['wp-api-fetch', 'jquery'],
+                FOLDERFOLIO_VERSION,
+                ['in_footer' => true]
+            );
+        }
+
+        if (file_exists($bulkPath)) {
+            wp_enqueue_script(
+                'folderfolio-bulk',
+                FOLDERFOLIO_PLUGIN_URL . 'assets/build/core/bulk-actions.js',
+                ['wp-api-fetch', 'folderfolio-admin'],
                 FOLDERFOLIO_VERSION,
                 ['in_footer' => true]
             );

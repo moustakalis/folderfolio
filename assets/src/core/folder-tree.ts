@@ -15,6 +15,7 @@ export class FolderTree {
     await this.loadTree();
     this.render();
     this.bindEvents();
+    this.setupMediaLibraryIntegration();
   }
 
   private async loadTree(): Promise<void> {
@@ -160,6 +161,81 @@ export class FolderTree {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  private setupMediaLibraryIntegration(): void {
+    // Listen for media library ready event
+    window.addEventListener('folderfolio:media-ready', () => {
+      console.log('FolderFolio: Media library ready');
+    });
+
+    // Handle folder selection for filtering
+    window.addEventListener('folderfolio:folder-selected', (e: Event) => {
+      const event = e as CustomEvent<{ folderId: number }>;
+      this.filterMediaByFolder(event.detail.folderId);
+    });
+  }
+
+  private async filterMediaByFolder(folderId: number): Promise<void> {
+    try {
+      const response = await apiFetch<ApiEnvelope<{ attachment_ids: number[] }>>(
+        `/folders/${folderId}/attachments`
+      );
+      const attachmentIds = response.data?.attachment_ids || [];
+
+      // Hide all attachments not in this folder
+      const allAttachments = document.querySelectorAll('.attachments .attachment');
+      allAttachments.forEach((attachment) => {
+        const attachEl = attachment as HTMLElement;
+        const attachmentId = parseInt(attachEl.dataset.attachmentId || '0', 10);
+        const isVisible = attachmentIds.includes(attachmentId);
+        attachEl.style.display = isVisible ? '' : 'none';
+      });
+
+      // Show info bar
+      this.showFilterBar(folderId);
+    } catch (error) {
+      console.error('FolderFolio: Failed to filter media', error);
+    }
+  }
+
+  private showFilterBar(folderId: number): void {
+    let $infoBar = document.getElementById('folderfolio-current-folder-bar');
+    if (!$infoBar) {
+      $infoBar = document.createElement('div');
+      $infoBar.id = 'folderfolio-current-folder-bar';
+      $infoBar.className = 'media-folder-filter';
+      const $filterBar = document.querySelector('.wp-filter');
+      if ($filterBar) {
+        $filterBar.parentNode?.insertBefore($infoBar, $filterBar.nextSibling);
+      }
+    }
+
+    $infoBar.innerHTML = `
+      Filtering by folder #${folderId}
+      <button type="button" class="button" id="folderfolio-clear-filter">Clear filter</button>
+    `;
+
+    $infoBar.querySelector('#folderfolio-clear-filter')?.addEventListener('click', () => {
+      this.clearFilter();
+    });
+  }
+
+  private clearFilter(): void {
+    const $infoBar = document.getElementById('folderfolio-current-folder-bar');
+    if ($infoBar) {
+      $infoBar.remove();
+    }
+
+    // Show all attachments
+    const allAttachments = document.querySelectorAll('.attachments .attachment');
+    allAttachments.forEach((attachment) => {
+      (attachment as HTMLElement).style.display = '';
+    });
+
+    this.activeFolderId = null;
+    this.render();
+    this.bindEvents();
   }
 
   getActiveFolderId(): number | null {
