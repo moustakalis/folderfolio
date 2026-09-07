@@ -51,6 +51,7 @@ final class Plugin
         $scriptPath = FOLDERFOLIO_PLUGIN_DIR . 'assets/build/core/folder-tree.js';
         $stylePath = FOLDERFOLIO_PLUGIN_DIR . 'assets/build/core/admin.css';
         $bulkPath = FOLDERFOLIO_PLUGIN_DIR . 'assets/build/core/bulk-actions.js';
+        $uploadPath = FOLDERFOLIO_PLUGIN_DIR . 'assets/build/core/upload-integration.js';
 
         if (file_exists($scriptPath)) {
             wp_enqueue_script(
@@ -66,6 +67,16 @@ final class Plugin
             wp_enqueue_script(
                 'folderfolio-bulk',
                 FOLDERFOLIO_PLUGIN_URL . 'assets/build/core/bulk-actions.js',
+                ['wp-api-fetch', 'folderfolio-admin'],
+                FOLDERFOLIO_VERSION,
+                ['in_footer' => true]
+            );
+        }
+
+        if (file_exists($uploadPath)) {
+            wp_enqueue_script(
+                'folderfolio-upload',
+                FOLDERFOLIO_PLUGIN_URL . 'assets/build/core/upload-integration.js',
                 ['wp-api-fetch', 'folderfolio-admin'],
                 FOLDERFOLIO_VERSION,
                 ['in_footer' => true]

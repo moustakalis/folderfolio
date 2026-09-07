@@ -34,10 +34,16 @@ export class FolderTree {
     this.container.innerHTML = `
       <div class="folderfolio-tree-header">
         <h3>Folders</h3>
-        <button type="button" class="button button-small" id="folderfolio-new-folder">
-          <span class="dashicons dashicons-plus-alt"></span>
-          New
-        </button>
+        <div class="folderfolio-actions">
+          <button type="button" class="button button-small" id="folderfolio-new-folder">
+            <span class="dashicons dashicons-plus-alt"></span>
+            New
+          </button>
+          <button type="button" class="button button-small" id="folderfolio-upload-to-folder">
+            <span class="dashicons dashicons-upload"></span>
+            Upload
+          </button>
+        </div>
       </div>
       <div class="folderfolio-tree-search">
         <input type="text" placeholder="Search folders..." id="folderfolio-search-input" />
@@ -81,6 +87,11 @@ export class FolderTree {
         return;
       }
 
+      if (target.closest('#folderfolio-upload-to-folder')) {
+        void this.handleUploadToFolder();
+        return;
+      }
+
       if (target.closest('.folderfolio-folder-name')) {
         const folderId = parseInt(target.getAttribute('data-folder-id') || '0', 10);
         void this.handleFolderSelect(folderId);
@@ -120,6 +131,21 @@ export class FolderTree {
       console.error('FolderFolio: Failed to create folder', error);
       alert('Failed to create folder');
     }
+  }
+
+  private async handleUploadToFolder(): Promise<void> {
+    if (!this.activeFolderId) {
+      alert('Please select a folder first');
+      return;
+    }
+
+    // Dispatch event for upload integration
+    window.dispatchEvent(
+      new CustomEvent('folderfolio:upload-to-folder', {
+        detail: { folderId: this.activeFolderId },
+        bubbles: true,
+      })
+    );
   }
 
   private async handleFolderSelect(folderId: number): Promise<void> {
@@ -172,7 +198,7 @@ export class FolderTree {
     // Handle folder selection for filtering
     window.addEventListener('folderfolio:folder-selected', (e: Event) => {
       const event = e as CustomEvent<{ folderId: number }>;
-      this.filterMediaByFolder(event.detail.folderId);
+      void this.filterMediaByFolder(event.detail.folderId);
     });
   }
 

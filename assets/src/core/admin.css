@@ -1,6 +1,6 @@
 /**
  * FolderFolio Admin Styles
- * Phase 3: Media Library Integration
+ * Phase 3.3: Upload Integration
  */
 
 :root {
@@ -13,6 +13,7 @@
   --ff-surface-50: #f6f7f7;
   --ff-border: #dcdcde;
   --ff-danger-600: #b32d2e;
+  --ff-success-600: #00a32a;
 }
 
 /* Folder Tree Container */
@@ -40,6 +41,11 @@
   font-size: 14px;
   font-weight: 600;
   color: var(--ff-ink-900);
+}
+
+.folderfolio-actions {
+  display: flex;
+  gap: 6px;
 }
 
 /* Search */
@@ -144,9 +150,13 @@
 .media-folder-filter {
   margin-bottom: 16px;
   padding: 12px;
-  background: var(--ff-surface-50);
-  border: 1px solid var(--ff-border);
+  background: var(--ff-brand-100);
+  border: 1px solid var(--ff-brand-600);
   border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .media-folder-filter .current-folder {
@@ -154,9 +164,33 @@
   color: var(--ff-brand-700);
 }
 
+/* Upload indicator */
+.folderfolio-upload-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--ff-success-600);
+  color: white;
+  border-radius: 3px;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
 /* Responsive */
 @media screen and (max-width: 782px) {
   #folderfolio-folder-tree {
     max-width: 100%;
+  }
+
+  .folderfolio-tree-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .folderfolio-actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
