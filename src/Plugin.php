@@ -6,8 +6,10 @@ namespace FolderFolio;
 
 use FolderFolio\Database\Schema;
 use FolderFolio\Rest\FolderController;
+use FolderFolio\Rest\ImportController;
 use FolderFolio\Admin\MediaLibraryIntegration;
 use FolderFolio\Admin\MediaModalIntegration;
+use FolderFolio\Admin\ImportPage;
 
 final class Plugin
 {
@@ -21,6 +23,7 @@ final class Plugin
         if (is_admin()) {
             (new MediaLibraryIntegration())->register();
             (new MediaModalIntegration())->register();
+            (new ImportPage())->register();
         }
     }
 
@@ -42,6 +45,7 @@ final class Plugin
     public function registerRestRoutes(): void
     {
         (new FolderController())->registerRoutes();
+        (new ImportController())->registerRoutes();
     }
 
     public function enqueueAdminAssets(string $hook): void
