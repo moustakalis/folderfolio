@@ -1,0 +1,14 @@
+@import './base.css';
+
+body.wp-admin.upload-php #wpbody {
+    display: flex;
+    flex-direction: row;
+    width: 100%; }
+.filefolio-wrapper {
+    position: sticky;
+    width: 300px;
+    height: 100%;
+    overflow: hidden;
+    top: 32px;
+    transition: all .2s;
+    z-index: 999; }
