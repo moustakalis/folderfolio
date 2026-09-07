@@ -1,11 +1,19 @@
 {
-  "files": [],
-  "references": [
-    {
-      "path": "./tsconfig.node.json"
-    },
-    {
-      "path": "./tsconfig.app.json"
-    }
-  ]
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "lib": ["ES2020", "DOM"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "assets/build/core",
+    "rootDir": "assets/src",
+    "declaration": false,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "types": ["wp"]
+  },
+  "include": ["assets/src/**/*"],
+  "exclude": ["node_modules", "assets/build"]
 }
