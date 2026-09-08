@@ -16,10 +16,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup mise
-        uses: jdx/mise-action@v2
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
         with:
-          install: true
+          php-version: '8.2'
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
 
       - name: Install PHP production dependencies
         run: composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader

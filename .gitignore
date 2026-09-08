@@ -31,3 +31,5 @@ coverage/
 
 # WordPress test suite
 /tmp/
+
+.mise.local.toml

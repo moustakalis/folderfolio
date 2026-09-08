@@ -1,47 +1,39 @@
 [tools]
-php = "8.2"
 node = "20"
+php = "8.2"
 
 [env]
-PHP_CONFIGURE_OPTIONS = "--with-openssl=/opt/homebrew/opt/openssl@3 --with-iconv=/opt/homebrew/opt/libiconv"
 PHP_WITHOUT_PEAR = "yes"
 _.path = ["./vendor/bin", "./node_modules/.bin"]
 NODE_ENV = "development"
 
 [tasks."deps:install"]
-description = "Install PHP and JavaScript dependencies"
+description = "Install project dependencies"
 run = """
-composer install --no-interaction
+composer install --no-interaction --prefer-dist
 npm install
 """
 
 [tasks."assets:build"]
-description = "Build project assets"
-run = """
-npm run build
-mkdir -p assets/build/core
-cp assets/src/core/admin.css assets/build/core/admin.css
-cp assets/src/core/media-modal.css assets/build/core/media-modal.css
-"""
+description = "Type-check and build production assets"
+run = "npm run build"
 
 [tasks."test:unit"]
 description = "Run PHP unit tests"
 run = "composer test"
 
 [tasks."test:e2e"]
-description = "Run end-to-end tests"
+description = "Run browser end-to-end tests"
 run = "npm run test:e2e"
 
 [tasks."dev:clean"]
 description = "Remove generated dependencies and build output"
 run = """
-rm -rf assets/build/ build/ vendor/ node_modules/
-rm -f package-lock.json composer.lock
-rm -rf .phpunit.cache/ playwright-report/
+rm -rf assets/build build vendor node_modules .phpunit.cache playwright-report
 """
 
 [tasks."dev:zip"]
-description = "Create a distributable WordPress plugin ZIP"
+description = "Create a distributable plugin ZIP"
 run = """
 rm -rf build
 mkdir -p build/folderfolio
@@ -65,6 +57,3 @@ rsync -a \
   ./ build/folderfolio/
 cd build && zip -qr folderfolio-latest.zip folderfolio/
 """
-
-[settings]
-experimental = true
