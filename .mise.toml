@@ -6,8 +6,38 @@ php:composer = "latest"
 # Node.js and npm
 node = "20"
 
-# Optional: Go for some tools
-# go = "latest"
+[tasks]
+# Project tasks
+install = """
+  echo "Installing PHP dependencies..."
+  composer install --no-interaction
+  echo "Installing Node dependencies..."
+  npm install
+  echo "Done!"
+"""
+
+build = """
+  echo "Building assets..."
+  npm run build
+  echo "Copying CSS files..."
+  mkdir -p assets/build/core
+  cp assets/src/core/admin.css assets/build/core/admin.css
+  cp assets/src/core/media-modal.css assets/build/core/media-modal.css
+  echo "Build complete! Assets in assets/build/core/"
+"""
+
+build-prod = """
+  echo "Building production assets..."
+  npm run build
+  echo "Copying CSS files..."
+  mkdir -p assets/build/core
+  cp assets/src/core/admin.css assets/build/core/admin.css
+  cp assets/src/core/media-modal.css assets/build/core/media-modal.css
+  echo "Production build complete!"
+"""
+
+test = "composer test"
+test-e2e = "npm run test:e2e"
 
 [env]
 # Set PATH to include mise shims
