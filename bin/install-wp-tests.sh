@@ -26,11 +26,29 @@ if [ ! -d "$WP_CORE_DIR" ]; then
     fi
 fi
 
-# Download test suite
+# Download test suite using curl instead of svn
 if [ ! -d "$WP_TESTS_DIR/includes" ]; then
     mkdir -p "$WP_TESTS_DIR"
-    svn export --quiet --ignore-externals "https://develop.svn.wordpress.org/${WP_VERSION}/tests/phpunit/includes/" "$WP_TESTS_DIR/includes"
-    svn export --quiet --ignore-externals "https://develop.svn.wordpress.org/${WP_VERSION}/tests/phpunit/data/" "$WP_TESTS_DIR/data"
+    
+    # Get test suite version
+    if [ "$WP_VERSION" == "latest" ]; then
+        WP_TESTS_VERSION="trunk"
+    else
+        WP_TESTS_VERSION="tags/$WP_VERSION"
+    fi
+    
+    # Download test files from GitHub mirror
+    TESTS_URL="https://raw.githubusercontent.com/WordPress/wordpress-develop/$WP_TESTS_VERSION"
+    
+    mkdir -p "$WP_TESTS_DIR/includes"
+    mkdir -p "$WP_TESTS_DIR/data"
+    
+    # Download essential test files
+    curl -sL "$TESTS_URL/tests/phpunit/includes/bootstrap.php" -o "$WP_TESTS_DIR/includes/bootstrap.php"
+    curl -sL "$TESTS_URL/tests/phpunit/includes/functions.php" -o "$WP_TESTS_DIR/includes/functions.php"
+    curl -sL "$TESTS_URL/tests/phpunit/includes/testcase.php" -o "$WP_TESTS_DIR/includes/testcase.php"
+    curl -sL "$TESTS_URL/tests/phpunit/includes/factory.php" -o "$WP_TESTS_DIR/includes/factory.php"
+    curl -sL "$TESTS_URL/tests/phpunit/data/themedir1/default/style.css" -o "$WP_TESTS_DIR/data/themedir1/default/style.css" 2>/dev/null || true
 fi
 
 # Create database
