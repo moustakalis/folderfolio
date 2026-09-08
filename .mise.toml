@@ -7,8 +7,8 @@ php:composer = "latest"
 node = "20"
 
 [tasks]
-# Project tasks
-install = """
+# Project tasks (prefixed to avoid conflicts with mise built-ins)
+"deps:install" = """
   echo "Installing PHP dependencies..."
   composer install --no-interaction
   echo "Installing Node dependencies..."
@@ -16,7 +16,7 @@ install = """
   echo "Done!"
 """
 
-build = """
+"assets:build" = """
   echo "Building assets..."
   npm run build
   echo "Copying CSS files..."
@@ -26,7 +26,7 @@ build = """
   echo "Build complete! Assets in assets/build/core/"
 """
 
-build-prod = """
+"assets:build-prod" = """
   echo "Building production assets..."
   npm run build
   echo "Copying CSS files..."
@@ -36,8 +36,26 @@ build-prod = """
   echo "Production build complete!"
 """
 
-test = "composer test"
-test-e2e = "npm run test:e2e"
+"test:unit" = "composer test"
+"test:e2e" = "npm run test:e2e"
+"dev:clean" = """
+  rm -rf assets/build/ build/ vendor/ node_modules/
+  rm -f package-lock.json composer.lock
+  rm -rf .phpunit.cache/ playwright-report/
+  echo "Clean complete!"
+"""
+
+"dev:zip" = """
+  mkdir -p build/folderfolio
+  rsync -a --exclude='.git' --exclude='.github' --exclude='node_modules' \
+    --exclude='tests' --exclude='build' --exclude='*.map' --exclude='.DS_Store' \
+    --exclude='phpunit.xml.dist' --exclude='phpstan.neon' --exclude='playwright*' \
+    --exclude='*.spec.ts' --exclude='composer.json' --exclude='composer.lock' \
+    --exclude='package.json' --exclude='package-lock.json' --exclude='Makefile' \
+    ./ build/folderfolio/
+  cd build && zip -qr folderfolio-latest.zip folderfolio/
+  echo "Plugin ZIP created: build/folderfolio-latest.zip"
+"""
 
 [env]
 # Set PATH to include mise shims

@@ -43,10 +43,10 @@ source ~/.local/bin/env  # or restart your shell
 mise install
 
 # Install project dependencies
-make install
+mise run deps:install
 
 # Build assets
-make build
+mise run assets:build
 ```
 
 ### 3. Link to WordPress (optional)
@@ -56,30 +56,30 @@ make build
 make wp-link WP_ROOT=/path/to/wordpress
 
 # Build and activate
-make build
+make assets:build
 # Visit WordPress admin → Plugins → Activate FolderFolio
 ```
 
 ### 4. Create installable ZIP
 
 ```bash
-make zip
+make dev:zip
 # Upload build/folderfolio-latest.zip to WordPress
 ```
 
 ## Development Commands
 
 ```bash
-mise setup      # Install mise and configure tools
-make install    # Install Composer + npm dependencies
-make build      # Build assets (development)
-make build-prod # Build assets (production)
-make test       # Run PHPUnit tests
-make test-e2e   # Run Playwright E2E tests
-make clean      # Remove build artifacts
-make zip        # Create installable plugin ZIP
-make wp-link    # Symlink to WordPress for development
-make wp-unlink  # Remove symlink
+mise install           # Install PHP 8.2, Node 20, Composer, npm
+mise run deps:install  # Install Composer + npm packages
+mise run assets:build  # Build assets (development)
+mise run assets:build-prod  # Build assets (production)
+mise run test:unit     # Run PHPUnit tests
+mise run test:e2e      # Run Playwright E2E tests
+mise run dev:clean     # Remove build artifacts
+mise run dev:zip       # Create installable plugin ZIP
+make wp-link           # Symlink to WordPress for development
+make wp-unlink         # Remove symlink
 ```
 
 ## REST API
@@ -102,10 +102,10 @@ FolderFolio exposes a REST API at `/wp-json/folderfolio/v1/`:
 
 ```bash
 # PHPUnit tests
-make test
+mise run test:unit
 
 # Playwright E2E tests
-make test-e2e
+mise run test:e2e
 ```
 
 ## License
