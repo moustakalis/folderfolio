@@ -1,5 +1,9 @@
 # FolderFolio Build Process
-.PHONY: help install build build-prod test test-e2e clean zip
+.PHONY: help install build build-prod test test-e2e clean zip wp-link wp-unlink
+
+# WordPress environment (customize these)
+WP_ROOT ?= /var/www/html
+WP_PLUGINS ?= $(WP_ROOT)/wp-content/plugins
 
 # Default target
 help:
@@ -12,6 +16,11 @@ help:
 	@echo "  make test-e2e    - Run Playwright E2E tests"
 	@echo "  make clean       - Remove build artifacts"
 	@echo "  make zip         - Create installable plugin ZIP"
+	@echo ""
+	@echo "WordPress Development:"
+	@echo "  make wp-link     - Create symlink to local WordPress (WP_ROOT=/var/www/html)"
+	@echo "  make wp-unlink   - Remove symlink"
+	@echo "  make wp-link WP_ROOT=/path/to/wordpress  - Custom WordPress path"
 	@echo ""
 
 # Install dependencies
@@ -90,3 +99,40 @@ zip: build-prod
 	cd build && zip -qr folderfolio-latest.zip folderfolio/
 	@echo "Plugin ZIP created: build/folderfolio-latest.zip"
 	@echo "Install this ZIP in WordPress: /wp-admin/plugin-install.php"
+
+# Create symlink to WordPress plugins directory
+wp-link:
+	@echo "Creating symlink to WordPress..."
+	@if [ ! -d "$(WP_PLUGINS)" ]; then \
+		echo "Error: WordPress plugins directory not found at $(WP_PLUGINS)"; \
+		echo "Please set WP_ROOT correctly, e.g.: make wp-link WP_ROOT=/path/to/wordpress"; \
+		exit 1; \
+	fi
+	@if [ -L "$(WP_PLUGINS)/folderfolio" ]; then \
+		echo "Symlink already exists at $(WP_PLUGINS)/folderfolio"; \
+		echo "Run 'make wp-unlink' first to remove it."; \
+		exit 1; \
+	fi
+	@if [ -d "$(WP_PLUGINS)/folderfolio" ]; then \
+		echo "Error: Directory already exists at $(WP_PLUGINS)/folderfolio"; \
+		echo "Please remove or rename it first."; \
+		exit 1; \
+	fi
+	ln -s "$(CURDIR)" "$(WP_PLUGINS)/folderfolio"
+	@echo "✓ Symlink created: $(WP_PLUGINS)/folderfolio -> $(CURDIR)"
+	@echo ""
+	@echo "Next steps:"
+	@echo "  1. Run 'make build' to compile assets"
+	@echo "  2. Visit WordPress admin and activate FolderFolio"
+	@echo "  3. Edit code - changes will be reflected immediately"
+	@echo "  4. Run 'make build' again to rebuild assets"
+
+# Remove symlink
+wp-unlink:
+	@echo "Removing symlink..."
+	@if [ ! -L "$(WP_PLUGINS)/folderfolio" ]; then \
+		echo "No symlink found at $(WP_PLUGINS)/folderfolio"; \
+		exit 0; \
+	fi
+	rm "$(WP_PLUGINS)/folderfolio"
+	@echo "✓ Symlink removed"
