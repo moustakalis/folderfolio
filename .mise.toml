@@ -1,69 +1,70 @@
 [tools]
-# PHP and extensions
 php = "8.2"
-php:composer = "latest"
-
-# Node.js and npm
 node = "20"
 
-[tasks]
-# Project tasks (prefixed to avoid conflicts with mise built-ins)
-"deps:install" = """
-  echo "Installing PHP dependencies..."
-  composer install --no-interaction
-  echo "Installing Node dependencies..."
-  npm install
-  echo "Done!"
-"""
-
-"assets:build" = """
-  echo "Building assets..."
-  npm run build
-  echo "Copying CSS files..."
-  mkdir -p assets/build/core
-  cp assets/src/core/admin.css assets/build/core/admin.css
-  cp assets/src/core/media-modal.css assets/build/core/media-modal.css
-  echo "Build complete! Assets in assets/build/core/"
-"""
-
-"assets:build-prod" = """
-  echo "Building production assets..."
-  npm run build
-  echo "Copying CSS files..."
-  mkdir -p assets/build/core
-  cp assets/src/core/admin.css assets/build/core/admin.css
-  cp assets/src/core/media-modal.css assets/build/core/media-modal.css
-  echo "Production build complete!"
-"""
-
-"test:unit" = "composer test"
-"test:e2e" = "npm run test:e2e"
-"dev:clean" = """
-  rm -rf assets/build/ build/ vendor/ node_modules/
-  rm -f package-lock.json composer.lock
-  rm -rf .phpunit.cache/ playwright-report/
-  echo "Clean complete!"
-"""
-
-"dev:zip" = """
-  mkdir -p build/folderfolio
-  rsync -a --exclude='.git' --exclude='.github' --exclude='node_modules' \
-    --exclude='tests' --exclude='build' --exclude='*.map' --exclude='.DS_Store' \
-    --exclude='phpunit.xml.dist' --exclude='phpstan.neon' --exclude='playwright*' \
-    --exclude='*.spec.ts' --exclude='composer.json' --exclude='composer.lock' \
-    --exclude='package.json' --exclude='package-lock.json' --exclude='Makefile' \
-    ./ build/folderfolio/
-  cd build && zip -qr folderfolio-latest.zip folderfolio/
-  echo "Plugin ZIP created: build/folderfolio-latest.zip"
-"""
-
 [env]
-# Set PATH to include mise shims
+PHP_CONFIGURE_OPTIONS = "--with-openssl=/opt/homebrew/opt/openssl@3 --with-iconv=/opt/homebrew/opt/libiconv"
+PHP_WITHOUT_PEAR = "yes"
 _.path = ["./vendor/bin", "./node_modules/.bin"]
-
-# WordPress test environment
-WP_TESTS_DIR = { value = "/tmp/wordpress-tests-lib", condition = { env = { WP_TESTS_DIR = "" } } }
-WP_CORE_DIR = { value = "/tmp/wordpress", condition = { env = { WP_CORE_DIR = "" } } }
-
-# Development settings
 NODE_ENV = "development"
+
+[tasks."deps:install"]
+description = "Install PHP and JavaScript dependencies"
+run = """
+composer install --no-interaction
+npm install
+"""
+
+[tasks."assets:build"]
+description = "Build project assets"
+run = """
+npm run build
+mkdir -p assets/build/core
+cp assets/src/core/admin.css assets/build/core/admin.css
+cp assets/src/core/media-modal.css assets/build/core/media-modal.css
+"""
+
+[tasks."test:unit"]
+description = "Run PHP unit tests"
+run = "composer test"
+
+[tasks."test:e2e"]
+description = "Run end-to-end tests"
+run = "npm run test:e2e"
+
+[tasks."dev:clean"]
+description = "Remove generated dependencies and build output"
+run = """
+rm -rf assets/build/ build/ vendor/ node_modules/
+rm -f package-lock.json composer.lock
+rm -rf .phpunit.cache/ playwright-report/
+"""
+
+[tasks."dev:zip"]
+description = "Create a distributable WordPress plugin ZIP"
+run = """
+rm -rf build
+mkdir -p build/folderfolio
+rsync -a \
+  --exclude='.git' \
+  --exclude='.github' \
+  --exclude='node_modules' \
+  --exclude='tests' \
+  --exclude='build' \
+  --exclude='*.map' \
+  --exclude='.DS_Store' \
+  --exclude='phpunit.xml.dist' \
+  --exclude='phpstan.neon' \
+  --exclude='playwright*' \
+  --exclude='*.spec.ts' \
+  --exclude='composer.json' \
+  --exclude='composer.lock' \
+  --exclude='package.json' \
+  --exclude='package-lock.json' \
+  --exclude='Makefile' \
+  ./ build/folderfolio/
+cd build && zip -qr folderfolio-latest.zip folderfolio/
+"""
+
+[settings]
+experimental = true
