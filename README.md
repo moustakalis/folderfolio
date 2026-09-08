@@ -25,64 +25,62 @@
 
 - WordPress 6.4+
 - PHP 8.0+
-- Node.js 18+ (for building assets)
+- Node.js 20+
 
-## Installation
+## Quick Start
 
-### From GitHub
+### 1. Install mise (one-time)
 
-1. Clone or download this repository
-2. Run `composer install --no-dev` to generate the autoloader
-3. Run `npm install && npm run build` to compile assets
-4. Upload the `folderfolio` folder to `/wp-content/plugins/`
-5. Activate via WordPress admin (Plugins → FolderFolio)
-
-### Without Composer
-
-If you don't have Composer installed, create a simple autoloader at `vendor/autoload.php`:
-
-```php
-<?php
-spl_autoload_register(function ($class) {
-    $prefix = 'FolderFolio\\';
-    $base_dir = __DIR__ . '/../src/';
-    $len = strlen($prefix);
-    if (strncmp($prefix, $class, $len) !== 0) return;
-    $relative_class = substr($class, $len);
-    $file = $base_dir . str_replace('\\', '/', $relative_class) . '.php';
-    if (file_exists($file)) require $file;
-});
+```bash
+curl https://mise.run | sh
+source ~/.local/bin/env  # or restart your shell
 ```
 
-## Usage
+### 2. Setup project
 
-### Media Library
+```bash
+# Install PHP 8.2, Node.js 20, and tools
+mise install
 
-1. Go to **Media → Library**
-2. Folder tree appears in the sidebar
-3. Click **New** to create folders
-4. Click a folder to filter media
-5. Drag attachments to folders or use bulk actions
+# Install project dependencies
+make install
 
-### Uploading to Folder
+# Build assets
+make build
+```
 
-1. Select a folder in the sidebar
-2. Click **Upload** button
-3. Files automatically assigned to selected folder
+### 3. Link to WordPress (optional)
 
-### Media Modal (Gutenberg/Classic Editor)
+```bash
+# Create symlink to your WordPress plugins directory
+make wp-link WP_ROOT=/path/to/wordpress
 
-1. Click **Add Media** or insert Image block
-2. Folder tree appears in modal sidebar
-3. Browse folders while selecting media
-4. Filter by folder to find assets faster
+# Build and activate
+make build
+# Visit WordPress admin → Plugins → Activate FolderFolio
+```
 
-### Importing from FileBird
+### 4. Create installable ZIP
 
-1. Go to **Media → Import**
-2. Click **Import** next to FileBird
-3. Confirm migration
-4. All folders and assignments migrated
+```bash
+make zip
+# Upload build/folderfolio-latest.zip to WordPress
+```
+
+## Development Commands
+
+```bash
+mise setup      # Install mise and configure tools
+make install    # Install Composer + npm dependencies
+make build      # Build assets (development)
+make build-prod # Build assets (production)
+make test       # Run PHPUnit tests
+make test-e2e   # Run Playwright E2E tests
+make clean      # Remove build artifacts
+make zip        # Create installable plugin ZIP
+make wp-link    # Symlink to WordPress for development
+make wp-unlink  # Remove symlink
+```
 
 ## REST API
 
@@ -100,32 +98,15 @@ FolderFolio exposes a REST API at `/wp-json/folderfolio/v1/`:
 - `GET /import/detect` - Detect importable plugins
 - `POST /import/{importer}` - Run importer
 
-## Development
+## Testing
 
 ```bash
-# Install dependencies
-composer install
-npm install
+# PHPUnit tests
+make test
 
-# Development watch mode
-npm run dev
-
-# Production build
-npm run build
+# Playwright E2E tests
+make test-e2e
 ```
-
-## Changelog
-
-### 1.0.0 (2026-09-08)
-
-- Initial release
-- Complete folder management (CRUD)
-- Media Library integration
-- Media Modal integration
-- Bulk operations
-- Upload-to-folder
-- FileBird importer
-- REST API
 
 ## License
 

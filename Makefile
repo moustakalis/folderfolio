@@ -1,5 +1,6 @@
 # FolderFolio Build Process
-.PHONY: help install build build-prod test test-e2e clean zip wp-link wp-unlink
+# Uses mise for dependency management
+.PHONY: help install build build-prod test test-e2e clean zip wp-link wp-unlink mise-setup
 
 # WordPress environment (customize these)
 WP_ROOT ?= /var/www/html
@@ -9,19 +10,36 @@ WP_PLUGINS ?= $(WP_ROOT)/wp-content/plugins
 help:
 	@echo "FolderFolio Build Commands"
 	@echo ""
-	@echo "  make install     - Install all dependencies (Composer + npm)"
-	@echo "  make build       - Build assets for development (with sourcemaps)"
+	@echo "  mise setup   - Install mise and configure tool versions"
+	@echo "  make install - Install all dependencies (Composer + npm)"
+	@echo "  make build   - Build assets for development (with sourcemaps)"
 	@echo "  make build-prod  - Build assets for production (minified)"
-	@echo "  make test        - Run PHPUnit tests"
-	@echo "  make test-e2e    - Run Playwright E2E tests"
-	@echo "  make clean       - Remove build artifacts"
-	@echo "  make zip         - Create installable plugin ZIP"
+	@echo "  make test    - Run PHPUnit tests"
+	@echo "  make test-e2e  - Run Playwright E2E tests"
+	@echo "  make clean   - Remove build artifacts"
+	@echo "  make zip     - Create installable plugin ZIP"
 	@echo ""
 	@echo "WordPress Development:"
-	@echo "  make wp-link     - Create symlink to local WordPress (WP_ROOT=/var/www/html)"
-	@echo "  make wp-unlink   - Remove symlink"
-	@echo "  make wp-link WP_ROOT=/path/to/wordpress  - Custom WordPress path"
+	@echo "  make wp-link   - Create symlink to local WordPress"
+	@echo "  make wp-unlink - Remove symlink"
 	@echo ""
+
+# Setup mise (one-time)
+mise-setup:
+	@echo "Setting up mise..."
+	@if ! command -v mise &> /dev/null; then \
+		echo "Installing mise..."; \
+		curl https://mise.run | sh; \
+		echo ""; \
+		echo "mise installed! Please restart your shell or run:"; \
+		echo "  source \"$$HOME/.local/bin/env\""; \
+		echo ""; \
+	else \
+		echo "mise already installed"; \
+	fi
+	@echo "Installing configured tools..."
+	mise install
+	@echo "Done! Run 'make install' to install project dependencies."
 
 # Install dependencies
 install:

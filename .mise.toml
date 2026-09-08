@@ -1,0 +1,21 @@
+[tools]
+# PHP and extensions
+php = "8.2"
+php:composer = "latest"
+
+# Node.js and npm
+node = "20"
+
+# Optional: Go for some tools
+# go = "latest"
+
+[env]
+# Set PATH to include mise shims
+_.path = ["./vendor/bin", "./node_modules/.bin"]
+
+# WordPress test environment
+WP_TESTS_DIR = { value = "/tmp/wordpress-tests-lib", condition = { env = { WP_TESTS_DIR = "" } } }
+WP_CORE_DIR = { value = "/tmp/wordpress", condition = { env = { WP_CORE_DIR = "" } } }
+
+# Development settings
+NODE_ENV = "development"
