@@ -3,11 +3,15 @@
   "version": "1.0.0",
   "scripts": {
     "build": "esbuild assets/src/core/*.ts --bundle --outdir=assets/build/core --format=esm --minify --sourcemap",
-    "dev": "esbuild assets/src/core/*.ts --bundle --outdir=assets/build/core --format=esm --watch --sourcemap"
+    "dev": "esbuild assets/src/core/*.ts --bundle --outdir=assets/build/core --format=esm --watch --sourcemap",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report"
   },
   "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@types/wp": "^0.0.10",
     "esbuild": "^0.25.0",
-    "typescript": "^5.6.0",
-    "@types/wp": "^0.0.10"
+    "typescript": "^5.6.0"
   }
 }

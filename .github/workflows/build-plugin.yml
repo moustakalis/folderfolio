@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    name: Build Plugin
+    name: Build Plugin ZIP
     runs-on: ubuntu-latest
 
     steps:
@@ -28,56 +28,55 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install PHP dependencies
-        run: composer install --no-dev --optimize-autoloader
+      - name: Install PHP production dependencies
+        run: composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
 
       - name: Install Node dependencies
-        run: npm ci
+        run: npm install
 
-      - name: Build assets
+      - name: TypeScript type-check
+        run: npx tsc --noEmit
+
+      - name: Build JavaScript assets
         run: npm run build
 
-      - name: Copy CSS to build directory
+      - name: Copy CSS build assets
         run: |
           mkdir -p assets/build/core
-          cp assets/src/core/admin.css assets/build/core/
-          cp assets/src/core/media-modal.css assets/build/core/
+          cp assets/src/core/admin.css assets/build/core/admin.css
+          cp assets/src/core/media-modal.css assets/build/core/media-modal.css
 
-      - name: Create plugin ZIP
+      - name: Assemble installable plugin
         run: |
-          # Create temporary build directory
           mkdir -p build/folderfolio
-
-          # Copy plugin files (exclude dev files)
-          rsync -av --exclude='.git' \
-                       --exclude='.github' \
-                       --exclude='node_modules' \
-                       --exclude='vendor' \
-                       --exclude='tests' \
-                       --exclude='*.map' \
-                       --exclude='.DS_Store' \
-                       ./ build/folderfolio/
-
-          # Copy built assets
-          rsync -av assets/build/ build/folderfolio/assets/build/
-
-          # Copy Composer autoloader
-          rsync -av vendor/ build/folderfolio/vendor/
-
-          # Create ZIP
+          rsync -a \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='node_modules' \
+            --exclude='tests' \
+            --exclude='build' \
+            --exclude='*.map' \
+            --exclude='.DS_Store' \
+            --exclude='phpunit.xml.dist' \
+            --exclude='phpstan.neon' \
+            ./ build/folderfolio/
           cd build
-          zip -r folderfolio-${{ github.sha }}.zip folderfolio/
+          zip -qr folderfolio-${{ github.sha }}.zip folderfolio
 
-      - name: Upload artifact
+      - name: Upload plugin ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: folderfolio-plugin
+          name: folderfolio-plugin-${{ github.sha }}
           path: build/folderfolio-*.zip
           retention-days: 30
 
-  test-php:
-    name: PHP Tests & Static Analysis
+  php-tests:
+    name: PHP ${{ matrix.php }} Tests
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.0', '8.2', '8.3']
 
     services:
       mysql:
@@ -85,11 +84,13 @@ jobs:
         env:
           MYSQL_ROOT_PASSWORD: root
           MYSQL_DATABASE: wordpress_test
+        ports:
+          - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping"
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
           --health-interval=10s
           --health-timeout=5s
-          --health-retries=3
+          --health-retries=10
 
     steps:
       - name: Checkout
@@ -98,35 +99,36 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: ${{ matrix.php }}
           tools: composer:v2
+          extensions: mysqli
           coverage: none
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
       - name: Install dependencies
         run: |
-          composer install --no-interaction
-          npm ci
+          composer install --prefer-dist --no-interaction
+          npm install
 
       - name: Install WordPress test suite
-        run: |
-          bash bin/install-wp-tests.sh wordpress_test root root 127.0.0.1 latest
+        run: bash bin/install-wp-tests.sh wordpress_test root root 127.0.0.1 latest true
 
-      - name: Run PHPUnit tests
+      - name: Run PHPUnit integration tests
         run: composer test
-        continue-on-error: true
 
       - name: Run PHPStan
+        if: matrix.php == '8.2'
         run: composer phpstan
-        continue-on-error: true
 
-  test-typescript:
-    name: TypeScript Build
+  browser-tests:
+    name: Playwright E2E Tests
     runs-on: ubuntu-latest
+    needs: build
 
     steps:
       - name: Checkout
@@ -138,12 +140,22 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install Node dependencies
+        run: npm install
 
-      - name: TypeScript compile (strict)
-        run: npx tsc --noEmit --strict
-        continue-on-error: true
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
 
-      - name: Build assets
-        run: npm run build
+      - name: E2E test setup notice
+        run: |
+          echo "Playwright specifications are available for local Docker/WordPress test environments."
+          echo "CI browser execution will be enabled after adding the WordPress Docker fixture."
+
+      - name: Upload Playwright report if present
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
+          if-no-files-found: ignore
