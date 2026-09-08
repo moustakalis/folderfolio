@@ -1,6 +1,6 @@
 {
   "name": "folderfolio-assets",
-  "version": "2.0.0",
+  "version": "1.0.0",
   "scripts": {
     "build": "esbuild assets/src/core/*.ts --bundle --outdir=assets/build/core --format=esm --minify --sourcemap",
     "dev": "esbuild assets/src/core/*.ts --bundle --outdir=assets/build/core --format=esm --watch --sourcemap"
