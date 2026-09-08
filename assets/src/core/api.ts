@@ -19,16 +19,13 @@ type ApiFetchOptions = {
   data?: unknown;
 };
 
-declare global {
-  interface Window {
-    wp: {
-      apiFetch: <T>(options: { path: string } & ApiFetchOptions) => Promise<T>;
-    };
-  }
-}
+// WordPress wp.apiFetch global
+declare const wp: {
+  apiFetch: <T>(options: { path: string } & ApiFetchOptions) => Promise<T>;
+};
 
 export function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  return window.wp.apiFetch<T>({
+  return wp.apiFetch<T>({
     path: `/folderfolio/v1${path}`,
     ...options,
   });

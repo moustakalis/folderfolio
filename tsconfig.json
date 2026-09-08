@@ -11,8 +11,7 @@
     "rootDir": "assets/src",
     "declaration": false,
     "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "types": ["wp"]
+    "resolveJsonModule": true
   },
   "include": ["assets/src/**/*"],
   "exclude": ["node_modules", "assets/build"]
