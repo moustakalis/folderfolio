@@ -1,0 +1,149 @@
+name: Build and Test Plugin
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Plugin
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer:v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install PHP dependencies
+        run: composer install --no-dev --optimize-autoloader
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build assets
+        run: npm run build
+
+      - name: Copy CSS to build directory
+        run: |
+          mkdir -p assets/build/core
+          cp assets/src/core/admin.css assets/build/core/
+          cp assets/src/core/media-modal.css assets/build/core/
+
+      - name: Create plugin ZIP
+        run: |
+          # Create temporary build directory
+          mkdir -p build/folderfolio
+
+          # Copy plugin files (exclude dev files)
+          rsync -av --exclude='.git' \
+                       --exclude='.github' \
+                       --exclude='node_modules' \
+                       --exclude='vendor' \
+                       --exclude='tests' \
+                       --exclude='*.map' \
+                       --exclude='.DS_Store' \
+                       ./ build/folderfolio/
+
+          # Copy built assets
+          rsync -av assets/build/ build/folderfolio/assets/build/
+
+          # Copy Composer autoloader
+          rsync -av vendor/ build/folderfolio/vendor/
+
+          # Create ZIP
+          cd build
+          zip -r folderfolio-${{ github.sha }}.zip folderfolio/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: folderfolio-plugin
+          path: build/folderfolio-*.zip
+          retention-days: 30
+
+  test-php:
+    name: PHP Tests & Static Analysis
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress_test
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          composer install --no-interaction
+          npm ci
+
+      - name: Install WordPress test suite
+        run: |
+          bash bin/install-wp-tests.sh wordpress_test root root 127.0.0.1 latest
+
+      - name: Run PHPUnit tests
+        run: composer test
+        continue-on-error: true
+
+      - name: Run PHPStan
+        run: composer phpstan
+        continue-on-error: true
+
+  test-typescript:
+    name: TypeScript Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript compile (strict)
+        run: npx tsc --noEmit --strict
+        continue-on-error: true
+
+      - name: Build assets
+        run: npm run build

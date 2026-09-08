@@ -4,6 +4,7 @@
 
 # Build output
 /assets/build/
+/build/
 
 # Environment
 .env
@@ -24,4 +25,9 @@ Thumbs.db
 npm-debug.log*
 
 # Testing
+.phpunit.cache/
 /tests/_output/
+coverage/
+
+# WordPress test suite
+/tmp/
