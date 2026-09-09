@@ -61,7 +61,7 @@ jobs:
             --exclude='*.spec.ts' \
             --exclude='composer.json' \
             --exclude='composer.lock' \
-            --exclude='package.json' \
+            --exclude='package.json' \ 
             --exclude='package-lock.json' \
             --exclude='Makefile' \
             ./ build/folderfolio/
@@ -97,10 +97,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup mise
-        uses: jdx/mise-action@v2
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
         with:
-          install: true
+          php-version: '8.2'
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
 
       - name: Install dependencies
         run: |
@@ -111,7 +119,7 @@ jobs:
         run: bash bin/install-wp-tests.sh wordpress_test root root 127.0.0.1 latest true
 
       - name: Run PHPUnit
-        run: composer test || echo "Tests completed"
+        run: composer test
 
       - name: Run PHPStan
-        run: composer phpstan || echo "PHPStan completed"
+        run: composer phpstan
