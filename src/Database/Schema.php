@@ -10,6 +10,10 @@ class Schema
     {
         global $wpdb;
 
+        if (! function_exists('dbDelta')) {
+            require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+        }
+
         $charset_collate = $wpdb->get_charset_collate();
 
         // Folders table.
@@ -33,7 +37,7 @@ class Schema
             KEY owner_id (owner_id)
         ) {$charset_collate};";
 
-        dbDelta($sql_folders);
+        \dbDelta($sql_folders);
 
         // Attachment-folder assignments table.
         $table_assignments = $wpdb->prefix . 'folderfolio_attachment_folders';
@@ -46,7 +50,7 @@ class Schema
             KEY attachment_id (attachment_id)
         ) {$charset_collate};";
 
-        dbDelta($sql_assignments);
+        \dbDelta($sql_assignments);
 
         // Optional: folder meta table.
         $table_meta = $wpdb->prefix . 'folderfolio_folder_meta';
@@ -57,7 +61,7 @@ class Schema
             KEY meta_key (meta_key)
         ) {$charset_collate};";
 
-        dbDelta($sql_meta);
+        \dbDelta($sql_meta);
 
         // Optional: user preferences table.
         $table_preferences = $wpdb->prefix . 'folderfolio_user_preferences';
@@ -66,6 +70,6 @@ class Schema
             preferences LONGTEXT NULL
         ) {$charset_collate};";
 
-        dbDelta($sql_preferences);
+        \dbDelta($sql_preferences);
     }
 }
