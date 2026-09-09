@@ -19,7 +19,7 @@ class Schema
         // Folders table.
         $table_folders = $wpdb->prefix . 'folderfolio_folders';
         $sql_folders = "CREATE TABLE {$table_folders} (
-            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             parent_id BIGINT UNSIGNED NULL,
             name VARCHAR(191) NOT NULL,
             slug VARCHAR(191) NULL,
@@ -32,6 +32,7 @@ class Schema
             created_by BIGINT UNSIGNED NULL,
             created_at DATETIME NOT NULL,
             updated_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
             KEY parent_id (parent_id),
             KEY slug (slug),
             KEY owner_id (owner_id)
@@ -46,28 +47,30 @@ class Schema
             attachment_id BIGINT UNSIGNED NOT NULL,
             sort_order INT NOT NULL DEFAULT 0,
             assigned_at DATETIME NOT NULL,
-            PRIMARY KEY (folder_id, attachment_id),
+            PRIMARY KEY  (folder_id, attachment_id),
             KEY attachment_id (attachment_id)
         ) {$charset_collate};";
 
         \dbDelta($sql_assignments);
 
-        // Optional: folder meta table.
+        // Folder meta table.
         $table_meta = $wpdb->prefix . 'folderfolio_folder_meta';
         $sql_meta = "CREATE TABLE {$table_meta} (
-            folder_id BIGINT UNSIGNED NOT NULL PRIMARY KEY,
+            folder_id BIGINT UNSIGNED NOT NULL,
             meta_key VARCHAR(191) NOT NULL,
             meta_value LONGTEXT NULL,
+            PRIMARY KEY  (folder_id),
             KEY meta_key (meta_key)
         ) {$charset_collate};";
 
         \dbDelta($sql_meta);
 
-        // Optional: user preferences table.
+        // User preferences table.
         $table_preferences = $wpdb->prefix . 'folderfolio_user_preferences';
         $sql_preferences = "CREATE TABLE {$table_preferences} (
-            user_id BIGINT UNSIGNED NOT NULL PRIMARY KEY,
-            preferences LONGTEXT NULL
+            user_id BIGINT UNSIGNED NOT NULL,
+            preferences LONGTEXT NULL,
+            PRIMARY KEY  (user_id)
         ) {$charset_collate};";
 
         \dbDelta($sql_preferences);

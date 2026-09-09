@@ -47,7 +47,9 @@ class FolderService
             return $validation;
         }
 
-        if ($data['parent_id'] !== null && $this->folders->find($data['parent_id']) === null) {
+        $parentId = $data['parent_id'] ?? null;
+
+        if ($parentId !== null && $this->folders->find($parentId) === null) {
             return new WP_Error('folderfolio_invalid_parent', __('The selected parent folder does not exist.', 'folderfolio'));
         }
 
@@ -206,8 +208,9 @@ class FolderService
         if ($creating || array_key_exists('name', $data)) {
             $result['name'] = sanitize_text_field((string) ($data['name'] ?? ''));
         }
-        if (array_key_exists('parent_id', $data)) {
-            $result['parent_id'] = $data['parent_id'] === null || $data['parent_id'] === '' ? null : absint($data['parent_id']);
+        if ($creating || array_key_exists('parent_id', $data)) {
+            $parentId = $data['parent_id'] ?? null;
+            $result['parent_id'] = $parentId === null || $parentId === '' ? null : absint($parentId);
         }
         if (array_key_exists('color', $data)) {
             $result['color'] = $data['color'] === null || $data['color'] === '' ? null : sanitize_hex_color($data['color']);
