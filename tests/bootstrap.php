@@ -1,7 +1,4 @@
 <?php
-/**
- * PHPUnit bootstrap for FolderFolio.
- */
 
 $_tests_dir = getenv( 'WP_TESTS_DIR' );
 
@@ -10,7 +7,7 @@ if ( ! $_tests_dir ) {
 }
 
 if ( ! file_exists( $_tests_dir . '/includes/functions.php' ) ) {
-    echo "Could not find {$_tests_dir}/includes/functions.php. Have you run bin/install-wp-tests.sh?\n";
+    echo "Could not find {$_tests_dir}/includes/functions.php.\n";
     exit( 1 );
 }
 
