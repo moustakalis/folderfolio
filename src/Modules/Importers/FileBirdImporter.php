@@ -8,17 +8,45 @@ use WP_Error;
 use wpdb;
 
 /**
- * Importer for FileBird (free & Pro) by NinjaTeam.
+ * Importer for FileBird (free and Pro) by NinjaTeam.
  *
  * FileBird stores folders in:
  * - wp_fbv_folders (free)
  * - wp_fbr_folders (Pro/custom)
  * - wp_fbv_assignments (free)
  * - wp_fbr_assignments (Pro/custom)
+ *
+ * @phpstan-type ImportResult array{
+ *     imported_folders: int,
+ *     imported_assignments: int,
+ *     errors: list<string>
+ * }
+ *
+ * @phpstan-type TableImportResult array{
+ *     folders: int,
+ *     assignments: int,
+ *     errors: list<string>
+ * }
+ *
+ * @phpstan-type FileBirdFolder array{
+ *     id: int|string,
+ *     parent_id?: int|string|null,
+ *     name?: string,
+ *     color?: string|null,
+ *     icon?: string|null,
+ *     sort_order?: int|string
+ * }
+ *
+ * @phpstan-type FileBirdAssignment array{
+ *     folder_id: int|string,
+ *     attachment_id: int|string
+ * }
  */
 class FileBirdImporter implements ImporterInterface
 {
     private wpdb $wpdb;
+
+    /** @var list<string> */
     private array $warnings = [];
 
     public function __construct()
@@ -34,61 +62,77 @@ class FileBirdImporter implements ImporterInterface
 
     public function isInstalled(): bool
     {
-        // Check if FileBird tables exist
-        $freeFoldersTable = $this->wpdb->prefix . 'fbv_folders';
-        $proFoldersTable = $this->wpdb->prefix . 'fbr_folders';
-
-        $freeExists = $this->wpdb->get_var("SHOW TABLES LIKE '{$freeFoldersTable}'") === $freeFoldersTable;
-        $proExists = $this->wpdb->get_var("SHOW TABLES LIKE '{$proFoldersTable}'") === $proFoldersTable;
-
-        return $freeExists || $proExists;
+        return $this->tableExists($this->freeFoldersTable())
+            || $this->tableExists($this->proFoldersTable());
     }
 
     public function getFolderCount(): int
     {
-        $freeFoldersTable = $this->wpdb->prefix . 'fbv_folders';
-        $proFoldersTable = $this->wpdb->prefix . 'fbr_folders';
+        $count = 0;
 
-        $freeCount = (int) $this->wpdb->get_var("SELECT COUNT(*) FROM {$freeFoldersTable}");
-        $proCount = (int) $this->wpdb->get_var("SELECT COUNT(*) FROM {$proFoldersTable}");
+        foreach ([$this->freeFoldersTable(), $this->proFoldersTable()] as $table) {
+            if ($this->tableExists($table)) {
+                $count += (int) $this->wpdb->get_var("SELECT COUNT(*) FROM {$table}");
+            }
+        }
 
-        return $freeCount + $proCount;
+        return $count;
     }
 
     public function getAttachmentCount(): int
     {
-        $freeAssignmentsTable = $this->wpdb->prefix . 'fbv_assignments';
-        $proAssignmentsTable = $this->wpdb->prefix . 'fbr_assignments';
+        $count = 0;
 
-        $freeCount = (int) $this->wpdb->get_var("SELECT COUNT(*) FROM {$freeAssignmentsTable}");
-        $proCount = (int) $this->wpdb->get_var("SELECT COUNT(*) FROM {$proAssignmentsTable}");
+        foreach ([$this->freeAssignmentsTable(), $this->proAssignmentsTable()] as $table) {
+            if ($this->tableExists($table)) {
+                $count += (int) $this->wpdb->get_var("SELECT COUNT(*) FROM {$table}");
+            }
+        }
 
-        return $freeCount + $proCount;
+        return $count;
     }
 
+    /**
+     * Import FileBird folders and attachment assignments.
+     *
+     * @return ImportResult|WP_Error
+     */
     public function import(): array|WP_Error
     {
-        if (!$this->isInstalled()) {
-            return new WP_Error('filebird_not_installed', 'FileBird is not installed or active.');
+        if (! $this->isInstalled()) {
+            return new WP_Error(
+                'filebird_not_installed',
+                'FileBird is not installed or active.'
+            );
         }
 
         $importedFolders = 0;
         $importedAssignments = 0;
+
+        /** @var list<string> $errors */
         $errors = [];
 
-        // Import free version folders
-        $freeFoldersTable = $this->wpdb->prefix . 'fbv_folders';
-        if ($this->wpdb->get_var("SHOW TABLES LIKE '{$freeFoldersTable}'") === $freeFoldersTable) {
-            $result = $this->importFromTable($freeFoldersTable, $this->wpdb->prefix . 'fbv_assignments');
-            $importedFolders += $result['folders'];
-            $importedAssignments += $result['assignments'];
-            $errors = array_merge($errors, $result['errors']);
-        }
+        $sources = [
+            [
+                'folders' => $this->freeFoldersTable(),
+                'assignments' => $this->freeAssignmentsTable(),
+            ],
+            [
+                'folders' => $this->proFoldersTable(),
+                'assignments' => $this->proAssignmentsTable(),
+            ],
+        ];
 
-        // Import Pro version folders
-        $proFoldersTable = $this->wpdb->prefix . 'fbr_folders';
-        if ($this->wpdb->get_var("SHOW TABLES LIKE '{$proFoldersTable}'") === $proFoldersTable) {
-            $result = $this->importFromTable($proFoldersTable, $this->wpdb->prefix . 'fbr_assignments');
+        foreach ($sources as $source) {
+            if (! $this->tableExists($source['folders'])) {
+                continue;
+            }
+
+            $result = $this->importFromTable(
+                $source['folders'],
+                $source['assignments']
+            );
+
             $importedFolders += $result['folders'];
             $importedAssignments += $result['assignments'];
             $errors = array_merge($errors, $result['errors']);
@@ -101,17 +145,29 @@ class FileBirdImporter implements ImporterInterface
         ];
     }
 
-    private function importFromTable(string $foldersTable, string $assignmentsTable): array
-    {
+    /**
+     * Import one FileBird schema variant.
+     *
+     * @return TableImportResult
+     */
+    private function importFromTable(
+        string $foldersTable,
+        string $assignmentsTable
+    ): array {
         $importedFolders = 0;
         $importedAssignments = 0;
+
+        /** @var list<string> $errors */
         $errors = [];
 
-        // Map to store old folder ID -> new folder ID
+        /** @var array<int, int> $folderIdMap */
         $folderIdMap = [];
 
-        // Import folders
-        $folders = $this->wpdb->get_results("SELECT * FROM {$foldersTable} ORDER BY parent_id ASC, sort_order ASC", ARRAY_A);
+        /** @var list<FileBirdFolder> $folders */
+        $folders = $this->wpdb->get_results(
+            "SELECT * FROM {$foldersTable} ORDER BY parent_id ASC, sort_order ASC",
+            ARRAY_A
+        ) ?: [];
 
         foreach ($folders as $folder) {
             $newFolderId = $this->importFolder($folder, $folderIdMap);
@@ -125,14 +181,25 @@ class FileBirdImporter implements ImporterInterface
             $importedFolders++;
         }
 
-        // Import assignments
-        $assignments = $this->wpdb->get_results("SELECT * FROM {$assignmentsTable}", ARRAY_A);
+        if (! $this->tableExists($assignmentsTable)) {
+            return [
+                'folders' => $importedFolders,
+                'assignments' => $importedAssignments,
+                'errors' => $errors,
+            ];
+        }
+
+        /** @var list<FileBirdAssignment> $assignments */
+        $assignments = $this->wpdb->get_results(
+            "SELECT * FROM {$assignmentsTable}",
+            ARRAY_A
+        ) ?: [];
 
         foreach ($assignments as $assignment) {
             $oldFolderId = (int) $assignment['folder_id'];
             $attachmentId = (int) $assignment['attachment_id'];
 
-            if (!isset($folderIdMap[$oldFolderId])) {
+            if (! isset($folderIdMap[$oldFolderId])) {
                 $errors[] = "Folder ID {$oldFolderId} not found for assignment";
                 continue;
             }
@@ -155,55 +222,119 @@ class FileBirdImporter implements ImporterInterface
         ];
     }
 
+    /**
+     * Import one FileBird folder.
+     *
+     * @param FileBirdFolder $folder
+     * @param array<int, int> $folderIdMap
+     * @return int|WP_Error
+     */
     private function importFolder(array $folder, array $folderIdMap): int|WP_Error
     {
-        $parentFolderId = $folder['parent_id'] !== null && $folder['parent_id'] !== '0' && $folder['parent_id'] !== 0
-            ? ($folderIdMap[(int) $folder['parent_id']] ?? null)
+        $oldParentId = $folder['parent_id'] ?? null;
+
+        $parentFolderId = $oldParentId !== null
+        && $oldParentId !== ''
+        && (int) $oldParentId !== 0
+            ? ($folderIdMap[(int) $oldParentId] ?? null)
             : null;
 
-        $result = $this->wpdb->insert($this->wpdb->prefix . 'folderfolio_folders', [
-            'parent_id' => $parentFolderId,
-            'name' => $folder['name'] ?? 'Imported Folder',
-            'slug' => sanitize_title($folder['name'] ?? ''),
-            'color' => !empty($folder['color']) ? $folder['color'] : null,
-            'icon' => !empty($folder['icon']) ? $folder['icon'] : null,
-            'sort_order' => (int) ($folder['sort_order'] ?? 0),
-            'created_by' => get_current_user_id(),
-            'created_at' => current_time('mysql', true),
-            'updated_at' => current_time('mysql', true),
-        ]);
+        $folderName = $folder['name'] ?? 'Imported Folder';
+
+        $result = $this->wpdb->insert(
+            $this->wpdb->prefix . 'folderfolio_folders',
+            [
+                'parent_id' => $parentFolderId,
+                'name' => $folderName,
+                'slug' => sanitize_title($folderName),
+                'color' => ! empty($folder['color']) ? $folder['color'] : null,
+                'icon' => ! empty($folder['icon']) ? $folder['icon'] : null,
+                'sort_order' => (int) ($folder['sort_order'] ?? 0),
+                'created_by' => get_current_user_id(),
+                'created_at' => current_time('mysql', true),
+                'updated_at' => current_time('mysql', true),
+            ]
+        );
 
         if ($result === false) {
             return new WP_Error(
                 'folderfolio_import_failed',
-                "Failed to import folder: {$folder['name']} ({$this->wpdb->last_error})"
+                sprintf(
+                    'Failed to import folder "%s": %s',
+                    $folderName,
+                    $this->wpdb->last_error
+                )
             );
         }
 
         return (int) $this->wpdb->insert_id;
     }
 
+    /**
+     * Import one attachment-folder assignment.
+     *
+     * @return true|WP_Error
+     */
     private function importAssignment(int $folderId, int $attachmentId): bool|WP_Error
     {
-        $result = $this->wpdb->insert($this->wpdb->prefix . 'folderfolio_attachment_folders', [
-            'folder_id' => $folderId,
-            'attachment_id' => $attachmentId,
-            'sort_order' => 0,
-            'assigned_at' => current_time('mysql', true),
-        ]);
+        $result = $this->wpdb->insert(
+            $this->wpdb->prefix . 'folderfolio_attachment_folders',
+            [
+                'folder_id' => $folderId,
+                'attachment_id' => $attachmentId,
+                'sort_order' => 0,
+                'assigned_at' => current_time('mysql', true),
+            ]
+        );
 
         if ($result === false) {
             return new WP_Error(
                 'folderfolio_assignment_failed',
-                "Failed to import assignment for attachment {$attachmentId} ({$this->wpdb->last_error})"
+                sprintf(
+                    'Failed to import assignment for attachment %d: %s',
+                    $attachmentId,
+                    $this->wpdb->last_error
+                )
             );
         }
 
         return true;
     }
 
+    /**
+     * Get accumulated non-fatal import warnings.
+     *
+     * @return list<string>
+     */
     public function getWarnings(): array
     {
         return $this->warnings;
+    }
+
+    private function freeFoldersTable(): string
+    {
+        return $this->wpdb->prefix . 'fbv_folders';
+    }
+
+    private function proFoldersTable(): string
+    {
+        return $this->wpdb->prefix . 'fbr_folders';
+    }
+
+    private function freeAssignmentsTable(): string
+    {
+        return $this->wpdb->prefix . 'fbv_assignments';
+    }
+
+    private function proAssignmentsTable(): string
+    {
+        return $this->wpdb->prefix . 'fbr_assignments';
+    }
+
+    private function tableExists(string $table): bool
+    {
+        return $this->wpdb->get_var(
+                $this->wpdb->prepare('SHOW TABLES LIKE %s', $table)
+            ) === $table;
     }
 }

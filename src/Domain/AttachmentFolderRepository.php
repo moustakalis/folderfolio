@@ -22,6 +22,11 @@ class AttachmentFolderRepository
         return $this->wpdb->prefix . 'folderfolio_attachment_folders';
     }
 
+    /**
+     * Get attachment IDs assigned to a folder.
+     *
+     * @return list<int>
+     */
     public function attachmentIdsForFolder(int $folderId): array
     {
         return array_map(
@@ -35,6 +40,11 @@ class AttachmentFolderRepository
         );
     }
 
+    /**
+     * Get folder IDs assigned to an attachment.
+     *
+     * @return list<int>
+     */
     public function folderIdsForAttachment(int $attachmentId): array
     {
         return array_map(

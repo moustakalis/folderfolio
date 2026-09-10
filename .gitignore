@@ -33,3 +33,5 @@ coverage/
 /tmp/
 
 .mise.local.toml
+
+/var/phpstan/

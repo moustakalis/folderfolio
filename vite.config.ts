@@ -12,6 +12,10 @@ export default defineConfig({
                 'bulk-actions': resolve(__dirname, 'assets/src/core/bulk-actions.ts'),
                 'upload-integration': resolve(__dirname, 'assets/src/core/upload-integration.ts'),
                 'api': resolve(__dirname, 'assets/src/core/api.ts'),
+                'media-library-integration': resolve(
+                    __dirname,
+                    'assets/src/core/media-library-integration.ts',
+                ),
             },
             output: {
                 dir: 'assets/build/core',

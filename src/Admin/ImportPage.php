@@ -4,18 +4,14 @@ declare(strict_types=1);
 
 namespace FolderFolio\Admin;
 
-use FolderFolio\Modules\Importers\ImporterFactory;
-
 /**
  * Import page admin UI.
  */
 class ImportPage
 {
-    private ImporterFactory $factory;
 
     public function __construct()
     {
-        $this->factory = new ImporterFactory();
     }
 
     public function register(): void

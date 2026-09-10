@@ -20,7 +20,7 @@
   },
   "scripts": {
     "test": "phpunit",
-    "phpstan": "phpstan analyse src tests --level max --memory-limit=256M"
+    "phpstan": "phpstan analyse -c phpstan.neon --memory-limit=1G"
   },
   "config": {
     "allow-plugins": {

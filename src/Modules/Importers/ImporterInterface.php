@@ -8,38 +8,46 @@ use WP_Error;
 
 /**
  * Interface for folder importers from competing plugins.
+ *
+ * @phpstan-type ImportResult array{
+ *     imported_folders: int,
+ *     imported_assignments: int,
+ *     errors: list<string>
+ * }
  */
 interface ImporterInterface
 {
     /**
-     * Plugin name (e.g., 'FileBird').
+     * Plugin name (for example, FileBird).
      */
     public function getName(): string;
 
     /**
-     * Check if this plugin is installed and active.
+     * Check whether this source plugin is installed and active.
      */
     public function isInstalled(): bool;
 
     /**
-     * Get folder count from source plugin.
+     * Get the source plugin's folder count.
      */
     public function getFolderCount(): int;
 
     /**
-     * Get attachment count from source plugin.
+     * Get the source plugin's attachment-assignment count.
      */
     public function getAttachmentCount(): int;
 
     /**
-     * Import folders and assignments.
+     * Import folders and attachment assignments.
      *
-     * @return array{imported_folders: int, imported_assignments: int, errors: array}
+     * @return ImportResult|WP_Error
      */
     public function import(): array|WP_Error;
 
     /**
-     * Get detected issues or warnings.
+     * Get non-fatal detected warnings.
+     *
+     * @return list<string>
      */
     public function getWarnings(): array;
 }
