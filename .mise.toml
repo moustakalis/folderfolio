@@ -1,59 +1,79 @@
-[tools]
-node = "20"
-php = "8.2"
-
-[env]
-PHP_WITHOUT_PEAR = "yes"
-_.path = ["./vendor/bin", "./node_modules/.bin"]
-NODE_ENV = "development"
-
 [tasks."deps:install"]
 description = "Install project dependencies"
 run = """
-composer install --no-interaction --prefer-dist
-npm install
+composer install
+npm ci
 """
 
 [tasks."assets:build"]
 description = "Type-check and build production assets"
-run = "npm run build"
+run = """
+npm run build
+"""
 
 [tasks."test:unit"]
-description = "Run PHP unit tests"
-run = "composer test"
+description = "Run PHPUnit tests"
+run = """
+phpunit
+"""
 
 [tasks."test:e2e"]
 description = "Run browser end-to-end tests"
-run = "npm run test:e2e"
+run = """
+npx playwright test
+"""
 
 [tasks."dev:clean"]
 description = "Remove generated dependencies and build output"
 run = """
-rm -rf assets/build build vendor node_modules .phpunit.cache playwright-report
+rm -rf node_modules vendor build dist
 """
 
 [tasks."dev:zip"]
 description = "Create a distributable plugin ZIP"
+depends = ["assets:build"]
 run = """
-rm -rf build
-mkdir -p build/folderfolio
-rsync -a \
-  --exclude='.git' \
-  --exclude='.github' \
-  --exclude='node_modules' \
-  --exclude='tests' \
-  --exclude='build' \
-  --exclude='*.map' \
-  --exclude='.DS_Store' \
-  --exclude='phpunit.xml.dist' \
-  --exclude='phpstan.neon' \
-  --exclude='playwright*' \
-  --exclude='*.spec.ts' \
-  --exclude='composer.json' \
-  --exclude='composer.lock' \
-  --exclude='package.json' \
-  --exclude='package-lock.json' \
-  --exclude='Makefile' \
-  ./ build/folderfolio/
-cd build && zip -qr folderfolio-latest.zip folderfolio/
+set -eu
+
+PLUGIN_SLUG="folderfolio"
+DIST_DIR="dist"
+STAGE_DIR="${DIST_DIR}/${PLUGIN_SLUG}"
+
+rm -rf "${DIST_DIR}"
+mkdir -p "${STAGE_DIR}"
+
+# Copy runtime PHP source.
+cp "${PLUGIN_SLUG}.php" "${STAGE_DIR}/"
+cp -R src "${STAGE_DIR}/"
+
+# Copy compiled browser assets.
+if [ -d build ]; then
+  cp -R build "${STAGE_DIR}/"
+fi
+
+# Copy public assets if they exist.
+if [ -d public ]; then
+  cp -R public "${STAGE_DIR}/"
+fi
+
+# Copy assets directory if it exists.
+if [ -d assets ]; then
+  cp -R assets "${STAGE_DIR}/"
+fi
+
+# Copy documentation and license files if they exist.
+for f in LICENSE README.md readme.txt; do
+  if [ -f "$f" ]; then
+    cp "$f" "${STAGE_DIR}/"
+  fi
+done
+
+# Create the ZIP with a single top-level folder.
+(
+  cd "${DIST_DIR}"
+  zip -qr "${PLUGIN_SLUG}.zip" "${PLUGIN_SLUG}"
+)
+
+# Remove the staging directory.
+rm -rf "${STAGE_DIR}"
 """
