@@ -30,7 +30,13 @@ npx playwright test
 """
 
 [tasks."dev:clean"]
-description = "Remove generated dependencies and build output"
+description = "Remove build artifacts but keep node_modules and vendor for faster rebuilds"
+run = """
+rm -rf build dist assets/build
+"""
+
+[tasks."dev:clean-all"]
+description = "Remove all generated dependencies and build output including node_modules and vendor"
 run = """
 rm -rf node_modules vendor build dist assets/build
 """
