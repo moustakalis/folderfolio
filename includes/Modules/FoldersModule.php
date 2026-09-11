@@ -17,5 +17,6 @@ final class FoldersModule
     public static function register(): void
     {
         // TODO: Add folders module logic here.
+        // This will handle folder creation, retrieval, and media-library integration.
     }
 }
