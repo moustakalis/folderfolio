@@ -27,9 +27,9 @@ define('FOLDERFOLIO_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('FOLDERFOLIO_PLUGIN_BASENAME', plugin_basename(__FILE__));
 
 // Register the minimal PSR-4 autoloader for the FolderFolio\ namespace.
-require_once FOLDERFOLIO_PLUGIN_DIR . 'src/Support/Autoloader.php';
-\FolderFolio\Support\Autoloader::register(FOLDERFOLIO_PLUGIN_DIR);
+require_once FOLDERFOLIO_PLUGIN_DIR . 'includes/Autoloader.php';
+\FolderFolio\Autoloader::register(FOLDERFOLIO_PLUGIN_DIR);
 
 // Bootstrap the plugin.
-require_once FOLDERFOLIO_PLUGIN_DIR . 'src/Plugin.php';
+require_once FOLDERFOLIO_PLUGIN_DIR . 'includes/Plugin.php';
 add_action('plugins_loaded', [\FolderFolio\Plugin::class, 'init']);
