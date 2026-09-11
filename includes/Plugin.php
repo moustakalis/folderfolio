@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace FolderFolio;
 
+use FolderFolio\Admin\AdminPage;
+use FolderFolio\Modules\FoldersModule;
+
 /**
  * Main plugin class.
  */
@@ -16,6 +19,7 @@ final class Plugin
      */
     public static function init(): void
     {
-        // TODO: Add plugin initialization logic here.
+        AdminPage::register();
+        FoldersModule::register();
     }
 }
