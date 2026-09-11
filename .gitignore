@@ -1,37 +1,32 @@
 # Dependencies
-/vendor/
-/node_modules/
+node_modules/
+vendor/
 
 # Build output
-/assets/build/
-/build/
+build/
+dist/
 
-# Environment
-.env
-.env.local
+# PHPStan
+var/
+.phpstan.resultCache.php
 
-# IDE
+# Test coverage and results
+coverage/
+.phpunit.result.cache
+playwright-report/
+test-results/
+
+# Editor/IDE
 .idea/
 .vscode/
 *.swp
 *.swo
+*~
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Logs
-*.log
-npm-debug.log*
-
-# Testing
-.phpunit.cache/
-/tests/_output/
-coverage/
-
-# WordPress test suite
-/tmp/
-
-.mise.local.toml
-
-/var/phpstan/
+# Environment
+.env
+.env.local
