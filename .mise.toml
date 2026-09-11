@@ -26,7 +26,7 @@ npx playwright test
 [tasks."dev:clean"]
 description = "Remove generated dependencies and build output"
 run = """
-rm -rf node_modules vendor build dist
+rm -rf node_modules vendor build dist assets/build
 """
 
 [tasks."dev:zip"]
@@ -35,45 +35,55 @@ depends = ["assets:build"]
 run = """
 set -eu
 
-PLUGIN_SLUG="folderfolio"
-DIST_DIR="dist"
-STAGE_DIR="${DIST_DIR}/${PLUGIN_SLUG}"
+PLUGIN_SLUG=\"folderfolio\"
+DIST_DIR=\"dist\"
+STAGE_DIR=\"${DIST_DIR}/${PLUGIN_SLUG}\"
 
-rm -rf "${DIST_DIR}"
-mkdir -p "${STAGE_DIR}"
+# Start from a clean distribution folder.
+rm -rf \"${DIST_DIR}\"
+mkdir -p \"${STAGE_DIR}\"
 
 # Copy runtime PHP source.
-cp "${PLUGIN_SLUG}.php" "${STAGE_DIR}/"
-cp -R src "${STAGE_DIR}/"
+cp \"${PLUGIN_SLUG}.php\" \"${STAGE_DIR}/\"
+cp -R src \"${STAGE_DIR}/\"
 
-# Copy compiled browser assets.
-if [ -d build ]; then
-  cp -R build "${STAGE_DIR}/"
+# Copy compiled frontend assets from Vite output.
+# Adjust this path if your vite.config.ts uses a different outDir.
+if [ -d assets/build ]; then
+  cp -R assets/build \"${STAGE_DIR}/build\"
 fi
 
 # Copy public assets if they exist.
 if [ -d public ]; then
-  cp -R public "${STAGE_DIR}/"
+  cp -R public \"${STAGE_DIR}/\"
 fi
 
-# Copy assets directory if it exists.
-if [ -d assets ]; then
-  cp -R assets "${STAGE_DIR}/"
+# Copy root assets (CSS, SVG, etc.) if they exist.
+if [ -d assets ] && [ ! -d assets/build ]; then
+  cp -R assets \"${STAGE_DIR}/\"
+elif [ -d assets ]; then
+  # Copy only non-build files from assets.
+  for f in assets/*; do
+    case \"$(basename \"$f\")\" in
+      build|src) continue ;;
+    esac
+    cp -R \"$f\" \"${STAGE_DIR}/assets/\"
+  done
 fi
 
 # Copy documentation and license files if they exist.
 for f in LICENSE README.md readme.txt; do
-  if [ -f "$f" ]; then
-    cp "$f" "${STAGE_DIR}/"
+  if [ -f \"$f\" ]; then
+    cp \"$f\" \"${STAGE_DIR}/\"
   fi
 done
 
 # Create the ZIP with a single top-level folder.
 (
-  cd "${DIST_DIR}"
-  zip -qr "${PLUGIN_SLUG}.zip" "${PLUGIN_SLUG}"
+  cd \"${DIST_DIR}\"
+  zip -qr \"${PLUGIN_SLUG}.zip\" \"${PLUGIN_SLUG}\"
 )
 
 # Remove the staging directory.
-rm -rf "${STAGE_DIR}"
+rm -rf \"${STAGE_DIR}\"
 """
