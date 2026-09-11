@@ -44,9 +44,10 @@ set -eu
 PLUGIN_SLUG=\"folderfolio\"
 DIST_DIR=\"dist\"
 STAGE_DIR=\"${DIST_DIR}/${PLUGIN_SLUG}\"
+ZIP_FILE=\"${DIST_DIR}/${PLUGIN_SLUG}.zip\"
 
-# Start from a clean distribution folder.
-rm -rf \"${DIST_DIR}\"
+# Always start from a clean distribution folder.
+rm -rf \"${DIST_DIR}\" \"${ZIP_FILE}\"
 mkdir -p \"${STAGE_DIR}\"
 
 # Copy runtime PHP source.
@@ -78,4 +79,6 @@ done
 
 # Remove the staging directory.
 rm -rf \"${STAGE_DIR}\"
+
+echo \"Created ${ZIP_FILE}\"
 """
