@@ -11,6 +11,12 @@ run = """
 npm run build
 """
 
+[tasks."assets:watch"]
+description = "Watch and rebuild assets during development"
+run = """
+npm run dev
+"""
+
 [tasks."test:unit"]
 description = "Run PHPUnit tests"
 run = """
@@ -45,30 +51,16 @@ mkdir -p \"${STAGE_DIR}\"
 
 # Copy runtime PHP source.
 cp \"${PLUGIN_SLUG}.php\" \"${STAGE_DIR}/\"
-cp -R src \"${STAGE_DIR}/\"
+cp -R includes \"${STAGE_DIR}/\"
 
 # Copy compiled frontend assets from Vite output.
-# Adjust this path if your vite.config.ts uses a different outDir.
 if [ -d assets/build ]; then
-  cp -R assets/build \"${STAGE_DIR}/build\"
+  cp -R assets/build \"${STAGE_DIR}/assets/\"
 fi
 
 # Copy public assets if they exist.
 if [ -d public ]; then
   cp -R public \"${STAGE_DIR}/\"
-fi
-
-# Copy root assets (CSS, SVG, etc.) if they exist.
-if [ -d assets ] && [ ! -d assets/build ]; then
-  cp -R assets \"${STAGE_DIR}/\"
-elif [ -d assets ]; then
-  # Copy only non-build files from assets.
-  for f in assets/*; do
-    case \"$(basename \"$f\")\" in
-      build|src) continue ;;
-    esac
-    cp -R \"$f\" \"${STAGE_DIR}/assets/\"
-  done
 fi
 
 # Copy documentation and license files if they exist.
