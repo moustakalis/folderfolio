@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace FolderFolio\Tests\Unit\Domain;
 
 use FolderFolio\Domain\FolderTree;
-use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
-#[CoversClass(FolderTree::class)]
 final class FolderTreeTest extends TestCase
 {
     /**

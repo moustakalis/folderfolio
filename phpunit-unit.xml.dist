@@ -7,11 +7,15 @@
     suites need different bootstraps, and PHPUnit has no per-suite bootstrap.
     Integration tests live in phpunit.xml.dist and need the WordPress test
     library.
+
+    Every attribute here is valid on PHPUnit 9 through 12. composer.json pins
+    ^9.6 for the WordPress test library, so a config using 10+ elements
+    (cacheDirectory, <source>) would fail validation on the version CI
+    actually installs.
 -->
 <phpunit
     bootstrap="tests/bootstrap-unit.php"
     colors="true"
-    cacheDirectory=".phpunit.cache/unit"
     failOnRisky="true"
     failOnWarning="true"
     beStrictAboutOutputDuringTests="true"
@@ -21,15 +25,4 @@
             <directory suffix="Test.php">./tests/Unit</directory>
         </testsuite>
     </testsuites>
-
-    <source>
-        <include>
-            <directory suffix=".php">./includes/Domain</directory>
-        </include>
-    </source>
-
-    <php>
-        <ini name="display_errors" value="1"/>
-        <ini name="error_reporting" value="E_ALL"/>
-    </php>
 </phpunit>
