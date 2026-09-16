@@ -14,34 +14,44 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2'
-          tools: composer:v2
-          coverage: none
+      # Corepack must be enabled BEFORE setup-node.
+      #
+      # `cache: yarn` makes setup-node run `yarn cache dir` during its own
+      # step. Without Corepack that is the runner's global Yarn 1.22, which
+      # refuses outright because package.json pins yarn@4.x via
+      # `packageManager` — the step fails before any step of ours runs.
+      #
+      # `npm i -g corepack@latest` rather than the Corepack bundled with Node:
+      # the bundled one is frequently older than the Yarn release being pinned
+      # and fails signature verification on it. It is also being unbundled in
+      # newer Node, so installing it explicitly is the durable form.
+      - name: Enable Corepack
+        run: |
+          npm install -g corepack@latest
+          corepack enable
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'yarn'
 
       - name: Install Node dependencies
-        run: |
-          corepack enable
-          yarn install --immutable
+        run: yarn install --immutable
 
       - name: Build assets
         run: yarn build
 
+      # No PHP here on purpose: bin/build-zip.sh copies an allowlist and zips
+      # it. It runs no PHP and needs no Composer.
       - name: Assemble installable plugin
         run: bash bin/build-zip.sh
 
+      # v5 of this action still runs on Node 20; v6 is the first on Node 24.
       - name: Upload plugin ZIP
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: folderfolio-plugin-${{ github.sha }}
           path: dist/folderfolio.zip
@@ -50,6 +60,11 @@ jobs:
   php-tests:
     name: PHP Tests
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.1', '8.2', '8.3', '8.4']
 
     services:
       mysql:
@@ -70,26 +85,22 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: ${{ matrix.php }}
           tools: composer:v2
           coverage: none
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'yarn'
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-interaction
 
-      - name: Install dependencies
-        run: |
-          composer install --prefer-dist --no-interaction
-          corepack enable
-          yarn install --immutable
+      # The unit suite needs no database and no WordPress, so it runs before
+      # any of that is set up. When it fails, it fails in seconds.
+      - name: Run unit tests
+        run: composer run test:unit
 
       - name: Set up WordPress test library
         uses: sjinks/setup-wordpress-test-library@master
@@ -112,8 +123,8 @@ jobs:
           done
         timeout-minutes: 1
 
-      - name: Run PHPUnit
-        run: composer test
+      - name: Run integration tests
+        run: composer run test:integration
 
       - name: Run PHPStan
-        run: composer phpstan
+        run: composer run phpstan

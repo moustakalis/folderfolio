@@ -13,9 +13,10 @@ parameters:
 
     scanFiles:
         - vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
-        # includes/Cli/* is only ever loaded under WP-CLI, so WP_CLI and
-        # WP_CLI\Utils are undefined to the analyser without these.
-        - vendor/php-stubs/wp-cli-stubs/wp-cli-stubs.php
-        - vendor/php-stubs/wp-cli-stubs/wp-cli-commands-stubs.php
+        # includes/Cli/* is only ever loaded under WP-CLI, so WP_CLI is
+        # undefined to the analyser without this. Hand-written rather than
+        # php-stubs/wp-cli-stubs, which caps wordpress-stubs at ^6.0 while
+        # this plugin pins ^7.1 — Composer cannot satisfy both.
+        - phpstan/wp-cli-stubs.php
 
     tmpDir: var/phpstan

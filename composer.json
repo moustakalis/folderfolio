@@ -16,11 +16,15 @@
         "phpstan/phpstan": "^2.2",
         "yoast/phpunit-polyfills": "^2.0",
         "szepeviktor/phpstan-wordpress": "^2.0",
-        "php-stubs/wordpress-stubs": "^7.1",
-        "php-stubs/wp-cli-stubs": "^2.10"
+        "php-stubs/wordpress-stubs": "^7.1"
     },
     "scripts": {
-        "test": "phpunit",
+        "test": [
+            "@test:unit",
+            "@test:integration"
+        ],
+        "test:unit": "phpunit -c phpunit-unit.xml.dist",
+        "test:integration": "phpunit",
         "phpstan": "phpstan analyse -c phpstan.neon --memory-limit=1G"
     },
     "config": {
