@@ -49,6 +49,14 @@ if [ ! -f "${STAGE_DIR}/includes/Autoloader.php" ]; then
   exit 1
 fi
 
+# The public PHP API is required by folderfolio.php, not autoloaded, so a
+# packaging mistake that dropped it would fatal on activation rather than
+# degrade quietly.
+if [ ! -f "${STAGE_DIR}/includes/api.php" ]; then
+  echo "FATAL: includes/api.php missing from the staged plugin." >&2
+  exit 1
+fi
+
 if [ ! -f "${STAGE_DIR}/includes/Plugin.php" ]; then
   echo "FATAL: includes/Plugin.php missing from the staged plugin." >&2
   exit 1

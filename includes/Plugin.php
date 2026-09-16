@@ -14,6 +14,7 @@ use FolderFolio\Admin\MediaLibraryIntegration;
 use FolderFolio\Database\Schema;
 use FolderFolio\Domain\AttachmentFolderRepository;
 use FolderFolio\Rest\FolderController;
+use FolderFolio\Support\UploadRouter;
 use FolderFolio\Rest\ImportController;
 
 /**
@@ -69,6 +70,10 @@ final class Plugin
         // Not admin-only: its clause filter also has to cover REST media
         // queries and anything else that sets the folder query var.
         (new MediaLibraryFilter())->register();
+
+        // Does nothing until something uses the
+        // folderfolio_default_folder_for_upload filter.
+        (new UploadRouter())->register();
 
         if (is_admin()) {
             (new MediaLibraryIntegration())->register();

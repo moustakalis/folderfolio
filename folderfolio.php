@@ -32,6 +32,10 @@ require_once FOLDERFOLIO_PLUGIN_DIR . 'includes/Autoloader.php';
 Autoloader::register(FOLDERFOLIO_PLUGIN_DIR);
 
 // Bootstrap the plugin.
+// The public PHP API. Global namespace, so it is required rather than
+// autoloaded, and loaded early so integrators can hook plugins_loaded.
+require_once FOLDERFOLIO_PLUGIN_DIR . 'includes/api.php';
+
 require_once FOLDERFOLIO_PLUGIN_DIR . 'includes/Plugin.php';
 
 register_activation_hook(__FILE__, [Plugin::class, 'activate']);

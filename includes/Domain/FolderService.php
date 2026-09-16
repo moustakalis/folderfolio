@@ -791,4 +791,160 @@ class FolderService
 
         return true;
     }
+
+    /**
+     * Direct children of a folder.
+     *
+     * @return list<Folder>
+     */
+    public function children(int $id): array
+    {
+        return array_map(
+            static fn (array $row): Folder => Folder::fromRow($row),
+            $this->folders->children($id)
+        );
+    }
+
+    /**
+     * Folders an attachment is filed in.
+     *
+     * @return list<Folder>
+     */
+    public function foldersOf(int $attachmentId): array
+    {
+        $folders = [];
+
+        foreach ($this->assignments->folderIdsForAttachment($attachmentId) as $folderId) {
+            $row = $this->folders->find($folderId);
+
+            if ($row !== null) {
+                $folders[] = Folder::fromRow($row);
+            }
+        }
+
+        return $folders;
+    }
+
+    /**
+     * Resolve a human path such as "Brand/Logos/Primary".
+     *
+     * Names, not ids — this is the path a person types, not the internal id
+     * path stored in the `path` column.
+     */
+    public function findByPath(
+        string $path,
+        string $objectType = FolderRepository::DEFAULT_OBJECT_TYPE
+    ): ?Folder {
+        $parentId = null;
+        $found = null;
+
+        foreach ($this->splitPath($path) as $segment) {
+            $row = $this->folders->findByName($segment, $parentId, $objectType);
+
+            if ($row === null) {
+                return null;
+            }
+
+            $found = Folder::fromRow($row);
+            $parentId = $found->id;
+        }
+
+        return $found;
+    }
+
+    /**
+     * Resolve a human path, creating whatever part of it does not exist yet.
+     *
+     * Idempotent, so calling it on every upload is fine. This is the method
+     * most integrations actually want.
+     *
+     * @return Folder|WP_Error
+     */
+    public function getOrCreateByPath(
+        string $path,
+        string $objectType = FolderRepository::DEFAULT_OBJECT_TYPE
+    ): Folder|WP_Error {
+        $segments = $this->splitPath($path);
+
+        if ($segments === []) {
+            return new WP_Error(
+                'folderfolio_name_required',
+                __('A folder name is required.', 'folderfolio')
+            );
+        }
+
+        $parentId = null;
+        $current = null;
+
+        foreach ($segments as $segment) {
+            $row = $this->folders->findByName($segment, $parentId, $objectType);
+
+            if ($row !== null) {
+                $current = Folder::fromRow($row);
+                $parentId = $current->id;
+                continue;
+            }
+
+            $created = $this->create([
+                'name'        => $segment,
+                'parent_id'   => $parentId,
+                'object_type' => $objectType,
+            ]);
+
+            if (is_wp_error($created)) {
+                return $created;
+            }
+
+            $current = $created;
+            $parentId = $created->id;
+        }
+
+        // Always set: $segments is non-empty, and every path through the loop
+        // either assigns $current or returns early.
+        return $current;
+    }
+
+    /**
+     * Split a human path into its non-empty segments.
+     *
+     * Tolerates leading, trailing and doubled separators, so "/a//b/" and
+     * "a/b" mean the same thing.
+     *
+     * @return list<string>
+     */
+    private function splitPath(string $path): array
+    {
+        $segments = [];
+
+        foreach (explode('/', $path) as $segment) {
+            $segment = trim($segment);
+
+            if ($segment !== '') {
+                $segments[] = $segment;
+            }
+        }
+
+        return $segments;
+    }
+
+    /**
+     * The subtree under one folder, as nested nodes with counts.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function subtree(int $rootId, string $objectType = FolderRepository::DEFAULT_OBJECT_TYPE): array
+    {
+        $found = [];
+
+        FolderTree::walk(
+            $this->tree($objectType),
+            static function (array $node) use (&$found, $rootId): void {
+                if ((int) $node['id'] === $rootId) {
+                    $found = [$node];
+                }
+            }
+        );
+
+        return $found;
+    }
 }

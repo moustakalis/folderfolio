@@ -382,4 +382,39 @@ class FolderRepository
 
         return true;
     }
+
+    /**
+     * Find a folder by name among a given parent's children.
+     *
+     * Case-insensitive, because a human typing a path should not have to match
+     * the case someone else used when they made the folder.
+     *
+     * @return FolderRow|null
+     */
+    public function findByName(
+        string $name,
+        ?int $parentId,
+        string $objectType = self::DEFAULT_OBJECT_TYPE
+    ): ?array {
+        $sql = $parentId === null
+            ? $this->wpdb->prepare(
+                "SELECT * FROM {$this->table()}
+                 WHERE parent_id IS NULL AND name = %s AND object_type = %s
+                 LIMIT 1",
+                $name,
+                $objectType
+            )
+            : $this->wpdb->prepare(
+                "SELECT * FROM {$this->table()}
+                 WHERE parent_id = %d AND name = %s AND object_type = %s
+                 LIMIT 1",
+                $parentId,
+                $name,
+                $objectType
+            );
+
+        $row = $this->wpdb->get_row($sql, ARRAY_A);
+
+        return $row ?: null;
+    }
 }
