@@ -26,6 +26,8 @@ final class Plugin
 
     private const DB_VERSION_OPTION = 'folderfolio_db_version';
 
+    private const UPGRADE_LOCK = 'folderfolio_upgrading';
+
     /**
      * Entry point, hooked to plugins_loaded by the plugin bootstrap file.
      */
@@ -51,7 +53,9 @@ final class Plugin
 
     public function boot(): void
     {
-        $this->maybeUpgradeSchema();
+        // Not on plugins_loaded: that would run dbDelta on the first front-end
+        // request after an update, for whoever happens to arrive first.
+        add_action('admin_init', [$this, 'maybeUpgradeSchema']);
 
         add_action('init', [$this, 'loadTextDomain']);
         add_action('rest_api_init', [$this, 'registerRestRoutes']);
@@ -87,14 +91,34 @@ final class Plugin
      * Apply schema changes after a plugin update, where the activation hook
      * does not run again.
      */
-    private function maybeUpgradeSchema(): void
+    public function maybeUpgradeSchema(): void
     {
         if (get_option(self::DB_VERSION_OPTION) === self::DB_VERSION) {
+            return;
+        }
+
+        // Concurrent admin requests would otherwise each start their own
+        // migration. Whoever sets the lock runs it; everyone else waits for the
+        // next request.
+        if (!$this->acquireUpgradeLock()) {
             return;
         }
 
         (new Schema())->migrate();
 
         update_option(self::DB_VERSION_OPTION, self::DB_VERSION);
+
+        delete_transient(self::UPGRADE_LOCK);
+    }
+
+    private function acquireUpgradeLock(): bool
+    {
+        if (get_transient(self::UPGRADE_LOCK)) {
+            return false;
+        }
+
+        set_transient(self::UPGRADE_LOCK, time(), 5 * MINUTE_IN_SECONDS);
+
+        return true;
     }
 }
