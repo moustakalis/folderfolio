@@ -5,23 +5,33 @@ declare(strict_types=1);
 namespace FolderFolio\Admin;
 
 /**
- * Integrates FolderFolio with the WordPress Media Library.
+ * Mounts FolderFolio inside the native Media Library screen (upload.php).
+ *
+ * FolderFolio has no screen of its own: the folder tree is rendered into the
+ * real library, in both grid and list mode.
  */
 final class MediaLibraryIntegration
 {
+    private const SCREEN_HOOK = 'upload.php';
+
+    private const SCREEN_ID = 'upload';
+
     /**
-     * Register Media Library hooks.
+     * Compiled bundles this screen needs, mapped to their script dependencies.
+     *
+     * @var array<string, list<string>>
      */
+    private const BUNDLES = [
+        'folder-tree' => ['wp-api-fetch'],
+        'media-library-integration' => ['wp-api-fetch'],
+        'bulk-actions' => ['wp-api-fetch'],
+        'upload-integration' => ['wp-api-fetch', 'media-views'],
+    ];
+
     public function register(): void
     {
         add_action('admin_enqueue_scripts', [$this, 'enqueueAssets']);
-
-        add_filter(
-            'media_upload_filters',
-            [$this, 'renderFolderFilter'],
-            10,
-            1
-        );
+        add_action('all_admin_notices', [$this, 'renderMountPoint']);
     }
 
     /**
@@ -31,41 +41,99 @@ final class MediaLibraryIntegration
      */
     public function enqueueAssets(string $hookSuffix): void
     {
-        if ('upload.php' !== $hookSuffix) {
+        if (self::SCREEN_HOOK !== $hookSuffix || !current_user_can('upload_files')) {
             return;
         }
 
         wp_enqueue_media();
 
-        wp_enqueue_script(
-            'folderfolio-media-library',
-            FOLDERFOLIO_PLUGIN_URL . 'assets/build/core/media-library-integration.js',
-            [],
-            FOLDERFOLIO_VERSION,
-            [
-                'in_footer' => true,
-                'strategy'  => 'defer',
-            ]
-        );
+        $stylePath = FOLDERFOLIO_PLUGIN_DIR . 'assets/build/core/admin.css';
 
-        wp_enqueue_style(
-            'folderfolio-media-library',
-            FOLDERFOLIO_PLUGIN_URL . 'assets/build/core/media-modal.css',
-            [],
-            FOLDERFOLIO_VERSION
+        if (file_exists($stylePath)) {
+            wp_enqueue_style(
+                'folderfolio-admin',
+                FOLDERFOLIO_PLUGIN_URL . 'assets/build/core/admin.css',
+                [],
+                FOLDERFOLIO_VERSION
+            );
+        }
+
+        foreach (self::BUNDLES as $bundle => $dependencies) {
+            $scriptPath = FOLDERFOLIO_PLUGIN_DIR . "assets/build/core/{$bundle}.js";
+
+            if (!file_exists($scriptPath)) {
+                continue;
+            }
+
+            wp_enqueue_script(
+                "folderfolio-{$bundle}",
+                FOLDERFOLIO_PLUGIN_URL . "assets/build/core/{$bundle}.js",
+                $dependencies,
+                FOLDERFOLIO_VERSION,
+                ['in_footer' => true, 'strategy' => 'defer']
+            );
+        }
+
+        if (wp_script_is('folderfolio-folder-tree', 'enqueued')) {
+            wp_add_inline_script(
+                'folderfolio-folder-tree',
+                'window.folderFolio = ' . wp_json_encode($this->config()) . ';',
+                'before'
+            );
+        }
+    }
+
+    /**
+     * Render the container the folder tree mounts into.
+     *
+     * all_admin_notices fires inside #wpbody-content ahead of the page body,
+     * which is the one insertion point shared by the grid and list views.
+     */
+    public function renderMountPoint(): void
+    {
+        if (!function_exists('get_current_screen')) {
+            return;
+        }
+
+        $screen = get_current_screen();
+
+        if (!$screen || self::SCREEN_ID !== $screen->id || !current_user_can('upload_files')) {
+            return;
+        }
+
+        printf(
+            '<div id="folderfolio-sidebar" class="folderfolio-sidebar"><div id="folderfolio-folder-tree" class="folderfolio-folder-tree" role="navigation" aria-label="%s"></div></div>',
+            esc_attr__('Media folders', 'folderfolio')
         );
     }
 
     /**
-     * Adds FolderFolio's label to supported Media Library filter collections.
+     * Configuration handed to the frontend bundles.
      *
-     * @param array<string, string> $filters Existing filter labels.
-     * @return array<string, string> Updated filter labels.
+     * wp-api-fetch already applies the REST nonce; it is repeated here for
+     * callers that build their own requests.
+     *
+     * @return array<string, mixed>
      */
-    public function renderFolderFilter(array $filters): array
+    private function config(): array
     {
-        $filters['folderfolio_all'] = __('All Folders', 'folderfolio');
-
-        return $filters;
+        return [
+            'restUrl' => esc_url_raw(rest_url('folderfolio/v1')),
+            'nonce' => wp_create_nonce('wp_rest'),
+            'pluginUrl' => FOLDERFOLIO_PLUGIN_URL,
+            'version' => FOLDERFOLIO_VERSION,
+            'canManageFolders' => current_user_can('upload_files'),
+            'i18n' => [
+                'folders' => __('Folders', 'folderfolio'),
+                'newFolder' => __('New', 'folderfolio'),
+                'upload' => __('Upload', 'folderfolio'),
+                'searchPlaceholder' => __('Search folders...', 'folderfolio'),
+                'emptyTree' => __('No folders yet', 'folderfolio'),
+                'namePrompt' => __('Enter folder name:', 'folderfolio'),
+                'selectFolderFirst' => __('Please select a folder first', 'folderfolio'),
+                'createFailed' => __('Failed to create folder', 'folderfolio'),
+                'clearFilter' => __('Clear filter', 'folderfolio'),
+            ],
+        ];
     }
 }

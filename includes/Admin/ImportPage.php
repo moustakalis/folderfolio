@@ -10,18 +10,20 @@ namespace FolderFolio\Admin;
 class ImportPage
 {
 
-    public function __construct()
-    {
-    }
+    /**
+     * Hook suffix of the import screen, set once the menu is registered.
+     */
+    private string $hookSuffix = '';
 
     public function register(): void
     {
         add_action('admin_menu', [$this, 'addMenuPage']);
+        add_action('admin_enqueue_scripts', [$this, 'enqueueAssets']);
     }
 
     public function addMenuPage(): void
     {
-        add_submenu_page(
+        $this->hookSuffix = (string) add_submenu_page(
             'upload.php',
             __('Import Folders', 'folderfolio'),
             __('Import', 'folderfolio'),
@@ -29,6 +31,22 @@ class ImportPage
             'folderfolio-import',
             [$this, 'renderPage']
         );
+    }
+
+    /**
+     * The page body is rendered with an inline script that uses both jQuery
+     * and wp.apiFetch; neither was previously enqueued.
+     *
+     * @param string $hookSuffix Current WordPress admin screen identifier.
+     */
+    public function enqueueAssets(string $hookSuffix): void
+    {
+        if ('' === $this->hookSuffix || $hookSuffix !== $this->hookSuffix) {
+            return;
+        }
+
+        wp_enqueue_script('jquery');
+        wp_enqueue_script('wp-api-fetch');
     }
 
     public function renderPage(): void

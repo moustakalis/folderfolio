@@ -24,7 +24,11 @@ class ImporterFactory
     /**
      * Get all available importers.
      *
-     * @return array<string, array{
+     * Returned as a list, with the importer key on each entry: the admin UI
+     * iterates this payload and posts back to /import/{key}.
+     *
+     * @return list<array{
+     *     key: string,
      *     name: string,
      *     installed: bool,
      *     folder_count: int,
@@ -44,7 +48,8 @@ class ImporterFactory
 
             $installed = $importer->isInstalled();
 
-            $importers[$key] = [
+            $importers[] = [
+                'key' => $key,
                 'name' => $importer->getName(),
                 'installed' => $installed,
                 'folder_count' => $installed ? $importer->getFolderCount() : 0,

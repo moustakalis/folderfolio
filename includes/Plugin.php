@@ -6,7 +6,6 @@ namespace FolderFolio;
 
 use FolderFolio\Admin\ImportPage;
 use FolderFolio\Admin\MediaLibraryIntegration;
-use FolderFolio\Admin\MediaModalIntegration;
 use FolderFolio\Database\Schema;
 use FolderFolio\Rest\FolderController;
 use FolderFolio\Rest\ImportController;
@@ -58,8 +57,12 @@ final class Plugin
 
         if (is_admin()) {
             (new MediaLibraryIntegration())->register();
-            (new MediaModalIntegration())->register();
             (new ImportPage())->register();
+
+            // MediaModalIntegration is deliberately not registered yet: it
+            // patches wp.media.create globally, which can break other plugins'
+            // media frames. It is re-enabled once the modal phase reworks it
+            // onto a supported extension point.
         }
     }
 
