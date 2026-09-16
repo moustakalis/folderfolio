@@ -18,9 +18,16 @@ function getOrCreateInfoBar(): HTMLElement | null {
         return existing;
     }
 
-    const filterBar = document.querySelector<HTMLElement>('.wp-filter');
+    // .wp-filter only exists in grid mode. List mode renders .subsubsub and
+    // .tablenav, so anchoring on .wp-filter alone meant the bar - and with it
+    // the only way to clear the filter - never appeared in the one mode where
+    // filtering works through the URL.
+    const anchor =
+        document.getElementById('folderfolio-sidebar') ??
+        document.querySelector<HTMLElement>('.wp-filter') ??
+        document.querySelector<HTMLElement>('.tablenav.top');
 
-    if (!filterBar) {
+    if (!anchor) {
         return null;
     }
 
@@ -28,7 +35,7 @@ function getOrCreateInfoBar(): HTMLElement | null {
     infoBar.id = infoBarId;
     infoBar.className = 'media-folder-filter';
 
-    filterBar.insertAdjacentElement('afterend', infoBar);
+    anchor.insertAdjacentElement('afterend', infoBar);
 
     return infoBar;
 }

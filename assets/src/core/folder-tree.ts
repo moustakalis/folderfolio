@@ -25,6 +25,8 @@ export class FolderTree {
   private activeFolderId: number | null = null;
 
   async init(): Promise<void> {
+    this.positionPanel();
+
     this.container = document.getElementById('folderfolio-folder-tree');
     if (!this.container) {
       console.warn('FolderFolio: #folderfolio-folder-tree not found');
@@ -33,10 +35,38 @@ export class FolderTree {
 
     this.activeFolderId = folderFromUrl();
 
-    await this.loadTree();
-    this.render();
+    // Bound once, never in render(): the listeners are delegated to the
+    // container, which survives innerHTML. Re-binding per render stacked a
+    // duplicate handler each time, so a folder click fired twice, then three
+    // times, and so on.
     this.bindEvents();
     this.setupMediaLibraryIntegration();
+
+    await this.loadTree();
+    this.render();
+  }
+
+  /**
+   * The container is printed on all_admin_notices, which fires before the
+   * page's own .wrap - so it lands above the heading with no page padding.
+   * That hook is the only server-side point grid and list mode share; getting
+   * the position right is the client's job.
+   */
+  private positionPanel(): void {
+    const panel = document.getElementById('folderfolio-sidebar');
+    const wrap = document.querySelector('.wrap');
+
+    if (!panel || !wrap || wrap.contains(panel)) {
+      return;
+    }
+
+    const header = wrap.querySelector('.wp-header-end') ?? wrap.querySelector('h1');
+
+    if (header) {
+      header.insertAdjacentElement('afterend', panel);
+    } else {
+      wrap.prepend(panel);
+    }
   }
 
   private async loadTree(): Promise<void> {
@@ -133,14 +163,14 @@ export class FolderTree {
       }
     });
 
-    // Search input
-    const searchInput = this.container.querySelector('#folderfolio-search-input') as HTMLInputElement;
-    if (searchInput) {
-      searchInput.addEventListener('input', (e) => {
-        const query = (e.target as HTMLInputElement).value.toLowerCase();
-        this.filterTree(query);
-      });
-    }
+    // Delegated, because render() replaces the input element itself.
+    this.container.addEventListener('input', (e) => {
+      const target = e.target as HTMLElement;
+
+      if (target.id === 'folderfolio-search-input') {
+        this.filterTree((target as HTMLInputElement).value.toLowerCase());
+      }
+    });
   }
 
   private async handleNewFolder(): Promise<void> {
@@ -154,7 +184,6 @@ export class FolderTree {
       });
       await this.loadTree();
       this.render();
-      this.bindEvents();
     } catch (error) {
       console.error('FolderFolio: Failed to create folder', error);
       alert('Failed to create folder');
@@ -176,12 +205,12 @@ export class FolderTree {
     );
   }
 
+  /**
+   * Only dispatches. The listener below owns the state change, so selecting a
+   * folder and clearing the filter take the same path - clearing used to leave
+   * the old folder highlighted because it did not.
+   */
   private async handleFolderSelect(folderId: number): Promise<void> {
-    this.activeFolderId = folderId;
-    this.render();
-    this.bindEvents();
-
-    // Dispatch custom event for Media Library to filter by folder
     window.dispatchEvent(
       new CustomEvent('folderfolio:folder-selected', {
         detail: { folderId },
@@ -224,7 +253,14 @@ export class FolderTree {
   private setupMediaLibraryIntegration(): void {
     window.addEventListener('folderfolio:folder-selected', (e: Event) => {
       const event = e as CustomEvent<{ folderId: number | null }>;
-      this.applyFilter(event.detail.folderId);
+      const folderId = event.detail.folderId ?? null;
+
+      if (this.activeFolderId !== folderId) {
+        this.activeFolderId = folderId;
+        this.render();
+      }
+
+      this.applyFilter(folderId);
     });
   }
 
@@ -233,13 +269,6 @@ export class FolderTree {
    * mode is an ordinary page load with the folder in the URL.
    */
   private applyFilter(folderId: number | null): void {
-    const collection = window.wp?.media?.frame?.content?.get?.()?.collection;
-
-    if (collection?.props) {
-      collection.props.set(FOLDER_QUERY_VAR, folderId === null ? '' : folderId);
-      return;
-    }
-
     const url = new URL(window.location.href);
 
     if (folderId === null) {
@@ -250,6 +279,17 @@ export class FolderTree {
 
     // Page 3 of the old folder is not page 3 of the new one.
     url.searchParams.delete('paged');
+
+    const collection = window.wp?.media?.frame?.content?.get?.()?.collection;
+
+    if (collection?.props) {
+      collection.props.set(FOLDER_QUERY_VAR, folderId === null ? '' : folderId);
+
+      // Grid re-queries in place, so nothing would otherwise update the address
+      // bar - a refresh or a shared link would lose the filter.
+      window.history.replaceState({}, '', url.toString());
+      return;
+    }
 
     window.location.assign(url.toString());
   }
