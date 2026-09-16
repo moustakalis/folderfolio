@@ -16,8 +16,8 @@ class FolderControllerTest extends WP_UnitTestCase
         (new Schema())->migrate();
 
         global $wpdb;
-        $wpdb->query("TRUNCATE TABLE {$wpdb->prefix}folderfolio_attachment_folders");
-        $wpdb->query("TRUNCATE TABLE {$wpdb->prefix}folderfolio_folders");
+        $wpdb->query("DELETE FROM {$wpdb->prefix}folderfolio_attachment_folders");
+        $wpdb->query("DELETE FROM {$wpdb->prefix}folderfolio_folders");
 
         $this->adminUserId = $this->factory->user->create(['role' => 'administrator']);
         wp_set_current_user($this->adminUserId);

@@ -20,8 +20,8 @@ class FolderServiceIntegrationTest extends WP_UnitTestCase
         $this->service = new FolderService();
 
         global $wpdb;
-        $wpdb->query("TRUNCATE TABLE {$wpdb->prefix}folderfolio_attachment_folders");
-        $wpdb->query("TRUNCATE TABLE {$wpdb->prefix}folderfolio_folders");
+        $wpdb->query("DELETE FROM {$wpdb->prefix}folderfolio_attachment_folders");
+        $wpdb->query("DELETE FROM {$wpdb->prefix}folderfolio_folders");
     }
 
     /**
