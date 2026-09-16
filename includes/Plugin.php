@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace FolderFolio;
 
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 use FolderFolio\Admin\ImportPage;
 use FolderFolio\Admin\MediaLibraryFilter;
 use FolderFolio\Admin\MediaLibraryIntegration;
 use FolderFolio\Database\Schema;
+use FolderFolio\Domain\AttachmentFolderRepository;
 use FolderFolio\Rest\FolderController;
 use FolderFolio\Rest\ImportController;
 
@@ -22,7 +27,7 @@ final class Plugin
     /**
      * Bumped whenever Schema::migrate() changes, to trigger an upgrade run.
      */
-    public const DB_VERSION = '1';
+    public const DB_VERSION = '2';
 
     private const DB_VERSION_OPTION = 'folderfolio_db_version';
 
@@ -59,9 +64,13 @@ final class Plugin
 
         add_action('init', [$this, 'loadTextDomain']);
         add_action('rest_api_init', [$this, 'registerRestRoutes']);
+        add_action('delete_attachment', [$this, 'forgetAttachment']);
+
+        // Not admin-only: its clause filter also has to cover REST media
+        // queries and anything else that sets the folder query var.
+        (new MediaLibraryFilter())->register();
 
         if (is_admin()) {
-            (new MediaLibraryFilter())->register();
             (new MediaLibraryIntegration())->register();
             (new ImportPage())->register();
 
@@ -79,6 +88,16 @@ final class Plugin
             false,
             dirname(plugin_basename(FOLDERFOLIO_PLUGIN_FILE)) . '/languages'
         );
+    }
+
+    /**
+     * Drop folder assignments for media that no longer exists.
+     *
+     * @param int $attachmentId
+     */
+    public function forgetAttachment($attachmentId): void
+    {
+        (new AttachmentFolderRepository())->deleteForAttachment((int) $attachmentId);
     }
 
     public function registerRestRoutes(): void

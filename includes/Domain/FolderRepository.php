@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace FolderFolio\Domain;
 
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 use WP_Error;
 use wpdb;
 
@@ -51,6 +55,30 @@ use wpdb;
  */
 class FolderRepository
 {
+    /**
+     * Columns this repository is allowed to write.
+     *
+     * FolderService sanitizes its input, but the invariant belongs here too:
+     * forwarding an arbitrary array to $wpdb->update() is one careless caller
+     * away from an arbitrary-column write.
+     *
+     * @var list<string>
+     */
+    private const WRITABLE = [
+        'parent_id',
+        'name',
+        'slug',
+        'color',
+        'icon',
+        'sort_order',
+        'template_id',
+        'owner_id',
+        'visibility',
+        'created_by',
+        'created_at',
+        'updated_at',
+    ];
+
     private wpdb $wpdb;
 
     public function __construct()
@@ -112,6 +140,34 @@ class FolderRepository
     }
 
     /**
+     * Is there already a folder with this name alongside the given parent?
+     *
+     * A unique index cannot express this: MySQL treats every NULL parent_id as
+     * distinct, so root folders would slip through it anyway.
+     */
+    public function siblingNameExists(string $name, ?int $parentId, ?int $ignoreId = null): bool
+    {
+        $sql = $parentId === null
+            ? $this->wpdb->prepare(
+                "SELECT id FROM {$this->table()} WHERE parent_id IS NULL AND name = %s",
+                $name
+            )
+            : $this->wpdb->prepare(
+                "SELECT id FROM {$this->table()} WHERE parent_id = %d AND name = %s",
+                $parentId,
+                $name
+            );
+
+        foreach ($this->wpdb->get_col($sql) ?: [] as $id) {
+            if ($ignoreId === null || (int) $id !== $ignoreId) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Create a folder.
      *
      * @param FolderCreateData $data
@@ -156,6 +212,12 @@ class FolderRepository
     public function update(int $id, array $data): bool|WP_Error
     {
         $data['updated_at'] = current_time('mysql', true);
+
+        $data = array_intersect_key($data, array_flip(self::WRITABLE));
+
+        if ($data === []) {
+            return true;
+        }
 
         $updated = $this->wpdb->update(
             $this->table(),

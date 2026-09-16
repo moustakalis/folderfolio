@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace FolderFolio\Domain;
 
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 use WP_Error;
 use wpdb;
 
@@ -83,6 +87,27 @@ class AttachmentFolderRepository
 
         if ($result === false) {
             return new WP_Error('folderfolio_unassignment_failed', __('Unable to remove media from the folder.', 'folderfolio'));
+        }
+
+        return true;
+    }
+
+    /**
+     * Drop every assignment for an attachment.
+     *
+     * dbDelta cannot express foreign keys, so nothing else removes these rows
+     * when the media is deleted - they used to outlive their attachment
+     * indefinitely.
+     */
+    public function deleteForAttachment(int $attachmentId): bool|WP_Error
+    {
+        $result = $this->wpdb->delete($this->table(), ['attachment_id' => $attachmentId]);
+
+        if ($result === false) {
+            return new WP_Error(
+                'folderfolio_attachment_cleanup_failed',
+                __('Unable to remove folder assignments for the deleted media item.', 'folderfolio')
+            );
         }
 
         return true;

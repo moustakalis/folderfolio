@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace FolderFolio\Admin;
 
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 use WP_Query;
 
 /**
@@ -33,6 +37,10 @@ final class MediaLibraryFilter
     {
         add_action('pre_get_posts', [$this, 'applyToListMode']);
         add_filter('ajax_query_attachments_args', [$this, 'applyToGridMode']);
+
+        // Registered unconditionally: the two entry points above are admin-only,
+        // but anything that sets the query var directly - the REST media
+        // endpoints, a theme, our own future code - should get the same join.
         add_filter('posts_clauses', [$this, 'joinFolderAssignments'], 10, 2);
     }
 
@@ -48,7 +56,9 @@ final class MediaLibraryFilter
             return;
         }
 
-        if ('attachment' !== $query->get('post_type')) {
+        // post_type is a string on upload.php but the query var accepts an
+        // array; comparing with !== would silently disable the filter.
+        if (!in_array('attachment', (array) $query->get('post_type'), true)) {
             return;
         }
 
