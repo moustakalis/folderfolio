@@ -9,7 +9,9 @@ if (!defined('ABSPATH')) {
 }
 
 use FolderFolio\Domain\Folder;
+use FolderFolio\Domain\FolderRepository;
 use FolderFolio\Domain\FolderService;
+use FolderFolio\Domain\FolderTree;
 use FolderFolio\Support\Capabilities;
 use WP_Error;
 use WP_REST_Request;
@@ -49,6 +51,8 @@ use WP_REST_Server;
  */
 class FolderController
 {
+    public const REST_NAMESPACE = 'folderfolio/v1';
+
     public function __construct(
         private readonly FolderService $folders = new FolderService()
     ) {
@@ -56,40 +60,72 @@ class FolderController
 
     public function registerRoutes(): void
     {
-        register_rest_route('folderfolio/v1', '/tree', [
-            'methods' => WP_REST_Server::READABLE,
-            'callback' => [$this, 'tree'],
-            'permission_callback' => [$this, 'canUseFolders'],
+        $ns = self::REST_NAMESPACE;
+
+        // ------------------------------------------------------------ folders
+
+        register_rest_route($ns, '/folders', [
+            [
+                'methods' => WP_REST_Server::READABLE,
+                'callback' => [$this, 'tree'],
+                'permission_callback' => [$this, 'canUseFolders'],
+                'args' => [
+                    'counts' => [
+                        'type' => 'string',
+                        'required' => false,
+                        'default' => 'inherited',
+                        'enum' => ['inherited', 'direct', 'none'],
+                    ],
+                ],
+            ],
+            [
+                'methods' => WP_REST_Server::CREATABLE,
+                'callback' => [$this, 'create'],
+                'permission_callback' => [$this, 'canManageFolders'],
+                'args' => $this->folderArguments(true),
+            ],
         ]);
 
-        register_rest_route('folderfolio/v1', '/folders', [
-            'methods' => WP_REST_Server::CREATABLE,
-            'callback' => [$this, 'create'],
-            'permission_callback' => [$this, 'canManageFolders'],
-            'args' => $this->folderArguments(true),
-        ]);
-
-        register_rest_route('folderfolio/v1', '/folders/(?P<id>\d+)', [
-            'methods' => WP_REST_Server::EDITABLE,
-            'callback' => [$this, 'update'],
-            'permission_callback' => [$this, 'canManageFolders'],
-            'args' => $this->folderArguments(false),
-        ]);
-
-        register_rest_route('folderfolio/v1', '/folders/(?P<id>\d+)', [
-            'methods' => WP_REST_Server::DELETABLE,
-            'callback' => [$this, 'delete'],
-            'permission_callback' => [$this, 'canManageFolders'],
-            'args' => [
-                'reassign_to' => [
-                    'type' => 'integer',
-                    'required' => false,
-                    'sanitize_callback' => 'absint',
+        register_rest_route($ns, '/folders/(?P<id>\d+)', [
+            [
+                'methods' => WP_REST_Server::READABLE,
+                'callback' => [$this, 'show'],
+                'permission_callback' => [$this, 'canUseFolders'],
+            ],
+            [
+                // EDITABLE is POST, PUT and PATCH. The documented verb is
+                // PATCH; the others are accepted so a client that cannot send
+                // PATCH is not locked out.
+                'methods' => WP_REST_Server::EDITABLE,
+                'callback' => [$this, 'update'],
+                'permission_callback' => [$this, 'canManageFolders'],
+                'args' => $this->folderArguments(false),
+            ],
+            [
+                'methods' => WP_REST_Server::DELETABLE,
+                'callback' => [$this, 'delete'],
+                'permission_callback' => [$this, 'canManageFolders'],
+                'args' => [
+                    // Required, with no default. "What happens to my
+                    // subfolders" is not a question to answer silently.
+                    'children' => [
+                        'type' => 'string',
+                        'required' => true,
+                        'enum' => [
+                            FolderService::CHILDREN_REPARENT,
+                            FolderService::CHILDREN_CASCADE,
+                        ],
+                    ],
+                    'reassign_to' => [
+                        'type' => 'integer',
+                        'required' => false,
+                        'sanitize_callback' => 'absint',
+                    ],
                 ],
             ],
         ]);
 
-        register_rest_route('folderfolio/v1', '/folders/(?P<id>\d+)/move', [
+        register_rest_route($ns, '/folders/(?P<id>\d+)/move', [
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => [$this, 'move'],
             'permission_callback' => [$this, 'canManageFolders'],
@@ -101,27 +137,96 @@ class FolderController
             ],
         ]);
 
-        register_rest_route('folderfolio/v1', '/folders/(?P<id>\d+)/attachments', [
+        register_rest_route($ns, '/folders/(?P<id>\d+)/ancestors', [
+            'methods' => WP_REST_Server::READABLE,
+            'callback' => [$this, 'ancestors'],
+            'permission_callback' => [$this, 'canUseFolders'],
+        ]);
+
+        register_rest_route($ns, '/folders/(?P<id>\d+)/attachments', [
             'methods' => WP_REST_Server::READABLE,
             'callback' => [$this, 'attachments'],
             'permission_callback' => [$this, 'canUseFolders'],
+            'args' => [
+                'include_descendants' => [
+                    'type' => 'boolean',
+                    'required' => false,
+                    'default' => false,
+                ],
+            ],
         ]);
 
-        register_rest_route('folderfolio/v1', '/attachments/assign', [
+        register_rest_route($ns, '/counts', [
+            'methods' => WP_REST_Server::READABLE,
+            'callback' => [$this, 'counts'],
+            'permission_callback' => [$this, 'canUseFolders'],
+        ]);
+
+        // -------------------------------------------------------- assignments
+
+        register_rest_route($ns, '/assignments', [
+            [
+                'methods' => WP_REST_Server::CREATABLE,
+                'callback' => [$this, 'assign'],
+                'permission_callback' => [$this, 'canUseFolders'],
+                'args' => $this->assignmentArguments(true),
+            ],
+            [
+                'methods' => WP_REST_Server::DELETABLE,
+                'callback' => [$this, 'unassign'],
+                'permission_callback' => [$this, 'canUseFolders'],
+                'args' => $this->assignmentArguments(false),
+            ],
+        ]);
+
+        register_rest_route($ns, '/attachments/(?P<id>\d+)/folders', [
+            'methods' => WP_REST_Server::READABLE,
+            'callback' => [$this, 'attachmentFolders'],
+            'permission_callback' => [$this, 'canUseFolders'],
+        ]);
+
+        register_rest_route($ns, '/health', [
+            'methods' => WP_REST_Server::READABLE,
+            'callback' => [$this, 'health'],
+            'permission_callback' => [$this, 'canUseFolders'],
+        ]);
+
+        $this->registerLegacyRoutes($ns);
+    }
+
+    /**
+     * Routes the shipped JavaScript still calls.
+     *
+     * Undocumented and unsupported: they exist only so the current admin
+     * bundles keep working until the React app replaces them, and they are
+     * removed in the same change that lands it. Nothing outside this plugin
+     * should call them — docs/api/README.md lists the supported surface.
+     *
+     * @deprecated 1.0.0
+     */
+    private function registerLegacyRoutes(string $ns): void
+    {
+        register_rest_route($ns, '/tree', [
+            'methods' => WP_REST_Server::READABLE,
+            'callback' => [$this, 'tree'],
+            'permission_callback' => [$this, 'canUseFolders'],
+        ]);
+
+        register_rest_route($ns, '/attachments/assign', [
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => [$this, 'assign'],
             'permission_callback' => [$this, 'canUseFolders'],
-            'args' => $this->attachmentArguments('folder_id'),
+            'args' => $this->assignmentArguments(true),
         ]);
 
-        register_rest_route('folderfolio/v1', '/attachments/unassign', [
+        register_rest_route($ns, '/attachments/unassign', [
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => [$this, 'unassign'],
             'permission_callback' => [$this, 'canUseFolders'],
-            'args' => $this->attachmentArguments('folder_id'),
+            'args' => $this->assignmentArguments(false),
         ]);
 
-        register_rest_route('folderfolio/v1', '/attachments/bulk-move', [
+        register_rest_route($ns, '/attachments/bulk-move', [
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => [$this, 'bulkMove'],
             'permission_callback' => [$this, 'canUseFolders'],
@@ -143,12 +248,6 @@ class FolderController
                 ],
             ],
         ]);
-
-        register_rest_route('folderfolio/v1', '/health', [
-            'methods' => WP_REST_Server::READABLE,
-            'callback' => [$this, 'health'],
-            'permission_callback' => [$this, 'canUseFolders'],
-        ]);
     }
 
     /**
@@ -167,9 +266,14 @@ class FolderController
         return Capabilities::canManageFolders();
     }
 
-    public function tree(): WP_REST_Response
+    public function tree(WP_REST_Request $request): WP_REST_Response
     {
-        return $this->success($this->folders->tree());
+        $mode = (string) ($request->get_param('counts') ?? 'inherited');
+
+        return $this->success($this->folders->tree(
+            FolderRepository::DEFAULT_OBJECT_TYPE,
+            $mode
+        ));
     }
 
     public function create(WP_REST_Request $request): WP_REST_Response
@@ -204,7 +308,7 @@ class FolderController
     public function delete(WP_REST_Request $request): WP_REST_Response
     {
         $destination = $request->get_param('reassign_to');
-        $children = (string) ($request->get_param('children') ?? FolderService::CHILDREN_REPARENT);
+        $children = (string) $request->get_param('children');
 
         $result = $this->folders->delete(
             (int) $request['id'],
@@ -237,8 +341,12 @@ class FolderController
 
     public function attachments(WP_REST_Request $request): WP_REST_Response
     {
+        $id = (int) $request['id'];
+        $deep = (bool) $request->get_param('include_descendants');
+
         return $this->success([
-            'attachment_ids' => $this->folders->attachmentIds((int) $request['id']),
+            'attachment_ids' => $this->folders->attachmentIds($id, $deep),
+            'count' => $this->folders->countAttachments($id, $deep),
         ]);
     }
 
@@ -246,7 +354,8 @@ class FolderController
     {
         $result = $this->folders->assignAttachments(
             (int) $request['folder_id'],
-            $this->integerList($request->get_param('attachment_ids'))
+            $this->integerList($request->get_param('attachment_ids')),
+            (string) ($request->get_param('mode') ?? FolderService::MODE_ADD)
         );
 
         return $this->result(
@@ -259,7 +368,7 @@ class FolderController
     public function unassign(WP_REST_Request $request): WP_REST_Response
     {
         $result = $this->folders->unassignAttachments(
-            (int) $request['folder_id'],
+            $this->nullableInteger($request->get_param('folder_id')),
             $this->integerList($request->get_param('attachment_ids'))
         );
 
@@ -283,6 +392,71 @@ class FolderController
             200,
             fn (int $moved): array => ['moved' => $moved]
         );
+    }
+
+
+    public function show(WP_REST_Request $request): WP_REST_Response
+    {
+        $folder = $this->folders->get((int) $request['id']);
+
+        if ($folder === null) {
+            return new WP_REST_Response(
+                [
+                    'success' => false,
+                    'error' => [
+                        'code' => 'folderfolio_folder_not_found',
+                        'message' => __('Folder not found.', 'folderfolio'),
+                    ],
+                ],
+                404
+            );
+        }
+
+        return $this->success([
+            'folder' => $folder->toArray(),
+            'ancestors' => array_map(
+                static fn (Folder $f): array => $f->toArray(),
+                $this->folders->ancestors($folder->id)
+            ),
+            'count' => $this->folders->countAttachments($folder->id),
+        ]);
+    }
+
+    public function ancestors(WP_REST_Request $request): WP_REST_Response
+    {
+        return $this->success([
+            'ancestors' => array_map(
+                static fn (Folder $f): array => $f->toArray(),
+                $this->folders->ancestors((int) $request['id'])
+            ),
+        ]);
+    }
+
+    public function counts(): WP_REST_Response
+    {
+        $counts = [];
+
+        FolderTree::walk(
+            $this->folders->tree(),
+            static function (array $node) use (&$counts): void {
+                $counts[(int) $node['id']] = [
+                    'count' => (int) ($node['count'] ?? 0),
+                    'total_count' => (int) ($node['total_count'] ?? 0),
+                ];
+            }
+        );
+
+        return $this->success(['counts' => $counts]);
+    }
+
+    public function attachmentFolders(WP_REST_Request $request): WP_REST_Response
+    {
+        return $this->success([
+            'folders' => array_map(
+                static fn (Folder $f): array => $f->toArray(),
+                $this->folders->foldersOf((int) $request['id'])
+            ),
+        ]);
     }
 
     public function health(): WP_REST_Response
@@ -351,12 +525,14 @@ class FolderController
     /**
      * @return array<string, RestArgument>
      */
-    private function attachmentArguments(string $folderKey): array
+    private function assignmentArguments(bool $assigning): array
     {
-        return [
-            $folderKey => [
+        $args = [
+            // Required when filing into a folder; optional when removing,
+            // where omitting it means "take it out of every folder".
+            'folder_id' => [
                 'type' => 'integer',
-                'required' => true,
+                'required' => $assigning,
                 'sanitize_callback' => 'absint',
             ],
             'attachment_ids' => [
@@ -365,6 +541,19 @@ class FolderController
                 'items' => ['type' => 'integer'],
             ],
         ];
+
+        if ($assigning) {
+            // 'add' by default: filing a file somewhere should not quietly
+            // take it out of wherever else its owner put it.
+            $args['mode'] = [
+                'type' => 'string',
+                'required' => false,
+                'default' => FolderService::MODE_ADD,
+                'enum' => [FolderService::MODE_ADD, FolderService::MODE_MOVE],
+            ];
+        }
+
+        return $args;
     }
 
     /**
@@ -385,10 +574,6 @@ class FolderController
         return $payload;
     }
 
-    /**
-     * @param int|bool|WP_Error $result
-     * @param callable(int|bool): array<string, mixed> $successData
-     */
     /**
      * @param callable(int|bool|Folder): array<string, mixed> $successData
      */
