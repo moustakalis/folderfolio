@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace FolderFolio\Database;
 
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 class Schema
 {
     public function migrate(): void
@@ -55,11 +59,17 @@ class Schema
 
         // Folder meta table.
         $table_meta = $wpdb->prefix . 'folderfolio_folder_meta';
+
+        // It shipped with PRIMARY KEY (folder_id) - one meta row per folder,
+        // ever. dbDelta adds columns and indexes but will not alter a primary
+        // key, so the table has to go and come back. Nothing reads or writes it
+        // yet; the row count is checked anyway rather than assumed.
+        $this->dropIfEmpty($table_meta);
         $sql_meta = "CREATE TABLE {$table_meta} (
             folder_id BIGINT UNSIGNED NOT NULL,
             meta_key VARCHAR(191) NOT NULL,
             meta_value LONGTEXT NULL,
-            PRIMARY KEY  (folder_id),
+            PRIMARY KEY  (folder_id, meta_key),
             KEY meta_key (meta_key)
         ) {$charset_collate};";
 
@@ -74,5 +84,29 @@ class Schema
         ) {$charset_collate};";
 
         \dbDelta($sql_preferences);
+    }
+
+    /**
+     * Drop a table only when it holds no rows.
+     *
+     * Used where a definition changed in a way dbDelta cannot apply in place.
+     */
+    private function dropIfEmpty(string $table): void
+    {
+        global $wpdb;
+
+        $exists = $wpdb->get_var(
+            $wpdb->prepare('SHOW TABLES LIKE %s', $table)
+        );
+
+        if ($exists !== $table) {
+            return;
+        }
+
+        if ((int) $wpdb->get_var("SELECT COUNT(*) FROM {$table}") > 0) {
+            return;
+        }
+
+        $wpdb->query("DROP TABLE {$table}");
     }
 }
