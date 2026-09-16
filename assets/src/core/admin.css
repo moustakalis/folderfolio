@@ -194,3 +194,43 @@
     justify-content: flex-start;
   }
 }
+
+/* Mount point rendered by MediaLibraryIntegration on upload.php */
+.folderfolio-sidebar {
+  margin: 12px 0 16px;
+}
+
+/* Bulk folder actions, list mode */
+.folderfolio-bulk-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 12px;
+  vertical-align: middle;
+}
+
+.folderfolio-bulk-actions[hidden] {
+  display: none;
+}
+
+.folderfolio-selected-count {
+  color: var(--ff-ink-700);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.folderfolio-bulk-actions select {
+  max-width: 220px;
+}
+
+@media screen and (max-width: 782px) {
+  .folderfolio-bulk-actions {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 8px 0 0;
+  }
+
+  .folderfolio-bulk-actions[hidden] {
+    display: none;
+  }
+}

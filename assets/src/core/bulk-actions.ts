@@ -1,175 +1,246 @@
 /**
- * Bulk assignment actions for Media Library
- * Phase 3.2: Bulk select and assign/move to folder
+ * Bulk folder assignment for the Media Library list view.
+ *
+ * Scoped to list mode: it reads WordPress's own row checkboxes and sits next
+ * to the native bulk-action controls. Grid mode has a separate selection model
+ * and is handled with the media frame, not here.
  */
 
 import { apiFetch, ApiEnvelope, Folder } from './api';
 
+/** Must match MediaLibraryFilter::QUERY_VAR. */
+const FOLDER_QUERY_VAR = 'folderfolio_folder';
+
+const CHECKBOX_SELECTOR = 'input[name="media[]"]';
+
+interface FlatFolder {
+  id: number;
+  label: string;
+}
+
 export class BulkActions {
   private selectedAttachmentIds: number[] = [];
 
-  init(): void {
+  private folders: FlatFolder[] = [];
+
+  /**
+   * Folder currently being filtered on. A move has to come *from* somewhere,
+   * and this is the only place the answer exists.
+   */
+  private sourceFolderId: number | null = null;
+
+  private container: HTMLElement | null = null;
+
+  async init(): Promise<void> {
+    if (document.querySelector(CHECKBOX_SELECTOR) === null) {
+      return;
+    }
+
+    this.sourceFolderId = this.folderFromUrl();
+
+    this.injectUi();
     this.bindEvents();
-    this.injectBulkActionsUI();
+
+    await this.loadFolders();
+    this.updateSelection();
+  }
+
+  private folderFromUrl(): number | null {
+    const raw = new URL(window.location.href).searchParams.get(FOLDER_QUERY_VAR);
+
+    if (raw === null || raw === '') {
+      return null;
+    }
+
+    const parsed = Number.parseInt(raw, 10);
+
+    return Number.isNaN(parsed) || parsed === 0 ? null : parsed;
+  }
+
+  private injectUi(): void {
+    const anchor = document.querySelector('.bulkactions');
+
+    if (!anchor || document.getElementById('folderfolio-bulk-actions')) {
+      return;
+    }
+
+    const container = document.createElement('div');
+    container.id = 'folderfolio-bulk-actions';
+    container.className = 'folderfolio-bulk-actions';
+    container.hidden = true;
+
+    const count = document.createElement('span');
+    count.id = 'folderfolio-selected-count';
+    count.className = 'folderfolio-selected-count';
+
+    const select = document.createElement('select');
+    select.id = 'folderfolio-bulk-folder';
+    select.disabled = true;
+
+    const assign = document.createElement('button');
+    assign.type = 'button';
+    assign.className = 'button';
+    assign.id = 'folderfolio-bulk-assign';
+    assign.textContent = 'Assign to folder';
+
+    const move = document.createElement('button');
+    move.type = 'button';
+    move.className = 'button';
+    move.id = 'folderfolio-bulk-move';
+    move.textContent = 'Move to folder';
+    move.disabled = this.sourceFolderId === null;
+    move.title =
+      this.sourceFolderId === null
+        ? 'Filter the library by a folder first - a move needs a folder to move out of.'
+        : '';
+
+    container.append(count, select, assign, move);
+    anchor.insertAdjacentElement('afterend', container);
+
+    this.container = container;
   }
 
   private bindEvents(): void {
-    // Listen for attachment selection changes
     document.addEventListener('change', (e) => {
-      const target = e.target as HTMLInputElement;
-      if (target.matches('.attachment-sel')) {
-        this.updateSelectedAttachments();
+      const target = e.target as HTMLElement;
+
+      // #cb-select-all-1/2 toggle every row checkbox, so recount on either.
+      if (target.matches(CHECKBOX_SELECTOR) || target.matches('#cb-select-all-1, #cb-select-all-2')) {
+        this.updateSelection();
       }
     });
 
-    // Listen for bulk action form submissions
-    document.addEventListener('submit', (e) => {
-      const target = e.target as HTMLFormElement;
-      if (target.matches('#posts-filter') || target.matches('.bulkactions')) {
-        const action = (target.querySelector('select[name="action"]') as HTMLSelectElement)?.value;
-        if (action?.startsWith('folderfolio_')) {
-          e.preventDefault();
-          void this.handleBulkAction(action);
-        }
-      }
+    document.getElementById('folderfolio-bulk-assign')?.addEventListener('click', () => {
+      void this.run('assign');
+    });
+
+    document.getElementById('folderfolio-bulk-move')?.addEventListener('click', () => {
+      void this.run('move');
     });
   }
 
-  private updateSelectedAttachments(): void {
-    const checkboxes = document.querySelectorAll('.attachment-sel:checked') as NodeListOf<HTMLInputElement>;
-    this.selectedAttachmentIds = Array.from(checkboxes).map((cb) => parseInt(cb.value, 10));
-    this.updateBulkActionUI();
-  }
-
-  private updateBulkActionUI(): void {
-    const countEl = document.getElementById('folderfolio-selected-count');
-    const actionContainer = document.getElementById('folderfolio-bulk-actions');
-
-    if (countEl) {
-      countEl.textContent = this.selectedAttachmentIds.length.toString();
+  private async loadFolders(): Promise<void> {
+    try {
+      // GET /tree returns the tree as data directly, not wrapped in {tree}.
+      const response = await apiFetch<ApiEnvelope<Folder[]>>('/tree');
+      this.folders = this.flatten(response.data || [], 0);
+    } catch (error) {
+      console.error('FolderFolio: failed to load folders', error);
+      this.folders = [];
     }
 
-    if (actionContainer) {
-      actionContainer.style.display = this.selectedAttachmentIds.length > 0 ? '' : 'none';
-    }
+    this.renderFolderOptions();
   }
 
-  private injectBulkActionsUI(): void {
-    // Add bulk action dropdown to Media Library
-    const bulkActionsContainer = document.querySelector('.bulkactions');
-    if (!bulkActionsContainer) return;
-
-    const uiHtml = `
-      <div id="folderfolio-bulk-actions" style="display: none; margin-left: 20px;">
-        <span id="folderfolio-selected-count">0</span> selected
-        <button type="button" class="button" id="folderfolio-assign-to-folder">Assign to folder</button>
-        <button type="button" class="button" id="folderfolio-move-to-folder">Move to folder</button>
-      </div>
-    `;
-
-    bulkActionsContainer.insertAdjacentHTML('afterend', uiHtml);
-
-    // Bind buttons
-    document.getElementById('folderfolio-assign-to-folder')?.addEventListener('click', () => {
-      void this.showFolderPicker('assign');
-    });
-
-    document.getElementById('folderfolio-move-to-folder')?.addEventListener('click', () => {
-      void this.showFolderPicker('move');
-    });
+  private flatten(folders: Folder[], depth: number): FlatFolder[] {
+    return folders.flatMap((folder) => [
+      { id: folder.id, label: `${'— '.repeat(depth)}${folder.name}` },
+      ...this.flatten(folder.children || [], depth + 1),
+    ]);
   }
 
-  private async showFolderPicker(mode: 'assign' | 'move'): Promise<void> {
-    if (this.selectedAttachmentIds.length === 0) {
-      alert('No attachments selected');
+  private renderFolderOptions(): void {
+    const select = document.getElementById('folderfolio-bulk-folder') as HTMLSelectElement | null;
+
+    if (!select) {
       return;
     }
 
-    try {
-      const response = await apiFetch<ApiEnvelope<{ tree: Folder[] }>>('/tree');
-      const folders = response.data?.tree || [];
+    select.replaceChildren();
 
-      const folderOptions = folders
-        .map((f) => `<option value="${f.id}">${this.escapeHtml(f.name)}</option>`)
-        .join('');
+    if (this.folders.length === 0) {
+      const empty = document.createElement('option');
+      empty.textContent = 'No folders yet';
+      empty.value = '';
+      select.append(empty);
+      select.disabled = true;
+      return;
+    }
 
-      const folderIdStr = prompt(
-        `Enter folder ID to ${mode} to:\n\n${folders.map((f) => `${f.id}: ${f.name}`).join('\n')}`
-      );
+    for (const folder of this.folders) {
+      const option = document.createElement('option');
+      option.value = String(folder.id);
+      // textContent, not innerHTML: folder names are user input.
+      option.textContent = folder.label;
+      select.append(option);
+    }
 
-      if (!folderIdStr) return;
+    select.disabled = false;
+  }
 
-      const folderId = parseInt(folderIdStr, 10);
-      if (!folderId) {
-        alert('Invalid folder ID');
-        return;
-      }
+  private updateSelection(): void {
+    const checked = document.querySelectorAll<HTMLInputElement>(`${CHECKBOX_SELECTOR}:checked`);
 
-      await this.executeBulkAction(mode, folderId);
-    } catch (error) {
-      console.error('FolderFolio: Failed to load folders', error);
-      alert('Failed to load folders');
+    this.selectedAttachmentIds = Array.from(checked)
+      .map((checkbox) => Number.parseInt(checkbox.value, 10))
+      .filter((id) => !Number.isNaN(id));
+
+    const count = document.getElementById('folderfolio-selected-count');
+
+    if (count) {
+      count.textContent = `${this.selectedAttachmentIds.length} selected`;
+    }
+
+    if (this.container) {
+      this.container.hidden = this.selectedAttachmentIds.length === 0;
     }
   }
 
-  private async executeBulkAction(mode: 'assign' | 'move', folderId: number): Promise<void> {
-    const endpoint = mode === 'assign' ? '/attachments/assign' : '/attachments/bulk-move';
+  private async run(mode: 'assign' | 'move'): Promise<void> {
+    const select = document.getElementById('folderfolio-bulk-folder') as HTMLSelectElement | null;
+    const destination = Number.parseInt(select?.value || '', 10);
+
+    if (this.selectedAttachmentIds.length === 0 || Number.isNaN(destination)) {
+      return;
+    }
+
+    if (mode === 'move' && this.sourceFolderId === null) {
+      return;
+    }
+
+    if (mode === 'move' && this.sourceFolderId === destination) {
+      window.alert('Those files are already in that folder.');
+      return;
+    }
+
+    const request =
+      mode === 'assign'
+        ? {
+            path: '/attachments/assign',
+            data: {
+              folder_id: destination,
+              attachment_ids: this.selectedAttachmentIds,
+            },
+          }
+        : {
+            path: '/attachments/bulk-move',
+            data: {
+              source_folder_id: this.sourceFolderId,
+              destination_folder_id: destination,
+              attachment_ids: this.selectedAttachmentIds,
+            },
+          };
 
     try {
-      let data: Record<string, unknown> = { folder_id: folderId, attachment_ids: this.selectedAttachmentIds };
-
-      if (mode === 'move') {
-        // For move, we need source folder - for now use first selected attachment's first folder
-        data = {
-          source_folder_id: 1, // TODO: Get actual source folder
-          destination_folder_id: folderId,
-          attachment_ids: this.selectedAttachmentIds,
-        };
-      }
-
-      await apiFetch<ApiEnvelope<Record<string, unknown>>>(endpoint, {
+      await apiFetch<ApiEnvelope<Record<string, number>>>(request.path, {
         method: 'POST',
-        data,
+        data: request.data,
       });
 
-      alert(`Successfully ${mode}ed ${this.selectedAttachmentIds.length} attachment(s)`);
-      this.selectedAttachmentIds = [];
-      this.updateBulkActionUI();
-
-      // Reload page to show changes
-      location.reload();
+      window.location.reload();
     } catch (error) {
-      console.error(`FolderFolio: Failed to ${mode} attachments`, error);
-      alert(`Failed to ${mode} attachments`);
+      console.error(`FolderFolio: bulk ${mode} failed`, error);
+      window.alert(`Could not ${mode} the selected files.`);
     }
-  }
-
-  private async handleBulkAction(action: string): Promise<void> {
-    if (this.selectedAttachmentIds.length === 0) {
-      alert('No attachments selected');
-      return;
-    }
-
-    if (action === 'folderfolio_assign') {
-      await this.showFolderPicker('assign');
-    } else if (action === 'folderfolio_move') {
-      await this.showFolderPicker('move');
-    }
-  }
-
-  private escapeHtml(text: string): string {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
   }
 }
 
-// Auto-init
 const bulkActions = new BulkActions();
+
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => bulkActions.init(), { once: true });
+  document.addEventListener('DOMContentLoaded', () => void bulkActions.init(), { once: true });
 } else {
-  bulkActions.init();
+  void bulkActions.init();
 }
 
 export { bulkActions };
