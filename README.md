@@ -4,7 +4,7 @@
 
 ## Version
 
-1.0.0 - Initial Release
+0.2.0 - Pre-release
 
 ## Features
 
@@ -24,7 +24,7 @@
 ## Requirements
 
 - WordPress 6.4+
-- PHP 8.0+
+- PHP 8.1+
 - Node.js 20+
 
 ## Quick Start
