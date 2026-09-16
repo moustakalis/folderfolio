@@ -4,7 +4,12 @@ declare(strict_types=1);
 
 namespace FolderFolio\Rest;
 
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 use FolderFolio\Domain\FolderService;
+use FolderFolio\Support\Capabilities;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -53,27 +58,27 @@ class FolderController
         register_rest_route('folderfolio/v1', '/tree', [
             'methods' => WP_REST_Server::READABLE,
             'callback' => [$this, 'tree'],
-            'permission_callback' => [$this, 'canManageMedia'],
+            'permission_callback' => [$this, 'canUseFolders'],
         ]);
 
         register_rest_route('folderfolio/v1', '/folders', [
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => [$this, 'create'],
-            'permission_callback' => [$this, 'canManageMedia'],
+            'permission_callback' => [$this, 'canManageFolders'],
             'args' => $this->folderArguments(true),
         ]);
 
         register_rest_route('folderfolio/v1', '/folders/(?P<id>\d+)', [
             'methods' => WP_REST_Server::EDITABLE,
             'callback' => [$this, 'update'],
-            'permission_callback' => [$this, 'canManageMedia'],
+            'permission_callback' => [$this, 'canManageFolders'],
             'args' => $this->folderArguments(false),
         ]);
 
         register_rest_route('folderfolio/v1', '/folders/(?P<id>\d+)', [
             'methods' => WP_REST_Server::DELETABLE,
             'callback' => [$this, 'delete'],
-            'permission_callback' => [$this, 'canManageMedia'],
+            'permission_callback' => [$this, 'canManageFolders'],
             'args' => [
                 'reassign_to' => [
                     'type' => 'integer',
@@ -86,7 +91,7 @@ class FolderController
         register_rest_route('folderfolio/v1', '/folders/(?P<id>\d+)/move', [
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => [$this, 'move'],
-            'permission_callback' => [$this, 'canManageMedia'],
+            'permission_callback' => [$this, 'canManageFolders'],
             'args' => [
                 'parent_id' => [
                     'required' => true,
@@ -98,27 +103,27 @@ class FolderController
         register_rest_route('folderfolio/v1', '/folders/(?P<id>\d+)/attachments', [
             'methods' => WP_REST_Server::READABLE,
             'callback' => [$this, 'attachments'],
-            'permission_callback' => [$this, 'canManageMedia'],
+            'permission_callback' => [$this, 'canUseFolders'],
         ]);
 
         register_rest_route('folderfolio/v1', '/attachments/assign', [
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => [$this, 'assign'],
-            'permission_callback' => [$this, 'canManageMedia'],
+            'permission_callback' => [$this, 'canUseFolders'],
             'args' => $this->attachmentArguments('folder_id'),
         ]);
 
         register_rest_route('folderfolio/v1', '/attachments/unassign', [
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => [$this, 'unassign'],
-            'permission_callback' => [$this, 'canManageMedia'],
+            'permission_callback' => [$this, 'canUseFolders'],
             'args' => $this->attachmentArguments('folder_id'),
         ]);
 
         register_rest_route('folderfolio/v1', '/attachments/bulk-move', [
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => [$this, 'bulkMove'],
-            'permission_callback' => [$this, 'canManageMedia'],
+            'permission_callback' => [$this, 'canUseFolders'],
             'args' => [
                 'source_folder_id' => [
                     'type' => 'integer',
@@ -141,13 +146,24 @@ class FolderController
         register_rest_route('folderfolio/v1', '/health', [
             'methods' => WP_REST_Server::READABLE,
             'callback' => [$this, 'health'],
-            'permission_callback' => [$this, 'canManageMedia'],
+            'permission_callback' => [$this, 'canUseFolders'],
         ]);
     }
 
-    public function canManageMedia(): bool
+    /**
+     * Reading folders, and filing media into them.
+     */
+    public function canUseFolders(): bool
     {
-        return current_user_can('upload_files');
+        return Capabilities::canUseFolders();
+    }
+
+    /**
+     * Changing the folder structure itself.
+     */
+    public function canManageFolders(): bool
+    {
+        return Capabilities::canManageFolders();
     }
 
     public function tree(): WP_REST_Response

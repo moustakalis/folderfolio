@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace FolderFolio\Domain;
 
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+use FolderFolio\Support\Capabilities;
 use WP_Error;
 
 /**
@@ -119,6 +124,13 @@ class FolderService
             return new WP_Error(
                 'folderfolio_invalid_parent',
                 __('The selected parent folder does not exist.', 'folderfolio')
+            );
+        }
+
+        if ($this->folders->siblingNameExists($data['name'] ?? '', $parentId)) {
+            return new WP_Error(
+                'folderfolio_duplicate_name',
+                __('A folder with that name already exists here.', 'folderfolio')
             );
         }
 
@@ -246,10 +258,19 @@ class FolderService
         $assigned = 0;
 
         foreach (array_values(array_unique(array_map('intval', $attachmentIds))) as $position => $attachmentId) {
-            if (!wp_attachment_is_image($attachmentId) && get_post_type($attachmentId) !== 'attachment') {
+            // wp_attachment_is_image() implied the post type anyway; the only
+            // thing this ever asserted was "is an attachment".
+            if (get_post_type($attachmentId) !== 'attachment') {
                 return new WP_Error(
                     'folderfolio_invalid_attachment',
                     __('One or more selected media items are invalid.', 'folderfolio')
+                );
+            }
+
+            if (!Capabilities::canEditAttachment($attachmentId)) {
+                return new WP_Error(
+                    'folderfolio_attachment_forbidden',
+                    __('You are not allowed to organize one or more of the selected media items.', 'folderfolio')
                 );
             }
 
@@ -276,6 +297,13 @@ class FolderService
         $removed = 0;
 
         foreach (array_values(array_unique(array_map('intval', $attachmentIds))) as $attachmentId) {
+            if (!Capabilities::canEditAttachment($attachmentId)) {
+                return new WP_Error(
+                    'folderfolio_attachment_forbidden',
+                    __('You are not allowed to organize one or more of the selected media items.', 'folderfolio')
+                );
+            }
+
             $result = $this->assignments->unassign($folderId, $attachmentId);
 
             if (is_wp_error($result)) {
