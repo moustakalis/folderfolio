@@ -13,6 +13,8 @@ use FolderFolio\Admin\MediaLibraryFilter;
 use FolderFolio\Admin\MediaLibraryIntegration;
 use FolderFolio\Database\Schema;
 use FolderFolio\Domain\AttachmentFolderRepository;
+use FolderFolio\Cli\FolderCommand;
+use FolderFolio\Cli\RootCommand;
 use FolderFolio\Rest\FolderController;
 use FolderFolio\Support\UploadRouter;
 use FolderFolio\Rest\ImportController;
@@ -64,6 +66,8 @@ final class Plugin
         add_action('admin_init', [$this, 'maybeUpgradeSchema']);
 
         add_action('init', [$this, 'loadTextDomain']);
+
+        $this->registerCliCommands();
         add_action('rest_api_init', [$this, 'registerRestRoutes']);
         add_action('delete_attachment', [$this, 'forgetAttachment']);
 
@@ -84,6 +88,22 @@ final class Plugin
             // media frames. It is re-enabled once the modal phase reworks it
             // onto a supported extension point.
         }
+    }
+
+    /**
+     * WP-CLI commands, when running under WP-CLI.
+     *
+     * Registered here rather than in the bootstrap so the autoloader and the
+     * public facade are both already loaded.
+     */
+    private function registerCliCommands(): void
+    {
+        if (!defined('WP_CLI') || !constant('WP_CLI')) {
+            return;
+        }
+
+        \WP_CLI::add_command('folderfolio', RootCommand::class);
+        \WP_CLI::add_command('folderfolio folder', FolderCommand::class);
     }
 
     public function loadTextDomain(): void

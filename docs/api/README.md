@@ -299,6 +299,10 @@ wp folderfolio rebuild-paths
 wp folderfolio doctor
 ```
 
+> The `import` subcommands land with the importer rewrite. Everything else on
+> this list works today. They are documented here because this page is the 1.0
+> contract, not a changelog of what is currently on `main`.
+
 `folder create` takes a human path and creates the whole chain, so provisioning a structure
 across a fleet is one line:
 
