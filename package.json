@@ -2,20 +2,21 @@
   "name": "folderfolio-assets",
   "version": "0.2.0",
   "scripts": {
-    "build": "esbuild assets/src/core/*.ts --bundle --outdir=assets/build/core --format=esm --minify --sourcemap",
-    "dev": "esbuild assets/src/core/*.ts --bundle --outdir=assets/build/core --format=esm --watch --sourcemap",
+    "typecheck": "tsc --noEmit",
+    "build:js": "esbuild assets/src/core/*.ts --bundle --outdir=assets/build/core --format=iife --minify --sourcemap",
+    "build:css": "mkdir -p assets/build/core && cp assets/src/core/*.css assets/build/core/",
+    "build": "npm run typecheck && npm run build:js && npm run build:css",
+    "dev": "npm run build:css && esbuild assets/src/core/*.ts --bundle --outdir=assets/build/core --format=iife --watch --sourcemap",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report"
   },
   "devDependencies": {
-    "vite": "^6.2.0",
-    "typescript": "^5.9.0",
+    "@playwright/test": "^1.47.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
-    "eslint": "^9.0.0"
-  },
-  "dependencies": {
-    "vite": "^8.2.2"
+    "esbuild": "^0.25.0",
+    "eslint": "^9.0.0",
+    "typescript": "^5.9.0"
   }
 }

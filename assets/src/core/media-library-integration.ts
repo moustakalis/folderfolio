@@ -4,24 +4,6 @@ interface FolderSelectedDetail {
 
 interface FolderFolioMediaEvent extends CustomEvent<FolderSelectedDetail> {}
 
-interface WordPressMediaFrame {
-    trigger(event: string, payload?: { folderId: number | null }): void;
-}
-
-interface WordPressMedia {
-    frame?: WordPressMediaFrame;
-}
-
-interface WordPressGlobal {
-    media?: WordPressMedia;
-}
-
-declare global {
-    interface Window {
-        wp?: WordPressGlobal;
-    }
-}
-
 const eventName = 'folderfolio:folder-selected';
 const infoBarId = 'folderfolio-current-folder-bar';
 

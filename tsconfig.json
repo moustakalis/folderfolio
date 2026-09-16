@@ -2,7 +2,10 @@
   "compilerOptions": {
     "target": "ES2020",
     "module": "ESNext",
-    "lib": ["ES2020", "DOM"],
+    "lib": [
+      "ES2020",
+      "DOM"
+    ],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -13,6 +16,12 @@
     "moduleResolution": "node",
     "resolveJsonModule": true
   },
-  "include": ["assets/src/**/*"],
-  "exclude": ["node_modules", "assets/build"]
+  "include": [
+    "assets/src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "assets/build",
+    "assets/src/core/media-modal.ts"
+  ]
 }

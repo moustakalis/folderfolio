@@ -3,7 +3,7 @@
  * Phase 3.2: Bulk select and assign/move to folder
  */
 
-import { apiFetch, ApiEnvelope } from './api';
+import { apiFetch, ApiEnvelope, Folder } from './api';
 
 export class BulkActions {
   private selectedAttachmentIds: number[] = [];
