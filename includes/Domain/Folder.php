@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace FolderFolio\Domain;
 
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 /**
  * Folder domain entity.
  */

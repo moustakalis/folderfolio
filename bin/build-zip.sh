@@ -20,6 +20,7 @@ mkdir -p "${STAGE_DIR}"
 
 # Runtime allowlist. Nothing is copied that is not named here.
 cp "${PLUGIN_SLUG}.php" "${STAGE_DIR}/"
+cp uninstall.php "${STAGE_DIR}/"
 cp -R includes "${STAGE_DIR}/"
 
 if [ -d assets/build ]; then
@@ -50,6 +51,13 @@ fi
 
 if [ ! -f "${STAGE_DIR}/includes/Plugin.php" ]; then
   echo "FATAL: includes/Plugin.php missing from the staged plugin." >&2
+  exit 1
+fi
+
+# WordPress only runs uninstall.php if it is in the archive; without it,
+# deleting the plugin silently leaves four tables behind.
+if [ ! -f "${STAGE_DIR}/uninstall.php" ]; then
+  echo "FATAL: uninstall.php missing from the staged plugin." >&2
   exit 1
 fi
 

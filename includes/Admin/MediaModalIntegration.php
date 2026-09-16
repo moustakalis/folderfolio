@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace FolderFolio\Admin;
 
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 /**
  * Media Modal integration - adds folder tree to wp.media picker.
  */

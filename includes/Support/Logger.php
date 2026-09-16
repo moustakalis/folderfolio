@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace FolderFolio\Support;
 
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 /**
  * Small structured logger for development diagnostics.
  */

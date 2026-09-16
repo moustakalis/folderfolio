@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace FolderFolio\Modules\Importers;
 
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 /**
  * Factory for creating importer instances.
  */

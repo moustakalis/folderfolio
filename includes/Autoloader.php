@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace FolderFolio;
 
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 /**
  * Minimal PSR-4 autoloader for FolderFolio\ namespace.
  *

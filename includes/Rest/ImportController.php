@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace FolderFolio\Rest;
 
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 use FolderFolio\Modules\Importers\ImporterFactory;
 use WP_REST_Request;
 use WP_REST_Response;

@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace FolderFolio\Admin;
 
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 /**
  * Import page admin UI.
  */
