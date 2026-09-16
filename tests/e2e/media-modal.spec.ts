@@ -1,7 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { loginAsAdmin } from './helpers/auth';
 
-test.describe('FolderFolio Media Modal', () => {
+// MediaModalIntegration is not registered: it patches wp.media.create
+// globally, which can break other plugins' media frames. These specs are
+// skipped until the modal phase reworks it onto a supported extension point -
+// they were passing by silently skipping their own assertions, which reads as
+// coverage when there is none.
+test.describe.skip('FolderFolio Media Modal', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto('/wp-admin/post-new.php?post_type=post');
