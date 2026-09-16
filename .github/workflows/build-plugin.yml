@@ -29,50 +29,20 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install PHP production dependencies
-        run: composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
-
       - name: Install Node dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Build JavaScript assets
+      - name: Build assets
         run: npm run build
 
-      - name: Copy CSS build assets
-        run: |
-          mkdir -p assets/build/core
-          cp assets/src/core/admin.css assets/build/core/admin.css
-          cp assets/src/core/media-modal.css assets/build/core/media-modal.css
-
       - name: Assemble installable plugin
-        run: |
-          mkdir -p build/folderfolio
-          rsync -a \
-            --exclude='.git' \
-            --exclude='.github' \
-            --exclude='node_modules' \
-            --exclude='tests' \
-            --exclude='build' \
-            --exclude='*.map' \
-            --exclude='.DS_Store' \
-            --exclude='phpunit.xml.dist' \
-            --exclude='phpstan.neon' \
-            --exclude='playwright*' \
-            --exclude='*.spec.ts' \
-            --exclude='composer.json' \
-            --exclude='composer.lock' \
-            --exclude='package.json' \
-            --exclude='package-lock.json' \
-            --exclude='Makefile' \
-            ./ build/folderfolio/
-          cd build
-          zip -qr folderfolio-${{ github.sha }}.zip folderfolio
+        run: bash bin/build-zip.sh
 
       - name: Upload plugin ZIP
         uses: actions/upload-artifact@v4
         with:
           name: folderfolio-plugin-${{ github.sha }}
-          path: build/folderfolio-*.zip
+          path: dist/folderfolio.zip
           retention-days: 30
 
   php-tests:
@@ -116,12 +86,7 @@ jobs:
       - name: Install dependencies
         run: |
           composer install --prefer-dist --no-interaction
-          npm install
-          
-      - name: Install Subversion
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y subversion
+          npm ci
 
       - name: Set up WordPress test library
         uses: sjinks/setup-wordpress-test-library@master
