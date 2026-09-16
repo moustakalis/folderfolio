@@ -27,13 +27,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: 'yarn'
 
       - name: Install Node dependencies
-        run: npm ci
+        run: |
+          corepack enable
+          yarn install --immutable
 
       - name: Build assets
-        run: npm run build
+        run: yarn build
 
       - name: Assemble installable plugin
         run: bash bin/build-zip.sh
@@ -81,12 +83,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: 'yarn'
 
       - name: Install dependencies
         run: |
           composer install --prefer-dist --no-interaction
-          npm ci
+          corepack enable
+          yarn install --immutable
 
       - name: Set up WordPress test library
         uses: sjinks/setup-wordpress-test-library@master

@@ -2,6 +2,16 @@
 node_modules/
 vendor/
 
+# Yarn Berry: the lockfile and .yarnrc.yml are committed, the rest is local
+# state. Releases/patches/plugins would be committed if this project ever
+# used them.
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+.pnp.*
+
 # Build output
 build/
 dist/

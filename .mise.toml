@@ -2,19 +2,20 @@
 description = "Install project dependencies"
 run = """
 composer install
-npm ci
+corepack enable
+yarn install --immutable
 """
 
 [tasks."assets:build"]
 description = "Type-check and build production assets"
 run = """
-npm run build
+yarn build
 """
 
 [tasks."assets:watch"]
 description = "Watch and rebuild assets during development"
 run = """
-npm run dev
+yarn dev
 """
 
 [tasks."test:unit"]
@@ -26,7 +27,10 @@ phpunit
 [tasks."test:e2e"]
 description = "Run browser end-to-end tests"
 run = """
-npx playwright test
+# Yarn skips package build scripts because .yarnrc.yml lists foreign
+# platforms, so Playwright's postinstall never fetches a browser.
+yarn playwright install chromium
+yarn playwright test
 """
 
 [tasks."dev:clean"]

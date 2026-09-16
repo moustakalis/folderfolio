@@ -69,7 +69,7 @@ fi
 rm -rf "${STAGE_DIR}"
 
 # Development files must never reach a user-facing archive.
-FORBIDDEN='(^|/)(node_modules|vendor|tests|\.git|\.github|assets/src|src/|phpstan|phpunit|playwright|vite\.config|tsconfig|package(-lock)?\.json|composer\.(json|lock)|Makefile|\.mise|var/|coverage)'
+FORBIDDEN='(^|/)(node_modules|vendor|tests|\.git|\.github|assets/src|src/|phpstan|phpunit|playwright|vite\.config|tsconfig|package(-lock)?\.json|yarn\.lock|\.yarnrc|\.yarn/|composer\.(json|lock)|Makefile|\.mise|var/|coverage)'
 
 if unzip -l "${ZIP_FILE}" | awk '{print $4}' | grep -Eq "${FORBIDDEN}"; then
   echo "FATAL: development files found in ${ZIP_FILE}:" >&2

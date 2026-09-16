@@ -1,12 +1,13 @@
 {
   "name": "folderfolio-assets",
   "version": "0.2.0",
+  "packageManager": "yarn@4.18.0",
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build:js": "esbuild assets/src/core/*.ts --bundle --outdir=assets/build/core --format=iife --minify --sourcemap",
     "build:css": "mkdir -p assets/build/core && cp assets/src/core/*.css assets/build/core/",
-    "build": "npm run typecheck && npm run build:js && npm run build:css",
-    "dev": "npm run build:css && esbuild assets/src/core/*.ts --bundle --outdir=assets/build/core --format=iife --watch --sourcemap",
+    "build": "yarn typecheck && yarn build:js && yarn build:css",
+    "dev": "yarn build:css && esbuild assets/src/core/*.ts --bundle --outdir=assets/build/core --format=iife --watch --sourcemap",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report"
@@ -18,5 +19,13 @@
     "esbuild": "^0.25.0",
     "eslint": "^9.0.0",
     "typescript": "^5.9.0"
+  },
+  "dependenciesMeta": {
+    "@playwright/test": {
+      "built": false
+    },
+    "esbuild": {
+      "built": false
+    }
   }
 }

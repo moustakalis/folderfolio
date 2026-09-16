@@ -25,7 +25,7 @@
 
 - WordPress 6.4+
 - PHP 8.1+
-- Node.js 20+
+- Node.js 20+ (Yarn 4 via Corepack)
 
 ## Quick Start
 
@@ -70,8 +70,8 @@ make dev:zip
 ## Development Commands
 
 ```bash
-mise install           # Install PHP 8.2, Node 20, Composer, npm
-mise run deps:install  # Install Composer + npm packages
+mise install           # Install PHP 8.2, Node 20, Composer, Corepack/Yarn
+mise run deps:install  # Install Composer + Yarn packages
 mise run assets:build  # Build assets (development)
 mise run assets:build-prod  # Build assets (production)
 mise run test:unit     # Run PHPUnit tests
