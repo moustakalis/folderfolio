@@ -1,5 +1,24 @@
 import { apiFetch, ApiEnvelope, Folder } from './api';
 
+/** Must match MediaLibraryFilter::QUERY_VAR. */
+const FOLDER_QUERY_VAR = 'folderfolio_folder';
+
+/**
+ * The active folder survives a list-mode page load, so read it back off the
+ * URL rather than resetting the tree to "All media" after every filter.
+ */
+function folderFromUrl(): number | null {
+  const raw = new URL(window.location.href).searchParams.get(FOLDER_QUERY_VAR);
+
+  if (raw === null || raw === '') {
+    return null;
+  }
+
+  const parsed = Number.parseInt(raw, 10);
+
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
 export class FolderTree {
   private container: HTMLElement | null = null;
   private tree: Folder[] = [];
@@ -11,6 +30,8 @@ export class FolderTree {
       console.warn('FolderFolio: #folderfolio-folder-tree not found');
       return;
     }
+
+    this.activeFolderId = folderFromUrl();
 
     await this.loadTree();
     this.render();
@@ -92,15 +113,22 @@ export class FolderTree {
         return;
       }
 
-      if (target.closest('.folderfolio-folder-name')) {
-        const folderId = parseInt(target.getAttribute('data-folder-id') || '0', 10);
-        void this.handleFolderSelect(folderId);
+      // The id lives on the matched ancestor, not necessarily on the element
+      // that was clicked - reading it off the target returned folder 0 for any
+      // click that landed on a nested node.
+      const name = target.closest('.folderfolio-folder-name');
+
+      if (name) {
+        void this.handleFolderSelect(
+          parseInt(name.getAttribute('data-folder-id') || '0', 10)
+        );
         return;
       }
 
-      if (target.closest('.folderfolio-toggle')) {
-        const folderId = parseInt(target.getAttribute('data-folder-id') || '0', 10);
-        this.handleToggle(folderId);
+      const toggle = target.closest('.folderfolio-toggle');
+
+      if (toggle) {
+        this.handleToggle(parseInt(toggle.getAttribute('data-folder-id') || '0', 10));
         return;
       }
     });
@@ -189,79 +217,41 @@ export class FolderTree {
     return div.innerHTML;
   }
 
+  /**
+   * Filtering is done in SQL by MediaLibraryFilter. All this has to do is get
+   * the folder id into the next query the library runs.
+   */
   private setupMediaLibraryIntegration(): void {
-    // Listen for media library ready event
-    window.addEventListener('folderfolio:media-ready', () => {
-      console.log('FolderFolio: Media library ready');
-    });
-
-    // Handle folder selection for filtering
     window.addEventListener('folderfolio:folder-selected', (e: Event) => {
-      const event = e as CustomEvent<{ folderId: number }>;
-      void this.filterMediaByFolder(event.detail.folderId);
+      const event = e as CustomEvent<{ folderId: number | null }>;
+      this.applyFilter(event.detail.folderId);
     });
   }
 
-  private async filterMediaByFolder(folderId: number): Promise<void> {
-    try {
-      const response = await apiFetch<ApiEnvelope<{ attachment_ids: number[] }>>(
-        `/folders/${folderId}/attachments`
-      );
-      const attachmentIds = response.data?.attachment_ids || [];
+  /**
+   * Grid mode re-queries in place through the media frame's collection; list
+   * mode is an ordinary page load with the folder in the URL.
+   */
+  private applyFilter(folderId: number | null): void {
+    const collection = window.wp?.media?.frame?.content?.get?.()?.collection;
 
-      // Hide all attachments not in this folder
-      const allAttachments = document.querySelectorAll('.attachments .attachment');
-      allAttachments.forEach((attachment) => {
-        const attachEl = attachment as HTMLElement;
-        const attachmentId = parseInt(attachEl.dataset.attachmentId || '0', 10);
-        const isVisible = attachmentIds.includes(attachmentId);
-        attachEl.style.display = isVisible ? '' : 'none';
-      });
-
-      // Show info bar
-      this.showFilterBar(folderId);
-    } catch (error) {
-      console.error('FolderFolio: Failed to filter media', error);
-    }
-  }
-
-  private showFilterBar(folderId: number): void {
-    let $infoBar = document.getElementById('folderfolio-current-folder-bar');
-    if (!$infoBar) {
-      $infoBar = document.createElement('div');
-      $infoBar.id = 'folderfolio-current-folder-bar';
-      $infoBar.className = 'media-folder-filter';
-      const $filterBar = document.querySelector('.wp-filter');
-      if ($filterBar) {
-        $filterBar.parentNode?.insertBefore($infoBar, $filterBar.nextSibling);
-      }
+    if (collection?.props) {
+      collection.props.set(FOLDER_QUERY_VAR, folderId === null ? '' : folderId);
+      return;
     }
 
-    $infoBar.innerHTML = `
-      Filtering by folder #${folderId}
-      <button type="button" class="button" id="folderfolio-clear-filter">Clear filter</button>
-    `;
+    const url = new URL(window.location.href);
 
-    $infoBar.querySelector('#folderfolio-clear-filter')?.addEventListener('click', () => {
-      this.clearFilter();
-    });
-  }
-
-  private clearFilter(): void {
-    const $infoBar = document.getElementById('folderfolio-current-folder-bar');
-    if ($infoBar) {
-      $infoBar.remove();
+    if (folderId === null) {
+      url.searchParams.delete(FOLDER_QUERY_VAR);
+    } else {
+      url.searchParams.set(FOLDER_QUERY_VAR, String(folderId));
     }
 
-    // Show all attachments
-    const allAttachments = document.querySelectorAll('.attachments .attachment');
-    allAttachments.forEach((attachment) => {
-      (attachment as HTMLElement).style.display = '';
-    });
+    // Page 3 of the old folder is not page 3 of the new one.
+    url.searchParams.delete('paged');
 
-    this.activeFolderId = null;
-    this.render();
-    this.bindEvents();
+    window.location.assign(url.toString());
   }
 
   getActiveFolderId(): number | null {

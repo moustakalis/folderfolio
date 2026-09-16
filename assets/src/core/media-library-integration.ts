@@ -35,9 +35,9 @@ function getOrCreateInfoBar(): HTMLElement | null {
 
 function clearFolderFilter(): void {
     document.getElementById(infoBarId)?.remove();
-    emitMediaFilter(null);
+
     window.dispatchEvent(
-        new CustomEvent<FolderSelectedDetail>('folderfolio:folder-filter-cleared', {
+        new CustomEvent<FolderSelectedDetail>(eventName, {
             detail: { folderId: null },
         }),
     );
@@ -63,20 +63,48 @@ function renderInfoBar(folderId: number): void {
     infoBar.append(label, clearButton);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function currentFolderFromUrl(): number | null {
+    const raw = new URL(window.location.href).searchParams.get('folderfolio_folder');
+
+    if (raw === null || raw === '') {
+        return null;
+    }
+
+    const parsed = Number.parseInt(raw, 10);
+
+    return Number.isNaN(parsed) ? null : parsed;
+}
+
+function start(): void {
     window.dispatchEvent(new CustomEvent('folderfolio:media-ready'));
 
-    document.addEventListener(eventName, (event: Event) => {
+    // folder-tree.ts dispatches on window. A listener on document is never in
+    // the propagation path of a window-dispatched event, which is why this
+    // module previously did nothing at all.
+    window.addEventListener(eventName, (event: Event) => {
         const { detail } = event as FolderFolioMediaEvent;
         const folderId = detail?.folderId ?? null;
 
         emitMediaFilter(folderId);
 
         if (folderId === null) {
-            clearFolderFilter();
+            document.getElementById(infoBarId)?.remove();
             return;
         }
 
         renderInfoBar(folderId);
     });
-});
+
+    // List mode arrives filtered via the URL, with no event to react to.
+    const active = currentFolderFromUrl();
+
+    if (active !== null) {
+        renderInfoBar(active);
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+} else {
+    start();
+}

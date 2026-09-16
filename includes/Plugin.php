@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace FolderFolio;
 
 use FolderFolio\Admin\ImportPage;
+use FolderFolio\Admin\MediaLibraryFilter;
 use FolderFolio\Admin\MediaLibraryIntegration;
 use FolderFolio\Database\Schema;
 use FolderFolio\Rest\FolderController;
@@ -56,6 +57,7 @@ final class Plugin
         add_action('rest_api_init', [$this, 'registerRestRoutes']);
 
         if (is_admin()) {
+            (new MediaLibraryFilter())->register();
             (new MediaLibraryIntegration())->register();
             (new ImportPage())->register();
 

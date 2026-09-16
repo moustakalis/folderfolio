@@ -17,8 +17,25 @@ interface WpMediaState {
   get(key: 'selection'): WpMediaSelection;
 }
 
+interface WpMediaCollectionProps {
+  set(key: string, value: string | number): void;
+}
+
+interface WpMediaCollection {
+  props?: WpMediaCollectionProps;
+}
+
+interface WpMediaContentView {
+  collection?: WpMediaCollection;
+}
+
+interface WpMediaContentRegion {
+  get?(): WpMediaContentView | undefined;
+}
+
 interface WpMediaFrame {
   el: Element;
+  content?: WpMediaContentRegion;
   on(event: string, callback: () => void): void;
   open(): void;
   state(): WpMediaState;
