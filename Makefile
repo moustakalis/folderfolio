@@ -1,7 +1,7 @@
 # FolderFolio Build Process
 # Uses mise for all dependency and build management
 
-.PHONY: help deps build build-watch zip test e2e clean clean-all
+.PHONY: help deps build build-watch zip test e2e clean clean-all wp-link wp-unlink
 
 help:
 	@echo "FolderFolio Commands (all via mise)"
@@ -23,6 +23,8 @@ help:
 	@echo "  make zip                  - Create distributable plugin ZIP"
 	@echo "  make test                 - Run unit tests"
 	@echo "  make e2e                  - Run E2E tests"
+	@echo "  make wp-link WP_ROOT=...   - Symlink this checkout into a WordPress install"
+	@echo "  make wp-unlink WP_ROOT=... - Remove that symlink"
 	@echo "  make clean                - Remove build artifacts (fast)"
 	@echo "  make clean-all            - Remove everything including dependencies"
 
@@ -43,6 +45,18 @@ test:
 
 e2e:
 	mise run test:e2e
+
+wp-link:
+	@test -n "$(WP_ROOT)" || (echo "Usage: make wp-link WP_ROOT=/path/to/wordpress"; exit 1)
+	@test -d "$(WP_ROOT)/wp-content/plugins" || (echo "No wp-content/plugins under $(WP_ROOT)"; exit 1)
+	ln -sfn "$(CURDIR)" "$(WP_ROOT)/wp-content/plugins/folderfolio"
+	@echo "Linked $(CURDIR) -> $(WP_ROOT)/wp-content/plugins/folderfolio"
+
+wp-unlink:
+	@test -n "$(WP_ROOT)" || (echo "Usage: make wp-unlink WP_ROOT=/path/to/wordpress"; exit 1)
+	@test -L "$(WP_ROOT)/wp-content/plugins/folderfolio" || (echo "Not a symlink; refusing to remove"; exit 1)
+	rm "$(WP_ROOT)/wp-content/plugins/folderfolio"
+	@echo "Unlinked $(WP_ROOT)/wp-content/plugins/folderfolio"
 
 clean:
 	mise run dev:clean
