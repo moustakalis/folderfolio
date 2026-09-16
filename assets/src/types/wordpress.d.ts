@@ -60,6 +60,7 @@ interface FolderFolioConfig {
   restUrl: string;
   nonce: string;
   pluginUrl: string;
+  mediaNewUrl: string;
   version: string;
   canManageFolders: boolean;
   i18n: Record<string, string>;

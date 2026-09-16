@@ -11,27 +11,41 @@ export class UploadIntegration {
 
   setActiveFolder(folderId: number | null): void {
     this.activeFolderId = folderId;
-    console.log('FolderFolio: Active folder set to', folderId);
   }
 
   init(): void {
+    this.activeFolderId = this.folderFromUrl();
     this.bindUploadEvents();
-    this.injectUploadUI();
+  }
+
+  private folderFromUrl(): number | null {
+    const raw = new URL(window.location.href).searchParams.get('folderfolio_folder');
+
+    if (raw === null || raw === '') {
+      return null;
+    }
+
+    const parsed = Number.parseInt(raw, 10);
+
+    return Number.isNaN(parsed) || parsed === 0 ? null : parsed;
   }
 
   private bindUploadEvents(): void {
-    // Listen for folder selection to track active folder
+    // Selecting a folder - or clearing the filter, which dispatches null -
+    // is the only thing that changes the upload target.
     window.addEventListener('folderfolio:folder-selected', (e: Event) => {
-      const event = e as CustomEvent<{ folderId: number }>;
-      this.setActiveFolder(event.detail.folderId);
+      const event = e as CustomEvent<{ folderId: number | null }>;
+      this.setActiveFolder(event.detail.folderId ?? null);
     });
 
-    // Listen for folder clear to reset active folder
-    document.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement;
-      if (target.matches('#folderfolio-clear-filter')) {
-        this.setActiveFolder(null);
-      }
+    // The folder tree owns the Upload button and dispatches this when it is
+    // pressed. This module used to build a second button with the same id
+    // inside a DOMContentLoaded handler registered *after* DOMContentLoaded
+    // had already fired, so it never appeared at all.
+    window.addEventListener('folderfolio:upload-to-folder', (e: Event) => {
+      const event = e as CustomEvent<{ folderId: number }>;
+      this.setActiveFolder(event.detail.folderId);
+      this.openUploadModal();
     });
 
     // Watch for new attachments in the media grid (after upload)
@@ -76,35 +90,16 @@ export class UploadIntegration {
     }
   }
 
-  private injectUploadUI(): void {
-    // Add "Upload to folder" button in folder tree
-    document.addEventListener('DOMContentLoaded', () => {
-      const folderTreeHeader = document.querySelector('.folderfolio-tree-header');
-      if (!folderTreeHeader) return;
-
-      const uploadBtn = document.createElement('button');
-      uploadBtn.type = 'button';
-      uploadBtn.className = 'button button-small';
-      uploadBtn.id = 'folderfolio-upload-to-folder';
-      uploadBtn.innerHTML = '<span class="dashicons dashicons-upload"></span> Upload to folder';
-      uploadBtn.style.marginLeft = '8px';
-
-      uploadBtn.addEventListener('click', () => {
-        if (!this.activeFolderId) {
-          alert('Please select a folder first');
-          return;
-        }
-        this.openUploadModal();
-      });
-
-      folderTreeHeader.appendChild(uploadBtn);
-    });
-  }
-
   private openUploadModal(): void {
     if (typeof wp === 'undefined' || !wp.media) {
-      // Fallback: redirect to media-new.php with folder parameter
-      window.location.href = `/wp-admin/media-new.php?folder_id=${this.activeFolderId}`;
+      // Hardcoding /wp-admin/ breaks subdirectory installs and any site that
+      // has moved wp-admin; the server tells us where it actually is.
+      const mediaNew = window.folderFolio?.mediaNewUrl;
+
+      if (mediaNew) {
+        window.location.href = `${mediaNew}?folder_id=${this.activeFolderId}`;
+      }
+
       return;
     }
 

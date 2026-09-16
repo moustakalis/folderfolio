@@ -121,6 +121,7 @@ final class MediaLibraryIntegration
             'restUrl' => esc_url_raw(rest_url('folderfolio/v1')),
             'nonce' => wp_create_nonce('wp_rest'),
             'pluginUrl' => FOLDERFOLIO_PLUGIN_URL,
+            'mediaNewUrl' => esc_url_raw(admin_url('media-new.php')),
             'version' => FOLDERFOLIO_VERSION,
             'canManageFolders' => current_user_can('upload_files'),
             'i18n' => [
