@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    The unit suite. No WordPress, no database, no bootstrap beyond two
+    require_once lines — it runs in milliseconds.
+
+    Kept in its own config rather than as a second <testsuite> because the two
+    suites need different bootstraps, and PHPUnit has no per-suite bootstrap.
+    Integration tests live in phpunit.xml.dist and need the WordPress test
+    library.
+-->
+<phpunit
+    bootstrap="tests/bootstrap-unit.php"
+    colors="true"
+    cacheDirectory=".phpunit.cache/unit"
+    failOnRisky="true"
+    failOnWarning="true"
+    beStrictAboutOutputDuringTests="true"
+>
+    <testsuites>
+        <testsuite name="unit">
+            <directory suffix="Test.php">./tests/Unit</directory>
+        </testsuite>
+    </testsuites>
+
+    <source>
+        <include>
+            <directory suffix=".php">./includes/Domain</directory>
+        </include>
+    </source>
+
+    <php>
+        <ini name="display_errors" value="1"/>
+        <ini name="error_reporting" value="E_ALL"/>
+    </php>
+</phpunit>

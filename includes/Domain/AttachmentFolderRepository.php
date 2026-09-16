@@ -123,4 +123,110 @@ class AttachmentFolderRepository
 
         return true;
     }
+
+    /**
+     * Direct attachment count for every folder that has at least one.
+     *
+     * One GROUP BY for the whole tree. Folders with no attachments are absent
+     * from the result; callers default them to 0.
+     *
+     * This is the exact, cheap number. FolderTree::withCounts() rolls these up
+     * the tree in PHP for the inherited badge, and subtreeCount() below gives
+     * the exact subtree figure for the one folder in view.
+     *
+     * @return array<int, int> folder id => count
+     */
+    public function directCounts(): array
+    {
+        $rows = $this->wpdb->get_results(
+            "SELECT folder_id, COUNT(*) AS total FROM {$this->table()} GROUP BY folder_id",
+            ARRAY_A
+        ) ?: [];
+
+        $counts = [];
+
+        foreach ($rows as $row) {
+            $counts[(int) $row['folder_id']] = (int) $row['total'];
+        }
+
+        return $counts;
+    }
+
+    /**
+     * Exact attachment count for a folder and everything beneath it.
+     *
+     * COUNT(DISTINCT) matters here: a file may be filed in two folders inside
+     * the same subtree, and the roll-up in FolderTree would count it twice.
+     * That roll-up is fast and directionally right for the tree badge; this is
+     * the number shown above the grid, and where they disagree this one wins.
+     */
+    public function subtreeCount(string $path): int
+    {
+        $folders = $this->wpdb->prefix . 'folderfolio_folders';
+
+        return (int) $this->wpdb->get_var(
+            $this->wpdb->prepare(
+                "SELECT COUNT(DISTINCT a.attachment_id)
+                 FROM {$this->table()} AS a
+                 INNER JOIN {$folders} AS f ON f.id = a.folder_id
+                 WHERE f.path LIKE %s",
+                $this->wpdb->esc_like($path) . '%'
+            )
+        );
+    }
+
+    /**
+     * Attachment ids in a folder and everything beneath it.
+     *
+     * @return list<int>
+     */
+    public function subtreeAttachmentIds(string $path): array
+    {
+        $folders = $this->wpdb->prefix . 'folderfolio_folders';
+
+        $ids = $this->wpdb->get_col(
+            $this->wpdb->prepare(
+                "SELECT DISTINCT a.attachment_id
+                 FROM {$this->table()} AS a
+                 INNER JOIN {$folders} AS f ON f.id = a.folder_id
+                 WHERE f.path LIKE %s",
+                $this->wpdb->esc_like($path) . '%'
+            )
+        ) ?: [];
+
+        return array_map('intval', $ids);
+    }
+
+    /**
+     * Remove every assignment for a set of folders.
+     *
+     * Used when a subtree is deleted: one statement instead of one per folder.
+     *
+     * @param list<int> $folderIds
+     * @return bool|WP_Error
+     */
+    public function deleteForFolders(array $folderIds): bool|WP_Error
+    {
+        if ($folderIds === []) {
+            return true;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($folderIds), '%d'));
+
+        $deleted = $this->wpdb->query(
+            $this->wpdb->prepare(
+                "DELETE FROM {$this->table()} WHERE folder_id IN ({$placeholders})",
+                ...$folderIds
+            )
+        );
+
+        if ($deleted === false) {
+            return new WP_Error(
+                'folderfolio_assignment_delete_failed',
+                __('Unable to remove the folder assignments.', 'folderfolio')
+            );
+        }
+
+        return true;
+    }
 }

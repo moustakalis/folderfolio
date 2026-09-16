@@ -8,6 +8,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+use FolderFolio\Domain\Folder;
 use FolderFolio\Domain\FolderService;
 use FolderFolio\Support\Capabilities;
 use WP_Error;
@@ -178,8 +179,9 @@ class FolderController
         return $this->result(
             $result,
             201,
-            fn (int $id): array => [
-                'id' => $id,
+            fn (Folder $folder): array => [
+                'id' => $folder->id,
+                'folder' => $folder->toArray(),
                 'tree' => $this->folders->tree(),
             ]
         );
@@ -202,9 +204,11 @@ class FolderController
     public function delete(WP_REST_Request $request): WP_REST_Response
     {
         $destination = $request->get_param('reassign_to');
+        $children = (string) ($request->get_param('children') ?? FolderService::CHILDREN_REPARENT);
 
         $result = $this->folders->delete(
             (int) $request['id'],
+            $children,
             $destination === null || $destination === ''
                 ? null
                 : (int) $destination
@@ -385,8 +389,11 @@ class FolderController
      * @param int|bool|WP_Error $result
      * @param callable(int|bool): array<string, mixed> $successData
      */
+    /**
+     * @param callable(int|bool|Folder): array<string, mixed> $successData
+     */
     private function result(
-        int|bool|WP_Error $result,
+        int|bool|Folder|WP_Error $result,
         int $status,
         callable $successData
     ): WP_REST_Response {

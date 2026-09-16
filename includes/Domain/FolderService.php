@@ -12,6 +12,29 @@ use FolderFolio\Support\Capabilities;
 use WP_Error;
 
 /**
+ * Every folder invariant lives here.
+ *
+ * ## Hooks
+ *
+ * The actions and filters below are part of the public API and are covered by
+ * the compatibility promise in docs/architecture-plan.md §8.4. They fire from
+ * this class rather than from the REST controllers on purpose: a folder
+ * created by WP-CLI, by an importer, or by another plugin calling the facade
+ * must fire the same hooks as one created by a click. Firing them at the edge
+ * would mean three of those four paths silently skipped them.
+ *
+ * Actions:
+ *   folderfolio_folder_created           (Folder $folder)
+ *   folderfolio_folder_renamed           (Folder $folder, string $previousName)
+ *   folderfolio_folder_moved             (Folder $folder, ?int $previousParentId)
+ *   folderfolio_folder_deleted           (int $id, string $children, list<int> $deletedIds)
+ *   folderfolio_attachments_assigned     (list<int> $ids, int $folderId, string $mode)
+ *   folderfolio_attachments_unassigned   (list<int> $ids, ?int $folderId)
+ *
+ * Filters:
+ *   folderfolio_max_depth                (int)
+ *   folderfolio_count_mode               (string 'inherited'|'direct')
+ *
  * @phpstan-type FolderInput array{
  *     name?: mixed,
  *     parent_id?: int|string|null,
@@ -19,9 +42,7 @@ use WP_Error;
  *     icon?: string|null,
  *     sort_order?: int|string,
  *     slug?: string|null,
- *     template_id?: int|string|null,
- *     owner_id?: int|string|null,
- *     visibility?: string
+ *     object_type?: string
  * }
  *
  * @phpstan-type FolderData array{
@@ -31,30 +52,17 @@ use WP_Error;
  *     icon?: string|null,
  *     sort_order?: int,
  *     slug?: string|null,
- *     template_id?: int|null,
- *     owner_id?: int|null,
- *     visibility?: string
- * }
- *
- * @phpstan-type FolderTreeNode array{
- * id: int,
- * parent_id: int|null,
- * name: string,
- * slug: string|null,
- * color: string|null,
- * icon: string|null,
- * sort_order: int|string,
- * template_id: int|string|null,
- * owner_id: int|string|null,
- * visibility: string,
- * created_by: int|string|null,
- * created_at: string,
- * updated_at: string,
- * children: list<array<string, mixed>>
+ *     object_type?: string
  * }
  */
 class FolderService
 {
+    public const MODE_ADD = 'add';
+    public const MODE_MOVE = 'move';
+
+    public const CHILDREN_REPARENT = 'reparent';
+    public const CHILDREN_CASCADE = 'cascade';
+
     public function __construct(
         private readonly FolderRepository $folders = new FolderRepository(),
         private readonly AttachmentFolderRepository $assignments = new AttachmentFolderRepository()
@@ -62,54 +70,87 @@ class FolderService
     }
 
     /**
-     * Build the hierarchical folder tree.
+     * The folder tree, with counts.
      *
-     * @return list<FolderTreeNode>
+     * Two queries: the folders, and one GROUP BY for the counts. The roll-up
+     * happens in PHP. Competitors either omit inherited counts or default to
+     * direct-only; we default to inherited because a parent reading `0` while
+     * holding a hundred files is worse than no badge at all.
+     *
+     * @return list<array<string, mixed>>
      */
-    public function tree(): array
-    {
-        $items = $this->folders->all();
+    public function tree(
+        string $objectType = FolderRepository::DEFAULT_OBJECT_TYPE,
+        ?string $countMode = null
+    ): array {
+        $nodes = FolderTree::fromRows($this->folders->all($objectType));
 
-        /** @var array<int, list<FolderTreeNode>> $byParent */
-        $byParent = [];
+        /** @var string $mode */
+        $mode = apply_filters('folderfolio_count_mode', $countMode ?? 'inherited');
 
-        foreach ($items as $item) {
-            $parentId = $item['parent_id'] === null ? 0 : (int) $item['parent_id'];
-
-            /** @var FolderTreeNode $item */
-            $item['id'] = (int) $item['id'];
-            $item['parent_id'] = $item['parent_id'] === null ? null : (int) $item['parent_id'];
-            $item['children'] = [];
-
-            $byParent[$parentId][] = $item;
+        if ($mode === 'none') {
+            return $nodes;
         }
 
-        /**
-         * @param int $parentId
-         * @return list<FolderTreeNode>
-         */
-        $build = function (int $parentId) use (&$build, &$byParent): array {
-            $nodes = $byParent[$parentId] ?? [];
+        return FolderTree::withCounts(
+            $nodes,
+            $this->assignments->directCounts(),
+            $mode !== 'direct'
+        );
+    }
 
-            foreach ($nodes as &$node) {
-                $node['children'] = $build($node['id']);
+    public function get(int $id): ?Folder
+    {
+        $row = $this->folders->find($id);
+
+        return $row === null ? null : Folder::fromRow($row);
+    }
+
+    /**
+     * Ancestors of a folder, outermost first. No queries for the chain itself.
+     *
+     * @return list<Folder>
+     */
+    public function ancestors(int $id): array
+    {
+        $folder = $this->get($id);
+
+        if ($folder === null) {
+            return [];
+        }
+
+        $ancestors = [];
+
+        foreach ($folder->ancestorIds() as $ancestorId) {
+            $row = $this->folders->find($ancestorId);
+
+            if ($row !== null) {
+                $ancestors[] = Folder::fromRow($row);
             }
+        }
 
-            unset($node);
+        return $ancestors;
+    }
 
-            return $nodes;
-        };
+    /**
+     * Ids of a folder and every folder beneath it.
+     *
+     * @return list<int>
+     */
+    public function subtreeIds(int $id): array
+    {
+        $folder = $this->get($id);
 
-        return $build(0);
+        return $folder === null ? [] : $this->folders->subtreeIds($folder->path);
     }
 
     /**
      * Create a folder.
      *
      * @param FolderInput $data
-     * @return int|WP_Error
+     * @return Folder|WP_Error
      */
-    public function create(array $data): int|WP_Error
+    public function create(array $data): Folder|WP_Error
     {
         $data = $this->sanitize($data);
         $validation = $this->validate($data, true);
@@ -119,33 +160,67 @@ class FolderService
         }
 
         $parentId = $data['parent_id'] ?? null;
+        $parentPath = null;
 
-        if ($parentId !== null && $this->folders->find($parentId) === null) {
-            return new WP_Error(
-                'folderfolio_invalid_parent',
-                __('The selected parent folder does not exist.', 'folderfolio')
-            );
+        if ($parentId !== null) {
+            $parent = $this->folders->find($parentId);
+
+            if ($parent === null) {
+                return new WP_Error(
+                    'folderfolio_invalid_parent',
+                    __('The selected parent folder does not exist.', 'folderfolio')
+                );
+            }
+
+            $parentPath = (string) $parent['path'];
+
+            $tooDeep = $this->guardDepth(FolderPath::depth($parentPath) + 1);
+
+            if (is_wp_error($tooDeep)) {
+                return $tooDeep;
+            }
         }
 
-        if ($this->folders->siblingNameExists($data['name'] ?? '', $parentId)) {
+        $objectType = $data['object_type'] ?? FolderRepository::DEFAULT_OBJECT_TYPE;
+
+        if ($this->folders->siblingNameExists($data['name'] ?? '', $parentId, null, $objectType)) {
             return new WP_Error(
                 'folderfolio_duplicate_name',
                 __('A folder with that name already exists here.', 'folderfolio')
             );
         }
 
-        return $this->folders->create($data);
+        $id = $this->folders->create($data, $parentPath);
+
+        if (is_wp_error($id)) {
+            return $id;
+        }
+
+        $folder = $this->get($id);
+
+        if ($folder === null) {
+            return new WP_Error(
+                'folderfolio_folder_create_failed',
+                __('Unable to create the folder.', 'folderfolio')
+            );
+        }
+
+        do_action('folderfolio_folder_created', $folder);
+
+        return $folder;
     }
 
     /**
-     * Update a folder.
+     * Update a folder's own attributes. Use move() to change its parent.
      *
      * @param FolderInput $data
-     * @return bool|WP_Error
+     * @return Folder|WP_Error
      */
-    public function update(int $id, array $data): bool|WP_Error
+    public function update(int $id, array $data): Folder|WP_Error
     {
-        if ($this->folders->find($id) === null) {
+        $existing = $this->get($id);
+
+        if ($existing === null) {
             return new WP_Error(
                 'folderfolio_folder_not_found',
                 __('Folder not found.', 'folderfolio')
@@ -153,18 +228,59 @@ class FolderService
         }
 
         $data = $this->sanitize($data, false);
+        unset($data['parent_id'], $data['object_type']);
+
         $validation = $this->validate($data, false);
 
         if (is_wp_error($validation)) {
             return $validation;
         }
 
-        return $this->folders->update($id, $data);
+        if (
+            isset($data['name'])
+            && $data['name'] !== $existing->name
+            && $this->folders->siblingNameExists(
+                $data['name'],
+                $existing->parentId,
+                $id,
+                $existing->objectType
+            )
+        ) {
+            return new WP_Error(
+                'folderfolio_duplicate_name',
+                __('A folder with that name already exists here.', 'folderfolio')
+            );
+        }
+
+        $updated = $this->folders->update($id, $data);
+
+        if (is_wp_error($updated)) {
+            return $updated;
+        }
+
+        $folder = $this->get($id) ?? $existing;
+
+        if (isset($data['name']) && $data['name'] !== $existing->name) {
+            do_action('folderfolio_folder_renamed', $folder, $existing->name);
+        }
+
+        return $folder;
     }
 
-    public function move(int $id, ?int $parentId): bool|WP_Error
+    /**
+     * Move a folder, and its whole subtree with it.
+     *
+     * The cycle check is a string prefix test rather than a walk up the tree,
+     * and re-pointing the descendants is one UPDATE however deep the subtree
+     * goes. Both are what the path column is for.
+     *
+     * @return Folder|WP_Error
+     */
+    public function move(int $id, ?int $parentId): Folder|WP_Error
     {
-        if ($this->folders->find($id) === null) {
+        $folder = $this->get($id);
+
+        if ($folder === null) {
             return new WP_Error(
                 'folderfolio_folder_not_found',
                 __('Folder not found.', 'folderfolio')
@@ -178,53 +294,151 @@ class FolderService
             );
         }
 
+        if ($parentId === $folder->parentId) {
+            return $folder;
+        }
+
+        $parentPath = null;
+        $newDepth = 0;
+
         if ($parentId !== null) {
-            if ($this->folders->find($parentId) === null) {
+            $parent = $this->folders->find($parentId);
+
+            if ($parent === null) {
                 return new WP_Error(
                     'folderfolio_invalid_parent',
                     __('The selected parent folder does not exist.', 'folderfolio')
                 );
             }
 
-            if ($this->isDescendant($parentId, $id)) {
+            $parentPath = (string) $parent['path'];
+
+            // The whole cycle check: is the proposed parent inside the subtree
+            // we are about to move? One prefix comparison, no queries.
+            if (FolderPath::isWithin($parentPath, $folder->path)) {
                 return new WP_Error(
                     'folderfolio_circular_parent',
                     __('A folder cannot be moved inside one of its descendants.', 'folderfolio')
                 );
             }
+
+            $newDepth = FolderPath::depth($parentPath) + 1;
         }
 
-        return $this->folders->update($id, ['parent_id' => $parentId]);
+        $subtreeDepth = $this->deepestDepthIn($folder->path) - $folder->depth;
+
+        $tooDeep = $this->guardDepth($newDepth + $subtreeDepth);
+
+        if (is_wp_error($tooDeep)) {
+            return $tooDeep;
+        }
+
+        if (
+            $this->folders->siblingNameExists($folder->name, $parentId, $id, $folder->objectType)
+        ) {
+            return new WP_Error(
+                'folderfolio_duplicate_name',
+                __('A folder with that name already exists there.', 'folderfolio')
+            );
+        }
+
+        $newPath = FolderPath::build($parentPath, $id);
+
+        $rewritten = $this->folders->rewriteSubtreePaths(
+            $folder->path,
+            $newPath,
+            $newDepth - $folder->depth
+        );
+
+        if (is_wp_error($rewritten)) {
+            return $rewritten;
+        }
+
+        $updated = $this->folders->update($id, ['parent_id' => $parentId]);
+
+        if (is_wp_error($updated)) {
+            return $updated;
+        }
+
+        $moved = $this->get($id) ?? $folder;
+
+        do_action('folderfolio_folder_moved', $moved, $folder->parentId);
+
+        return $moved;
     }
 
-    public function delete(int $id, ?int $reassignTo = null): bool|WP_Error
-    {
-        if ($this->folders->find($id) === null) {
+    /**
+     * Delete a folder.
+     *
+     * $children is required by the REST route rather than defaulted there:
+     * "what happens to my subfolders" is not a question to answer silently.
+     *
+     * @param string $children One of the CHILDREN_* constants; validated below.
+     * @return int|WP_Error Number of folders deleted.
+     */
+    public function delete(
+        int $id,
+        string $children = self::CHILDREN_REPARENT,
+        ?int $reassignAttachmentsTo = null
+    ): int|WP_Error {
+        $folder = $this->get($id);
+
+        if ($folder === null) {
             return new WP_Error(
                 'folderfolio_folder_not_found',
                 __('Folder not found.', 'folderfolio')
             );
         }
 
-        if ($reassignTo !== null) {
-            if ($reassignTo === $id || $this->folders->find($reassignTo) === null) {
+        if (!in_array($children, [self::CHILDREN_REPARENT, self::CHILDREN_CASCADE], true)) {
+            return new WP_Error(
+                'folderfolio_invalid_children_strategy',
+                __('Choose whether subfolders are kept or deleted.', 'folderfolio')
+            );
+        }
+
+        if ($reassignAttachmentsTo !== null) {
+            if ($reassignAttachmentsTo === $id || $this->folders->find($reassignAttachmentsTo) === null) {
                 return new WP_Error(
                     'folderfolio_invalid_reassignment',
                     __('Choose a valid destination folder.', 'folderfolio')
                 );
             }
 
-            foreach ($this->assignments->attachmentIdsForFolder($id) as $attachmentId) {
-                $assigned = $this->assignments->assign($reassignTo, $attachmentId);
+            $source = $children === self::CHILDREN_CASCADE
+                ? $this->assignments->subtreeAttachmentIds($folder->path)
+                : $this->assignments->attachmentIdsForFolder($id);
 
-                if (is_wp_error($assigned)) {
-                    return $assigned;
-                }
+            $reassigned = $this->assignAttachments($reassignAttachmentsTo, $source, self::MODE_ADD);
+
+            if (is_wp_error($reassigned)) {
+                return $reassigned;
             }
         }
 
+        if ($children === self::CHILDREN_CASCADE) {
+            $ids = $this->folders->subtreeIds($folder->path);
+
+            $cleaned = $this->assignments->deleteForFolders($ids);
+
+            if (is_wp_error($cleaned)) {
+                return $cleaned;
+            }
+
+            $deleted = $this->folders->deleteSubtree($folder->path);
+
+            if (is_wp_error($deleted)) {
+                return $deleted;
+            }
+
+            do_action('folderfolio_folder_deleted', $id, $children, $ids);
+
+            return $deleted;
+        }
+
+        // Reparent: each child takes this folder's place in the hierarchy.
         foreach ($this->folders->children($id) as $child) {
-            $moved = $this->move((int) $child['id'], null);
+            $moved = $this->move((int) $child['id'], $folder->parentId);
 
             if (is_wp_error($moved)) {
                 return $moved;
@@ -237,17 +451,36 @@ class FolderService
             return $cleaned;
         }
 
-        return $this->folders->delete($id);
+        $removed = $this->folders->delete($id);
+
+        if (is_wp_error($removed)) {
+            return $removed;
+        }
+
+        do_action('folderfolio_folder_deleted', $id, $children, [$id]);
+
+        return 1;
     }
 
     /**
-     * Assign attachments to a folder.
+     * File attachments into a folder.
+     *
+     * MODE_ADD leaves every existing assignment alone — this is what makes the
+     * migration wizard safe, and it is the behaviour no competitor offers:
+     * all four examined implement assignment as delete-then-insert, so
+     * importing takes a file out of whatever folder its owner had put it in.
+     *
+     * MODE_MOVE is the drag gesture: file here, and nowhere else.
      *
      * @param list<int|string> $attachmentIds
-     * @return int|WP_Error
+     * @param string           $mode One of the MODE_* constants; validated below.
+     * @return int|WP_Error Number of attachments filed.
      */
-    public function assignAttachments(int $folderId, array $attachmentIds): int|WP_Error
-    {
+    public function assignAttachments(
+        int $folderId,
+        array $attachmentIds,
+        string $mode = self::MODE_ADD
+    ): int|WP_Error {
         if ($this->folders->find($folderId) === null) {
             return new WP_Error(
                 'folderfolio_folder_not_found',
@@ -255,23 +488,30 @@ class FolderService
             );
         }
 
+        if (!in_array($mode, [self::MODE_ADD, self::MODE_MOVE], true)) {
+            return new WP_Error(
+                'folderfolio_invalid_mode',
+                __('Choose whether to add to the folder or move into it.', 'folderfolio')
+            );
+        }
+
+        $ids = array_values(array_unique(array_map('intval', $attachmentIds)));
+
+        $permitted = $this->guardAttachments($ids);
+
+        if (is_wp_error($permitted)) {
+            return $permitted;
+        }
+
         $assigned = 0;
 
-        foreach (array_values(array_unique(array_map('intval', $attachmentIds))) as $position => $attachmentId) {
-            // wp_attachment_is_image() implied the post type anyway; the only
-            // thing this ever asserted was "is an attachment".
-            if (get_post_type($attachmentId) !== 'attachment') {
-                return new WP_Error(
-                    'folderfolio_invalid_attachment',
-                    __('One or more selected media items are invalid.', 'folderfolio')
-                );
-            }
+        foreach ($ids as $position => $attachmentId) {
+            if ($mode === self::MODE_MOVE) {
+                $cleared = $this->assignments->deleteForAttachment($attachmentId);
 
-            if (!Capabilities::canEditAttachment($attachmentId)) {
-                return new WP_Error(
-                    'folderfolio_attachment_forbidden',
-                    __('You are not allowed to organize one or more of the selected media items.', 'folderfolio')
-                );
+                if (is_wp_error($cleared)) {
+                    return $cleared;
+                }
             }
 
             $result = $this->assignments->assign($folderId, $attachmentId, $position);
@@ -283,28 +523,35 @@ class FolderService
             $assigned++;
         }
 
+        if ($ids !== []) {
+            do_action('folderfolio_attachments_assigned', $ids, $folderId, $mode);
+        }
+
         return $assigned;
     }
 
     /**
-     * Remove attachment assignments from a folder.
+     * Remove attachments from a folder, or from every folder when null.
      *
      * @param list<int|string> $attachmentIds
      * @return int|WP_Error
      */
-    public function unassignAttachments(int $folderId, array $attachmentIds): int|WP_Error
+    public function unassignAttachments(?int $folderId, array $attachmentIds): int|WP_Error
     {
+        $ids = array_values(array_unique(array_map('intval', $attachmentIds)));
+
+        $permitted = $this->guardAttachments($ids, false);
+
+        if (is_wp_error($permitted)) {
+            return $permitted;
+        }
+
         $removed = 0;
 
-        foreach (array_values(array_unique(array_map('intval', $attachmentIds))) as $attachmentId) {
-            if (!Capabilities::canEditAttachment($attachmentId)) {
-                return new WP_Error(
-                    'folderfolio_attachment_forbidden',
-                    __('You are not allowed to organize one or more of the selected media items.', 'folderfolio')
-                );
-            }
-
-            $result = $this->assignments->unassign($folderId, $attachmentId);
+        foreach ($ids as $attachmentId) {
+            $result = $folderId === null
+                ? $this->assignments->deleteForAttachment($attachmentId)
+                : $this->assignments->unassign($folderId, $attachmentId);
 
             if (is_wp_error($result)) {
                 return $result;
@@ -313,11 +560,15 @@ class FolderService
             $removed++;
         }
 
+        if ($ids !== []) {
+            do_action('folderfolio_attachments_unassigned', $ids, $folderId);
+        }
+
         return $removed;
     }
 
     /**
-     * Move attachments between folders.
+     * Move attachments from one folder to another.
      *
      * @param list<int|string> $attachmentIds
      * @return int|WP_Error
@@ -334,7 +585,7 @@ class FolderService
             );
         }
 
-        $assigned = $this->assignAttachments($destinationFolderId, $attachmentIds);
+        $assigned = $this->assignAttachments($destinationFolderId, $attachmentIds, self::MODE_ADD);
 
         if (is_wp_error($assigned)) {
             return $assigned;
@@ -350,28 +601,102 @@ class FolderService
     }
 
     /**
-     * Get IDs of attachments assigned to a folder.
+     * Attachment ids in a folder, optionally including its descendants.
      *
      * @return list<int>
      */
-    public function attachmentIds(int $folderId): array
+    public function attachmentIds(int $folderId, bool $includeDescendants = false): array
     {
-        return $this->assignments->attachmentIdsForFolder($folderId);
-    }
-
-    private function isDescendant(int $candidateId, int $ancestorId): bool
-    {
-        $candidate = $this->folders->find($candidateId);
-
-        while ($candidate !== null && $candidate['parent_id'] !== null) {
-            if ((int) $candidate['parent_id'] === $ancestorId) {
-                return true;
-            }
-
-            $candidate = $this->folders->find((int) $candidate['parent_id']);
+        if (!$includeDescendants) {
+            return $this->assignments->attachmentIdsForFolder($folderId);
         }
 
-        return false;
+        $folder = $this->get($folderId);
+
+        return $folder === null
+            ? []
+            : $this->assignments->subtreeAttachmentIds($folder->path);
+    }
+
+    /**
+     * Exact attachment count for a folder, optionally including descendants.
+     */
+    public function countAttachments(int $folderId, bool $includeDescendants = true): int
+    {
+        $folder = $this->get($folderId);
+
+        if ($folder === null) {
+            return 0;
+        }
+
+        if (!$includeDescendants) {
+            return count($this->assignments->attachmentIdsForFolder($folderId));
+        }
+
+        return $this->assignments->subtreeCount($folder->path);
+    }
+
+    /**
+     * Deepest depth value anywhere in a subtree.
+     */
+    private function deepestDepthIn(string $path): int
+    {
+        $deepest = 0;
+
+        foreach ($this->folders->subtree($path) as $row) {
+            $deepest = max($deepest, (int) $row['depth']);
+        }
+
+        return $deepest;
+    }
+
+    /**
+     * @return true|WP_Error
+     */
+    private function guardDepth(int $depth): true|WP_Error
+    {
+        /** @var int $max */
+        $max = apply_filters('folderfolio_max_depth', FolderPath::MAX_DEPTH);
+
+        if ($depth > $max) {
+            return new WP_Error(
+                'folderfolio_max_depth_exceeded',
+                sprintf(
+                    /* translators: %d: maximum nesting depth. */
+                    __('Folders can be nested up to %d levels deep.', 'folderfolio'),
+                    $max
+                )
+            );
+        }
+
+        return true;
+    }
+
+    /**
+     * @param list<int> $ids
+     * @return true|WP_Error
+     */
+    private function guardAttachments(array $ids, bool $requireAttachment = true): true|WP_Error
+    {
+        foreach ($ids as $attachmentId) {
+            // wp_attachment_is_image() implied the post type anyway; the only
+            // thing that ever asserted was "is an attachment".
+            if ($requireAttachment && get_post_type($attachmentId) !== 'attachment') {
+                return new WP_Error(
+                    'folderfolio_invalid_attachment',
+                    __('One or more selected media items are invalid.', 'folderfolio')
+                );
+            }
+
+            if (!Capabilities::canEditAttachment($attachmentId)) {
+                return new WP_Error(
+                    'folderfolio_attachment_forbidden',
+                    __('You are not allowed to organize one or more of the selected media items.', 'folderfolio')
+                );
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -393,6 +718,10 @@ class FolderService
             $result['parent_id'] = $parentId === null || $parentId === ''
                 ? null
                 : absint($parentId);
+        }
+
+        if (array_key_exists('object_type', $data)) {
+            $result['object_type'] = sanitize_key((string) $data['object_type']);
         }
 
         if (array_key_exists('color', $data)) {
@@ -429,6 +758,13 @@ class FolderService
     private function validate(array $data, bool $creating): true|WP_Error
     {
         if ($creating && ($data['name'] ?? '') === '') {
+            return new WP_Error(
+                'folderfolio_name_required',
+                __('A folder name is required.', 'folderfolio')
+            );
+        }
+
+        if (isset($data['name']) && $data['name'] === '') {
             return new WP_Error(
                 'folderfolio_name_required',
                 __('A folder name is required.', 'folderfolio')

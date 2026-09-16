@@ -27,7 +27,7 @@ final class Plugin
     /**
      * Bumped whenever Schema::migrate() changes, to trigger an upgrade run.
      */
-    public const DB_VERSION = '2';
+    public const DB_VERSION = '3';
 
     private const DB_VERSION_OPTION = 'folderfolio_db_version';
 

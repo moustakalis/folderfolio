@@ -15,14 +15,14 @@ use wpdb;
  * @phpstan-type FolderRow array{
  *     id: int|string,
  *     parent_id: int|string|null,
+ *     path: string,
+ *     depth: int|string,
+ *     object_type: string,
  *     name: string,
  *     slug: string|null,
  *     color: string|null,
  *     icon: string|null,
  *     sort_order: int|string,
- *     template_id: int|string|null,
- *     owner_id: int|string|null,
- *     visibility: string,
  *     created_by: int|string|null,
  *     created_at: string,
  *     updated_at: string
@@ -35,26 +35,25 @@ use wpdb;
  *     color?: string|null,
  *     icon?: string|null,
  *     sort_order?: int,
- *     template_id?: int|null,
- *     owner_id?: int|null,
- *     visibility?: string
+ *     object_type?: string
  * }
  *
  * @phpstan-type FolderUpdateData array{
  *     name?: string,
  *     parent_id?: int|null,
+ *     path?: string,
+ *     depth?: int,
  *     slug?: string|null,
  *     color?: string|null,
  *     icon?: string|null,
  *     sort_order?: int,
- *     template_id?: int|null,
- *     owner_id?: int|null,
- *     visibility?: string,
  *     updated_at?: string
  * }
  */
 class FolderRepository
 {
+    public const DEFAULT_OBJECT_TYPE = 'attachment';
+
     /**
      * Columns this repository is allowed to write.
      *
@@ -66,14 +65,14 @@ class FolderRepository
      */
     private const WRITABLE = [
         'parent_id',
+        'path',
+        'depth',
+        'object_type',
         'name',
         'slug',
         'color',
         'icon',
         'sort_order',
-        'template_id',
-        'owner_id',
-        'visibility',
         'created_by',
         'created_at',
         'updated_at',
@@ -111,14 +110,19 @@ class FolderRepository
     }
 
     /**
-     * Get all folders ordered for display.
+     * Get all folders of one object type, ordered for display.
      *
      * @return list<FolderRow>
      */
-    public function all(): array
+    public function all(string $objectType = self::DEFAULT_OBJECT_TYPE): array
     {
         return $this->wpdb->get_results(
-            "SELECT * FROM {$this->table()} ORDER BY sort_order ASC, name ASC",
+            $this->wpdb->prepare(
+                "SELECT * FROM {$this->table()}
+                 WHERE object_type = %s
+                 ORDER BY sort_order ASC, name ASC",
+                $objectType
+            ),
             ARRAY_A
         ) ?: [];
     }
@@ -140,22 +144,68 @@ class FolderRepository
     }
 
     /**
+     * Every folder in a subtree, the root folder included.
+     *
+     * One indexed prefix match — no recursion, no CTE, and so no MySQL 8
+     * requirement. See FolderPath for why the pattern keeps its trailing slash.
+     *
+     * @return list<FolderRow>
+     */
+    public function subtree(string $path): array
+    {
+        return $this->wpdb->get_results(
+            $this->wpdb->prepare(
+                "SELECT * FROM {$this->table()}
+                 WHERE path LIKE %s
+                 ORDER BY depth ASC, sort_order ASC, name ASC",
+                $this->wpdb->esc_like($path) . '%'
+            ),
+            ARRAY_A
+        ) ?: [];
+    }
+
+    /**
+     * Ids of every folder in a subtree, the root folder included.
+     *
+     * @return list<int>
+     */
+    public function subtreeIds(string $path): array
+    {
+        $ids = $this->wpdb->get_col(
+            $this->wpdb->prepare(
+                "SELECT id FROM {$this->table()} WHERE path LIKE %s",
+                $this->wpdb->esc_like($path) . '%'
+            )
+        ) ?: [];
+
+        return array_map('intval', $ids);
+    }
+
+    /**
      * Is there already a folder with this name alongside the given parent?
      *
      * A unique index cannot express this: MySQL treats every NULL parent_id as
      * distinct, so root folders would slip through it anyway.
      */
-    public function siblingNameExists(string $name, ?int $parentId, ?int $ignoreId = null): bool
-    {
+    public function siblingNameExists(
+        string $name,
+        ?int $parentId,
+        ?int $ignoreId = null,
+        string $objectType = self::DEFAULT_OBJECT_TYPE
+    ): bool {
         $sql = $parentId === null
             ? $this->wpdb->prepare(
-                "SELECT id FROM {$this->table()} WHERE parent_id IS NULL AND name = %s",
-                $name
+                "SELECT id FROM {$this->table()}
+                 WHERE parent_id IS NULL AND name = %s AND object_type = %s",
+                $name,
+                $objectType
             )
             : $this->wpdb->prepare(
-                "SELECT id FROM {$this->table()} WHERE parent_id = %d AND name = %s",
+                "SELECT id FROM {$this->table()}
+                 WHERE parent_id = %d AND name = %s AND object_type = %s",
                 $parentId,
-                $name
+                $name,
+                $objectType
             );
 
         foreach ($this->wpdb->get_col($sql) ?: [] as $id) {
@@ -170,26 +220,31 @@ class FolderRepository
     /**
      * Create a folder.
      *
+     * The path contains the folder's own id, which only exists after the
+     * insert, so this is two statements rather than one. The row is never
+     * visible with an empty path to anything but this method.
+     *
      * @param FolderCreateData $data
+     * @param string|null      $parentPath Parent's path, or null for a root folder.
      * @return int|WP_Error
      */
-    public function create(array $data): int|WP_Error
+    public function create(array $data, ?string $parentPath = null): int|WP_Error
     {
         $created = $this->wpdb->insert(
             $this->table(),
             [
-                'parent_id'  => $data['parent_id'] ?? null,
-                'name'       => $data['name'],
-                'slug'       => $data['slug'] ?? sanitize_title($data['name']),
-                'color'      => $data['color'] ?? null,
-                'icon'       => $data['icon'] ?? null,
-                'sort_order' => $data['sort_order'] ?? 0,
-                'template_id' => $data['template_id'] ?? null,
-                'owner_id'   => $data['owner_id'] ?? null,
-                'visibility' => $data['visibility'] ?? 'all',
-                'created_by' => get_current_user_id(),
-                'created_at' => current_time('mysql', true),
-                'updated_at' => current_time('mysql', true),
+                'parent_id'   => $data['parent_id'] ?? null,
+                'path'        => '',
+                'depth'       => 0,
+                'object_type' => $data['object_type'] ?? self::DEFAULT_OBJECT_TYPE,
+                'name'        => $data['name'],
+                'slug'        => $data['slug'] ?? sanitize_title($data['name']),
+                'color'       => $data['color'] ?? null,
+                'icon'        => $data['icon'] ?? null,
+                'sort_order'  => $data['sort_order'] ?? 0,
+                'created_by'  => get_current_user_id(),
+                'created_at'  => current_time('mysql', true),
+                'updated_at'  => current_time('mysql', true),
             ]
         );
 
@@ -200,7 +255,16 @@ class FolderRepository
             );
         }
 
-        return (int) $this->wpdb->insert_id;
+        $id = (int) $this->wpdb->insert_id;
+        $path = FolderPath::build($parentPath, $id);
+
+        $this->wpdb->update(
+            $this->table(),
+            ['path' => $path, 'depth' => FolderPath::depth($path)],
+            ['id' => $id]
+        );
+
+        return $id;
     }
 
     /**
@@ -213,15 +277,17 @@ class FolderRepository
     {
         $data['updated_at'] = current_time('mysql', true);
 
-        $data = array_intersect_key($data, array_flip(self::WRITABLE));
+        /** @var array<string, mixed> $writable */
+        $writable = array_intersect_key($data, array_flip(self::WRITABLE));
 
-        if ($data === []) {
+        // A caller passing only non-writable keys is a no-op, not an error.
+        if ($writable === []) {
             return true;
         }
 
         $updated = $this->wpdb->update(
             $this->table(),
-            $data,
+            $writable,
             ['id' => $id]
         );
 
@@ -233,6 +299,66 @@ class FolderRepository
         }
 
         return true;
+    }
+
+    /**
+     * Re-point every descendant's path when a subtree moves.
+     *
+     * One statement for the whole subtree, however deep. The WHERE clause is
+     * the same indexed prefix match the reads use.
+     *
+     * @return bool|WP_Error
+     */
+    public function rewriteSubtreePaths(
+        string $oldPrefix,
+        string $newPrefix,
+        int $depthDelta
+    ): bool|WP_Error {
+        $result = $this->wpdb->query(
+            $this->wpdb->prepare(
+                "UPDATE {$this->table()}
+                 SET path = CONCAT(%s, SUBSTRING(path, %d)),
+                     depth = depth + %d
+                 WHERE path LIKE %s",
+                $newPrefix,
+                strlen($oldPrefix) + 1,
+                $depthDelta,
+                $this->wpdb->esc_like($oldPrefix) . '%'
+            )
+        );
+
+        if ($result === false) {
+            return new WP_Error(
+                'folderfolio_folder_move_failed',
+                __('Unable to move the folder.', 'folderfolio')
+            );
+        }
+
+        return true;
+    }
+
+    /**
+     * Delete a folder and everything beneath it.
+     *
+     * @return int|WP_Error Number of folders deleted.
+     */
+    public function deleteSubtree(string $path): int|WP_Error
+    {
+        $deleted = $this->wpdb->query(
+            $this->wpdb->prepare(
+                "DELETE FROM {$this->table()} WHERE path LIKE %s",
+                $this->wpdb->esc_like($path) . '%'
+            )
+        );
+
+        if ($deleted === false) {
+            return new WP_Error(
+                'folderfolio_folder_delete_failed',
+                __('Unable to delete the folder.', 'folderfolio')
+            );
+        }
+
+        return (int) $deleted;
     }
 
     /**

@@ -19,10 +19,21 @@ yarn dev
 """
 
 [tasks."test:unit"]
-description = "Run PHPUnit tests"
+description = "Run the WordPress-free unit suite (milliseconds, no database)"
+run = """
+phpunit -c phpunit-unit.xml.dist
+"""
+
+[tasks."test:integration"]
+description = "Run PHPUnit against the WordPress test library"
 run = """
 phpunit
 """
+
+[tasks."test"]
+description = "Run both PHP suites"
+depends = ["test:unit", "test:integration"]
+run = ""
 
 [tasks."test:e2e"]
 description = "Run browser end-to-end tests"
