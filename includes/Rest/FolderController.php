@@ -308,10 +308,12 @@ class FolderController
                 'required' => false,
                 'sanitize_callback' => [$this, 'nullableInteger'],
             ],
+            // No sanitize_callback: sanitize_hex_color() returns null for an
+            // invalid value, which would silently discard a field the caller
+            // set. FolderService validates it and returns a 400 instead.
             'color' => [
                 'type' => 'string',
                 'required' => false,
-                'sanitize_callback' => 'sanitize_hex_color',
             ],
             'icon' => [
                 'type' => 'string',

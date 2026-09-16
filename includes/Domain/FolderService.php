@@ -368,9 +368,15 @@ class FolderService
         }
 
         if (array_key_exists('color', $data)) {
-            $result['color'] = $data['color'] === null || $data['color'] === ''
-                ? null
-                : sanitize_hex_color((string) $data['color']);
+            if ($data['color'] === null || $data['color'] === '') {
+                $result['color'] = null;
+            } else {
+                // Keep the raw value when sanitize_hex_color() rejects it, so
+                // validate() can report the problem. Nulling it here would turn
+                // a bad colour into a silent no-op.
+                $raw = (string) $data['color'];
+                $result['color'] = sanitize_hex_color($raw) ?? $raw;
+            }
         }
 
         if (array_key_exists('icon', $data)) {
