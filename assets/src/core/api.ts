@@ -30,3 +30,19 @@ export function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promis
     ...options,
   });
 }
+
+/**
+ * Look up a server-supplied label.
+ *
+ * The config object carried these strings from the start and nothing read
+ * them; every visible label was a hardcoded English literal. The fallback
+ * keeps each call site readable, and means a missing key degrades to the old
+ * behaviour rather than to "undefined".
+ *
+ * Placeholders are %s, in order, as in the PHP side.
+ */
+export function t(key: string, fallback: string, ...values: Array<string | number>): string {
+  const template = window.folderFolio?.i18n?.[key] ?? fallback;
+
+  return values.reduce<string>((out, value) => out.replace('%s', String(value)), template);
+}

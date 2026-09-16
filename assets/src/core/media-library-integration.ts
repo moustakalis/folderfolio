@@ -1,3 +1,5 @@
+import { t } from './api';
+
 interface FolderSelectedDetail {
     folderId: number | null;
 }
@@ -59,12 +61,12 @@ function renderInfoBar(folderId: number): void {
 
     infoBar.replaceChildren();
 
-    const label = document.createTextNode(`Filtering by folder #${folderId} `);
+    const label = document.createTextNode(`${t('filteringBy', 'Filtering by folder #%s', folderId)} `);
     const clearButton = document.createElement('button');
 
     clearButton.type = 'button';
     clearButton.className = 'button';
-    clearButton.textContent = 'Clear filter';
+    clearButton.textContent = t('clearFilter', 'Clear filter');
     clearButton.addEventListener('click', clearFolderFilter);
 
     infoBar.append(label, clearButton);

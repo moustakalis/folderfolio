@@ -3,7 +3,7 @@
  * Phase 3.3: Upload-to-Current-Folder
  */
 
-import { apiFetch, ApiEnvelope } from './api';
+import { apiFetch, ApiEnvelope, t } from './api';
 
 export class UploadIntegration {
   private activeFolderId: number | null = null;
@@ -84,7 +84,6 @@ export class UploadIntegration {
           attachment_ids: [attachmentId],
         },
       });
-      console.log(`FolderFolio: Assigned attachment ${attachmentId} to folder ${folderId}`);
     } catch (error) {
       console.error('FolderFolio: Failed to assign attachment', error);
     }
@@ -105,9 +104,9 @@ export class UploadIntegration {
 
     // Open WordPress media uploader
     const frame = wp.media({
-      title: 'Upload to Folder',
+      title: t('uploadModalTitle', 'Upload to Folder'),
       button: {
-        text: 'Upload',
+        text: t('upload', 'Upload'),
       },
       multiple: true,
     });
@@ -135,13 +134,13 @@ export class UploadIntegration {
       });
 
       const assignedCount = response.data?.assigned || attachmentIds.length;
-      alert(`Successfully assigned ${assignedCount} file(s) to folder`);
+      alert(t('assignSuccess', 'Assigned %s file(s) to the folder.', assignedCount));
 
       // Reload page to show changes
       location.reload();
     } catch (error) {
       console.error('FolderFolio: Failed to assign attachments', error);
-      alert('Failed to assign files to folder');
+      alert(t('assignFailed', 'Could not assign the selected files.'));
     }
   }
 }

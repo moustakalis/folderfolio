@@ -6,7 +6,7 @@
  * and is handled with the media frame, not here.
  */
 
-import { apiFetch, ApiEnvelope, Folder } from './api';
+import { apiFetch, ApiEnvelope, Folder, t } from './api';
 
 /** Must match MediaLibraryFilter::QUERY_VAR. */
 const FOLDER_QUERY_VAR = 'folderfolio_folder';
@@ -81,17 +81,20 @@ export class BulkActions {
     assign.type = 'button';
     assign.className = 'button';
     assign.id = 'folderfolio-bulk-assign';
-    assign.textContent = 'Assign to folder';
+    assign.textContent = t('assignToFolder', 'Assign to folder');
 
     const move = document.createElement('button');
     move.type = 'button';
     move.className = 'button';
     move.id = 'folderfolio-bulk-move';
-    move.textContent = 'Move to folder';
+    move.textContent = t('moveToFolder', 'Move to folder');
     move.disabled = this.sourceFolderId === null;
     move.title =
       this.sourceFolderId === null
-        ? 'Filter the library by a folder first - a move needs a folder to move out of.'
+        ? t(
+            'moveNeedsSource',
+            'Filter the library by a folder first - a move needs a folder to move out of.'
+          )
         : '';
 
     container.append(count, select, assign, move);
@@ -150,7 +153,7 @@ export class BulkActions {
 
     if (this.folders.length === 0) {
       const empty = document.createElement('option');
-      empty.textContent = 'No folders yet';
+      empty.textContent = t('emptyTree', 'No folders yet');
       empty.value = '';
       select.append(empty);
       select.disabled = true;
@@ -178,7 +181,7 @@ export class BulkActions {
     const count = document.getElementById('folderfolio-selected-count');
 
     if (count) {
-      count.textContent = `${this.selectedAttachmentIds.length} selected`;
+      count.textContent = t('selectedCount', '%s selected', this.selectedAttachmentIds.length);
     }
 
     if (this.container) {
@@ -199,7 +202,7 @@ export class BulkActions {
     }
 
     if (mode === 'move' && this.sourceFolderId === destination) {
-      window.alert('Those files are already in that folder.');
+      window.alert(t('alreadyInFolder', 'Those files are already in that folder.'));
       return;
     }
 
@@ -230,7 +233,11 @@ export class BulkActions {
       window.location.reload();
     } catch (error) {
       console.error(`FolderFolio: bulk ${mode} failed`, error);
-      window.alert(`Could not ${mode} the selected files.`);
+      window.alert(
+        mode === 'assign'
+          ? t('assignFailed', 'Could not assign the selected files.')
+          : t('moveFailed', 'Could not move the selected files.')
+      );
     }
   }
 }

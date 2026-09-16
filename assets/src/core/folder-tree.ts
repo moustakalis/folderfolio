@@ -1,4 +1,4 @@
-import { apiFetch, ApiEnvelope, Folder } from './api';
+import { apiFetch, ApiEnvelope, Folder, t } from './api';
 
 /** Must match MediaLibraryFilter::QUERY_VAR. */
 const FOLDER_QUERY_VAR = 'folderfolio_folder';
@@ -84,20 +84,20 @@ export class FolderTree {
 
     this.container.innerHTML = `
       <div class="folderfolio-tree-header">
-        <h3>Folders</h3>
+        <h3>${this.escapeHtml(t('folders', 'Folders'))}</h3>
         <div class="folderfolio-actions">
           <button type="button" class="button button-small" id="folderfolio-new-folder">
             <span class="dashicons dashicons-plus-alt"></span>
-            New
+            ${this.escapeHtml(t('newFolder', 'New'))}
           </button>
           <button type="button" class="button button-small" id="folderfolio-upload-to-folder">
             <span class="dashicons dashicons-upload"></span>
-            Upload
+            ${this.escapeHtml(t('upload', 'Upload'))}
           </button>
         </div>
       </div>
       <div class="folderfolio-tree-search">
-        <input type="text" placeholder="Search folders..." id="folderfolio-search-input" />
+        <input type="text" placeholder="${this.escapeHtml(t('searchPlaceholder', 'Search folders...'))}" id="folderfolio-search-input" />
       </div>
       <ul class="folderfolio-tree-list" id="folderfolio-tree-list">
         ${this.renderTree(this.tree, 0)}
@@ -107,7 +107,7 @@ export class FolderTree {
 
   private renderTree(folders: Folder[], depth: number): string {
     if (folders.length === 0) {
-      return '<li class="folderfolio-empty">No folders yet</li>';
+      return `<li class="folderfolio-empty">${this.escapeHtml(t('emptyTree', 'No folders yet'))}</li>`;
     }
 
     return folders
@@ -174,7 +174,7 @@ export class FolderTree {
   }
 
   private async handleNewFolder(): Promise<void> {
-    const name = prompt('Enter folder name:');
+    const name = prompt(t('namePrompt', 'Enter folder name:'));
     if (!name || name.trim() === '') return;
 
     try {
@@ -186,13 +186,13 @@ export class FolderTree {
       this.render();
     } catch (error) {
       console.error('FolderFolio: Failed to create folder', error);
-      alert('Failed to create folder');
+      alert(t('createFailed', 'Failed to create folder'));
     }
   }
 
   private async handleUploadToFolder(): Promise<void> {
     if (!this.activeFolderId) {
-      alert('Please select a folder first');
+      alert(t('selectFolderFirst', 'Please select a folder first'));
       return;
     }
 

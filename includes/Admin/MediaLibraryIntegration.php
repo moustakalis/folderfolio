@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace FolderFolio\Admin;
 
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 /**
  * Mounts FolderFolio inside the native Media Library screen (upload.php).
  *
@@ -124,6 +128,8 @@ final class MediaLibraryIntegration
             'mediaNewUrl' => esc_url_raw(admin_url('media-new.php')),
             'version' => FOLDERFOLIO_VERSION,
             'canManageFolders' => current_user_can('upload_files'),
+            // Every key here is read by a bundle; %s placeholders are filled
+            // positionally on the client.
             'i18n' => [
                 'folders' => __('Folders', 'folderfolio'),
                 'newFolder' => __('New', 'folderfolio'),
@@ -134,6 +140,22 @@ final class MediaLibraryIntegration
                 'selectFolderFirst' => __('Please select a folder first', 'folderfolio'),
                 'createFailed' => __('Failed to create folder', 'folderfolio'),
                 'clearFilter' => __('Clear filter', 'folderfolio'),
+                /* translators: %s is the folder ID currently filtered on. */
+                'filteringBy' => __('Filtering by folder #%s', 'folderfolio'),
+                'assignToFolder' => __('Assign to folder', 'folderfolio'),
+                'moveToFolder' => __('Move to folder', 'folderfolio'),
+                'moveNeedsSource' => __(
+                    'Filter the library by a folder first - a move needs a folder to move out of.',
+                    'folderfolio'
+                ),
+                /* translators: %s is the number of selected media items. */
+                'selectedCount' => __('%s selected', 'folderfolio'),
+                'alreadyInFolder' => __('Those files are already in that folder.', 'folderfolio'),
+                'assignFailed' => __('Could not assign the selected files.', 'folderfolio'),
+                'moveFailed' => __('Could not move the selected files.', 'folderfolio'),
+                /* translators: %s is the number of media items assigned. */
+                'assignSuccess' => __('Assigned %s file(s) to the folder.', 'folderfolio'),
+                'uploadModalTitle' => __('Upload to Folder', 'folderfolio'),
             ],
         ];
     }
