@@ -40,3 +40,9 @@ Thumbs.db
 # Environment
 .env
 .env.local
+
+# Local mise overrides
+.mise.local.toml
+
+# Files delivered into the folder by Claude
+Claude outputs/
