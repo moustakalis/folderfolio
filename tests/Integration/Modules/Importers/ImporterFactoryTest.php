@@ -1,13 +1,13 @@
 <?php
 
-namespace FolderFolio\Tests\Unit\Modules\Importers;
+namespace FolderFolio\Tests\Integration\Modules\Importers;
 
 use FolderFolio\Modules\Importers\FileBirdImporter;
 use FolderFolio\Modules\Importers\ImporterFactory;
 use InvalidArgumentException;
-use PHPUnit\Framework\TestCase;
+use WP_UnitTestCase;
 
-class ImporterFactoryTest extends TestCase
+class ImporterFactoryTest extends WP_UnitTestCase
 {
     /**
      * @test

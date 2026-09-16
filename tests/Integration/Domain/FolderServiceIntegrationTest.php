@@ -66,4 +66,38 @@ class FolderServiceIntegrationTest extends WP_UnitTestCase
         $result = $this->service->move($id, $id);
         $this->assertWPError($result);
     }
+
+    /**
+     * @test
+     */
+    public function rejects_folder_name_over_191_chars(): void
+    {
+        $result = $this->service->create(['name' => str_repeat('a', 192)]);
+        $this->assertWPError($result);
+        $this->assertSame('folderfolio_name_too_long', $result->get_error_code());
+    }
+
+    /**
+     * @test
+     */
+    public function prevents_moving_a_folder_into_its_own_descendant(): void
+    {
+        $parent = $this->service->create(['name' => 'Parent']);
+        $child = $this->service->create(['name' => 'Child', 'parent_id' => $parent]);
+        $grandchild = $this->service->create(['name' => 'Grandchild', 'parent_id' => $child]);
+
+        $result = $this->service->move($parent, $grandchild);
+
+        $this->assertWPError($result);
+        $this->assertSame('folderfolio_circular_parent', $result->get_error_code());
+    }
+
+    /**
+     * @test
+     */
+    public function rejects_an_invalid_folder_colour(): void
+    {
+        $result = $this->service->create(['name' => 'Folder', 'color' => 'not-a-colour']);
+        $this->assertWPError($result);
+    }
 }
