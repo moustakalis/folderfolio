@@ -198,9 +198,26 @@ not read out of docblocks, so four of those thirteen could not have been
 reproduced there under any setting. Level, `phpVersion`,
 `treatPhpDocTypesAsCertain` and `ignoreErrors` all come from this file.
 
-The **integration** suite is the one that genuinely needs Composer, the
-WordPress test library and a MySQL. There is no shortcut; CI runs it on PHP
-8.1 through 8.4.
+### Running the integration suite
+
+It needs Composer, the WordPress test library and a MySQL — but not CI, which
+is where it used to run and nowhere else:
+
+```bash
+composer run test:integration:setup     # WordPress + the test library into var/
+WP_TESTS_DIR=var/wp-tests-lib composer run test:integration
+```
+
+The setup script takes `[db-name] [db-user] [db-pass] [db-host] [wp-version]`
+and defaults to `wordpress_test / wordpress / wordpress / 127.0.0.1 / latest`.
+It matches the library to the WordPress it actually unpacked rather than to
+what was asked for, because a library from a different release fails in ways
+that read as plugin bugs. **The database is emptied on every run.**
+
+The first time it ran, it found three real problems in one go — an undo that
+deleted a file the import had not filed, a test file written against an API
+that changed underneath it, and a config in PHPUnit 10 spelling. CI runs the
+same suite on PHP 8.1 through 8.4.
 
 `test:pipeline`, `test:slot` and `test:tree` are not ordinary unit tests: each
 builds a fixture through the **shipping** alias table or the **shipping**
@@ -331,6 +348,19 @@ fatals before a single test runs. `phpstan.neon` pins `phpVersion` to the
 8.1–8.4 range the plugin claims, so the analyser reports them; PHPStan runs
 first in the PHP job for that reason. If you add a language feature, check
 which version introduced it.
+
+**The WordPress test suite makes every table temporary.** `WP_UnitTestCase`
+rewrites `CREATE TABLE` into `CREATE TEMPORARY TABLE` so a test's schema dies
+with its connection — which means `information_schema` cannot see the plugin's
+tables at all, and a query against it comes back 0 whatever the truth is. Ask
+`SHOW COLUMNS`. This cost a confusing half hour in `SchemaTest`.
+
+**Undo is provenance, not a time window.** Import assignments carry the run id
+in `import_run`; everything a person files has null there. It used to delete by
+(folder, `assigned_at` between), which is wrong twice over: the timestamps are
+second-granular, and screen 07 invites the user to keep working during a run
+whose every write is inside the window. If a future feature needs to know
+"what did that operation do", give the rows a column — do not ask the clock.
 
 **A PHPDoc type in WordPress is a claim, not a guarantee**, which is why
 `phpstan.neon` sets `treatPhpDocTypesAsCertain: false`. `apply_filters()` is

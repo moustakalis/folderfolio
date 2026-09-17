@@ -25,6 +25,7 @@
         ],
         "test:unit": "phpunit -c phpunit-unit.xml.dist",
         "test:integration": "phpunit",
+        "test:integration:setup": "bin/setup-wp-tests.sh",
         "phpstan": "phpstan analyse -c phpstan.neon --memory-limit=1G"
     },
     "config": {
