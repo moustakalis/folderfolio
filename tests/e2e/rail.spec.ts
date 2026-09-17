@@ -1,0 +1,185 @@
+import { expect, test } from '@playwright/test';
+
+import { createFolder, folderNames, resetFolders, waitForTree } from './helpers/folders';
+
+/**
+ * The folder rail on Media > Library.
+ *
+ * These replace a suite written against v0.2.0's markup, which by step 10 had
+ * become two files asserting on ids that no longer exist — a red CI run that
+ * said nothing about the plugin. What is checked here is the behaviour the
+ * design handoff specifies, not the DOM it happens to produce: where the rail
+ * mounts, that choosing a folder never reloads, and that the tree keeps its
+ * keyboard contract.
+ */
+
+test.describe('the folder rail', () => {
+    test.beforeEach(async ({ page }) => {
+        await page.goto('/wp-admin/upload.php');
+        await page.locator('#folderfolio-rail').waitFor();
+        await resetFolders(page);
+        await page.reload();
+        await page.locator('#folderfolio-rail').waitFor();
+    });
+
+    test('mounts as a sibling of the content column, not inside the notices', async ({ page }) => {
+        // v0.2.0 rendered into all_admin_notices, which is why its rail
+        // scrolled away with the page and a plugin update notice could push it
+        // down the screen. The order below is the fix, and it is load-bearing.
+        const order = await page.evaluate(() =>
+            [...(document.getElementById('wpbody')?.children ?? [])].map((el) => el.id || el.className)
+        );
+
+        expect(order.slice(0, 3)).toEqual([
+            'folderfolio-rail',
+            'folderfolio-rail-handle',
+            'wpbody-content',
+        ]);
+    });
+
+    test('shows All media and Unassigned above the tree', async ({ page }) => {
+        const fixed = page.locator('.folderfolio-rail__fixed .folderfolio-row');
+
+        await expect(fixed).toHaveCount(2);
+        await expect(fixed.first()).toContainText('All media');
+        await expect(fixed.nth(1)).toContainText('Unassigned');
+    });
+
+    test('creates a folder inline, in the tree rather than in a dialog', async ({ page }) => {
+        await page.getByRole('button', { name: /new folder/i }).click();
+
+        const input = page.locator('.folderfolio-row__input');
+        await expect(input).toBeFocused();
+
+        await input.fill('Brand');
+        await input.press('Enter');
+
+        await expect(page.locator('.folderfolio-tree')).toContainText('Brand');
+        expect(await folderNames(page)).toContain('Brand');
+    });
+
+    test('selecting a folder filters without reloading the page', async ({ page }) => {
+        const folder = await createFolder(page, 'Campaigns');
+        await page.reload();
+        await waitForTree(page, 'Campaigns');
+
+        // A marker that cannot survive a navigation. This is the whole point
+        // of lib/list-refresh.ts and of re-querying the grid in place.
+        await page.evaluate(() => {
+            (window as unknown as { __ff: string }).__ff = 'alive';
+        });
+
+        await page.locator('.folderfolio-row', { hasText: 'Campaigns' }).click();
+
+        await expect(page).toHaveURL(new RegExp(`folderfolio_folder=${folder.id}`));
+        await expect(page.locator('.folderfolio-crumbs')).toContainText('Campaigns');
+
+        expect(
+            await page.evaluate(() => (window as unknown as { __ff?: string }).__ff)
+        ).toBe('alive');
+    });
+
+    test('deleting offers undo, and undo means the server was never told', async ({ page }) => {
+        await createFolder(page, 'Archive');
+        await page.reload();
+        await waitForTree(page, 'Archive');
+
+        await page.locator('.folderfolio-row', { hasText: 'Archive' }).click();
+        await page.getByRole('button', { name: /^delete$/i }).click();
+
+        // The rail's body, not the tree: deleting the only folder replaces
+        // the tree with the empty state, and a `not.toContainText` on a
+        // locator that no longer exists fails rather than passes.
+        await expect(page.locator('.folderfolio-rail__body')).not.toContainText('Archive');
+
+        const toast = page.locator('.folderfolio-toast');
+        await expect(toast).toBeVisible();
+        await expect(toast).toContainText('Archive');
+
+        await toast.getByRole('button', { name: /undo/i }).click();
+
+        await expect(page.locator('.folderfolio-rail__body')).toContainText('Archive');
+        // The real assertion: not that the row came back, but that the folder
+        // is still on the server — undo is "do not send the delete", not
+        // "create it again", because the id is what every assignment refers to.
+        expect(await folderNames(page)).toContain('Archive');
+    });
+});
+
+test.describe('the tree keyboard', () => {
+    test.beforeEach(async ({ page }) => {
+        await page.goto('/wp-admin/upload.php');
+        await page.locator('#folderfolio-rail').waitFor();
+        await resetFolders(page);
+
+        const brand = await createFolder(page, 'Brand');
+        await createFolder(page, 'Logos', brand.id);
+        await createFolder(page, 'Campaigns');
+
+        await page.reload();
+        await waitForTree(page, 'Brand');
+    });
+
+    const tabbable = (page: import('@playwright/test').Page) =>
+        page.locator('.folderfolio-row[tabindex="0"]');
+
+    test('is a single tab stop', async ({ page }) => {
+        await expect(tabbable(page)).toHaveCount(1);
+    });
+
+    test('arrowing moves focus without re-filtering the library', async ({ page }) => {
+        const url = page.url();
+
+        await page.locator('.folderfolio-tree .folderfolio-row').first().focus();
+        await page.keyboard.press('ArrowDown');
+
+        await expect(tabbable(page)).toHaveCount(1);
+        await expect(tabbable(page)).toContainText('Campaigns');
+
+        // Focus is tracked apart from selection precisely so that this holds.
+        expect(page.url()).toBe(url);
+    });
+
+    test('Right expands, then steps into the branch; Left comes back out', async ({ page }) => {
+        await page.locator('.folderfolio-tree .folderfolio-row').first().focus();
+
+        await page.keyboard.press('ArrowRight');
+        await expect(page.locator('.folderfolio-tree')).toContainText('Logos');
+        await expect(tabbable(page)).toContainText('Brand');
+
+        await page.keyboard.press('ArrowRight');
+        await expect(tabbable(page)).toContainText('Logos');
+
+        await page.keyboard.press('ArrowLeft');
+        await expect(tabbable(page)).toContainText('Brand');
+    });
+
+    test('collapsing a branch the focused row is inside keeps a way back in', async ({ page }) => {
+        await page.locator('.folderfolio-tree .folderfolio-row').first().focus();
+        await page.keyboard.press('ArrowRight');
+        await page.keyboard.press('ArrowRight');
+        await expect(tabbable(page)).toContainText('Logos');
+
+        // Collapse the parent from its switcher — the pointer path, while
+        // focus is on a row inside it.
+        await page
+            .locator('.folderfolio-row', { hasText: 'Brand' })
+            .locator('.folderfolio-row__switcher')
+            .click();
+
+        // Exactly one, and on the row that was collapsed rather than dropped
+        // to the top of the tree. Without this the tree leaves the tab order
+        // entirely and nothing on screen looks wrong.
+        await expect(tabbable(page)).toHaveCount(1);
+        await expect(tabbable(page)).toContainText('Brand');
+    });
+
+    test('Enter is the only key that filters', async ({ page }) => {
+        await page.locator('.folderfolio-tree .folderfolio-row').first().focus();
+        await page.keyboard.press('ArrowDown');
+        await page.keyboard.press('Enter');
+
+        await expect(page).toHaveURL(/folderfolio_folder=\d+/);
+        await expect(page.locator('.folderfolio-crumbs')).toContainText('Campaigns');
+    });
+});

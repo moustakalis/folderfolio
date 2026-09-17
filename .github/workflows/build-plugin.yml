@@ -56,6 +56,31 @@ jobs:
       - name: Verify the wp-element pipeline
         run: yarn test:pipeline
 
+      # Two more browser harnesses, for the two other things that fail
+      # silently: a React portal whose container core replaced underneath it
+      # (the controls simply stop coming back, with no error), and the tree's
+      # roving tabindex, whose failure is that the whole tree leaves the tab
+      # order while looking perfectly normal.
+      - name: Verify the toolbar slot
+        run: yarn test:slot
+
+      - name: Verify the tree's keyboard invariant
+        run: yarn test:tree
+
+      # End to end against a real WordPress, booted by the test run itself on
+      # php-wasm — no Docker, no database, no site to point at. See
+      # playwright.config.ts.
+      - name: End-to-end
+        run: yarn test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-report-${{ github.sha }}
+          path: playwright-report/
+          retention-days: 7
+
       # No PHP here on purpose: bin/build-zip.sh copies an allowlist and zips
       # it. It runs no PHP and needs no Composer.
       - name: Assemble installable plugin
