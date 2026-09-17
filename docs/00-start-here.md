@@ -29,7 +29,7 @@ the current diff. The domain layer, the REST surface and the importers are
 | Block inspector tree at 268px | done |
 | Settings screen — three tabs, and the roles matrix | done |
 | Migration wizard — four steps, nine sources, undo | done |
-| Gallery block | block, render.php, inspector — done; shortcode, lightbox, theme compat to come |
+| Gallery block | block, shortcode, lightbox, inspector — done; theme-compat pass to come |
 
 `DESIGN-TO-CODE.md`'s "Suggested order" is the sequence being followed, and its
 screen numbers are referenced throughout the code comments.
@@ -139,9 +139,27 @@ This also closed design step 9b. The 268px inspector tree turned out to be a
 container class and an error state, because `.folderfolio-tree--inspector`
 had been in `_row.css` since step 2 waiting for a block to live in.
 
-Still to come in the phase: the `[folderfolio_gallery]` shortcode, core's
-Interactivity-API lightbox, theme-compat passes, and the
-unauthenticated-access tests.
+**The shortcode takes a path**: `[folderfolio_gallery folder="Brand/Logos"
+columns="4" layout="masonry" subfolders="yes" lightbox="yes"]`. A person
+writing one by hand knows their folder as "Brand/Logos" and nobody knows it as
+47. It is resolved with `findByPath()`, never `getOrCreateByPath()`, so a typo
+cannot create a folder — and everything else is mapped to the block's
+attributes and handed to `render_block()`, so the shortcode and the block are
+one renderer.
+
+**The lightbox is core's.** Opting into it means rendering each image *as* a
+`core/image` block with `lightbox.enabled`, which is what the Interactivity
+API wires up; the plugin still ships no front-end JavaScript of its own, and
+`galleryId` context goes along so the arrow keys page through the gallery.
+
+**A gallery cannot show what the theme would not.** `is_post_publicly_viewable()`
+filters the result, and the check does not depend on who is looking — an
+editor sees exactly the gallery a visitor gets. That filter exists because the
+test found the hole: `post_status => 'inherit'` returns attachments whose
+parent is private, draft or trashed, to anybody.
+
+Still to come in the phase: the theme-compat pass against the last three
+default themes and a page builder.
 
 ### The three debts, and what they became
 
