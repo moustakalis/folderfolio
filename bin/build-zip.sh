@@ -3,7 +3,11 @@
 # Build the distributable plugin ZIP.
 #
 # Single packaging path: both `mise run dev:zip` and CI call this script, so a
-# release artifact cannot differ from what a developer builds locally.
+# release artifact cannot differ from what a developer builds locally. The
+# allowlist itself lives in bin/stage-plugin.sh, which the end-to-end suite
+# also uses — so the files the tests run against and the files that ship are
+# the same files by construction.
+#
 # Assets must already be built (mise's dev:zip depends on assets:build).
 
 set -euo pipefail
@@ -12,62 +16,14 @@ PLUGIN_SLUG="folderfolio"
 DIST_DIR="dist"
 STAGE_DIR="${DIST_DIR}/${PLUGIN_SLUG}"
 ZIP_FILE="${DIST_DIR}/${PLUGIN_SLUG}.zip"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Always start from a clean distribution folder: no artifact from a previous
 # build may survive into this one.
 rm -rf "${DIST_DIR}"
-mkdir -p "${STAGE_DIR}"
+mkdir -p "${DIST_DIR}"
 
-# Runtime allowlist. Nothing is copied that is not named here.
-cp "${PLUGIN_SLUG}.php" "${STAGE_DIR}/"
-cp uninstall.php "${STAGE_DIR}/"
-cp -R includes "${STAGE_DIR}/"
-
-if [ -d assets/build ]; then
-  mkdir -p "${STAGE_DIR}/assets"
-  cp -R assets/build "${STAGE_DIR}/assets/"
-  # Source maps are a development aid; they double the payload.
-  find "${STAGE_DIR}/assets" -name '*.map' -delete
-fi
-
-if [ -d languages ]; then
-  cp -R languages "${STAGE_DIR}/"
-fi
-
-for f in LICENSE README.md readme.txt; do
-  if [ -f "$f" ]; then
-    cp "$f" "${STAGE_DIR}/"
-  fi
-done
-
-find "${STAGE_DIR}" -name '.DS_Store' -delete
-
-# The activation fatal this project already hit once was a ZIP without the
-# autoloader. Fail the build rather than ship that again.
-if [ ! -f "${STAGE_DIR}/includes/Autoloader.php" ]; then
-  echo "FATAL: includes/Autoloader.php missing from the staged plugin." >&2
-  exit 1
-fi
-
-# The public PHP API is required by folderfolio.php, not autoloaded, so a
-# packaging mistake that dropped it would fatal on activation rather than
-# degrade quietly.
-if [ ! -f "${STAGE_DIR}/includes/api.php" ]; then
-  echo "FATAL: includes/api.php missing from the staged plugin." >&2
-  exit 1
-fi
-
-if [ ! -f "${STAGE_DIR}/includes/Plugin.php" ]; then
-  echo "FATAL: includes/Plugin.php missing from the staged plugin." >&2
-  exit 1
-fi
-
-# WordPress only runs uninstall.php if it is in the archive; without it,
-# deleting the plugin silently leaves four tables behind.
-if [ ! -f "${STAGE_DIR}/uninstall.php" ]; then
-  echo "FATAL: uninstall.php missing from the staged plugin." >&2
-  exit 1
-fi
+bash "${HERE}/stage-plugin.sh" "${STAGE_DIR}"
 
 (
   cd "${DIST_DIR}"

@@ -57,6 +57,15 @@ final class Runner
      */
     public const BATCH = 25;
 
+    /**
+     * How many skipped attachment ids the run record keeps.
+     *
+     * The report names them — "attachments 118 and 204 no longer exist" is
+     * actionable where a bare count is not — but it names a handful, and the
+     * run lives in an option.
+     */
+    public const SKIPPED_KEPT = 100;
+
     public function __construct(
         private readonly RunStore $store = new RunStore(),
         private readonly FolderService $service = new FolderService(),
@@ -332,19 +341,53 @@ final class Runner
             $run->touchedFolderIds[] = $folderId;
         }
 
-        $ids = $source->attachmentIdsFor($folder->id);
+        $ids = array_values(array_unique($source->attachmentIdsFor($folder->id)));
 
         if ([] === $ids) {
             return $folderId;
         }
 
-        $added = $this->service->assignAttachments($folderId, $ids, FolderService::MODE_ADD);
+        // Filtered before assigning, not after, and for two reasons.
+        //
+        // `FolderService::assignAttachments()` rejects the **whole batch** if
+        // one id is not an attachment, so a single file deleted years ago
+        // would take every real file in its folder with it — and every source
+        // names files like that, which is why screen 07 has a "skipped" line
+        // at all.
+        //
+        // And it counts every id it processes, including ones already filed
+        // there. Diffing first is what makes `files_added` in the report the
+        // same number the preview promised on a second run, instead of
+        // counting the same thirty-six files again.
+        $real = Media::existing($ids);
+        $missing = array_values(array_diff($ids, $real));
+
+        if ([] !== $missing) {
+            $run->skippedTotal += count($missing);
+
+            // Bounded: a source naming five thousand dead ids should not put
+            // five thousand integers in an option. The report shows the first
+            // few and the count carries the rest.
+            $run->skipped = array_values(array_slice(
+                array_unique([...$run->skipped, ...$missing]),
+                0,
+                self::SKIPPED_KEPT
+            ));
+        }
+
+        $filed = $this->assignments->attachmentIdsForFolder($folderId);
+        $new = array_values(array_diff($real, $filed));
+
+        if ([] === $new) {
+            return $folderId;
+        }
+
+        $added = $this->service->assignAttachments($folderId, $new, FolderService::MODE_ADD);
 
         if (is_wp_error($added)) {
-            // A single unfileable attachment is not a reason to abandon a
-            // migration. The count is what the report shows; the file stays
-            // where it was.
-            $run->skipped = array_values(array_unique([...$run->skipped, ...$ids]));
+            // Not fatal to the migration: the folder is made, the files stay
+            // where they were, and the report says what went wrong.
+            $run->error = $added->get_error_message();
 
             return $folderId;
         }

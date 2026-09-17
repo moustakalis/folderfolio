@@ -5,11 +5,19 @@ declare(strict_types=1);
 namespace FolderFolio\Tests\Unit\Domain;
 
 use FolderFolio\Domain\FolderPath;
-use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-#[CoversClass(FolderPath::class)]
+/**
+ * Annotations, not attributes.
+ *
+ * composer.json pins phpunit ^9.6, because that is what the WordPress test
+ * library the integration suite runs against requires. PHPUnit 9 reads
+ * `@dataProvider` and ignores `#[DataProvider]` **silently** — the test runs
+ * with no arguments and errors with "too few arguments", which is how this was
+ * found: green locally on nothing, red in CI on PHPUnit 9.6.
+ *
+ * @covers \FolderFolio\Domain\FolderPath
+ */
 final class FolderPathTest extends TestCase
 {
     public function test_a_root_folder_path_is_its_own_id(): void
@@ -74,8 +82,9 @@ final class FolderPathTest extends TestCase
      * folder 7 would show folder 70's files, moving 7 would re-point 70, and
      * deleting 7 would delete 70. With the trailing slash the pattern demands
      * a literal `/` where `/1/70/` has a `0`, and none of that happens.
+     *
+     * @dataProvider prefixCollisions
      */
-    #[DataProvider('prefixCollisions')]
     public function test_an_id_that_is_a_string_prefix_does_not_leak(string $path, string $ancestor): void
     {
         self::assertFalse(

@@ -67,9 +67,32 @@ jobs:
       - name: Verify the tree's keyboard invariant
         run: yarn test:tree
 
+      # WordPress Playground downloads a WordPress build (~36MB) on its first
+      # boot and caches it under ~/.wordpress-playground. Without this, every
+      # run is a cold boot — which is what made the 3-minute webServer timeout
+      # fire on a runner while never firing on a developer machine.
+      #
+      # Keyed on the lockfile so a Playground upgrade re-downloads rather than
+      # restoring a build it no longer wants.
+      - name: Cache WordPress Playground
+        uses: actions/cache@v4
+        with:
+          path: ~/.wordpress-playground
+          key: playground-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
+          restore-keys: |
+            playground-${{ runner.os }}-
+
       # End to end against a real WordPress, booted by the test run itself on
-      # php-wasm — no Docker, no database, no site to point at. See
-      # playwright.config.ts.
+      # php-wasm — no Docker, no database, no site to point at.
+      #
+      # The boot lives in tests/e2e/global-setup.ts rather than in Playwright's
+      # `webServer` block, because Playground accepts connections half a second
+      # in and answers 502 for the next fifteen while it installs WordPress —
+      # which neither of Playwright's readiness mechanisms handles, and whose
+      # failure here was a bare "Timed out waiting 180000ms".
+      #
+      # What gets mounted is the staged plugin, not the checkout, so this also
+      # runs against the same file set bin/build-zip.sh ships.
       - name: End-to-end
         run: yarn test:e2e
 

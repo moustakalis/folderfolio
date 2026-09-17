@@ -124,23 +124,24 @@ export function Report({
                 </div>
             )}
 
-            {run.skipped.length > 0 && (
+            {run.skipped_total > 0 && (
                 <div className="folderfolio-wizard__panel">
                     <div className="folderfolio-wizard__panelTitle">
                         {tn(
                             'importSkipOne',
                             'importSkipMany',
-                            run.skipped.length,
+                            run.skipped_total,
                             'Skipped — %s file',
                             'Skipped — %s files',
-                            run.skipped.length
+                            run.skipped_total
                         )}
                     </div>
                     <div className="folderfolio-wizard__panelBody">
                         {t(
                             'importSkippedIds',
                             'Attachments %1$s are referenced by %2$s but no longer exist in the media library.',
-                            run.skipped.slice(0, 20).join(', ') + (run.skipped.length > 20 ? '…' : ''),
+                            run.skipped.slice(0, 20).join(', ') +
+                                (run.skipped_total > 20 ? '…' : ''),
                             run.label
                         )}
                     </div>

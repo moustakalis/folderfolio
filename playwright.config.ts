@@ -4,30 +4,33 @@ import { defineConfig, devices } from '@playwright/test';
  * End-to-end against a real WordPress, booted by the test run itself.
  *
  * WordPress Playground runs WordPress on php-wasm inside Node, so the suite
- * needs no Docker, no database and no site to point at: `webServer` below
- * boots one, mounts this checkout into it as a plugin, logs in, and tears it
- * down afterwards. That is what makes these tests runnable in CI and on a
- * laptop with nothing installed, which the previous suite — which assumed a
- * WordPress at localhost:8889 — was not.
+ * needs no Docker, no database and no site to point at. `globalSetup` boots
+ * one, mounts the staged plugin into it, logs in, waits until it is actually
+ * serving, and shuts it down afterwards. That is what makes these tests
+ * runnable in CI and on a laptop with nothing installed, which the previous
+ * suite — which assumed a WordPress at localhost:8889 — was not.
  *
- * WP_BASE_URL still overrides it, for running against a real install.
+ * The boot is ours rather than Playwright's `webServer` block for a specific
+ * reason, written up in tests/e2e/global-setup.ts: Playground accepts
+ * connections half a second in and answers 502 for the next fifteen seconds,
+ * which neither of Playwright's readiness mechanisms handles — and its failure
+ * mode was a bare "Timed out waiting 180000ms from config.webServer" in CI.
+ *
+ * WP_BASE_URL overrides the whole thing, for running against a real install.
  */
 const port = Number(process.env.WP_PORT || 9411);
-const external = process.env.WP_BASE_URL;
-const baseURL = external || `http://127.0.0.1:${port}`;
-
-/** The checkout is the plugin: folderfolio.php sits at its root. */
-const pluginDir = process.env.WP_PLUGIN_DIR || process.cwd();
+const baseURL = process.env.WP_BASE_URL || `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: './tests/e2e',
+  globalSetup: './tests/e2e/global-setup.ts',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   // One worker: every test shares one WordPress, and folders are global state.
   workers: 1,
   reporter: process.env.CI
-    ? [['github'], ['html', { outputFolder: 'playwright-report', open: 'never' }]]
+    ? [['github'], ['list'], ['html', { outputFolder: 'playwright-report', open: 'never' }]]
     : 'list',
   use: {
     baseURL,
@@ -54,21 +57,4 @@ export default defineConfig({
       },
     },
   ],
-  webServer: external
-    ? undefined
-    : {
-        command: [
-          'npx wp-playground-cli server',
-          `--port ${port}`,
-          `--auto-mount "${pluginDir}"`,
-          '--login',
-          '--verbosity quiet',
-        ].join(' '),
-        url: `${baseURL}/wp-admin/upload.php`,
-        // Cold, Playground downloads WordPress; warm it is a few seconds.
-        timeout: 180_000,
-        reuseExistingServer: !process.env.CI,
-        stdout: 'ignore',
-        stderr: 'pipe',
-      },
 });

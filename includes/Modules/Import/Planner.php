@@ -47,7 +47,8 @@ use FolderFolio\Domain\FolderRepository;
  *
  * One query per source folder for its attachment ids, one per existing target
  * folder for what is filed there already, and one per 500 attachment ids to
- * check they still exist. Folder counts are in the hundreds even on large
+ * check they still exist (`Media`, shared with the runner so the two cannot
+ * disagree about what is importable). Folder counts are in the hundreds even on large
  * sites, and this runs when a human presses Preview: being exact is worth more
  * than the queries, because every number here is one somebody is about to make
  * a decision on.
@@ -148,7 +149,7 @@ final class Planner
             }
         }
 
-        $existing = array_flip($this->existingAttachments(array_keys($named)));
+        $existing = array_flip(Media::existing(array_keys($named)));
 
         $toAdd = 0;
         $already = 0;
@@ -225,49 +226,5 @@ final class Planner
         $row = $this->folders->findByName($folder->name, $parentOurs);
 
         return null === $row ? null : (int) $row['id'];
-    }
-
-    /**
-     * Which of these attachment ids are still attachments?
-     *
-     * The source's pair table has no foreign key — none of them do — so it
-     * happily names files that were deleted years ago. Screen 07 calls these
-     * out by id rather than burying them in a count, because "attachments 118
-     * and 204 no longer exist" is something a person can act on.
-     *
-     * @param list<int> $ids
-     *
-     * @return list<int>
-     */
-    private function existingAttachments(array $ids): array
-    {
-        global $wpdb;
-
-        if ([] === $ids) {
-            return [];
-        }
-
-        $found = [];
-
-        // Chunked: a library with 50,000 filed attachments would otherwise
-        // build one IN() list past max_allowed_packet.
-        foreach (array_chunk($ids, 500) as $chunk) {
-            $placeholders = implode(', ', array_fill(0, count($chunk), '%d'));
-
-            /** @var list<string> $rows */
-            $rows = $wpdb->get_col(
-                $wpdb->prepare(
-                    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-                    "SELECT ID FROM {$wpdb->posts} WHERE post_type = 'attachment' AND ID IN ({$placeholders})",
-                    ...$chunk
-                )
-            ) ?: [];
-
-            foreach ($rows as $row) {
-                $found[] = (int) $row;
-            }
-        }
-
-        return $found;
     }
 }

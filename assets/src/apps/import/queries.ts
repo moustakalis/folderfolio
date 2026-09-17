@@ -34,6 +34,7 @@ export interface RunState {
     duplicates_collapsed: number;
     files_added: number;
     skipped: number[];
+    skipped_total: number;
     unreachable: Array<{ id: number; name: string; reason: string }>;
     error: string;
     can_undo: boolean;
