@@ -28,7 +28,8 @@ the current diff. The domain layer, the REST surface and the importers are
 | Media picker — the folder column at 240px | done |
 | Block inspector tree at 268px | waiting on the gallery block |
 | Settings screen — three tabs, and the roles matrix | done |
-| Migration wizard | not started |
+| Migration wizard — four steps, nine sources, undo | done |
+| Gallery block | not started |
 
 `DESIGN-TO-CODE.md`'s "Suggested order" is the sequence being followed, and its
 screen numbers are referenced throughout the code comments.
@@ -48,8 +49,8 @@ the design steps all sit inside phases 4–6.
 | 4 | Frontend foundation | done |
 | 5 | Interaction | done |
 | 6 | Modal and settings | done |
-| 7 | Import | **current** — the tab exists, the wizard does not |
-| 8 | Gallery block | not started; unblocks the 268px inspector tree |
+| 7 | Import | done |
+| 8 | Gallery block | **current**; unblocks the 268px inspector tree |
 | 9 | Release candidate and hardening | not started |
 | 10 | Release | not started |
 
@@ -81,10 +82,38 @@ every read and a button that runs nothing is worse than no button; and
 v0.2.0's `folderfolio-import` slug is gone rather than redirected, because
 wp-admin refuses an unregistered page slug before `admin_init` runs.
 
-**Phase 7 is next**: screen 07's four-step wizard, which lands in the Import
-tab. What is in that tab today is v0.2.0's jQuery table, `confirm()` and
-`alert()` included, moved rather than rewritten — replacing a dialog with a
-dialog on the way to the wizard would have been two rewrites of the same code.
+**Phase 7, done.** The Import tab is screen 07's four-step wizard — choose a
+source, read the preview, watch it run, read the report — and the module
+behind it is new from the ground up. v0.2.0's importer was written against
+tables FileBird has never had, so it reported "not installed" on every real
+FileBird site.
+
+Nine sources in three storage shapes, every schema read from the plugin's own
+`CREATE TABLE`: custom tables (FileBird, Real Media Library, CatFolders),
+taxonomy terms (Folders, Wicked Folders, Enhanced Media Library, Media Library
+Assistant, WP Media Folder, HappyFiles — one reader, six sources) and a post
+type (WP Media Library Folders, which has no reader, because its schema has
+not been read and a reader written from a guess is worse than none).
+
+The properties worth knowing:
+
+- **Detection asks two questions** — is the data there, and is the plugin
+  running. The case this feature is for is a plugin deactivated a year ago
+  whose rows are still in the database.
+- **The planner writes nothing** and predicts exactly what the run will do.
+- **Add, never move.** Our assignment table permits a file in many folders and
+  so does the code, so an import never takes a file out of a folder the user
+  made. Running CatFolders' own FileBird import over a hand-built tree emptied
+  three folders and made five duplicates; this cannot.
+- **Per-folder provenance**, keyed `import:<source>:<id>` — the ids are in the
+  key, not the value, because several source folders can land in one folder
+  here. A second run reconciles; renaming a folder does not break the link.
+- **Batched and resumable**, cursor on the server, which is what lets the
+  screen say "you can leave this page".
+- **Undo**, which keeps any folder somebody has put their own files into since.
+
+**Phase 8 is next**: the gallery block, which also unblocks design step 9b —
+the 268px inspector tree, whose geometry is already in `_row.css`.
 
 ### The three debts, and what they became
 
@@ -149,7 +178,8 @@ its container being replaced, whether focus came back, whether exactly one row
 is tabbable — all fail silently and look fine in a screenshot. Each has
 negative controls that were run: break the mechanism and the harness fails.
 
-`test:e2e` is 22 tests, five of them on the settings screen. Two of those five
+`test:e2e` is 26 tests, five on the settings screen and four on the import
+wizard. Two of those five
 cross the line that matters for a settings screen: a value saved on it changing
 what the media library does on the next page load.
 
@@ -238,6 +268,20 @@ Click the label; it is what a user clicks.
 **`rows` is a reserved word in MySQL 8.** `SELECT COUNT(*) AS rows` is a syntax
 error there and runs fine on 5.7 — the kind of difference that ships. See
 `StatusReport::assignmentSummary()`.
+
+**Three plugins, three different root markers.** FileBird and CatFolders write
+`0` for "no parent", Real Media Library writes `-1`, WordPress taxonomy terms
+write `0`, and we write `NULL`. Each import reader normalises once, at the
+edge; getting it wrong creates a phantom parent rather than an error.
+
+**A source folder can be called `Q1/Q2`.** Which is why the importer walks
+parent by parent through `findByName()` rather than going through
+`getOrCreateByPath()`, which splits on `/` and would turn one folder into two
+with no way to tell afterwards.
+
+**`t()` fills `%s` sequentially.** Positional `%1$s` placeholders now work too,
+but that was a silent bug for six steps: the string rendered verbatim, on
+screen, in English.
 
 **Row geometry and focus both live in the row, not in the tree.** Beyond the
 custom properties above: `Tree` deliberately does not subscribe to `focusedId`
