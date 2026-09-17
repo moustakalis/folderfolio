@@ -364,6 +364,8 @@ final class Rail
                 'addToFolder' => __('Add to folder', 'folderfolio'),
                 'findFolder' => __('Find a folder', 'folderfolio'),
                 'addsACopy' => __('Adds a copy of the membership', 'folderfolio'),
+                /* translators: %s is the number of folders not shown. */
+                'andMoreFolders' => __('%s more — keep typing to narrow', 'folderfolio'),
                 'addFailed' => __('Could not file those files.', 'folderfolio'),
                 /* translators: %s is the number of selected media files. */
                 'fileSelected' => __('%s file selected', 'folderfolio'),

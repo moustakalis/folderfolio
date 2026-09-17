@@ -8,7 +8,7 @@
  * so the tree is flattened once per render and the key handler works on that.
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 
 import { CreateRow, Row, GhostRows } from './Row';
 import type { FolderNode } from './queries';
@@ -30,6 +30,11 @@ const typed = { text: '', at: 0 };
 interface Visible {
     node: FolderNode;
     depth: number;
+}
+
+/** Is `id` anywhere beneath `node`? */
+function contains(node: FolderNode, id: number): boolean {
+    return node.children.some((child) => child.id === id || contains(child, id));
 }
 
 /** Depth-first, skipping anything inside a collapsed parent. */
@@ -54,8 +59,17 @@ export interface TreeProps {
 }
 
 export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: TreeProps) {
-    const selectedId = useRail((s) => s.selectedId);
-    const focusedId = useRail((s) => s.focusedId);
+    /*
+     * Deliberately not subscribed to `focusedId` or `selectedId`.
+     *
+     * Either one would make this component re-render on every arrow key, and
+     * re-rendering this component re-creates every Row element beneath it. The
+     * rows read those two values themselves; see Row.tsx. What is left here is
+     * a single boolean — whether anything is focused at all — which changes
+     * twice in a session rather than on every keystroke, and which the roving
+     * tabindex needs so that the tree is always reachable by Tab.
+     */
+    const nothingFocused = useRail((s) => s.focusedId === null);
     const expandedIds = useRail((s) => s.expandedIds);
     const editing = useRail((s) => s.editing);
     const sort = useRail((s) => s.sort);
@@ -73,6 +87,54 @@ export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: Tre
         (id: number) => visible.find((v) => v.node.children.some((c) => c.id === id))?.node ?? null,
         [visible]
     );
+
+    /**
+     * Collapsing a row that contains the focused one takes focus with it.
+     *
+     * Otherwise focus is left pointing at a row that is no longer rendered:
+     * no row is tabbable, and the whole tree drops out of the tab order
+     * silently. Moving focus to the row being collapsed is also what the user
+     * means — that row is the thing they just acted on.
+     */
+    const toggleKeepingFocus = useCallback(
+        (node: FolderNode) => {
+            const { focusedId: current, focus: moveFocus } = useRail.getState();
+
+            if (expandedIds.has(node.id) && current !== null && contains(node, current)) {
+                moveFocus(node.id);
+            }
+
+            toggle(node.id);
+        },
+        [expandedIds, toggle]
+    );
+
+    /**
+     * Focus never points at a row that is not on screen.
+     *
+     * The roving tabindex is the tree's only way in from the keyboard, and it
+     * is now an emergent property: each row decides for itself whether it is
+     * the focused one, and the first row stands in when nothing is. So if
+     * `focusedId` ever names a row that is not rendered — a folder deleted in
+     * another tab, a refetch that dropped it — *no* row is tabbable and the
+     * whole tree silently leaves the tab order.
+     *
+     * Clearing it restores the fallback. This is an effect on the shape of the
+     * tree rather than on focus, so it runs when folders appear or disappear
+     * and never on an arrow key — which is the whole reason this component
+     * does not subscribe to focus in the first place. Collapsing is handled
+     * before it gets here, by toggleKeepingFocus, because moving focus to the
+     * row you just collapsed is better than dropping it to the top.
+     *
+     * tools/verify-tree.mjs asserts the invariant this protects.
+     */
+    useEffect(() => {
+        const { focusedId: current, focus: moveFocus } = useRail.getState();
+
+        if (current !== null && !visible.some((v) => v.node.id === current)) {
+            moveFocus(null);
+        }
+    }, [visible]);
 
     const onKeyDown = useCallback(
         (event: React.KeyboardEvent) => {
@@ -102,6 +164,10 @@ export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: Tre
                 return;
             }
 
+            // Read at event time rather than from render: this component no
+            // longer re-renders when focus moves, so a captured value would be
+            // whatever it was when the tree last changed shape.
+            const focusedId = useRail.getState().focusedId;
             const index = visible.findIndex((v) => v.node.id === focusedId);
             const current = index === -1 ? visible[0] : visible[index];
             const at = index === -1 ? 0 : index;
@@ -139,6 +205,8 @@ export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: Tre
                     event.preventDefault();
 
                     if (expandedIds.has(current.node.id)) {
+                        // Focus is on this row, not inside it, so collapsing
+                        // cannot strand it — no guard needed here.
                         collapse(current.node.id);
 
                         return;
@@ -226,7 +294,7 @@ export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: Tre
             }
         },
         [
-            visible, focusedId, expandedIds, editing,
+            visible, expandedIds, editing,
             focus, select, toggle, expand, collapse, edit, parentOf,
             onSaveEdit, onCancelEdit, onDelete,
         ]
@@ -252,7 +320,7 @@ export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: Tre
         );
     }
 
-    const focusedIsVisible = visible.some((v) => v.node.id === focusedId);
+    const firstRowId = visible[0]?.node.id ?? null;
 
     return (
         <ul
@@ -277,18 +345,10 @@ export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: Tre
                     node={node}
                     depth={depth}
                     expanded={expanded}
-                    selected={selectedId === node.id}
                     renaming={editing?.mode === 'rename' && editing.folderId === node.id}
-                    // If the focused row has been collapsed out of sight, the
-                    // first row takes the tab stop — otherwise Tab would land
-                    // on nothing.
-                    focused={
-                        focusedIsVisible
-                            ? focusedId === node.id
-                            : node.id === visible[0]?.node.id
-                    }
+                    fallbackTabStop={nothingFocused && node.id === firstRowId}
                     onSelect={() => select(node.id)}
-                    onToggle={() => toggle(node.id)}
+                    onToggle={() => toggleKeepingFocus(node)}
                 >
                     {expanded && node.children.length > 0 ? (
                         <ul role="group">

@@ -18,10 +18,16 @@ export interface RowProps {
     node: FolderNode;
     depth: number;
     expanded: boolean;
-    selected: boolean;
-    focused: boolean;
     /** True while this row's name is an input. */
     renaming: boolean;
+    /**
+     * True for the first row in the tree while nothing is focused.
+     *
+     * The tree is a single tab stop, so exactly one row must be tabbable at
+     * all times. Focus normally supplies it; this is what supplies it before
+     * anyone has arrowed anywhere, and after the focused row is deleted.
+     */
+    fallbackTabStop: boolean;
     onSelect: () => void;
     onToggle: () => void;
     /** The child group, when this row is expanded. Rendered inside the <li>. */
@@ -32,13 +38,29 @@ export function Row({
     node,
     depth,
     expanded,
-    selected,
-    focused,
     renaming,
+    fallbackTabStop,
     onSelect,
     onToggle,
     children,
 }: RowProps) {
+    /*
+     * Focus and selection are read here rather than handed down, and that is
+     * a performance decision with a measurement behind it.
+     *
+     * When the tree owned both, one arrow key re-created every Row element in
+     * the tree — 126ms per keystroke at 5,000 expanded rows, measured, which
+     * is the point where the highlight visibly trails your finger. A Zustand
+     * selector returning a boolean re-renders only the components whose
+     * boolean actually changed, so moving focus now re-renders exactly two
+     * rows whatever the size of the tree.
+     *
+     * The cost is that a Row can no longer be rendered outside the store.
+     * Nothing renders one outside the store.
+     */
+    const focused = useRail((s) => s.focusedId === node.id);
+    const selected = useRail((s) => s.selectedId === node.id);
+
     const ref = useRef<HTMLDivElement>(null);
     const hasChildren = node.children.length > 0;
     const drop = useDropTarget(node.id);
@@ -78,7 +100,7 @@ export function Row({
                 aria-expanded={hasChildren ? expanded : undefined}
                 // Roving tabindex: exactly one row is reachable by Tab, and
                 // the arrow keys move which one that is.
-                tabIndex={focused && !renaming ? 0 : -1}
+                tabIndex={(focused || fallbackTabStop) && !renaming ? 0 : -1}
                 style={
                     {
                         '--ff-depth': depth,

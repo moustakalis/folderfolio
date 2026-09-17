@@ -19,7 +19,7 @@
  * own overflow in list mode, and a 300px panel inside it would be clipped.
  */
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { ChevronDownIcon, SearchIcon } from './icons';
@@ -27,6 +27,15 @@ import { flattenTree, useAddToFolders, type FolderNode } from './queries';
 import { sortTree, useRail } from './store';
 import { watchSelection } from '../../lib/selection';
 import { t, tn } from '../../core/api';
+
+/**
+ * How many folder rows the flyout renders at once.
+ *
+ * Six are visible; 100 is enough that scrolling still feels like a list rather
+ * than a page of results, and cheap enough to be at the floor of what a render
+ * costs at all. See the ordering note in Flyout.
+ */
+const LIST_LIMIT = 100;
 
 export function AddToFolder({ nodes }: { nodes: FolderNode[] }) {
     const [ids, setIds] = useState<number[]>([]);
@@ -131,17 +140,60 @@ function Flyout({ nodes, ids, anchor, onClose }: FlyoutProps) {
     const add = useAddToFolders();
     const ref = useRef<HTMLDivElement>(null);
 
-    const rows = flattenTree(sortTree(nodes, sort));
+    // Sorting and flattening the whole tree is the one cost here that does not
+    // depend on what is typed, so it must not be paid per keystroke. At 20,000
+    // folders that alone was most of the 348ms a character cost.
+    const rows = useMemo(() => flattenTree(sortTree(nodes, sort)), [nodes, sort]);
     const needle = query.trim().toLowerCase();
-    const shown = needle === ''
+    const matches = needle === ''
         ? rows
         : rows
-            .filter((row) => row.node.name.toLowerCase().includes(needle))
+            // A ticked folder always matches. It is about to be written to,
+            // and a list that hides what it is about to do is worse than a
+            // list that shows one row you did not search for.
+            .filter(
+                (row) =>
+                    checked.has(row.node.id)
+                    || row.node.name.toLowerCase().includes(needle)
+            )
             // A filtered list is not a tree any more — the parents that gave
             // the indent its meaning are not all there. Flattening it is
             // honest; keeping the indent would draw a hierarchy that is not
             // on screen.
             .map((row) => ({ ...row, depth: 0 }));
+
+    /*
+     * Ticked folders first, then the rest, then a cap.
+     *
+     * The list box is 168px — six rows — and a library filed one folder per
+     * product has thousands. Rendering them all to show six cost 227ms to open
+     * at 1,000 folders and 154ms per keystroke in the search above, measured;
+     * at 5,000 it is 413ms and 257ms. This is a picker with a search field
+     * directly above it, so the answer is to render a page of it and say so,
+     * not to render all of it.
+     *
+     * Capping rather than windowing is deliberate. A windowed list only has
+     * the rows near the scroll position in the DOM, and a checkbox that is not
+     * in the DOM cannot be reached with Tab — so windowing would trade a
+     * measurable delay for an invisible keyboard dead end. Everything rendered
+     * here is tabbable, which is the contract the rest of this plugin keeps.
+     *
+     * What makes the cap safe is that a ticked folder can never be the thing
+     * the cap drops — it is pulled to the front first. Only when the cap is
+     * actually in play, though: reordering the list the instant you tick
+     * something would make the row you just clicked jump out from under the
+     * pointer, which is a worse bug than the one it prevents.
+     */
+    const ordered =
+        matches.length > LIST_LIMIT
+            ? [
+                  ...matches.filter((row) => checked.has(row.node.id)),
+                  ...matches.filter((row) => !checked.has(row.node.id)),
+              ]
+            : matches;
+
+    const shown = ordered.slice(0, LIST_LIMIT);
+    const hidden = ordered.length - shown.length;
 
     const toggle = useCallback((id: number) => {
         setChecked((was) => {
@@ -324,6 +376,21 @@ function Flyout({ nodes, ids, anchor, onClose }: FlyoutProps) {
                         </label>
                     ))
                 )}
+
+                {/*
+                  Never a silent cap. A picker that quietly stops listing is a
+                  picker that appears not to contain the folder you are looking
+                  for.
+                */}
+                {hidden > 0 ? (
+                    <p className="folderfolio-flyout__more">
+                        {t(
+                            'andMoreFolders',
+                            '%s more — keep typing to narrow',
+                            hidden
+                        )}
+                    </p>
+                ) : null}
             </div>
 
             <div className="folderfolio-flyout__foot">

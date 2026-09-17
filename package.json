@@ -8,6 +8,8 @@
     "dev": "node tools/esbuild.mjs --watch",
     "test:pipeline": "node tools/verify-pipeline.mjs",
     "test:slot": "node tools/verify-toolbar-slot.mjs",
+    "test:tree": "node tools/verify-tree.mjs",
+    "measure:tree": "node tools/measure-tree.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report"

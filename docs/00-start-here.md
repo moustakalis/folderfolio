@@ -32,6 +32,54 @@ the current diff. The domain layer, the REST surface and the importers are
 `DESIGN-TO-CODE.md`'s "Suggested order" is the sequence being followed, and its
 screen numbers are referenced throughout the code comments.
 
+### Two numberings — do not confuse them
+
+`architecture-plan.md` has **phases 0–10**, the road to 1.0. `DESIGN-TO-CODE.md`
+has **steps 1–10**, the order the admin UI is being rebuilt in. Different lists;
+the design steps all sit inside phases 4–6.
+
+| Phase | | Status |
+|---|---|---|
+| 0 | Land what exists | done |
+| 1 | Schema, domain, hooks | done |
+| 2 | Facade and REST | done |
+| 3 | WP-CLI | done |
+| 4 | Frontend foundation | done **except virtualisation** |
+| 5 | Interaction | done **except keyboard drag and Playwright** |
+| 6 | Modal and settings | **current** — modal done, settings not started |
+| 7 | Import | not started |
+| 8 | Gallery block | not started; unblocks the 268px inspector tree |
+| 9 | Release candidate and hardening | not started |
+| 10 | Release | not started |
+
+**Phase 6, half done.** The media picker's folder column is in and landed the
+way the plan specified — on `wp.media.view.AttachmentsBrowser`, not the
+`wp.media.create` monkey-patch the plan names as the thing to avoid. The
+settings screen with its three tabs has not started: the FolderFolio admin menu
+has exactly one page, Import, and that page is still 0.2.0's.
+
+### Three debts carried from phases 4 and 5
+
+Why "done" above is qualified. Each was found by re-reading the plan against the
+code, not by something breaking.
+
+1. **Virtualisation was skipped** (phase 4 asks for it). The tree renders every
+   visible node. Windowing is not free here: the ARIA tree is nested `ul` /
+   `role="group"`, and a windowed tree has to become flat `treeitem`s with
+   `aria-setsize` and `aria-posinset` — a restructure of the most carefully
+   built part of the UI. Measure before building.
+2. **No keyboard equivalent for the move a drag performs.** The pointer has two
+   verbs — a drag *moves* files out of the folder being viewed, the bulk flyout
+   *adds* — and the keyboard only has add. dnd-kit, which the plan assumed, is
+   the wrong tool for this drag: the draggables are core's own attachment tiles
+   and table rows, not React components. Folder reordering inside the tree —
+   what the plan actually had in mind — is not built in *any* input mode yet,
+   and must ship with its keyboard path when it is.
+3. **The Playwright suite is stale.** `tests/e2e/`'s two specs are 0.2.0's and
+   reference markup that no longer exists; they would fail today. Phase 5 said
+   "Playwright throughout"; what exists instead is live-browser verification
+   plus the two standalone Chromium harnesses.
+
 **The root `README.md` overstates what works.** Its feature list describes
 0.2.0's intent, not the current state — folder icons are unwired, and
 auto-assigning uploads to the active folder does nothing until something uses

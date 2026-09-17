@@ -442,6 +442,21 @@
   white-space: nowrap;
 }
 
+/**
+ * "…and 940 more — keep typing to narrow".
+ *
+ * Sits inside the scroller, after the last rendered row, so it is found by
+ * scrolling to the end of the list rather than announced above it — the cap is
+ * a fact about the bottom of the list, not a warning about the top.
+ */
+.folderfolio-flyout__more {
+  margin: 0;
+  padding: 8px 12px;
+  border-top: 1px dashed var(--ff-line);
+  font-size: 11px;
+  color: var(--ff-muted);
+}
+
 .folderfolio-flyout__empty {
   margin: 0;
   padding: 12px;
