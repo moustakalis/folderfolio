@@ -1,0 +1,200 @@
+/**
+ * The folder column inside WordPress's media frame — screen 10.
+ *
+ * Only the chrome is here. The rows, the fixed rows, the search field, the
+ * breadcrumb and the menu are the rail's, and their cramped measurements are
+ * in _row.css and _rail-chrome.css, keyed off `.folderfolio-frame` — which is
+ * the point of the screen: one row component, two sets of numbers.
+ *
+ * No hex literals; see _tokens.css.
+ */
+
+/**
+ * The frame's content area becomes a row.
+ *
+ * `:has()` rather than a class set from script, because the column is mounted
+ * by React into a slot and the frame is re-rendered by Backbone underneath it:
+ * a class would have to be re-applied on every one of those renders, and the
+ * one time it was not, the column would stack above the attachments at full
+ * width. A selector cannot fall out of step with the DOM it describes.
+ */
+.media-modal .media-frame-content:has(.folderfolio-frame) {
+  display: flex;
+  align-items: stretch;
+}
+
+.media-modal .media-frame-content:has(.folderfolio-frame) .attachments-browser {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---------------------------------------------------------------- column */
+
+.folderfolio-frame {
+  flex: 0 0 240px;
+  width: 240px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+
+  background: var(--ff-panel);
+  color: var(--ff-ink);
+
+  /* The same 2px rule the rail uses against the library: this is the same
+     division — folders on the left, files on the right — at a smaller size. */
+  border-right: 2px solid var(--ff-rule);
+}
+
+/* -------------------------------------------------------------- header */
+
+.folderfolio-frame__header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 10px 8px;
+  border-bottom: 1px solid var(--ff-line);
+}
+
+.folderfolio-frame__actions {
+  position: relative;
+  margin-left: auto;
+  display: flex;
+}
+
+/**
+ * One 26px button where the rail has five.
+ *
+ * Square, bordered and unlabelled: at 240px there is no room for a word, and
+ * an icon-only control that is the *only* control cannot be confused with a
+ * neighbour — which is the objection to unlabelled buttons in the rail, where
+ * there are four of them side by side.
+ */
+.folderfolio-frame__more {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--ff-line);
+  border-radius: 0;
+  background: var(--ff-panel);
+  color: var(--ff-ink);
+  cursor: pointer;
+}
+
+.folderfolio-frame__more:hover {
+  background: var(--ff-hover);
+  border-color: var(--ff-field-line);
+}
+
+.folderfolio-frame__more:focus-visible {
+  outline: 2px solid var(--ff-sel);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+/* The menu drops from the button, which is at the right edge of a 240px
+   column — so it hangs to the left rather than off the side of the frame. */
+.folderfolio-frame__actions .folderfolio-menu {
+  left: auto;
+  right: 0;
+}
+
+/* ---------------------------------------------------------------- body */
+
+.folderfolio-frame__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+/* ---------------------------------------------------------- breadcrumb */
+
+/**
+ * The path, under the search and above the tree.
+ *
+ * Screen 10 puts it over the tiles; see Frame.tsx for why it cannot go there
+ * without taking ownership of an offset core recomputes on resize.
+ */
+.folderfolio-frame__crumbs {
+  flex: 0 0 auto;
+  padding: 0 10px 6px;
+  border-bottom: 1px solid var(--ff-line);
+}
+
+/* The library column's breadcrumb has room to breathe above and below a 2px
+   rule; in a 240px column that vertical padding is a third of a row. */
+.folderfolio-frame__crumbs .folderfolio-crumbs {
+  margin: 0;
+  padding: 0;
+}
+
+/* -------------------------------------------------------------- search */
+
+/**
+ * 28px, tighter margins. Screen 10's field, not the rail's 30px one.
+ *
+ * The input inside it needs no override: it is sized by the box it sits in
+ * and inherits its font from _rail-chrome.css.
+ */
+.folderfolio-frame .folderfolio-rail__search {
+  height: 28px;
+  margin: 8px 10px;
+  padding: 0 6px;
+}
+
+.folderfolio-frame .folderfolio-rail__search-icon {
+  flex-basis: 13px;
+}
+
+/* The fixed rows lose the rail's wider gutter with the tree. */
+.folderfolio-frame .folderfolio-rail__fixed {
+  padding: 4px 0 0;
+}
+
+
+/* -------------------------------------------------- core's own form styles */
+
+/**
+ * Beating `.media-frame input[type="search"]`.
+ *
+ * The rail's fields already double their class to outrank core's
+ * `input[type="search"]` (0,1,1). Inside the media frame core is more
+ * specific still — `.media-frame input[type="search"]` is 0,2,1 — so the
+ * doubled class at 0,2,0 loses and the field comes back 40px tall with a
+ * white ground, overflowing the 30px box that contains it. That is what it
+ * did on the first live render.
+ *
+ * Three classes beats two classes and an element, whatever the element is.
+ */
+.folderfolio-frame .folderfolio-rail__search-input.folderfolio-rail__search-input,
+.folderfolio-frame .folderfolio-row__input.folderfolio-row__input {
+  height: 24px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+  line-height: normal;
+  color: var(--ff-ink);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* The inline rename field keeps its own border — it is the thing being
+   edited, and inside a row it has nothing else to mark it out. */
+.folderfolio-frame .folderfolio-row__input.folderfolio-row__input {
+  padding: 0 6px;
+  background: var(--ff-field);
+  border: 1px solid var(--ff-sel);
+}
+
+.folderfolio-frame .folderfolio-rail__search-input.folderfolio-rail__search-input:focus,
+.folderfolio-frame .folderfolio-row__input.folderfolio-row__input:focus {
+  outline: none;
+  box-shadow: none;
+}

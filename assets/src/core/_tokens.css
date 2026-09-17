@@ -123,3 +123,66 @@
   --ff-folder-plum: #d79bc2;
   --ff-folder-ink: #f0f0f1;
 }
+
+/**
+ * Inside WordPress's media modal, every scheme is Fresh.
+ *
+ * Core's media frame is a white sheet in all eight admin colour schemes —
+ * media-views.css hard-codes it, and does not consult the scheme for the
+ * modal's own ground. On Midnight the folder column therefore rendered a dark
+ * panel inside a white dialog: legible in isolation (name 12.84:1 against its
+ * own panel), and obviously foreign the moment you looked at it. The rail has
+ * the opposite problem and no problem at all — it sits in a dark admin page,
+ * so it matches.
+ *
+ * So the modal gets the light palette back, accent included. Not surfaces
+ * only: `--ff-on-sel` is the ink that sits *on* `--ff-sel`, and
+ * `--ff-accent-text` is the accent at body size on the panel, so the three
+ * are one decision. Midnight's accent on white would leave the drag-over name
+ * at 1.6:1.
+ *
+ * `.media-modal .folderfolio` is 0,2,0 — the same specificity as
+ * `.admin-color-midnight .folderfolio` — so this wins only because it comes
+ * after it. Keep it last in this file.
+ *
+ * `--ff-off` and `--ff-field-line` are absent because they are the same in
+ * every scheme — there is nothing for the modal to undo — and the five
+ * `--ff-toast-*` tokens are absent because the toast is portaled to the body,
+ * outside the modal. Both sets are TokensTest's SHARED list.
+ *
+ * The values are a copy of the Fresh block above, and a copy is a thing that
+ * drifts. TokensTest::test_the_media_modal_restates_fresh_exactly is what
+ * stops it: it fails if this block and the base block ever disagree, or if a
+ * new token is added to one and not the other.
+ */
+.media-modal .folderfolio {
+  --ff-sel: #2271b1;
+  --ff-sel-hover: #135e96;
+  --ff-on-sel: #fff;
+  --ff-bar: #1d2327;
+  --ff-canvas: #f0f0f1;
+  --ff-panel: #fff;
+  --ff-ink: #1d2327;
+  --ff-muted: #50575e;
+  --ff-dim: #646970;
+  --ff-line: #dcdcde;
+  --ff-rule: rgba(29, 35, 39, 0.4);
+  --ff-guide: #e6e6e8;
+  --ff-wash: #f0f6fc;
+  --ff-hover: #f6f7f7;
+  --ff-field: #fff;
+  --ff-danger: #d63638;
+  --ff-danger-text: #b32d2e;
+  --ff-accent-text: #135e96;
+
+  --ff-folder-slate: #50575e;
+  --ff-folder-red: #d63638;
+  --ff-folder-clay: #9e3526;
+  --ff-folder-ochre: #8a6a12;
+  --ff-folder-moss: #008a20;
+  --ff-folder-teal: #135e96;
+  --ff-folder-steel: #2271b1;
+  --ff-folder-indigo: #3858e9;
+  --ff-folder-plum: #6d2a58;
+  --ff-folder-ink: #1d2327;
+}

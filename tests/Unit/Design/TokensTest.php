@@ -178,6 +178,55 @@ final class TokensTest extends TestCase
         }
     }
 
+    /**
+     * The media modal is a white sheet in every admin colour scheme, so the
+     * folder column inside it uses the light palette whatever the scheme says.
+     * That is a copy of the Fresh block, and a copy drifts: add a token to one
+     * and forget the other and the modal renders a Midnight colour on white,
+     * which is the failure this file exists to catch, one context along.
+     *
+     * Geometry is excluded because it is inherited, not restated — the modal
+     * changes its own row height in _row.css, not here. So are the SHARED
+     * tokens: they are the same in every scheme, so there is nothing for the
+     * modal to undo, and the undo toast they describe is portaled to the body,
+     * outside the modal entirely.
+     */
+    public function test_the_media_modal_restates_fresh_exactly(): void
+    {
+        $css = self::css();
+        $base = array_diff_key(self::colourTokens($css), array_flip(self::SHARED));
+        $modal = self::declarations($css, '.media-modal .folderfolio');
+
+        self::assertNotSame([], $modal, 'The media modal has no palette of its own.');
+
+        $missing = array_diff_key($base, $modal);
+
+        self::assertSame(
+            [],
+            array_keys($missing),
+            'The media modal inherits these from whichever scheme is active, and on '
+            . 'Midnight that is a dark value on core\'s white dialog: '
+            . implode(', ', array_keys($missing))
+        );
+
+        $extra = array_diff_key($modal, $base);
+
+        self::assertSame(
+            [],
+            array_keys($extra),
+            'These exist only in the media modal block, so nothing defines them '
+            . 'anywhere else: ' . implode(', ', array_keys($extra))
+        );
+
+        foreach ($base as $token => $value) {
+            self::assertSame(
+                $value,
+                $modal[$token],
+                "{$token} differs between Fresh and the media modal; the modal is Fresh."
+            );
+        }
+    }
+
     public function test_the_folder_swatches_exist_in_both_light_and_dark(): void
     {
         $css = self::css();

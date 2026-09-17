@@ -13,6 +13,7 @@ use FolderFolio\Admin\FoldersColumn;
 use FolderFolio\Admin\ImportPage;
 use FolderFolio\Admin\MediaLibraryFilter;
 use FolderFolio\Admin\MediaLibraryIntegration;
+use FolderFolio\Admin\MediaModalIntegration;
 use FolderFolio\Admin\Menu;
 use FolderFolio\Admin\Rail;
 use FolderFolio\Database\Schema;
@@ -106,10 +107,11 @@ final class Plugin
             (new Menu($import))->register();
             $import->register();
 
-            // MediaModalIntegration is deliberately not registered yet: it
-            // patches wp.media.create globally, which can break other plugins'
-            // media frames. It is re-enabled once the modal phase reworks it
-            // onto a supported extension point.
+            // The folder column inside the media picker — every screen that
+            // can open one except upload.php, which has the rail. Rewritten at
+            // step 9: the version that patched wp.media.create globally is
+            // gone, and what is left touches one view method, additively.
+            (new MediaModalIntegration())->register();
         }
     }
 

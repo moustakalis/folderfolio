@@ -14,13 +14,19 @@
 
 /* ---------------------------------------------------------------- container */
 
+/**
+ * Deliberately declares no geometry.
+ *
+ * The three numbers come from `.folderfolio` in _tokens.css and are inherited,
+ * which is what lets a *container* — the media frame's 240px column, the block
+ * inspector's 268px one — restate them once and have every row, fixed row and
+ * search field inside it follow. An earlier version redeclared them here, and
+ * that quietly made the container variants impossible: a value on
+ * `.folderfolio-tree` wins over one inherited from its own parent, so the
+ * cramped cases rendered at the rail's 36px and the numbers below looked
+ * ignored.
+ */
 .folderfolio-tree {
-  /* Both are redeclared here rather than only in _tokens.css so that a
-     container variant below can override them for its own subtree. */
-  --ff-row-h: 36px;
-  --ff-indent: 24px;
-  --ff-switcher: 20px;
-
   margin: 0;
   padding: 0;
   list-style: none;
@@ -29,16 +35,85 @@
   line-height: 1.4;
 }
 
-/* The two cramped cases. Same component, two numbers. */
-.folderfolio-tree--modal {
+/* ------------------------------------------------- the two cramped cases */
+
+/**
+ * Same component, four numbers.
+ *
+ * The handoff's table for the media modal and the block inspector — 32px rows,
+ * 20px indent against the rail's 36 and 24, a 16px switcher slot, and the
+ * count as plain text rather than a tag. Applied either to the tree itself or
+ * to a container around it; `.folderfolio-frame` in _frame.css is the second
+ * form, and it is the one the modal uses because the fixed rows and the search
+ * field have to shrink with the tree rather than beside it.
+ */
+.folderfolio-tree--modal,
+.folderfolio-tree--inspector,
+.folderfolio-frame {
   --ff-row-h: 32px;
   --ff-indent: 20px;
+  --ff-switcher: 16px;
+}
+
+/* 12px of name is what a 16px slot leaves room for. */
+.folderfolio-tree--modal .folderfolio-row__switcher svg,
+.folderfolio-tree--inspector .folderfolio-row__switcher svg,
+.folderfolio-frame .folderfolio-row__switcher svg {
+  width: 12px;
+  height: 12px;
+}
+
+.folderfolio-tree--modal .folderfolio-row,
+.folderfolio-tree--inspector .folderfolio-row,
+.folderfolio-frame .folderfolio-row {
+  gap: 5px;
+  padding-right: 8px;
+}
+
+.folderfolio-tree--modal .folderfolio-row__icon,
+.folderfolio-tree--inspector .folderfolio-row__icon,
+.folderfolio-frame .folderfolio-row__icon {
+  flex-basis: 14px;
+  width: 14px;
+  height: 14px;
+}
+
+.folderfolio-tree--modal .folderfolio-row__name,
+.folderfolio-tree--inspector .folderfolio-row__name,
+.folderfolio-frame .folderfolio-row__name {
+  font-size: 12px;
+}
+
+/**
+ * The count loses its tag.
+ *
+ * At 240px the square tag is a third of the width the name has left, and the
+ * number is secondary information in a picker — you are choosing a folder, not
+ * auditing it. Plain text still answers "is there anything in here".
+ *
+ * The selected state's filled tag has to be undone with it, or a selected row
+ * would be the one place the tag came back.
+ */
+.folderfolio-tree--modal .folderfolio-row__count,
+.folderfolio-tree--inspector .folderfolio-row__count,
+.folderfolio-frame .folderfolio-row__count,
+.folderfolio-frame .folderfolio-row[aria-selected='true'] .folderfolio-row__count {
+  padding: 0;
+  font-size: 10.5px;
+  color: var(--ff-muted);
+  background: none;
+  border: 0;
+}
+
+/**
+ * The inspector drops the count entirely — the block already states how many
+ * images it is showing, and saying it twice invites the two to disagree.
+ */
+.folderfolio-tree--inspector .folderfolio-row__count {
+  display: none;
 }
 
 .folderfolio-tree--inspector {
-  --ff-row-h: 32px;
-  --ff-indent: 20px;
-
   /* Six whole rows, never a half one — a clipped row reads as a rendering
      bug rather than as more content. */
   max-height: calc(var(--ff-row-h) * 6);

@@ -1,0 +1,15 @@
+/**
+ * Styles for the media frame's folder column — screen 10.
+ *
+ * A second stylesheet rather than more of admin.css, because the two run on
+ * different screens: admin.css is Media > Library, this is every screen that
+ * can open a picker. Sharing the partials is what keeps them from drifting;
+ * shipping the rail's shell to a post-edit screen that has no rail would not.
+ */
+
+@import './_tokens.css';
+@import './_row.css';
+@import './_rail-chrome.css';
+@import './_content.css';
+@import './_toolbar.css';
+@import './_frame.css';

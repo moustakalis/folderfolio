@@ -113,6 +113,24 @@
   color: var(--ff-sel);
 }
 
+/* A rule between groups, so a menu with actions and states reads as two
+   things rather than as seven items. Used by the media frame's one collapsed
+   toolbar button — see _frame.css. */
+.folderfolio-menu__rule {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--ff-line);
+}
+
+.folderfolio-menu__item:disabled {
+  color: var(--ff-off);
+  cursor: default;
+}
+
+.folderfolio-menu__item:disabled:hover {
+  background: none;
+}
+
 /* ----------------------------------------------------------------- toast */
 
 /**

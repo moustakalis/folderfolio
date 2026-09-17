@@ -46,6 +46,18 @@ interface WpMediaFactory {
   (options?: Record<string, unknown>): WpMediaFrame;
   create(options?: Record<string, unknown>): WpMediaFrame;
   frame?: WpMediaFrame;
+
+  /**
+   * The Backbone view constructors.
+   *
+   * Only `AttachmentsBrowser` is named, and only its prototype, because that
+   * is the single thing lib/media-frame.ts touches: it wraps `initialize` to
+   * publish each browser view on its own element. Typing the rest of
+   * `wp.media.view` would be describing an API nothing here calls.
+   */
+  view?: {
+    AttachmentsBrowser?: { prototype?: Record<string, unknown> };
+  };
 }
 
 /**
