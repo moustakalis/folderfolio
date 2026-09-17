@@ -1,0 +1,323 @@
+/**
+ * The folder row — design screen 02, spec §2 and §3.
+ *
+ * Everything else in the rail composes this, so it is measured rather than
+ * eyeballed, and it is parameterised rather than fixed: the media modal and
+ * the block inspector re-run the same component at 32px rows and 20px indent
+ * by overriding two custom properties on the container. If a value here were
+ * hard-coded, those two screens would need a second implementation, which is
+ * the point at which a row component stops being one.
+ *
+ * No hex literals. Eight admin colour schemes ship with core and a literal
+ * would be wrong in seven of them; every colour resolves through _tokens.css.
+ */
+
+/* ---------------------------------------------------------------- container */
+
+.folderfolio-tree {
+  /* Both are redeclared here rather than only in _tokens.css so that a
+     container variant below can override them for its own subtree. */
+  --ff-row-h: 36px;
+  --ff-indent: 24px;
+  --ff-switcher: 20px;
+
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ff-ink);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* The two cramped cases. Same component, two numbers. */
+.folderfolio-tree--modal {
+  --ff-row-h: 32px;
+  --ff-indent: 20px;
+}
+
+.folderfolio-tree--inspector {
+  --ff-row-h: 32px;
+  --ff-indent: 20px;
+
+  /* Six whole rows, never a half one — a clipped row reads as a rendering
+     bug rather than as more content. */
+  max-height: calc(var(--ff-row-h) * 6);
+  overflow-y: auto;
+}
+
+/* --------------------------------------------------------------------- row */
+
+.folderfolio-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  height: var(--ff-row-h);
+  padding-right: 10px;
+
+  /* 12px at depth 0, plus one indent per level. --ff-depth is set inline by
+     the row; it is the only per-row value the stylesheet cannot know. */
+  padding-left: calc(12px + var(--ff-indent) * var(--ff-depth, 0));
+
+  background: transparent;
+  color: var(--ff-ink);
+  cursor: pointer;
+  user-select: none;
+
+  /* Zero radius throughout the design. */
+  border-radius: 0;
+}
+
+/* Guide lines: one 1px vertical per ancestor level, at 22px + 24n.
+   Written as 12px padding + half a switcher so it stays aligned when the
+   indent or the switcher size changes in the cramped variants. */
+.folderfolio-row__guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--ff-guide);
+  left: calc(12px + (var(--ff-switcher) / 2) + var(--ff-indent) * var(--ff-guide-i, 0));
+}
+
+/* Everything above the guides. */
+.folderfolio-row > *:not(.folderfolio-row__guide) {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------------------------------------------------------------- switcher */
+
+.folderfolio-row__switcher {
+  flex: 0 0 var(--ff-switcher);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--ff-switcher);
+  height: var(--ff-switcher);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ff-muted);
+  cursor: pointer;
+}
+
+/* A leaf keeps the slot and loses the chevron, so names never jitter
+   horizontally between rows that do and do not have children. */
+.folderfolio-row__switcher--leaf {
+  cursor: default;
+  pointer-events: none;
+}
+
+.folderfolio-row__switcher svg {
+  display: block;
+}
+
+/* ------------------------------------------------------------------- icon */
+
+.folderfolio-row__icon {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  display: block;
+
+  /* Folder colour paints this and nothing else. Selection owns the row, so
+     colour never competes with it — which is what keeps a coloured folder
+     legible while selected, in every scheme. */
+  color: var(--ff-folder, var(--ff-muted));
+}
+
+/* ------------------------------------------------------------------- name */
+
+.folderfolio-row__name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Rename in place: same row, same geometry, an input where the label was. */
+.folderfolio-row__input {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 24px;
+  margin: 0;
+  padding: 0 6px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ff-ink);
+  background: var(--ff-field);
+  border: 1px solid var(--ff-sel);
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+}
+
+/* ------------------------------------------------------------------ count */
+
+.folderfolio-row__count {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  color: var(--ff-muted);
+  background: var(--ff-canvas);
+
+  /* The market ships a rounded pill; the shape carries the count here. */
+  border-radius: 0;
+}
+
+/**
+ * Direct count mode.
+ *
+ * Every plugin tested renders a bare `0` on a parent whose children hold the
+ * files. Direct mode keeps the subtree figure beside the own count in lighter
+ * ink, and the dashed border says "none of its own" — so the zero is never
+ * alone and never reads as empty.
+ *
+ * Border 1px with 0/5px padding, against 1/6px and no border above, so both
+ * tags occupy exactly the same box.
+ */
+.folderfolio-row__count--direct {
+  padding: 0 5px;
+  background: var(--ff-field);
+  border: 1px dashed var(--ff-off);
+}
+
+.folderfolio-row__count-subtree {
+  color: var(--ff-off);
+}
+
+/* ----------------------------------------------------------------- states */
+
+/* Hover — a wash, no border change, so nothing shifts under the pointer. */
+.folderfolio-row:hover {
+  background: var(--ff-hover);
+}
+
+/* Selected — wash, a 3px flush-left bar, bold name, filled tag. */
+.folderfolio-row[aria-selected='true'] {
+  background: var(--ff-wash);
+  box-shadow: inset 3px 0 0 var(--ff-sel);
+}
+
+.folderfolio-row[aria-selected='true'] .folderfolio-row__name {
+  font-weight: 700;
+}
+
+.folderfolio-row[aria-selected='true'] .folderfolio-row__icon {
+  color: var(--ff-folder, var(--ff-ink));
+}
+
+.folderfolio-row[aria-selected='true'] .folderfolio-row__count {
+  color: var(--ff-on-sel);
+  background: var(--ff-sel);
+  border-color: transparent;
+}
+
+/* Focus — inset, so the rail's own edge cannot clip the ring. Focus is
+   tracked separately from selection: arrowing moves this without re-filtering
+   the library. */
+.folderfolio-row:focus,
+.folderfolio-row:focus-visible {
+  outline: 2px solid var(--ff-sel);
+  outline-offset: -2px;
+}
+
+/* Drag over — a frame, not a fill, so the row reads as a container you are
+   about to drop into. The tag previews the delta (+3). */
+.folderfolio-row.is-dragover {
+  background: var(--ff-wash);
+  box-shadow: inset 0 0 0 2px var(--ff-sel);
+}
+
+.folderfolio-row.is-dragover .folderfolio-row__name {
+  font-weight: 700;
+  color: var(--ff-accent-text);
+}
+
+.folderfolio-row.is-dragover .folderfolio-row__icon {
+  color: var(--ff-sel);
+}
+
+.folderfolio-row.is-dragover .folderfolio-row__count {
+  color: var(--ff-on-sel);
+  background: var(--ff-sel);
+  border-color: transparent;
+}
+
+/* Renaming — selected geometry, without the bold name competing with the
+   input's own border. */
+.folderfolio-row.is-renaming {
+  background: var(--ff-wash);
+  box-shadow: inset 3px 0 0 var(--ff-sel);
+  cursor: default;
+}
+
+.folderfolio-row.is-renaming .folderfolio-row__icon {
+  color: var(--ff-sel);
+}
+
+/* A leaf's icon sits back: nothing to open. */
+.folderfolio-row--leaf .folderfolio-row__icon {
+  color: var(--ff-folder, var(--ff-off));
+}
+
+/* Loading — three ghost rows, no spinner. A spinner says "something is
+   happening somewhere"; ghosts say "three folders are arriving here". */
+.folderfolio-row--ghost {
+  cursor: default;
+  pointer-events: none;
+}
+
+.folderfolio-row--ghost .folderfolio-row__ghost-icon,
+.folderfolio-row--ghost .folderfolio-row__ghost-name {
+  background: var(--ff-guide);
+}
+
+.folderfolio-row--ghost .folderfolio-row__ghost-icon {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+}
+
+.folderfolio-row--ghost .folderfolio-row__ghost-name {
+  height: 8px;
+  width: var(--ff-ghost-w, 60%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .folderfolio-row--ghost .folderfolio-row__ghost-icon,
+  .folderfolio-row--ghost .folderfolio-row__ghost-name {
+    animation: folderfolio-ghost 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes folderfolio-ghost {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* Windows High Contrast: washes and box-shadows are dropped by the forced
+   palette, so selection needs a border the mode will honour. */
+@media (forced-colors: active) {
+  .folderfolio-row[aria-selected='true'] {
+    border-left: 3px solid Highlight;
+  }
+
+  .folderfolio-row.is-dragover {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}

@@ -1,7 +1,14 @@
 /**
  * FolderFolio Admin Styles
- * Phase 3.3: Upload Integration
+ *
+ * The :root block below is v0.2.0 and is on its way out: it hard-codes hexes
+ * that are wrong in seven of core's eight admin colour schemes. It survives
+ * only until the rail is rebuilt on the designed components; nothing new may
+ * use it. Everything designed resolves through _tokens.css.
  */
+
+@import './_tokens.css';
+@import './_row.css';
 
 :root {
   --ff-brand-700: #3047a8;

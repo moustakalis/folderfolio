@@ -106,7 +106,7 @@ final class MediaLibraryIntegration
         }
 
         printf(
-            '<div id="folderfolio-sidebar" class="folderfolio-sidebar"><div id="folderfolio-folder-tree" class="folderfolio-folder-tree" role="navigation" aria-label="%s"></div></div>',
+            '<div id="folderfolio-sidebar" class="folderfolio folderfolio-sidebar"><div id="folderfolio-folder-tree" class="folderfolio-folder-tree" role="navigation" aria-label="%s"></div></div>',
             esc_attr__('Media folders', 'folderfolio')
         );
     }

@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FolderFolio — folder row (screen 02)</title>
+
+<!--
+  Review harness for design screen 02.
+
+  It links the SHIPPING stylesheets directly — no build step, no copy. What
+  you see here is what the plugin renders, so a discrepancy against the board
+  is a discrepancy in the real CSS.
+
+  The markup below is the contract the React component emits: same elements,
+  same classes, same ARIA. Only the icons differ — a <symbol>/<use> pair here
+  instead of inline SVG per row, to keep the file readable.
+
+  Open it directly in a browser. Nothing is fetched.
+-->
+<link rel="stylesheet" href="../../assets/src/core/_tokens.css">
+<link rel="stylesheet" href="../../assets/src/core/_row.css">
+
+<style>
+  /* Harness chrome only — none of this ships. */
+  body {
+    margin: 0;
+    padding: 24px;
+    font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    background: #f0f0f1;
+    color: #1d2327;
+  }
+  body.admin-color-midnight { background: #32373c; color: #f0f0f1; }
+  .h { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
+  .col { width: 300px; }
+  .eyebrow {
+    font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+    color: #646970; margin-bottom: 8px;
+  }
+  body.admin-color-midnight .eyebrow { color: #b4b9bd; }
+  .panel { width: 300px; border: 1px solid var(--ff-line); background: var(--ff-panel); }
+  .note {
+    font-size: 11.5px; color: var(--ff-muted);
+    padding: 4px 10px 9px; text-wrap: pretty;
+  }
+  .state-label {
+    font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ff-off); padding: 7px 10px 2px;
+  }
+  .state-block { border-bottom: 1px solid var(--ff-line); }
+  .switcher { margin-bottom: 20px; display: flex; gap: 14px; align-items: center; }
+  .switcher label { display: inline-flex; gap: 5px; align-items: center; }
+  #measure {
+    margin-top: 20px; padding: 10px 12px; font-size: 12px;
+    border: 2px solid; background: var(--ff-panel);
+  }
+  .pass { border-color: #00a32a; }
+  .fail { border-color: #d63638; }
+</style>
+</head>
+<body class="admin-color-fresh">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- Lucide, 24-unit viewBox, 2px stroke, square caps. -->
+    <symbol id="ff-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"/></symbol>
+    <symbol id="ff-folder-open" viewBox="0 0 24 24"><path d="M6 14l1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"/></symbol>
+    <symbol id="ff-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square"/></symbol>
+    <symbol id="ff-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square"/></symbol>
+  </defs>
+</svg>
+
+<div class="switcher">
+  <strong style="font-size:12px">Scheme</strong>
+  <label><input type="radio" name="s" value="fresh" checked> Fresh</label>
+  <label><input type="radio" name="s" value="modern"> Modern</label>
+  <label><input type="radio" name="s" value="midnight"> Midnight</label>
+</div>
+
+<div class="h folderfolio">
+
+  <!-- ============================================ depth 1–5, 300px rail -->
+  <div class="col">
+    <div class="eyebrow">Depth 1–5 · 24px per level · 300px rail</div>
+    <div class="panel">
+      <ul class="folderfolio-tree" role="tree" aria-label="Media folders">
+
+        <li role="none">
+          <div class="folderfolio-row" role="treeitem" style="--ff-depth:0"
+               aria-level="1" aria-expanded="true" aria-selected="false"
+               aria-label="Brand, 12 files" tabindex="0">
+            <button class="folderfolio-row__switcher" tabindex="-1" aria-hidden="true">
+              <svg width="14" height="14"><use href="#ff-chevron-down"/></svg>
+            </button>
+            <svg class="folderfolio-row__icon" aria-hidden="true"><use href="#ff-folder-open"/></svg>
+            <span class="folderfolio-row__name">Brand</span>
+            <span class="folderfolio-row__count">12</span>
+          </div>
+        </li>
+
+        <li role="none">
+          <div class="folderfolio-row" role="treeitem" style="--ff-depth:1"
+               aria-level="2" aria-expanded="true" aria-selected="false"
+               aria-label="Logos, 8 files" tabindex="-1">
+            <span class="folderfolio-row__guide" style="--ff-guide-i:0"></span>
+            <button class="folderfolio-row__switcher" tabindex="-1" aria-hidden="true">
+              <svg width="14" height="14"><use href="#ff-chevron-down"/></svg>
+            </button>
+            <svg class="folderfolio-row__icon" aria-hidden="true"><use href="#ff-folder-open"/></svg>
+            <span class="folderfolio-row__name">Logos</span>
+            <span class="folderfolio-row__count">8</span>
+          </div>
+        </li>
+
+        <li role="none">
+          <div class="folderfolio-row" role="treeitem" style="--ff-depth:2"
+               aria-level="3" aria-expanded="true" aria-selected="false"
+               aria-label="Primary, 5 files" tabindex="-1">
+            <span class="folderfolio-row__guide" style="--ff-guide-i:0"></span>
+            <span class="folderfolio-row__guide" style="--ff-guide-i:1"></span>
+            <button class="folderfolio-row__switcher" tabindex="-1" aria-hidden="true">
+              <svg width="14" height="14"><use href="#ff-chevron-down"/></svg>
+            </button>
+            <svg class="folderfolio-row__icon" aria-hidden="true"><use href="#ff-folder-open"/></svg>
+            <span class="folderfolio-row__name">Primary</span>
+            <span class="folderfolio-row__count">5</span>
+          </div>
+        </li>
+
+        <li role="none">
+          <div class="folderfolio-row" role="treeitem" style="--ff-depth:3"
+               aria-level="4" aria-expanded="true" aria-selected="false"
+               aria-label="Dark, 2 files" tabindex="-1">
+            <span class="folderfolio-row__guide" style="--ff-guide-i:0"></span>
+            <span class="folderfolio-row__guide" style="--ff-guide-i:1"></span>
+            <span class="folderfolio-row__guide" style="--ff-guide-i:2"></span>
+            <button class="folderfolio-row__switcher" tabindex="-1" aria-hidden="true">
+              <svg width="14" height="14"><use href="#ff-chevron-down"/></svg>
+            </button>
+            <svg class="folderfolio-row__icon" aria-hidden="true"><use href="#ff-folder-open"/></svg>
+            <span class="folderfolio-row__name">Dark</span>
+            <span class="folderfolio-row__count">2</span>
+          </div>
+        </li>
+
+        <li role="none">
+          <div class="folderfolio-row folderfolio-row--leaf" role="treeitem" style="--ff-depth:4; --ff-folder: var(--ff-folder-steel)"
+               aria-level="5" aria-selected="false"
+               aria-label="On red, 1 file" tabindex="-1" id="deepest">
+            <span class="folderfolio-row__guide" style="--ff-guide-i:0"></span>
+            <span class="folderfolio-row__guide" style="--ff-guide-i:1"></span>
+            <span class="folderfolio-row__guide" style="--ff-guide-i:2"></span>
+            <span class="folderfolio-row__guide" style="--ff-guide-i:3"></span>
+            <span class="folderfolio-row__switcher folderfolio-row__switcher--leaf" aria-hidden="true"></span>
+            <svg class="folderfolio-row__icon" aria-hidden="true"><use href="#ff-folder"/></svg>
+            <span class="folderfolio-row__name" id="deepest-name">On red</span>
+            <span class="folderfolio-row__count">1</span>
+          </div>
+        </li>
+
+      </ul>
+    </div>
+    <div class="note" style="padding-left:0">
+      At depth 5 the name still gets 132px: 12 + (24 × 4) indent, 20px switcher
+      slot, 16px icon, 6px gaps, count tag and 10px padding. The switcher slot
+      is reserved on leaves, so names never jitter.
+    </div>
+    <div id="measure">measuring…</div>
+  </div>
+
+  <!-- ===================================================== states -->
+  <div class="col">
+    <div class="eyebrow">States</div>
+    <div class="panel">
+
+      <div class="state-block">
+        <div class="state-label">Default</div>
+        <div class="folderfolio-row" role="treeitem" style="--ff-depth:1" aria-level="2" aria-selected="false" aria-label="Campaigns, 19 files" tabindex="-1">
+          <span class="folderfolio-row__guide" style="--ff-guide-i:0"></span>
+          <span class="folderfolio-row__switcher folderfolio-row__switcher--leaf" aria-hidden="true"></span>
+          <svg class="folderfolio-row__icon" aria-hidden="true"><use href="#ff-folder"/></svg>
+          <span class="folderfolio-row__name">Campaigns</span>
+          <span class="folderfolio-row__count">19</span>
+        </div>
+        <div class="note">Ink on ground, colour on the icon only.</div>
+      </div>
+
+      <div class="state-block">
+        <div class="state-label">Hover — pointer over the row</div>
+        <div class="folderfolio-row" role="treeitem" style="--ff-depth:1; background: var(--ff-hover)" aria-level="2" aria-selected="false" aria-label="Campaigns, 19 files" tabindex="-1">
+          <span class="folderfolio-row__guide" style="--ff-guide-i:0"></span>
+          <span class="folderfolio-row__switcher folderfolio-row__switcher--leaf" aria-hidden="true"></span>
+          <svg class="folderfolio-row__icon" aria-hidden="true"><use href="#ff-folder"/></svg>
+          <span class="folderfolio-row__name">Campaigns</span>
+          <span class="folderfolio-row__count">19</span>
+        </div>
+        <div class="note">A wash. No border change, so nothing shifts.</div>
+      </div>
+
+      <div class="state-block">
+        <div class="state-label">Selected</div>
+        <div class="folderfolio-row" role="treeitem" style="--ff-depth:1" aria-level="2" aria-selected="true" aria-label="Campaigns, 19 files" tabindex="-1">
+          <span class="folderfolio-row__guide" style="--ff-guide-i:0"></span>
+          <span class="folderfolio-row__switcher folderfolio-row__switcher--leaf" aria-hidden="true"></span>
+          <svg class="folderfolio-row__icon" aria-hidden="true"><use href="#ff-folder-open"/></svg>
+          <span class="folderfolio-row__name">Campaigns</span>
+          <span class="folderfolio-row__count">19</span>
+        </div>
+        <div class="note">3px flush-left bar, a wash, bold name, filled tag. Selection owns the row, which is why colour never does.</div>
+      </div>
+
+      <div class="state-block">
+        <div class="state-label">Keyboard focus</div>
+        <div class="folderfolio-row" role="treeitem" style="--ff-depth:1; outline: 2px solid var(--ff-sel); outline-offset: -2px" aria-level="2" aria-selected="false" aria-label="Campaigns, 19 files" tabindex="-1">
+          <span class="folderfolio-row__guide" style="--ff-guide-i:0"></span>
+          <span class="folderfolio-row__switcher folderfolio-row__switcher--leaf" aria-hidden="true"></span>
+          <svg class="folderfolio-row__icon" aria-hidden="true"><use href="#ff-folder"/></svg>
+          <span class="folderfolio-row__name">Campaigns</span>
+          <span class="folderfolio-row__count">19</span>
+        </div>
+        <div class="note">Inset, so the rail edge cannot clip it. Focus is tracked separately from selection.</div>
+      </div>
+
+      <div class="state-block">
+        <div class="state-label">Drag over</div>
+        <div class="folderfolio-row is-dragover" role="treeitem" style="--ff-depth:1" aria-level="2" aria-selected="false" aria-label="Campaigns, 19 files" tabindex="-1">
+          <span class="folderfolio-row__guide" style="--ff-guide-i:0"></span>
+          <span class="folderfolio-row__switcher folderfolio-row__switcher--leaf" aria-hidden="true"></span>
+          <svg class="folderfolio-row__icon" aria-hidden="true"><use href="#ff-folder-open"/></svg>
+          <span class="folderfolio-row__name">Campaigns</span>
+          <span class="folderfolio-row__count">+3</span>
+        </div>
+        <div class="note">Frame, not fill — the row reads as a container you are about to drop into, and the tag previews the delta.</div>
+      </div>
+
+      <div class="state-block">
+        <div class="state-label">Renaming</div>
+        <div class="folderfolio-row is-renaming" style="--ff-depth:1">
+          <span class="folderfolio-row__guide" style="--ff-guide-i:0"></span>
+          <span class="folderfolio-row__switcher folderfolio-row__switcher--leaf" aria-hidden="true"></span>
+          <svg class="folderfolio-row__icon" aria-hidden="true"><use href="#ff-folder"/></svg>
+          <input class="folderfolio-row__input" value="Campaigns 2026" aria-label="Folder name">
+        </div>
+        <div class="note">Same row, same geometry, an input in place of the label.</div>
+      </div>
+
+      <div class="state-block">
+        <div class="state-label">Leaf</div>
+        <div class="folderfolio-row folderfolio-row--leaf" role="treeitem" style="--ff-depth:1" aria-level="2" aria-selected="false" aria-label="Events, 3 files" tabindex="-1">
+          <span class="folderfolio-row__guide" style="--ff-guide-i:0"></span>
+          <span class="folderfolio-row__switcher folderfolio-row__switcher--leaf" aria-hidden="true"></span>
+          <svg class="folderfolio-row__icon" aria-hidden="true"><use href="#ff-folder"/></svg>
+          <span class="folderfolio-row__name">Events</span>
+          <span class="folderfolio-row__count">3</span>
+        </div>
+        <div class="note">No chevron, but the 20px slot stays — titles line up with their siblings.</div>
+      </div>
+
+      <div class="state-block">
+        <div class="state-label">Loading</div>
+        <div class="folderfolio-row folderfolio-row--ghost" style="--ff-depth:0; --ff-ghost-w:52%" aria-hidden="true">
+          <span class="folderfolio-row__switcher folderfolio-row__switcher--leaf"></span>
+          <span class="folderfolio-row__ghost-icon"></span>
+          <span class="folderfolio-row__ghost-name"></span>
+        </div>
+        <div class="folderfolio-row folderfolio-row--ghost" style="--ff-depth:0; --ff-ghost-w:38%" aria-hidden="true">
+          <span class="folderfolio-row__switcher folderfolio-row__switcher--leaf"></span>
+          <span class="folderfolio-row__ghost-icon"></span>
+          <span class="folderfolio-row__ghost-name"></span>
+        </div>
+        <div class="folderfolio-row folderfolio-row--ghost" style="--ff-depth:0; --ff-ghost-w:64%" aria-hidden="true">
+          <span class="folderfolio-row__switcher folderfolio-row__switcher--leaf"></span>
+          <span class="folderfolio-row__ghost-icon"></span>
+          <span class="folderfolio-row__ghost-name"></span>
+        </div>
+        <div class="note">Three ghost rows, no spinner. The error state is a rail-level block, not a row — it lands with screen 05.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===================================================== count modes -->
+  <div class="col">
+    <div class="eyebrow">Count modes</div>
+    <div class="panel" style="padding:12px;width:276px">
+      <div style="font-size:12px;font-weight:700;margin-bottom:6px">Inherited (default)</div>
+      <div class="folderfolio-row" style="--ff-depth:0;padding-left:0;padding-right:0" role="treeitem" aria-level="1" aria-selected="false" aria-label="Brand, 12 files" tabindex="-1">
+        <svg class="folderfolio-row__icon" aria-hidden="true"><use href="#ff-folder"/></svg>
+        <span class="folderfolio-row__name">Brand</span>
+        <span class="folderfolio-row__count">12</span>
+      </div>
+      <div class="note" style="padding-left:0">Own files 0, subtree 12. The tag counts the subtree, so a parent never reads 0 while holding files.</div>
+
+      <div style="height:1px;background:var(--ff-line);margin:12px 0"></div>
+
+      <div style="font-size:12px;font-weight:700;margin-bottom:6px">Direct</div>
+      <div class="folderfolio-row" style="--ff-depth:0;padding-left:0;padding-right:0" role="treeitem" aria-level="1" aria-selected="false" aria-label="Brand, no files of its own, 12 in subfolders" tabindex="-1">
+        <svg class="folderfolio-row__icon" aria-hidden="true"><use href="#ff-folder"/></svg>
+        <span class="folderfolio-row__name">Brand</span>
+        <span class="folderfolio-row__count folderfolio-row__count--direct">0<span class="folderfolio-row__count-subtree"> / 12</span></span>
+      </div>
+      <div class="note" style="padding-left:0">Direct mode keeps the subtree figure as a second, lighter number rather than showing a bare 0. The dashed tag marks “none of its own”.</div>
+    </div>
+
+    <div class="eyebrow" style="margin-top:22px">Cramped cases — same component</div>
+    <div class="panel" style="width:240px">
+      <ul class="folderfolio-tree folderfolio-tree--modal" role="tree" aria-label="Media folders">
+        <li role="none">
+          <div class="folderfolio-row" role="treeitem" style="--ff-depth:0" aria-level="1" aria-expanded="true" aria-selected="false" aria-label="Brand, 12 files" tabindex="-1">
+            <button class="folderfolio-row__switcher" tabindex="-1" aria-hidden="true"><svg width="14" height="14"><use href="#ff-chevron-down"/></svg></button>
+            <svg class="folderfolio-row__icon" aria-hidden="true"><use href="#ff-folder-open"/></svg>
+            <span class="folderfolio-row__name">Brand</span>
+            <span class="folderfolio-row__count">12</span>
+          </div>
+        </li>
+        <li role="none">
+          <div class="folderfolio-row folderfolio-row--leaf" role="treeitem" style="--ff-depth:1" aria-level="2" aria-selected="false" aria-label="Logos, 8 files" tabindex="-1">
+            <span class="folderfolio-row__guide" style="--ff-guide-i:0"></span>
+            <span class="folderfolio-row__switcher folderfolio-row__switcher--leaf" aria-hidden="true"></span>
+            <svg class="folderfolio-row__icon" aria-hidden="true"><use href="#ff-folder"/></svg>
+            <span class="folderfolio-row__name">Logos</span>
+            <span class="folderfolio-row__count">8</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+    <div class="note" style="padding-left:0">
+      Media modal: 240px, 32px rows, 20px indent. Two custom properties on the
+      container — no second implementation.
+    </div>
+  </div>
+
+</div>
+
+<script>
+  document.querySelectorAll('input[name=s]').forEach(function (r) {
+    r.addEventListener('change', function () {
+      document.body.className = 'admin-color-' + r.value;
+    });
+  });
+
+  // The 24px indent was chosen against the name width at depth 5, so the
+  // budget is printed in full rather than asserted against one number: the
+  // figure in DESIGN-TO-CODE.md omits the count tag and one 6px gap, and
+  // which way that gets resolved is a design decision, not a code one.
+  (function () {
+    var row = document.getElementById('deepest');
+    var box = document.getElementById('measure');
+    var px = function (el) { return el.getBoundingClientRect().width; };
+    var w = function (sel) { return px(row.querySelector(sel)); };
+    var total = px(row);
+    var cs = getComputedStyle(row);
+    var pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+    var sw = w('.folderfolio-row__switcher');
+    var ic = w('.folderfolio-row__icon');
+    var ct = w('.folderfolio-row__count');
+    var name = Math.round(px(document.getElementById('deepest-name')));
+    box.className = name >= 100 ? 'pass' : 'fail';
+    box.innerHTML =
+      '<strong>Name width at depth 5, 300px rail: ' + name + 'px</strong><br>' +
+      'rail ' + Math.round(total) + ' − padding ' + Math.round(pad) +
+      ' − switcher ' + Math.round(sw) + ' − icon ' + Math.round(ic) +
+      ' − count ' + Math.round(ct) + ' − gaps 18 = ' + name + 'px<br>' +
+      '<span style="color:#b32d2e">DESIGN-TO-CODE.md says 132px.</span> ' +
+      'That figure leaves out the count tag and one gap. Geometry below is ' +
+      'built exactly as specified — guides land at 22/46/70/94.';
+  })();
+</script>
+
+</body>
+</html>

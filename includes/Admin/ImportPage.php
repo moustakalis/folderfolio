@@ -21,20 +21,20 @@ class ImportPage
 
     public function register(): void
     {
-        add_action('admin_menu', [$this, 'addMenuPage']);
         add_action('admin_enqueue_scripts', [$this, 'enqueueAssets']);
     }
 
-    public function addMenuPage(): void
+    /**
+     * Told where it ended up, by whoever registered the menu.
+     *
+     * The screen does not place itself: the hook suffix depends on placement,
+     * so a page that registers its own menu entry and then guards its assets
+     * on the suffix it got back is two facts that can drift apart. Menu owns
+     * both.
+     */
+    public function setHookSuffix(string $hookSuffix): void
     {
-        $this->hookSuffix = (string) add_submenu_page(
-            'upload.php',
-            __('Import Folders', 'folderfolio'),
-            __('Import', 'folderfolio'),
-            'manage_options',
-            'folderfolio-import',
-            [$this, 'renderPage']
-        );
+        $this->hookSuffix = $hookSuffix;
     }
 
     /**

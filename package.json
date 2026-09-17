@@ -5,7 +5,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build:js": "esbuild assets/src/core/*.ts --bundle --outdir=assets/build/core --format=iife --minify --sourcemap",
-    "build:css": "mkdir -p assets/build/core && cp assets/src/core/*.css assets/build/core/",
+    "build:css": "esbuild assets/src/core/admin.css assets/src/core/media-modal.css --bundle --outdir=assets/build/core",
     "build": "yarn typecheck && yarn build:js && yarn build:css",
     "dev": "yarn build:css && esbuild assets/src/core/*.ts --bundle --outdir=assets/build/core --format=iife --watch --sourcemap",
     "test:e2e": "playwright test",

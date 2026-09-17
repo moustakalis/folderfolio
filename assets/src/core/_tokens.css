@@ -1,0 +1,101 @@
+/**
+ * FolderFolio design tokens.
+ *
+ * WordPress core's palette, resolved per admin colour scheme. Nothing in the
+ * plugin may hard-code an ink, a rule or a field colour: eight schemes ship
+ * with core and a literal hex will be wrong in seven of them.
+ *
+ * The body carries one of core's .admin-color-* classes, so the scheme blocks
+ * below are the only place a colour is chosen.
+ */
+
+.folderfolio {
+  /* Fresh — core's default, and the fallback for any scheme not listed. */
+  --ff-sel: #2271b1;          /* selection, primary action */
+  --ff-sel-hover: #135e96;
+  --ff-on-sel: #fff;          /* ink on a selection fill */
+  --ff-bar: #1d2327;          /* admin menu, admin bar */
+  --ff-canvas: #f0f0f1;
+  --ff-panel: #fff;
+  --ff-ink: #1d2327;
+  --ff-muted: #50575e;
+  --ff-dim: #646970;
+  --ff-off: #8c8f94;          /* disabled */
+  --ff-line: #dcdcde;         /* hairline within a panel */
+  --ff-rule: rgba(29, 35, 39, 0.4); /* 2px rule between sections */
+  --ff-guide: #e6e6e8;        /* tree indent guides */
+  --ff-wash: #f0f6fc;         /* selected row */
+  --ff-hover: #f6f7f7;
+  --ff-field: #fff;
+  --ff-field-line: #8c8f94;
+  --ff-danger: #d63638;
+  --ff-danger-text: #b32d2e;  /* on white */
+  --ff-accent-text: #135e96;  /* accent as body-size text on white */
+
+  /* Geometry. Zero radius throughout; spacing on a 4px scale. */
+  --ff-row-h: 36px;
+  --ff-indent: 24px;
+  --ff-rail-w: 300px;
+  --ff-switcher: 20px;
+}
+
+.admin-color-modern .folderfolio {
+  --ff-sel: #3858e9;
+  --ff-sel-hover: #1d35b4;
+  --ff-bar: #1e1e1e;
+}
+
+.admin-color-midnight .folderfolio {
+  --ff-sel: #69a8bb;
+  --ff-sel-hover: #89bac9;
+  --ff-on-sel: #1d2327;
+  --ff-bar: #26292c;
+  --ff-canvas: #32373c;
+  --ff-panel: #26292c;
+  --ff-ink: #f0f0f1;
+  --ff-muted: #d7dade;
+  --ff-dim: #b4b9bd;
+  --ff-line: #4f5559;
+  --ff-rule: rgba(240, 240, 241, 0.35);
+  --ff-guide: #3c4145;
+  --ff-wash: rgba(105, 168, 187, 0.2);
+  --ff-hover: rgba(255, 255, 255, 0.07);
+  --ff-field: #32373c;
+
+  /* Fresh's --ff-accent-text is accent-on-white and unreadable on a dark
+     row. Without a value here it inherited straight through, so the
+     drag-over row's name rendered dark-on-dark. Found rendering screen 02
+     in Midnight. */
+  --ff-accent-text: #9ec8d6;
+}
+
+/**
+ * Folder colours — ten fixed swatches, no free picker: a user-chosen hex
+ * cannot be guaranteed legible across eight schemes. Colour paints the 16px
+ * folder icon only, never the row, so selection always owns the row.
+ */
+.folderfolio {
+  --ff-folder-slate: #50575e;
+  --ff-folder-red: #d63638;
+  --ff-folder-clay: #9e3526;
+  --ff-folder-ochre: #8a6a12;
+  --ff-folder-moss: #008a20;
+  --ff-folder-teal: #135e96;
+  --ff-folder-steel: #2271b1;
+  --ff-folder-indigo: #3858e9;
+  --ff-folder-plum: #6d2a58;
+  --ff-folder-ink: #1d2327;
+}
+
+.admin-color-midnight .folderfolio {
+  --ff-folder-slate: #c3c4c7;
+  --ff-folder-red: #f39a9b;
+  --ff-folder-clay: #ff9784;
+  --ff-folder-ochre: #e0bb52;
+  --ff-folder-moss: #8fd9a0;
+  --ff-folder-teal: #9ec8d6;
+  --ff-folder-steel: #9ec8e8;
+  --ff-folder-indigo: #a9b7f5;
+  --ff-folder-plum: #d79bc2;
+  --ff-folder-ink: #f0f0f1;
+}

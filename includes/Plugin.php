@@ -11,6 +11,7 @@ if (!defined('ABSPATH')) {
 use FolderFolio\Admin\ImportPage;
 use FolderFolio\Admin\MediaLibraryFilter;
 use FolderFolio\Admin\MediaLibraryIntegration;
+use FolderFolio\Admin\Menu;
 use FolderFolio\Database\Schema;
 use FolderFolio\Domain\AttachmentFolderRepository;
 use FolderFolio\Cli\FolderCommand;
@@ -81,7 +82,12 @@ final class Plugin
 
         if (is_admin()) {
             (new MediaLibraryIntegration())->register();
-            (new ImportPage())->register();
+
+            // One instance: Menu places the screen and hands it the hook
+            // suffix, ImportPage hangs its assets off that.
+            $import = new ImportPage();
+            (new Menu($import))->register();
+            $import->register();
 
             // MediaModalIntegration is deliberately not registered yet: it
             // patches wp.media.create globally, which can break other plugins'
