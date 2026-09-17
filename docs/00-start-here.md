@@ -144,3 +144,11 @@ A step-by-step build log — what was verified live at each step, and the
 reasoning behind each decision — is kept outside the repository, in the Claude
 project attached to this work. This page is the summary of it that belongs with
 the code.
+
+## Keeping this page true
+
+It is a standing instruction on this project that **whenever the assistant's
+memory of the project changes, this page and its counterpart in the Claude
+project are updated in the same turn**. A note that lives only in a model's
+memory is a note a human reading the repository never sees; a page that has
+stopped matching the code is worse than no page, because it is believed.
