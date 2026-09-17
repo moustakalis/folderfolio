@@ -184,9 +184,22 @@ cross the line that matters for a settings screen: a value saved on it changing
 what the media library does on the next page load.
 
 `test:e2e` needs nothing installed. WordPress Playground runs real WordPress on
-php-wasm inside Node, so Playwright's `webServer` boots one, mounts this
-checkout into it as a plugin, logs in and tears it down. `WP_BASE_URL`
-overrides it to run against a real install instead.
+php-wasm inside Node, and `tests/e2e/global-setup.ts` boots one, mounts the
+**staged plugin** into it, logs in, waits until it is actually serving, and
+shuts it down. `WP_BASE_URL` overrides the whole thing to run against a real
+install instead.
+
+The boot is ours rather than Playwright's `webServer` block because Playground
+accepts connections 510ms in and answers 502 for the next fifteen seconds —
+waiting on the port is satisfied by a server that cannot serve a page, and the
+URL probe never resolved against it. What that looked like was "Timed out
+waiting 180000ms from config.webServer", in CI and nowhere else anybody had
+looked.
+
+Mounting the staged plugin rather than the checkout is the other half: the
+allowlist lives in `bin/stage-plugin.sh`, which `bin/build-zip.sh` calls too,
+so the files the tests run against and the files that ship are the same files
+by construction.
 
 ## Three rules that shaped most of the code
 
@@ -278,6 +291,19 @@ edge; getting it wrong creates a phantom parent rather than an error.
 parent by parent through `findByName()` rather than going through
 `getOrCreateByPath()`, which splits on `/` and would turn one folder into two
 with no way to tell afterwards.
+
+**PHPUnit 9 ignores attributes, without saying so.** composer.json pins
+phpunit ^9.6 because that is what the WordPress test library needs, and 9.6
+reads `@dataProvider` and skips `#[DataProvider]` silently — the test runs with
+no arguments and errors with "too few arguments". Use annotations. There is no
+PHPUnit in the dev sandbox (composer install fails on the GitHub API there), so
+the unit suite is run against `phpunit-9.phar` — which is worth doing before
+every push, because CI is otherwise the first thing to run it.
+
+**`assignAttachments()` rejects the whole batch** if one id is not an
+attachment, and counts ids it did not actually newly file. Both matter to the
+importer, which is handed ids from a table with no foreign keys; it filters
+before calling rather than after.
 
 **`t()` fills `%s` sequentially.** Positional `%1$s` placeholders now work too,
 but that was a silent bug for six steps: the string rendered verbatim, on
