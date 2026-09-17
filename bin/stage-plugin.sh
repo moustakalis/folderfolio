@@ -33,6 +33,11 @@ cp folderfolio.php "${STAGE_DIR}/"
 cp uninstall.php "${STAGE_DIR}/"
 cp -R includes "${STAGE_DIR}/"
 
+# The gallery block's metadata and its template. `register_block_type()` reads
+# block.json from this path at runtime, so a ZIP without it is a plugin whose
+# block silently does not exist.
+cp -R blocks "${STAGE_DIR}/"
+
 if [ -d assets/build ]; then
   mkdir -p "${STAGE_DIR}/assets"
   cp -R assets/build "${STAGE_DIR}/assets/"
@@ -55,7 +60,8 @@ find "${STAGE_DIR}" -name '.DS_Store' -delete
 # The activation fatal this project already hit once was a ZIP without the
 # autoloader. Fail here rather than ship that again — and, since the e2e suite
 # stages through this script too, fail in a test run rather than in a release.
-for required in includes/Autoloader.php includes/api.php includes/Plugin.php uninstall.php; do
+for required in includes/Autoloader.php includes/api.php includes/Plugin.php uninstall.php \
+                blocks/gallery/block.json blocks/gallery/render.php; do
   if [ ! -f "${STAGE_DIR}/${required}" ]; then
     echo "FATAL: ${required} missing from the staged plugin." >&2
     exit 1

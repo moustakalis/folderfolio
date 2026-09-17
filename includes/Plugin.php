@@ -17,6 +17,7 @@ use FolderFolio\Admin\MediaModalIntegration;
 use FolderFolio\Admin\Menu;
 use FolderFolio\Admin\Rail;
 use FolderFolio\Admin\SettingsPage;
+use FolderFolio\Blocks\Gallery;
 use FolderFolio\Database\Schema;
 use FolderFolio\Domain\AttachmentFolderRepository;
 use FolderFolio\Cli\FolderCommand;
@@ -85,6 +86,11 @@ final class Plugin
         // Does nothing until something uses the
         // folderfolio_default_folder_for_upload filter.
         (new UploadRouter())->register();
+
+        // Not admin-only, and it matters: a block registered only in the
+        // admin renders on the front end as "this block contains unexpected
+        // or invalid content".
+        (new Gallery())->register();
 
         if (is_admin()) {
             // The rail owns the shell — where it mounts, its width, whether it

@@ -1,0 +1,81 @@
+/**
+ * The gallery, on the front end.
+ *
+ * Every selector is qualified `ul.` for a reason that showed up the first time
+ * this was opened in the editor: core puts the block's class on the editor's
+ * wrapper `<div>` as well, and this stylesheet loads in the editor canvas too,
+ * so an unqualified rule turned the wrapper into a three-column grid and left
+ * the placeholder sitting in the first column at 204px. The list is what these
+ * rules describe, so the list is what they select.
+ *
+ * The one surface a visitor sees, and so the one place this plugin has no
+ * business having a look of its own. There is no colour here, no border, no
+ * radius, no typography and no spacing beyond the gap the block was given:
+ * the images are the content, the theme owns everything around them, and a
+ * visitor sees the photographs as they are. Grayscale on the spec board is a
+ * board device, not a treatment.
+ *
+ * Two custom properties carry the block's settings, set inline on the wrapper
+ * by render.php. A theme that wants five columns on this page can set
+ * `--ff-gallery-columns` and win, which it could not do against inline
+ * `grid-template-columns`.
+ */
+
+ul.wp-block-folderfolio-gallery {
+  display: grid;
+  grid-template-columns: repeat(var(--ff-gallery-columns, 3), minmax(0, 1fr));
+  gap: var(--ff-gallery-gap, 16px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/**
+ * Masonry, without JavaScript.
+ *
+ * CSS multi-column, which is the only way to do this with no script on the
+ * page — and it comes with a property worth knowing: **columns read down, then
+ * across**. Item 2 is below item 1, not beside it. For a gallery of
+ * photographs that is usually invisible; for a set where the order carries
+ * meaning, the grid is the honest choice, which is why the grid is the
+ * default.
+ */
+ul.wp-block-folderfolio-gallery.folderfolio-gallery--masonry {
+  display: block;
+  columns: var(--ff-gallery-columns, 3);
+  column-gap: var(--ff-gallery-gap, 16px);
+}
+
+ul.wp-block-folderfolio-gallery.folderfolio-gallery--masonry > li {
+  /* An item split across a column break is an image cut in half. */
+  break-inside: avoid;
+  margin-bottom: var(--ff-gallery-gap, 16px);
+}
+
+ul.wp-block-folderfolio-gallery > li {
+  margin: 0;
+}
+
+ul.wp-block-folderfolio-gallery figure {
+  margin: 0;
+}
+
+ul.wp-block-folderfolio-gallery img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/**
+ * One row of images, whatever the setting, once there is no room for columns.
+ *
+ * 600px is core's own `$break-small`, so a theme's layout and this one change
+ * at the same width rather than one at a time.
+ */
+@media (max-width: 600px) {
+  ul.wp-block-folderfolio-gallery,
+  ul.wp-block-folderfolio-gallery.folderfolio-gallery--masonry {
+    grid-template-columns: minmax(0, 1fr);
+    columns: 1;
+  }
+}

@@ -1,0 +1,73 @@
+/**
+ * The gallery block, in the editor — screen 09.
+ *
+ * Editor-only, and the plugin's own look is allowed here: this is an admin
+ * screen. `gallery.css` is the other half and carries none of it, because that
+ * one is the visitor's page.
+ *
+ * The tree arrives wholesale from _row.css. All this file adds is the
+ * container the handoff specifies — 268px, a 192px scroll cap so the list ends
+ * on a whole row — and the placeholder.
+ */
+
+@import './_tokens.css';
+@import './_row.css';
+
+/* ------------------------------------------------------------- inspector */
+
+/**
+ * The third width, and it declares no geometry of its own.
+ *
+ * `.folderfolio-tree--inspector` in _row.css already restates the three custom
+ * properties — 32px rows, 20px indent, 16px switcher — and drops the count
+ * tag, because the block states its own count. What is left is the box.
+ */
+.folderfolio-inspector {
+  max-height: 192px;
+  overflow-y: auto;
+  border: 1px solid var(--ff-line);
+  background: var(--ff-panel);
+}
+
+/* The sidebar is 280px with 16px of padding either side: 268px is what a
+   control gets, and the tree is a control. */
+.folderfolio-inspector .folderfolio-tree {
+  padding: 2px 0;
+}
+
+/* ----------------------------------------------------------- placeholder */
+
+/* The tokens live on `.folderfolio`, which is why the placeholder carries it:
+   a rule that reaches for --ff-line outside that class gets nothing, and the
+   border disappears on every scheme at once. */
+.folderfolio-gallery-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 24px;
+  border: 1px dashed var(--ff-rule);
+  background: var(--ff-canvas);
+  text-align: center;
+}
+
+.folderfolio-gallery-placeholder__mark {
+  display: flex;
+  color: var(--ff-muted);
+}
+
+.folderfolio-gallery-placeholder__text {
+  margin: 0;
+  max-width: 34em;
+  color: var(--ff-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* The tree takes the placeholder's width when it opens in place, up to the
+   268px it is drawn at. */
+.folderfolio-gallery-placeholder__tree {
+  width: 100%;
+  max-width: 268px;
+  text-align: left;
+}

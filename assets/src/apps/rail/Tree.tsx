@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { CreateRow, Row, GhostRows } from './Row';
 import type { FolderNode } from './queries';
 import { sortTree, useRail } from './store';
+import { can } from '../../lib/can';
 import { t } from '../../core/api';
 
 /**
@@ -242,6 +243,16 @@ export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: Tre
                 case 'F2':
                     event.preventDefault();
 
+                    // The keyboard checks the same abilities the toolbar
+                    // buttons do. It did not, which made F2 and Delete a way
+                    // around the roles matrix for anyone who knew them — the
+                    // request 403s, but the row is already gone from the tree
+                    // optimistically, and the block inspector renders this
+                    // same component with every ability but `assign` off.
+                    if (!can('rename')) {
+                        return;
+                    }
+
                     return edit({
                         mode: 'rename',
                         parentId: null,
@@ -252,6 +263,10 @@ export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: Tre
                 case 'Delete':
                 case 'Backspace':
                     event.preventDefault();
+
+                    if (!can('delete')) {
+                        return;
+                    }
 
                     // No confirm. The toast is the confirmation, and it is the
                     // kind you can answer after seeing what happened.

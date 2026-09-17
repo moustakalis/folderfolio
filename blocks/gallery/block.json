@@ -1,0 +1,35 @@
+{
+    "$schema": "https://schemas.wp.org/trunk/block.json",
+    "apiVersion": 3,
+    "name": "folderfolio/gallery",
+    "title": "Folder gallery",
+    "category": "media",
+    "description": "Every image in a folder, as a gallery. The folder is the source, so adding a file to it updates the page.",
+    "keywords": ["gallery", "folder", "images", "media"],
+    "textdomain": "folderfolio",
+    "attributes": {
+        "folderIds": {
+            "type": "array",
+            "items": { "type": "number" },
+            "default": []
+        },
+        "includeDescendants": { "type": "boolean", "default": false },
+        "layout": { "type": "string", "default": "grid", "enum": ["grid", "masonry"] },
+        "columns": { "type": "number", "default": 3 },
+        "gap": { "type": "number", "default": 16 },
+        "orderBy": { "type": "string", "default": "date", "enum": ["date", "title", "menu_order", "rand"] },
+        "order": { "type": "string", "default": "desc", "enum": ["asc", "desc"] },
+        "limit": { "type": "number", "default": 0 },
+        "linkTo": { "type": "string", "default": "none", "enum": ["none", "media", "attachment"] }
+    },
+    "supports": {
+        "html": false,
+        "align": ["wide", "full"],
+        "spacing": { "margin": true, "padding": true },
+        "interactivity": { "clientNavigation": true }
+    },
+    "editorScript": "folderfolio-gallery-editor",
+    "editorStyle": "folderfolio-gallery-editor",
+    "style": "folderfolio-gallery",
+    "render": "file:./render.php"
+}

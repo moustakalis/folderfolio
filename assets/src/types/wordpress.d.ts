@@ -68,10 +68,91 @@ interface WpA11y {
   speak(message: string, politeness?: 'polite' | 'assertive'): void;
 }
 
+/**
+ * The block editor's packages, as globals.
+ *
+ * Read off `wp` rather than imported, which is this codebase's convention for
+ * everything WordPress ships — see core/api.ts. Typed to what the gallery
+ * block actually renders and no further: describing @wordpress/components
+ * here would be maintaining a copy of its API surface with none of its tests.
+ *
+ * Every one of these is optional because every one of them is a script handle
+ * that a screen either declared or did not.
+ */
+interface WpBlocks {
+  registerBlockType(
+    name: string,
+    settings: {
+      edit: (props: never) => React.ReactNode;
+      save: () => React.ReactNode;
+      icon?: unknown;
+    }
+  ): unknown;
+}
+
+interface WpBlockEditor {
+  InspectorControls: React.ComponentType<{ children?: React.ReactNode }>;
+  useBlockProps: () => Record<string, unknown>;
+}
+
+interface WpSelectOption {
+  label: string;
+  value: string;
+}
+
+interface WpComponents {
+  Button: React.ComponentType<{
+    variant?: 'primary' | 'secondary' | 'tertiary' | 'link';
+    onClick?: () => void;
+    children?: React.ReactNode;
+  }>;
+  PanelBody: React.ComponentType<{
+    title?: string;
+    initialOpen?: boolean;
+    children?: React.ReactNode;
+  }>;
+  RangeControl: React.ComponentType<{
+    __nextHasNoMarginBottom?: boolean;
+    label: string;
+    value: number;
+    min?: number;
+    max?: number;
+    step?: number;
+    help?: string;
+    onChange: (value?: number) => void;
+  }>;
+  SelectControl: React.ComponentType<{
+    __nextHasNoMarginBottom?: boolean;
+    label: string;
+    value: string;
+    options: WpSelectOption[];
+    onChange: (value: string) => void;
+  }>;
+  ToggleControl: React.ComponentType<{
+    __nextHasNoMarginBottom?: boolean;
+    label: string;
+    checked: boolean;
+    help?: string;
+    onChange: (value: boolean) => void;
+  }>;
+}
+
 interface WpGlobal {
   apiFetch<T>(options: WpApiFetchOptions): Promise<T>;
   media?: WpMediaFactory;
   a11y?: WpA11y;
+  blocks?: WpBlocks;
+  blockEditor?: WpBlockEditor;
+  components?: WpComponents;
+  /**
+   * `wp-server-side-render`: the block's own render.php, asked for over REST.
+   * One renderer for the editor and the page, so a preview cannot promise a
+   * layout the front end does not deliver.
+   */
+  serverSideRender?: React.ComponentType<{
+    block: string;
+    attributes: Record<string, unknown>;
+  }>;
 
   /**
    * The `wp-element` script handle: WordPress's own React, react-dom and
