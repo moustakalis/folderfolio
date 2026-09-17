@@ -170,6 +170,27 @@ yarn measure:tree            # render cost at 200 / 1k / 5k / 20k folders
 
 `make wp-link WP_ROOT=/path/to/wordpress` symlinks the checkout into an install.
 
+### If `composer install` will not run
+
+Some sandboxes cannot reach the GitHub API, which is where Composer resolves
+most of these dev dependencies. The unit suite does not need Composer — it
+needs PHPUnit, and PHPUnit ships a PHAR:
+
+```bash
+curl -sSL -o /tmp/phpunit9.phar https://phar.phpunit.de/phpunit-9.phar
+php /tmp/phpunit9.phar -c phpunit-unit.xml.dist
+```
+
+Version 9 deliberately: `composer.json` pins `^9.6`, because that is what the
+WordPress test library the integration suite runs against requires, and running
+the unit suite on 10 or 11 would hide exactly the incompatibility that broke CI
+once already. PHPStan is the same story — `phpstan.phar` plus the WordPress
+stubs needs no Composer either.
+
+The **integration** suite is the one that genuinely needs Composer, the
+WordPress test library and a MySQL. There is no shortcut; CI runs it on PHP
+8.1 through 8.4.
+
 `test:pipeline`, `test:slot` and `test:tree` are not ordinary unit tests: each
 builds a fixture through the **shipping** alias table or the **shipping**
 module, runs it in Chromium, and asserts on the DOM. They exist because the
