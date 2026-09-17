@@ -295,3 +295,77 @@ body.folderfolio-dragging .folderfolio-row {
     outline: 1px solid Highlight;
   }
 }
+
+/* --------------------------------------------- the Folders column (screen 06) */
+
+/**
+ * The one column FolderFolio adds to the media list table.
+ *
+ * Both the header label and the cell contents are wrapped in a `.folderfolio`
+ * span by `Admin\FoldersColumn`, because they are printed into core's own
+ * `<th>` and `<td>` — outside anything of ours — and `_tokens.css` scopes every
+ * `--ff-*` property to that class. Without the wrapper these rules would
+ * resolve no colours at all.
+ */
+
+/**
+ * The header is the scheme's accent, as screen 06 draws it: it is the one
+ * column that is not core's, and saying so once in the header is cheaper than
+ * marking every cell.
+ *
+ * Scoped to inside the table on purpose — the same label is printed again in
+ * Screen Options, where an accent-coloured checkbox label would be a
+ * decoration nobody asked for.
+ */
+.wp-list-table .folderfolio-folders__head {
+  color: var(--ff-sel);
+}
+
+.folderfolio-folders {
+  font-size: 12.5px;
+  color: var(--ff-muted);
+}
+
+/**
+ * Links that do not shout.
+ *
+ * Three folders on each of twenty rows is sixty links; at core's link colour
+ * the column becomes the loudest thing on the screen, which is not what a
+ * membership list is for. So they read as text until you go near them —
+ * screen 06 draws the cell muted — and then say plainly that they are links.
+ */
+.folderfolio-folders__link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.folderfolio-folders__link:hover,
+.folderfolio-folders__link:focus {
+  color: var(--ff-accent-text);
+  text-decoration: underline;
+}
+
+.folderfolio-folders__link:focus-visible {
+  outline: 2px solid var(--ff-sel);
+  outline-offset: 1px;
+}
+
+/**
+ * The separator between two memberships.
+ *
+ * Wide, because the paths themselves contain slashes and a tight separator
+ * would read as another level: `Brand / Logos · Campaigns` has to be two
+ * things, not one four-deep one.
+ */
+.folderfolio-folders__sep {
+  margin: 0 8px;
+  color: var(--ff-off);
+}
+
+/* Forced colours drop the hover ink; the underline is what has to survive. */
+@media (forced-colors: active) {
+  .folderfolio-folders__link:hover,
+  .folderfolio-folders__link:focus {
+    text-decoration: underline;
+  }
+}

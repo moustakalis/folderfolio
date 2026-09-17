@@ -80,3 +80,61 @@ export function applyFolderFilter(folderId: number | null): void {
 
     window.location.assign(url);
 }
+
+/**
+ * Folder links in the library — the Folders column's paths, screen 06.
+ *
+ * `Admin\FoldersColumn` prints each membership as a real `<a href>` carrying
+ * `?folderfolio_folder=<id>`, so the column works with scripts off, opens in
+ * a new tab on a middle-click, and shows where it goes in the status bar.
+ * With scripts on, a plain click should do what every other way of choosing a
+ * folder does: filter in place, leaving the rail's state and the page's scroll
+ * position alone.
+ *
+ * Delegated on the document because the table is replaced wholesale on every
+ * folder change — see lib/list-refresh.ts. A listener bound to the links
+ * themselves would survive exactly one click.
+ *
+ * Returns a teardown.
+ */
+export function watchFolderLinks(onSelect: (folderId: number | null) => void): () => void {
+    const onClick = (event: MouseEvent) => {
+        /*
+         * Every one of these is a deliberate request for the browser's own
+         * behaviour, and intercepting it would be taking something away:
+         * a middle-click or ctrl/cmd-click opens a new tab, shift opens a
+         * window, alt downloads. Only a plain left click is ours.
+         */
+        if (
+            event.defaultPrevented
+            || event.button !== 0
+            || event.metaKey
+            || event.ctrlKey
+            || event.shiftKey
+            || event.altKey
+        ) {
+            return;
+        }
+
+        const link = (event.target as Element | null)?.closest<HTMLElement>(
+            '[data-folderfolio-folder]'
+        );
+
+        if (!link) {
+            return;
+        }
+
+        const id = Number.parseInt(link.dataset.folderfolioFolder ?? '', 10);
+
+        if (Number.isNaN(id)) {
+            return;
+        }
+
+        event.preventDefault();
+        onSelect(id);
+    };
+
+    document.addEventListener('click', onClick);
+
+    return () => document.removeEventListener('click', onClick);
+}

@@ -27,7 +27,7 @@ import {
     type FolderNode,
 } from './queries';
 import { useRail } from './store';
-import { applyFolderFilter } from '../../lib/filter';
+import { applyFolderFilter, watchFolderLinks } from '../../lib/filter';
 import { t } from '../../core/api';
 
 export function Rail({ contentMount }: { contentMount: HTMLElement | null }) {
@@ -157,6 +157,15 @@ export function Rail({ contentMount }: { contentMount: HTMLElement | null }) {
     useEffect(() => watchDrags(() => selectedRef.current), []);
 
     /**
+     * The Folders column's paths filter in place rather than navigating.
+     *
+     * Wired here rather than in the column's own bundle because `select` is
+     * the store's, and going through it is what keeps the rail highlight, the
+     * breadcrumb, the cards and the URL agreeing with the table.
+     */
+    useEffect(() => watchFolderLinks(select), [select]);
+
+    /**
      * Leaving the page inside the window still deletes.
      *
      * pagehide rather than beforeunload: it fires on the back/forward cache
@@ -212,8 +221,20 @@ export function Rail({ contentMount }: { contentMount: HTMLElement | null }) {
     }, [selectedId]);
 
     /**
-     * Arriving cold at a deep link has to open the tree down to that folder
-     * and not just highlight a row nobody can see.
+     * A selected folder is always visible in the tree.
+     *
+     * Two cases, one rule. Arriving cold at `?folderfolio_folder=12` has to
+     * open the tree down to that folder rather than highlighting a row nobody
+     * can see — and so does choosing a folder from somewhere that is not the
+     * tree: the filter-row select, a path in the Folders column, a drill-down
+     * card two levels in. All of those can name a folder inside a parent the
+     * user has collapsed.
+     *
+     * This ran on `[nodes]` alone until step 8, which covered the cold link
+     * and nothing else. Adding `selectedId` does not re-fight the user: the
+     * effect only ever expands, only on a *change* of selection, and
+     * collapsing a parent leaves the selection alone, so nothing here runs
+     * again to undo it.
      */
     useEffect(() => {
         if (selectedId === null || selectedId <= 0 || nodes.length === 0) {
@@ -225,9 +246,7 @@ export function Rail({ contentMount }: { contentMount: HTMLElement | null }) {
         if (ancestors && ancestors.length > 0) {
             reveal(ancestors);
         }
-        // Only when the tree first arrives: afterwards the user owns what is
-        // open, and re-revealing would fight them.
-    }, [nodes]);
+    }, [nodes, selectedId]);
 
     return (
         <>

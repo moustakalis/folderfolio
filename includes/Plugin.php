@@ -9,6 +9,7 @@ if (!defined('ABSPATH')) {
 }
 
 use FolderFolio\Admin\FolderSelect;
+use FolderFolio\Admin\FoldersColumn;
 use FolderFolio\Admin\ImportPage;
 use FolderFolio\Admin\MediaLibraryFilter;
 use FolderFolio\Admin\MediaLibraryIntegration;
@@ -94,6 +95,10 @@ final class Plugin
             // that it filters the library with scripts off, and so that a list
             // refresh gets a correctly-selected copy back from the server.
             (new FolderSelect())->register();
+
+            // The Folders column in the list table — the only column
+            // FolderFolio adds, and where list mode's drill-down happens.
+            (new FoldersColumn())->register();
 
             // One instance: Menu places the screen and hands it the hook
             // suffix, ImportPage hangs its assets off that.

@@ -62,6 +62,61 @@ class AttachmentFolderRepository
         );
     }
 
+    /**
+     * Folder ids for many attachments at once.
+     *
+     * The Folders column in the media list table needs this for every row on
+     * the page. Calling folderIdsForAttachment() per row is twenty queries for
+     * a screen that can answer the whole question in one, and it is the shape
+     * of mistake that only shows up on a site with real traffic.
+     *
+     * Attachments with no folder are absent from the result rather than
+     * present with an empty list: the caller is rendering a table and already
+     * has to handle a missing key, and inventing rows here would mean
+     * building a map of every id on the page twice.
+     *
+     * @param list<int> $attachmentIds
+     * @return array<int, list<int>> Keyed by attachment id, in path order.
+     */
+    public function folderIdsForAttachments(array $attachmentIds): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $attachmentIds))));
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $folders = $this->wpdb->prefix . 'folderfolio_folders';
+        $placeholders = implode(', ', array_fill(0, count($ids), '%d'));
+
+        /*
+         * Joined to the folders table, and ordered by path, so the column
+         * reads the same way twice — and so an assignment whose folder has
+         * been deleted out from under it is dropped here rather than rendering
+         * as a blank link. (Deletes clean up after themselves, so that row
+         * should not exist; this is the cheap place to be sure.)
+         */
+        $rows = $this->wpdb->get_results(
+            $this->wpdb->prepare(
+                "SELECT a.attachment_id, a.folder_id
+                 FROM {$this->table()} AS a
+                 INNER JOIN {$folders} AS f ON f.id = a.folder_id
+                 WHERE a.attachment_id IN ({$placeholders})
+                 ORDER BY f.path ASC",
+                ...$ids
+            ),
+            ARRAY_A
+        ) ?: [];
+
+        $out = [];
+
+        foreach ($rows as $row) {
+            $out[(int) $row['attachment_id']][] = (int) $row['folder_id'];
+        }
+
+        return $out;
+    }
+
     public function assign(int $folderId, int $attachmentId, int $sortOrder = 0): bool|WP_Error
     {
         $result = $this->wpdb->replace($this->table(), [
