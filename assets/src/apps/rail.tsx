@@ -12,6 +12,42 @@ import { createRoot } from 'react-dom/client';
 
 import { Rail } from './rail/Rail';
 
+/**
+ * Where the breadcrumb and the drill-down cards go.
+ *
+ * Created here rather than printed by PHP, because the only correct place for
+ * it — just below core's page heading, inside .wrap — has not been parsed yet
+ * at the hook where the rail's own markup is printed. The node is empty until
+ * React fills it, so creating it a frame later costs nothing visually, unlike
+ * the rail itself whose width has to be right before first paint.
+ *
+ * .wp-header-end is core's own marker for "the heading is done"; it is what
+ * admin notices anchor to, so it is the one landmark guaranteed to be there
+ * and in the right place on both library modes.
+ */
+function contentMount(): HTMLElement | null {
+    const existing = document.getElementById('folderfolio-content');
+
+    if (existing) {
+        return existing;
+    }
+
+    const anchor =
+        document.querySelector('#wpbody-content .wrap .wp-header-end') ??
+        document.querySelector('#wpbody-content .wrap h1');
+
+    if (!anchor) {
+        return null;
+    }
+
+    const el = document.createElement('div');
+    el.id = 'folderfolio-content';
+    el.className = 'folderfolio folderfolio-content';
+    anchor.insertAdjacentElement('afterend', el);
+
+    return el;
+}
+
 const mount = document.getElementById('folderfolio-rail-app');
 
 if (mount) {
@@ -30,7 +66,7 @@ if (mount) {
 
     createRoot(mount).render(
         <QueryClientProvider client={client}>
-            <Rail />
+            <Rail contentMount={contentMount()} />
         </QueryClientProvider>
     );
 }

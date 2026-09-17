@@ -1,0 +1,263 @@
+/**
+ * What FolderFolio adds to the library column — screen 03, overflow on 11.
+ *
+ * Sits between core's page heading and core's own filter row, so everything
+ * here has to look like it belongs to wp-admin rather than to a panel bolted
+ * onto it. No hex literals; see _tokens.css.
+ */
+
+.folderfolio-content {
+  /* Core's .wrap already indents this column; the breadcrumb aligns to the
+     page title above it rather than to anything of ours. */
+  margin: 0 20px 0 2px;
+}
+
+/* --------------------------------------------------------- the breadcrumb */
+
+.folderfolio-crumbs {
+  padding: 8px 0 10px;
+  font-size: 12px;
+  color: var(--ff-muted);
+
+  /* The measurement the overflow depends on: the row must be able to report
+     that it is wider than its box, which it cannot do if it wraps. */
+  overflow: hidden;
+}
+
+.folderfolio-crumbs__list {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  white-space: nowrap;
+}
+
+.folderfolio-crumbs__item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* The separator belongs to the crumb that follows it, so the row never opens
+   with a slash. */
+.folderfolio-crumbs__item:first-child .folderfolio-crumbs__sep {
+  display: none;
+}
+
+.folderfolio-crumbs__sep {
+  color: var(--ff-off);
+}
+
+.folderfolio-crumbs__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--ff-muted);
+  cursor: pointer;
+}
+
+.folderfolio-crumbs__link:hover {
+  color: var(--ff-accent-text);
+}
+
+.folderfolio-crumbs__current {
+  font-weight: 700;
+  color: var(--ff-ink);
+}
+
+/* 26 × 22, as drawn. A button rather than an ellipsis glyph, because the
+   levels it stands for have to be reachable. */
+.folderfolio-crumbs__more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--ff-line);
+  border-radius: 0;
+  background: var(--ff-panel);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--ff-muted);
+  cursor: pointer;
+}
+
+.folderfolio-crumbs__more:hover {
+  border-color: var(--ff-sel);
+  color: var(--ff-ink);
+}
+
+.folderfolio-crumbs__link:focus-visible,
+.folderfolio-crumbs__more:focus-visible,
+.folderfolio-crumbs__menu-item:focus-visible,
+.folderfolio-card:focus-visible,
+.folderfolio-chip:focus-visible {
+  outline: 2px solid var(--ff-sel);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+.folderfolio-crumbs__menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 100;
+  min-width: 180px;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: var(--ff-panel);
+  border: 1px solid var(--ff-line);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+
+.folderfolio-crumbs__menu-item {
+  display: block;
+  width: 100%;
+  padding: 5px 10px;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  color: var(--ff-ink);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.folderfolio-crumbs__menu-item:hover {
+  background: var(--ff-hover);
+}
+
+/* 2px rule between major sections — the breadcrumb is one, the library is
+   the next. */
+.folderfolio-content__rule {
+  height: 2px;
+  background: var(--ff-rule);
+  margin-bottom: 14px;
+}
+
+/* -------------------------------------------------------------- eyebrow */
+
+.folderfolio-eyebrow {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ff-dim);
+}
+
+/* ---------------------------------------------------- drill-down cards */
+
+.folderfolio-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.folderfolio-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--ff-line);
+  border-radius: 0;
+  background: var(--ff-panel);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  /* The one shadow in the design. A card is a thing you pick up; the tree row
+     it duplicates is not. */
+  box-shadow: 0 1px 2px rgba(29, 35, 39, 0.1);
+}
+
+.folderfolio-card:hover {
+  border-color: var(--ff-sel);
+}
+
+/* Colour paints the icon and nothing else — the same rule as the tree row, so
+   a folder looks like itself in both places. */
+.folderfolio-card__icon,
+.folderfolio-chip__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: var(--ff-folder, var(--ff-muted));
+}
+
+.folderfolio-card__name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ff-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.folderfolio-card__count {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ff-muted);
+}
+
+/* ------------------------------------------------- list mode: chip strip */
+
+.folderfolio-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.folderfolio-chips .folderfolio-eyebrow {
+  margin: 0 4px 0 0;
+}
+
+.folderfolio-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--ff-line);
+  border-radius: 0;
+  background: var(--ff-panel);
+  font-family: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.folderfolio-chip:hover {
+  border-color: var(--ff-sel);
+}
+
+.folderfolio-chip__name {
+  color: var(--ff-ink);
+}
+
+.folderfolio-chip__count {
+  color: var(--ff-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Windows High Contrast drops the hover border colour and the card shadow. */
+@media (forced-colors: active) {
+  .folderfolio-card:hover,
+  .folderfolio-chip:hover {
+    outline: 1px solid Highlight;
+  }
+}

@@ -7,7 +7,9 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
+import { Content } from './Content';
 import { FixedRows } from './FixedRows';
 import { Header } from './Header';
 import { Results } from './Results';
@@ -18,7 +20,7 @@ import { useRail } from './store';
 import { applyFolderFilter } from '../../lib/filter';
 import { t } from '../../core/api';
 
-export function Rail() {
+export function Rail({ contentMount }: { contentMount: HTMLElement | null }) {
     const { data, isPending, isError, refetch } = useTree();
     const nodes = data ?? [];
 
@@ -84,29 +86,39 @@ export function Rail() {
     }, [nodes]);
 
     return (
-        <div className="folderfolio-rail__app">
-            <Header />
-            <FixedRows />
-            <Search />
+        <>
+            {/*
+              The breadcrumb and the drill-down cards live in the library
+              column, not in the rail — but they are the same React tree, so
+              they share the store and the query client rather than fetching
+              the folders a second time.
+            */}
+            {contentMount && !isError ? createPortal(<Content nodes={nodes} />, contentMount) : null}
 
-            <div className="folderfolio-rail__body">
-                {isError ? (
-                    <div className="folderfolio-rail__error" role="alert">
-                        <p>{t('treeFailed', 'Could not load your folders.')}</p>
-                        <p className="folderfolio-rail__error-detail">
-                            {t('treeFailedWhere', 'The request to /folderfolio/v1/folders did not succeed.')}
-                        </p>
-                        <button type="button" className="folderfolio-rail__ghost" onClick={() => void refetch()}>
-                            {t('retry', 'Retry')}
-                        </button>
-                    </div>
-                ) : query.trim() !== '' ? (
-                    <Results nodes={nodes} />
-                ) : (
-                    <Tree nodes={nodes} loading={isPending} />
-                )}
+            <div className="folderfolio-rail__app">
+                <Header />
+                <FixedRows />
+                <Search />
+
+                <div className="folderfolio-rail__body">
+                    {isError ? (
+                        <div className="folderfolio-rail__error" role="alert">
+                            <p>{t('treeFailed', 'Could not load your folders.')}</p>
+                            <p className="folderfolio-rail__error-detail">
+                                {t('treeFailedWhere', 'The request to /folderfolio/v1/folders did not succeed.')}
+                            </p>
+                            <button type="button" className="folderfolio-rail__ghost" onClick={() => void refetch()}>
+                                {t('retry', 'Retry')}
+                            </button>
+                        </div>
+                    ) : query.trim() !== '' ? (
+                        <Results nodes={nodes} />
+                    ) : (
+                        <Tree nodes={nodes} loading={isPending} />
+                    )}
+                </div>
             </div>
-        </div>
+        </>
     );
 }
 

@@ -1,4 +1,11 @@
-import { t } from './api';
+/**
+ * Keeps the media grid's own frame in step with the folder selection.
+ *
+ * It used to also render an info bar above the grid reading "Filtering by
+ * folder #3" with a Clear button — an id, not a name, and the only way out of
+ * a filter. The breadcrumb replaces both: it names the whole path, and every
+ * level of it including All media is a way back out.
+ */
 
 interface FolderSelectedDetail {
     folderId: number | null;
@@ -7,69 +14,9 @@ interface FolderSelectedDetail {
 interface FolderFolioMediaEvent extends CustomEvent<FolderSelectedDetail> {}
 
 const eventName = 'folderfolio:folder-selected';
-const infoBarId = 'folderfolio-current-folder-bar';
 
 function emitMediaFilter(folderId: number | null): void {
     window.wp?.media?.frame?.trigger('folderfolio:filter', { folderId });
-}
-
-function getOrCreateInfoBar(): HTMLElement | null {
-    const existing = document.getElementById(infoBarId);
-
-    if (existing) {
-        return existing;
-    }
-
-    // .wp-filter only exists in grid mode. List mode renders .subsubsub and
-    // .tablenav, so anchoring on .wp-filter alone meant the bar - and with it
-    // the only way to clear the filter - never appeared in the one mode where
-    // filtering works through the URL.
-    const anchor =
-        document.getElementById('folderfolio-sidebar') ??
-        document.querySelector<HTMLElement>('.wp-filter') ??
-        document.querySelector<HTMLElement>('.tablenav.top');
-
-    if (!anchor) {
-        return null;
-    }
-
-    const infoBar = document.createElement('div');
-    infoBar.id = infoBarId;
-    infoBar.className = 'media-folder-filter';
-
-    anchor.insertAdjacentElement('afterend', infoBar);
-
-    return infoBar;
-}
-
-function clearFolderFilter(): void {
-    document.getElementById(infoBarId)?.remove();
-
-    window.dispatchEvent(
-        new CustomEvent<FolderSelectedDetail>(eventName, {
-            detail: { folderId: null },
-        }),
-    );
-}
-
-function renderInfoBar(folderId: number): void {
-    const infoBar = getOrCreateInfoBar();
-
-    if (!infoBar) {
-        return;
-    }
-
-    infoBar.replaceChildren();
-
-    const label = document.createTextNode(`${t('filteringBy', 'Filtering by folder #%s', folderId)} `);
-    const clearButton = document.createElement('button');
-
-    clearButton.type = 'button';
-    clearButton.className = 'button';
-    clearButton.textContent = t('clearFilter', 'Clear filter');
-    clearButton.addEventListener('click', clearFolderFilter);
-
-    infoBar.append(label, clearButton);
 }
 
 function currentFolderFromUrl(): number | null {
@@ -92,24 +39,9 @@ function start(): void {
     // module previously did nothing at all.
     window.addEventListener(eventName, (event: Event) => {
         const { detail } = event as FolderFolioMediaEvent;
-        const folderId = detail?.folderId ?? null;
 
-        emitMediaFilter(folderId);
-
-        if (folderId === null) {
-            document.getElementById(infoBarId)?.remove();
-            return;
-        }
-
-        renderInfoBar(folderId);
+        emitMediaFilter(detail?.folderId ?? null);
     });
-
-    // List mode arrives filtered via the URL, with no event to react to.
-    const active = currentFolderFromUrl();
-
-    if (active !== null) {
-        renderInfoBar(active);
-    }
 }
 
 if (document.readyState === 'loading') {
