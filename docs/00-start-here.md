@@ -110,7 +110,11 @@ The properties worth knowing:
   here. A second run reconciles; renaming a folder does not break the link.
 - **Batched and resumable**, cursor on the server, which is what lets the
   screen say "you can leave this page".
-- **Undo**, which keeps any folder somebody has put their own files into since.
+- **Undo**, which keeps any folder somebody has put their own files into
+  since — and, since `import_run` landed on the assignments table, any *file*
+  they filed too. It used to delete by (folder, time window), which cannot
+  tell a row the import wrote from one written by the person the run invited
+  to carry on working while it ran.
 
 **Phase 8 is next**: the gallery block, which also unblocks design step 9b —
 the 268px inspector tree, whose geometry is already in `_row.css`.
