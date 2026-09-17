@@ -94,6 +94,8 @@ interface FolderFolioConfig {
   nonce: string;
   pluginUrl: string;
   mediaNewUrl: string;
+  /** admin_url('upload.php'), for the import report's way back. */
+  uploadUrl?: string;
   version: string;
   /**
    * The four abilities of the roles matrix, resolved for this user. Optional

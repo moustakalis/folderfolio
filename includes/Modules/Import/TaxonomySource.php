@@ -1,0 +1,149 @@
+<?php
+
+declare(strict_types=1);
+
+namespace FolderFolio\Modules\Import;
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+/**
+ * Sources that keep folders as WordPress taxonomy terms.
+ *
+ * Six of the nine plugins CatFolders' own importer knows about, which makes
+ * this one reader the best-value hundred lines in the module:
+ *
+ * | Plugin | Taxonomy |
+ * |---|---|
+ * | Folders (Premio) | `media_folder` |
+ * | Wicked Folders | `wf_attachment_folders` |
+ * | Enhanced Media Library | `media_category` |
+ * | Media Library Assistant | `attachment_category` |
+ * | WP Media Folder | `wpmf-category` |
+ * | HappyFiles | `happyfiles_category` |
+ *
+ * Read from `term_taxonomy` and `term_relationships` directly rather than
+ * through `get_terms()`, for the reason this whole module exists: the plugin
+ * that registered the taxonomy is very often deactivated by the time somebody
+ * wants their folders out of it, and an unregistered taxonomy is invisible to
+ * every WordPress API while its rows sit untouched in the database.
+ *
+ * Hierarchy comes from `term_taxonomy.parent`, where `0` is the root — a
+ * fourth convention to normalise, and the reason `SourceFolder` insists on
+ * `null`.
+ */
+final class TaxonomySource extends Source
+{
+    public function __construct(
+        string $key,
+        string $label,
+        string $pluginFile,
+        private readonly string $taxonomy
+    ) {
+        parent::__construct($key, $label, $pluginFile);
+    }
+
+    public function hasData(): bool
+    {
+        return $this->folderCount() > 0;
+    }
+
+    public function folderCount(): int
+    {
+        global $wpdb;
+
+        return (int) $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->term_taxonomy} WHERE taxonomy = %s",
+                $this->taxonomy
+            )
+        );
+    }
+
+    public function assignmentCount(): int
+    {
+        global $wpdb;
+
+        // Joined to posts because a taxonomy can be shared with other post
+        // types — Media Library Assistant's `attachment_category` is
+        // attachments only, but Enhanced Media Library's is not necessarily,
+        // and importing a post's categories into a media library is the kind
+        // of mess that is easier to avoid than to undo.
+        return (int) $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(*)
+                 FROM {$wpdb->term_relationships} r
+                 INNER JOIN {$wpdb->term_taxonomy} tt
+                     ON tt.term_taxonomy_id = r.term_taxonomy_id
+                 INNER JOIN {$wpdb->posts} p
+                     ON p.ID = r.object_id AND p.post_type = 'attachment'
+                 WHERE tt.taxonomy = %s",
+                $this->taxonomy
+            )
+        );
+    }
+
+    /**
+     * @return list<SourceFolder>
+     */
+    public function folders(): array
+    {
+        global $wpdb;
+
+        /** @var list<array{term_id: string, parent: string, name: string}> $rows */
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT tt.term_id, tt.parent, t.name
+                 FROM {$wpdb->term_taxonomy} tt
+                 INNER JOIN {$wpdb->terms} t ON t.term_id = tt.term_id
+                 WHERE tt.taxonomy = %s
+                 ORDER BY tt.term_id ASC",
+                $this->taxonomy
+            ),
+            ARRAY_A
+        ) ?: [];
+
+        $folders = [];
+
+        foreach ($rows as $row) {
+            $parent = (int) $row['parent'];
+
+            $folders[] = new SourceFolder(
+                (int) $row['term_id'],
+                0 === $parent ? null : $parent,
+                (string) $row['name']
+            );
+        }
+
+        return $folders;
+    }
+
+    /**
+     * @return list<int>
+     */
+    public function attachmentIdsFor(int $sourceFolderId): array
+    {
+        global $wpdb;
+
+        // `$sourceFolderId` is a term_id, not a term_taxonomy_id — the two are
+        // usually equal on a site that has never had a term in two taxonomies,
+        // which is exactly why joining rather than assuming matters here.
+        /** @var list<string> $ids */
+        $ids = $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT r.object_id
+                 FROM {$wpdb->term_relationships} r
+                 INNER JOIN {$wpdb->term_taxonomy} tt
+                     ON tt.term_taxonomy_id = r.term_taxonomy_id
+                 INNER JOIN {$wpdb->posts} p
+                     ON p.ID = r.object_id AND p.post_type = 'attachment'
+                 WHERE tt.taxonomy = %s AND tt.term_id = %d",
+                $this->taxonomy,
+                $sourceFolderId
+            )
+        ) ?: [];
+
+        return array_values(array_map('intval', $ids));
+    }
+}

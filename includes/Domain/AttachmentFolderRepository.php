@@ -327,6 +327,45 @@ class AttachmentFolderRepository
     }
 
     /**
+     * Remove assignments made to these folders inside a time window.
+     *
+     * This is how an import is undone without the import having stored a list
+     * of everything it filed. `assigned_at` is already on every row, so the
+     * question "what did that run add" is answerable from the data rather than
+     * from a hundred thousand pairs in an option.
+     *
+     * The window is closed at both ends and the folder set is explicit, so a
+     * file somebody filed by hand during the import — in a folder the import
+     * never touched — is not in scope.
+     *
+     * @param list<int> $folderIds
+     * @param string    $from UTC 'Y-m-d H:i:s'.
+     * @param string    $to   UTC 'Y-m-d H:i:s'.
+     *
+     * @return int Rows removed.
+     */
+    public function deleteAssignedBetween(array $folderIds, string $from, string $to): int
+    {
+        if ($folderIds === [] || $from === '' || $to === '') {
+            return 0;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($folderIds), '%d'));
+
+        $deleted = $this->wpdb->query(
+            $this->wpdb->prepare(
+                "DELETE FROM {$this->table()}
+                 WHERE folder_id IN ({$placeholders})
+                   AND assigned_at >= %s
+                   AND assigned_at <= %s",
+                ...[...$folderIds, $from, $to]
+            )
+        );
+
+        return (int) $deleted;
+    }
+
+    /**
      * Drop assignment rows that point at nothing.
      *
      * Two kinds, and they arrive by different routes. A row whose folder is

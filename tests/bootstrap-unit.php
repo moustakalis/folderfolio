@@ -35,3 +35,9 @@ require_once $root . '/includes/Domain/FolderPath.php';
 require_once $root . '/includes/Domain/FolderTree.php';
 require_once $root . '/includes/Admin/RailPreferences.php';
 require_once $root . '/includes/Support/Settings.php';
+
+// The import module's walk. Pure, and the place where the shapes nobody can
+// arrange on purpose live: a source folder whose parent was deleted, a cycle,
+// a branch deeper than the path column holds.
+require_once $root . '/includes/Modules/Import/SourceFolder.php';
+require_once $root . '/includes/Modules/Import/SourceTree.php';

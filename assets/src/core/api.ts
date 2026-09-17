@@ -44,6 +44,19 @@ export function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promis
 export function t(key: string, fallback: string, ...values: Array<string | number>): string {
   const template = window.folderFolio?.i18n?.[key] ?? fallback;
 
+  // Positional placeholders first. A sentence with two values in it has to be
+  // translatable into a language that wants them in the other order, which is
+  // what `%1$s` is for and why WordPress's own strings use it; filling those
+  // sequentially would leave `%1$s` on the screen, which is how this was
+  // found — "Folders — %1$s of %2$s", rendered verbatim, in the import wizard.
+  if (/%\d+\$s/.test(template)) {
+    return template.replace(/%(\d+)\$s/g, (match, index: string) => {
+      const value = values[Number(index) - 1];
+
+      return value === undefined ? match : String(value);
+    });
+  }
+
   return values.reduce<string>((out, value) => out.replace('%s', String(value)), template);
 }
 

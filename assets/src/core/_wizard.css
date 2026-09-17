@@ -1,0 +1,244 @@
+/**
+ * The migration wizard — screen 07.
+ *
+ * Lives inside the settings card's Import tab, so it declares no card of its
+ * own: the border, the shadow and the 880px ceiling are already around it.
+ * What is here is the step rail, the preview's two-column lines, the progress
+ * bar and the two report panels.
+ */
+
+.folderfolio-wizard {
+  color: var(--ff-ink);
+}
+
+/* The step rail. An ordered list, because that is what it is. */
+.folderfolio-wizard__steps {
+  display: flex;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+  border-bottom: 2px solid var(--ff-field-line);
+}
+
+.folderfolio-wizard__step {
+  flex: 1;
+  padding: 14px 16px;
+  border-right: 1px solid var(--ff-line);
+  border-bottom: 3px solid transparent;
+
+  /* Sits the marker on the rule rather than under it, the same way the
+     settings tabs do. */
+  margin-bottom: -2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ff-muted);
+}
+
+.folderfolio-wizard__step:last-child {
+  border-right: 0;
+}
+
+.folderfolio-wizard__step[aria-current='step'] {
+  border-bottom-color: var(--ff-bar);
+  color: var(--ff-ink);
+}
+
+.folderfolio-wizard__num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+  border: 1px solid var(--ff-ink);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.folderfolio-wizard__step[aria-current='step'] .folderfolio-wizard__num {
+  background: var(--ff-bar);
+  color: var(--ff-on-sel);
+}
+
+.folderfolio-wizard__title {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.folderfolio-wizard__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* "Nothing has been written yet" — the claim the preview is making. */
+.folderfolio-wizard__eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ff-accent-text);
+}
+
+.folderfolio-wizard__lede {
+  max-width: 62ch;
+  margin: 0 0 18px;
+  font-size: 13.5px;
+  color: var(--ff-muted);
+  text-wrap: pretty;
+}
+
+.folderfolio-wizard__note {
+  max-width: 62ch;
+  margin: 14px 0 0;
+  font-size: 11.5px;
+  color: var(--ff-muted);
+  text-wrap: pretty;
+}
+
+.folderfolio-wizard__empty {
+  padding: 14px 0;
+  font-size: 13px;
+  color: var(--ff-muted);
+}
+
+.folderfolio-wizard__sources {
+  border-top: 1px solid var(--ff-line);
+}
+
+/* A source with nothing in it is still listed, and reads as unavailable. */
+.folderfolio-source__name.is-empty {
+  color: var(--ff-dim);
+  font-weight: 400;
+}
+
+.folderfolio-source__none {
+  font-size: 12px;
+  color: var(--ff-off);
+}
+
+/* The preview's lines: a 210px label column, then the sentence. */
+.folderfolio-wizard__lines {
+  border-top: 2px solid var(--ff-field-line);
+}
+
+.folderfolio-wizard__line {
+  display: flex;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--ff-line);
+}
+
+.folderfolio-wizard__lineLabel {
+  flex: 0 0 210px;
+  width: 210px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.folderfolio-wizard__lineDetail {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--ff-muted);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+
+.folderfolio-wizard__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+.folderfolio-wizard__actions .folderfolio-wizard__note {
+  margin: 0 0 0 6px;
+}
+
+/* Undo reads as available, not as destructive: it is the safe direction. */
+.folderfolio-wizard__undo {
+  border-color: var(--ff-accent-text);
+  color: var(--ff-accent-text);
+  font-weight: 700;
+}
+
+.folderfolio-wizard__bar {
+  height: 6px;
+  margin-bottom: 8px;
+  background: var(--ff-canvas);
+}
+
+.folderfolio-wizard__bar span {
+  display: block;
+  height: 6px;
+  background: var(--ff-sel);
+}
+
+.folderfolio-wizard__barLine {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  font-size: 12.5px;
+  color: var(--ff-muted);
+}
+
+.folderfolio-wizard__pct {
+  font-variant-numeric: tabular-nums;
+}
+
+.folderfolio-wizard__tally {
+  padding: 12px;
+  border: 1px solid var(--ff-line);
+  margin-bottom: 18px;
+  font-size: 12.5px;
+  line-height: 1.8;
+  color: var(--ff-muted);
+}
+
+.folderfolio-wizard__panel {
+  padding: 14px;
+  border: 1px solid var(--ff-line);
+  margin-bottom: 18px;
+}
+
+.folderfolio-wizard__panelTitle {
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.folderfolio-wizard__panelBody {
+  font-size: 12.5px;
+  color: var(--ff-muted);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+
+.folderfolio-wizard__error {
+  padding: 12px 14px;
+  margin: 14px 0;
+  border-left: 4px solid var(--ff-danger);
+  background: var(--ff-hover);
+  font-size: 13px;
+}
+
+@media screen and (max-width: 782px) {
+  .folderfolio-wizard__steps {
+    flex-wrap: wrap;
+  }
+
+  .folderfolio-wizard__line {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .folderfolio-wizard__lineLabel {
+    flex-basis: auto;
+    width: auto;
+  }
+}
