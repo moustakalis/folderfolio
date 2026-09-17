@@ -8,6 +8,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+use FolderFolio\Admin\FolderSelect;
 use FolderFolio\Admin\ImportPage;
 use FolderFolio\Admin\MediaLibraryFilter;
 use FolderFolio\Admin\MediaLibraryIntegration;
@@ -88,6 +89,11 @@ final class Plugin
             // the tree that goes inside it.
             (new Rail())->register();
             (new MediaLibraryIntegration())->register();
+
+            // The folder select in list mode's filter bar. Printed by PHP so
+            // that it filters the library with scripts off, and so that a list
+            // refresh gets a correctly-selected copy back from the server.
+            (new FolderSelect())->register();
 
             // One instance: Menu places the screen and hands it the hook
             // suffix, ImportPage hangs its assets off that.

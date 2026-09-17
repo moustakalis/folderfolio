@@ -62,7 +62,7 @@ final class MediaLibraryFilter
             return;
         }
 
-        $folderId = $this->folderIdFrom($_GET[self::QUERY_VAR] ?? null);
+        $folderId = self::normalizeFolderId($_GET[self::QUERY_VAR] ?? null);
 
         if (null === $folderId) {
             return;
@@ -91,7 +91,7 @@ final class MediaLibraryFilter
             return $args;
         }
 
-        $folderId = $this->folderIdFrom($query[self::QUERY_VAR] ?? null);
+        $folderId = self::normalizeFolderId($query[self::QUERY_VAR] ?? null);
 
         if (null === $folderId) {
             return $args;
@@ -148,8 +148,14 @@ final class MediaLibraryFilter
      *
      * Returns null when no filter was requested, so that folder 0 - the
      * unassigned pseudo-folder - stays distinguishable from "not filtering".
+     *
+     * Public and static because FolderSelect has to decide which option is
+     * selected from the same raw value this class filters on. Two copies of
+     * this would work until one of them started treating '0' as absent, and
+     * then the Unassigned option would stop looking selected on the one screen
+     * that shows it.
      */
-    private function folderIdFrom(mixed $value): ?int
+    public static function normalizeFolderId(mixed $value): ?int
     {
         if (null === $value || '' === $value || is_array($value)) {
             return null;

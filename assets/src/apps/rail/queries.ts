@@ -264,3 +264,72 @@ export function useCreateFolder() {
         },
     });
 }
+
+/**
+ * The bulk "Add to folder" flyout — screens 03, 06 and 11.
+ *
+ * Adds, and only adds. The membership model is many-to-many, so filing a file
+ * into Campaigns is not a statement about whether it is also in Brand, and the
+ * flyout has no way to show what it would be taking away. Removing is the
+ * drag's job, where the folder you are dragging out of is on screen and named.
+ *
+ * One request per destination, run in sequence rather than in parallel: they
+ * all write the same assignments table, and a handful of folders is not a
+ * queue worth flooding for a saving nobody would see. Sequential also means a
+ * failure halfway leaves a knowable state — the folders before it are done —
+ * instead of an arbitrary subset.
+ */
+export function useAddToFolders() {
+    const client = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (input: { ids: number[]; folderIds: number[] }) => {
+            for (const folderId of input.folderIds) {
+                await apiFetch<ApiEnvelope<{ assigned: number }>>('/attachments/assign', {
+                    method: 'POST',
+                    data: {
+                        folder_id: folderId,
+                        attachment_ids: input.ids,
+                        // Explicit, though it is also the server's default:
+                        // this is the one property of this mutation that the
+                        // design names, and it should not be legible only by
+                        // knowing what FolderService::MODE_ADD happens to be.
+                        mode: 'add',
+                    },
+                });
+            }
+
+            return input;
+        },
+
+        onSuccess: () => {
+            void client.invalidateQueries({ queryKey: treeKey });
+            void client.invalidateQueries({ queryKey: countsKey });
+
+            // The Folders column in list mode, and the folder the grid is
+            // filtered to, both just became stale.
+            window.dispatchEvent(new CustomEvent('folderfolio:library-changed'));
+        },
+    });
+}
+
+/**
+ * The tree as a flat list, deepest indent preserved.
+ *
+ * Both of this step's controls are flat lists of folders — a `<select>` cannot
+ * nest, and the flyout's checkbox rows are one scrollable column — so both
+ * need the tree's shape expressed as a number rather than as nesting.
+ */
+export interface FlatFolder {
+    node: FolderNode;
+    depth: number;
+}
+
+export function flattenTree(nodes: FolderNode[], depth = 0, out: FlatFolder[] = []): FlatFolder[] {
+    for (const node of nodes) {
+        out.push({ node, depth });
+        flattenTree(node.children, depth + 1, out);
+    }
+
+    return out;
+}

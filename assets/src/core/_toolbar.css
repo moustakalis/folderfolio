@@ -243,3 +243,213 @@
   outline: 2px solid var(--ff-toast-ink);
   outline-offset: 2px;
 }
+
+/* ------------------------------------------------- library filter row */
+
+/**
+ * FolderFolio's two controls inside WordPress's own filter row — screens 03
+ * and 06.
+ *
+ * Neither sets a height. They sit among core's own controls, and core gives
+ * every one of them `min-height: 32px` — so declaring 30px here (which the
+ * rail's own toolbar uses) would be a dead declaration today and a one-control
+ * misalignment the day core stopped setting it. Matching the neighbours is the
+ * point: a filter row where one control is two pixels taller reads as broken
+ * before it reads as ours.
+ */
+
+.folderfolio-slot {
+  display: contents;
+}
+
+/**
+ * Surviving the grid's "Bulk select".
+ *
+ * Pressing it makes core set `display: none` **inline** on every child of
+ * `.media-toolbar-secondary` bar three, so that the filters get out of the way
+ * of a selection. Our select should go with them — filtering halfway through
+ * picking files is the confusion core is avoiding. The Add-to-folder trigger
+ * should not: select mode is precisely when a bulk action is wanted, and what
+ * is left on the row once the filters collapse is "Delete permanently",
+ * "Add to folder", "Cancel" — the two bulk actions together.
+ *
+ * !important because core's hiding is an inline style, and an inline
+ * declaration is beaten by nothing else.
+ */
+.media-frame.mode-select .folderfolio-slot--bulk {
+  display: contents !important;
+}
+
+.folderfolio-folder-select {
+  max-width: 14rem;
+  margin: 0 6px 0 0;
+  vertical-align: top;
+  font-size: 12.5px;
+}
+
+/**
+ * Filtering is a state worth seeing from across the room.
+ *
+ * The inset shadow doubles the 1px border rather than using a 2px one: a
+ * border that changes width moves every control to its right by a pixel each
+ * time the filter changes.
+ */
+.folderfolio-folder-select.is-active {
+  border-color: var(--ff-sel);
+  box-shadow: inset 0 0 0 1px var(--ff-sel);
+}
+
+.folderfolio-bulk {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 6px 0 0;
+  vertical-align: top;
+  font-size: 12.5px;
+}
+
+/* Open is a state of the trigger, not only of the panel: with the flyout
+   positioned against it, the two can be some way apart on a narrow window. */
+.folderfolio-bulk.is-open {
+  border-color: var(--ff-sel);
+  box-shadow: inset 0 0 0 1px var(--ff-sel);
+}
+
+/* --------------------------------------------------- add-to-folder flyout */
+
+/**
+ * Screen 11. 300px, portaled to the body and pinned to the trigger.
+ *
+ * Fixed rather than absolute because the trigger is measured in viewport
+ * coordinates — and because in list mode the panel would otherwise be clipped
+ * by .tablenav's own overflow.
+ */
+.folderfolio-flyout {
+  position: fixed;
+  z-index: 100000;
+  width: 300px;
+  background: var(--ff-panel);
+  border: 1px solid var(--ff-field-line);
+  box-shadow: 0 3px 10px rgba(29, 35, 39, 0.12);
+  color: var(--ff-ink);
+}
+
+.folderfolio-flyout__head {
+  margin: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--ff-line);
+  font-size: 12.5px;
+}
+
+.folderfolio-flyout__search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  margin: 10px 12px;
+  padding: 0 6px;
+  border: 1px solid var(--ff-field-line);
+  background: var(--ff-field);
+  color: var(--ff-dim);
+}
+
+/**
+ * Doubled class, deliberately.
+ *
+ * Core styles input[type="search"] — specificity 0,1,1 — which beats a single
+ * class and repaints this as a white rounded box on Midnight. Same trap as the
+ * rail's own search field; see _rail-chrome.css.
+ */
+.folderfolio-flyout__input.folderfolio-flyout__input {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ff-ink);
+  font-size: 12px;
+  line-height: 26px;
+}
+
+.folderfolio-flyout__input.folderfolio-flyout__input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.folderfolio-flyout__search:focus-within {
+  border-color: var(--ff-sel);
+  box-shadow: inset 0 0 0 1px var(--ff-sel);
+}
+
+/* 168px is six rows. Enough to see that scrolling is possible without the
+   panel becoming a column of its own. */
+.folderfolio-flyout__list {
+  max-height: 168px;
+  overflow-y: auto;
+  border-top: 1px solid var(--ff-line);
+}
+
+.folderfolio-flyout__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding-right: 10px;
+  padding-left: calc(10px + var(--ff-depth, 0) * 16px);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.folderfolio-flyout__row:hover {
+  background: var(--ff-hover);
+}
+
+.folderfolio-flyout__row:focus-within {
+  outline: 2px solid var(--ff-sel);
+  outline-offset: -2px;
+}
+
+.folderfolio-flyout__row input[type="checkbox"] {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.folderfolio-flyout__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folderfolio-flyout__empty {
+  margin: 0;
+  padding: 12px;
+  font-size: 12px;
+  color: var(--ff-muted);
+}
+
+.folderfolio-flyout__foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--ff-line);
+}
+
+/**
+ * The sentence beside the button is not decoration.
+ *
+ * "Adds a copy of the membership" is the one place the screen says that this
+ * control never takes a file out of a folder it is already in — which is the
+ * question a checkbox list raises and cannot answer by itself.
+ */
+.folderfolio-flyout__note {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--ff-muted);
+  text-wrap: pretty;
+}

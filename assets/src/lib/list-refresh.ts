@@ -63,6 +63,14 @@ const REGIONS = [
     '.tablenav.top',
     '.tablenav.bottom',
     '.subsubsub',
+    // The filter bar, which is *not* inside .tablenav.top: WP_Media_List_Table
+    // renders it from views() with $which === 'bar', above the table. It is
+    // where restrict_manage_posts fires, so it holds FolderFolio's own folder
+    // select — and without this line that select keeps showing the folder the
+    // page was first rendered with, while the table below it shows another.
+    // Only .actions, never the whole .wp-filter: its sibling .search-form
+    // holds whatever the user has typed.
+    '.wp-filter .actions',
 ] as const;
 
 /**
@@ -182,7 +190,26 @@ function syncFilterForm(url: string): void {
     }
 
     const value = new URL(url, window.location.origin).searchParams.get(QUERY_VAR);
-    let input = form.querySelector<HTMLInputElement>(`input[name="${QUERY_VAR}"]`);
+
+    /*
+     * In list mode the form already contains a real control with this name:
+     * the folder select Admin\FolderSelect prints into the filter bar. Adding
+     * a hidden input beside it would put two controls with one name in one GET
+     * form, and the browser submits both — so searching inside a folder would
+     * send folderfolio_folder twice and PHP would keep whichever came last.
+     * Setting the select is both the fix and the right behaviour.
+     */
+    const existing = form.querySelector<HTMLElement>(`[name="${QUERY_VAR}"]`);
+
+    if (existing instanceof HTMLSelectElement) {
+        if ([...existing.options].some((option) => option.value === (value ?? ''))) {
+            existing.value = value ?? '';
+        }
+
+        return;
+    }
+
+    let input = existing instanceof HTMLInputElement ? existing : null;
 
     if (value === null) {
         input?.remove();

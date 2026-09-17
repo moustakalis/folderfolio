@@ -12,6 +12,7 @@ import { createPortal } from 'react-dom';
 import { Content } from './Content';
 import { FixedRows } from './FixedRows';
 import { Header } from './Header';
+import { LibraryToolbar } from './LibraryToolbar';
 import { Results } from './Results';
 import { Search } from './Search';
 import { Toast, UNDO_WINDOW } from './Toast';
@@ -237,6 +238,13 @@ export function Rail({ contentMount }: { contentMount: HTMLElement | null }) {
               the folders a second time.
             */}
             {contentMount && !isError ? createPortal(<Content nodes={nodes} />, contentMount) : null}
+
+            {/*
+              The folder select and the bulk Add-to-folder flyout, inside
+              WordPress's own filter row. They portal themselves — see
+              LibraryToolbar — so this renders nothing here.
+            */}
+            {isError ? null : <LibraryToolbar nodes={nodes} />}
 
             <div className="folderfolio-rail__app">
                 <Header />

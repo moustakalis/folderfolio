@@ -18,8 +18,6 @@ final class MediaLibraryIntegration
 {
     private const SCREEN_HOOK = 'upload.php';
 
-    private const SCREEN_ID = 'upload';
-
     /**
      * Compiled bundles this screen needs, mapped to their script dependencies.
      *
@@ -27,11 +25,15 @@ final class MediaLibraryIntegration
      */
     private const BUNDLES = [
         // 'folder-tree' is gone: the rail is a React app now (assets/src/apps)
-        // and it renders the tree. What is left here is the three bundles that
-        // work on the library rather than on the rail, and they still listen
-        // for folderfolio:folder-selected exactly as before.
+        // and it renders the tree. 'bulk-actions' is gone too — it was the
+        // v0.2.0 bulk bar, a pair of select-and-button controls bolted under
+        // the bulk-actions row that reloaded the page on success and reported
+        // failure through window.alert(). The Add-to-folder flyout replaces
+        // it, inside WordPress's own filter row, with no reload and no dialog.
+        // What is left here is the two bundles that work on the library rather
+        // than on the rail, and they still listen for
+        // folderfolio:folder-selected exactly as before.
         'media-library-integration' => ['wp-api-fetch'],
-        'bulk-actions' => ['wp-api-fetch'],
         'upload-integration' => ['wp-api-fetch', 'media-views'],
     ];
 
@@ -87,10 +89,25 @@ final class MediaLibraryIntegration
             );
         }
 
-        if (wp_script_is('folderfolio-folder-tree', 'enqueued')) {
+        /*
+         * The config these bundles read.
+         *
+         * This used to hang off 'folderfolio-folder-tree', and that handle
+         * stopped being enqueued when the rail became a React app — so the
+         * guard was never true and window.folderFolio was never set from here
+         * at all. Nothing broke loudly, because core/api.ts's t() falls back
+         * to the English literal at each call site; the symptom was every
+         * label in these two bundles silently ignoring its translation.
+         *
+         * Hung off the first bundle that is actually enqueued now, and the
+         * `||` matches Rail's: whichever of the two runs first wins, and the
+         * other does not clobber it.
+         */
+        if (wp_script_is('folderfolio-media-library-integration', 'enqueued')) {
             wp_add_inline_script(
-                'folderfolio-folder-tree',
-                'window.folderFolio = ' . wp_json_encode($this->config()) . ';',
+                'folderfolio-media-library-integration',
+                'window.folderFolio = window.folderFolio || '
+                    . wp_json_encode($this->config()) . ';',
                 'before'
             );
         }
@@ -113,31 +130,13 @@ final class MediaLibraryIntegration
             'mediaNewUrl' => esc_url_raw(admin_url('media-new.php')),
             'version' => FOLDERFOLIO_VERSION,
             'canManageFolders' => current_user_can('upload_files'),
-            // Every key here is read by a bundle; %s placeholders are filled
-            // positionally on the client.
+            // Every key here is read by upload-integration.ts or
+            // media-library-integration.ts; the ones the deleted bulk bar
+            // owned went with it. %s placeholders are filled positionally
+            // on the client.
             'i18n' => [
-                'folders' => __('Folders', 'folderfolio'),
-                'newFolder' => __('New', 'folderfolio'),
                 'upload' => __('Upload', 'folderfolio'),
-                'searchPlaceholder' => __('Search folders...', 'folderfolio'),
-                'emptyTree' => __('No folders yet', 'folderfolio'),
-                'namePrompt' => __('Enter folder name:', 'folderfolio'),
-                'selectFolderFirst' => __('Please select a folder first', 'folderfolio'),
-                'createFailed' => __('Failed to create folder', 'folderfolio'),
-                'clearFilter' => __('Clear filter', 'folderfolio'),
-                /* translators: %s is the folder ID currently filtered on. */
-                'filteringBy' => __('Filtering by folder #%s', 'folderfolio'),
-                'assignToFolder' => __('Assign to folder', 'folderfolio'),
-                'moveToFolder' => __('Move to folder', 'folderfolio'),
-                'moveNeedsSource' => __(
-                    'Filter the library by a folder first - a move needs a folder to move out of.',
-                    'folderfolio'
-                ),
-                /* translators: %s is the number of selected media items. */
-                'selectedCount' => __('%s selected', 'folderfolio'),
-                'alreadyInFolder' => __('Those files are already in that folder.', 'folderfolio'),
                 'assignFailed' => __('Could not assign the selected files.', 'folderfolio'),
-                'moveFailed' => __('Could not move the selected files.', 'folderfolio'),
                 /* translators: %s is the number of media items assigned. */
                 'assignSuccess' => __('Assigned %s file(s) to the folder.', 'folderfolio'),
                 'uploadModalTitle' => __('Upload to Folder', 'folderfolio'),

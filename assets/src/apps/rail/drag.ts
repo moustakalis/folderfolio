@@ -29,6 +29,8 @@
  * a move names where the files came from.
  */
 
+import { selectedAttachmentIds } from '../../lib/selection';
+
 /**
  * The ids being dragged, and where from.
  *
@@ -81,21 +83,7 @@ function attachmentIdFrom(target: EventTarget | null): number | null {
  * carefully picked twenty — is the kind of mistake a drag makes irreversibly.
  */
 function idsForDrag(id: number): number[] {
-    const selected = [
-        ...document.querySelectorAll<HTMLElement>('li.attachment.selected[data-id]'),
-    ]
-        .map((el) => Number.parseInt(el.dataset.id ?? '', 10))
-        .filter((n) => !Number.isNaN(n));
-
-    const checked = [
-        ...document.querySelectorAll<HTMLInputElement>(
-            '#the-list tr .check-column input[type="checkbox"]:checked'
-        ),
-    ]
-        .map((box) => Number.parseInt(box.value, 10))
-        .filter((n) => !Number.isNaN(n));
-
-    const marked = selected.length > 0 ? selected : checked;
+    const marked = selectedAttachmentIds();
 
     return marked.includes(id) ? marked : [id];
 }

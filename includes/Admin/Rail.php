@@ -358,6 +358,21 @@ final class Rail
                     'folderfolio'
                 ),
                 'emptyTree' => __('No folders yet', 'folderfolio'),
+
+                // The filter-row controls — screens 03, 06 and 11.
+                'filterByFolder' => __('Filter by folder', 'folderfolio'),
+                'addToFolder' => __('Add to folder', 'folderfolio'),
+                'findFolder' => __('Find a folder', 'folderfolio'),
+                'addsACopy' => __('Adds a copy of the membership', 'folderfolio'),
+                'addFailed' => __('Could not file those files.', 'folderfolio'),
+                /* translators: %s is the number of selected media files. */
+                'fileSelected' => __('%s file selected', 'folderfolio'),
+                /* translators: %s is the number of selected media files. */
+                'filesSelected' => __('%s files selected', 'folderfolio'),
+                /* translators: 1: number of files, 2: a comma-separated list of folder names. */
+                'addedFile' => __('Added %s file to %s', 'folderfolio'),
+                /* translators: 1: number of files, 2: a comma-separated list of folder names. */
+                'addedFiles' => __('Added %s files to %s', 'folderfolio'),
                 'createFailed' => __('Could not create that folder.', 'folderfolio'),
                 'treeFailed' => __('Could not load your folders.', 'folderfolio'),
                 'treeFailedWhere' => __(
