@@ -8,6 +8,7 @@
  */
 
 import { PlusIcon } from './icons';
+import { can } from '../../lib/can';
 import { useRail } from './store';
 import { t } from '../../core/api';
 
@@ -34,10 +35,17 @@ export function Header() {
         <div className="folderfolio-rail__header">
             <span className="folderfolio-rail__eyebrow">{t('folders', 'Folders')}</span>
 
-            <button type="button" className="folderfolio-rail__primary" onClick={startCreate}>
-                <PlusIcon size={13} />
-                {t('newFolder', 'New folder')}
-            </button>
+            {/* Hidden rather than disabled: an always-grey primary action in
+                the corner of every media screen is a permanent reminder of
+                something this user is never going to be able to do. Rename and
+                Delete in the toolbar are disabled instead, because they are
+                grey most of the time anyway — nothing is selected. */}
+            {can('create') && (
+                <button type="button" className="folderfolio-rail__primary" onClick={startCreate}>
+                    <PlusIcon size={13} />
+                    {t('newFolder', 'New folder')}
+                </button>
+            )}
         </div>
     );
 }

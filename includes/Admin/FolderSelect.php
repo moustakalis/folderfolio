@@ -77,9 +77,10 @@ final class FolderSelect
         );
 
         $counts = $this->assignments->libraryCounts();
-        // Default object type; 'inherited' so a parent whose files all live in
-        // its children never reads 0 — the bug the handoff names by name.
-        $rows = self::flatten($this->folders->tree(countMode: 'inherited'));
+        // Default object type, and the site's own count setting rather than
+        // a literal: the select and the rail have to agree, and they only do
+        // if neither of them decides for itself.
+        $rows = self::flatten($this->folders->tree());
 
         ?>
         <label class="screen-reader-text" for="folderfolio-folder-filter">

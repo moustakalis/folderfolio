@@ -17,6 +17,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowUpDownIcon, EllipsisIcon, PencilIcon, TrashIcon } from './icons';
 import type { FolderNode } from './queries';
 import { useRail, type SortOrder } from './store';
+import { can } from '../../lib/can';
 import { t } from '../../core/api';
 
 const SORTS: Array<{ value: SortOrder; label: string; fallback: string }> = [
@@ -35,6 +36,10 @@ export function Toolbar({ selected, onDelete }: { selected: FolderNode | null; o
     // Only a real folder can be renamed or deleted. All media and Unassigned
     // are selections but not folders, which is exactly the case a disabled
     // state is for.
+    //
+    // Permission is the second half of the same question. A role without
+    // `delete` gets the button disabled rather than a 403 from a route it was
+    // never allowed to call.
     const actable = selected !== null;
 
     return (
@@ -42,7 +47,7 @@ export function Toolbar({ selected, onDelete }: { selected: FolderNode | null; o
             <button
                 type="button"
                 className="folderfolio-rail__tool"
-                disabled={!actable}
+                disabled={!actable || !can('rename')}
                 onClick={() =>
                     selected &&
                     edit({ mode: 'rename', parentId: null, folderId: selected.id, value: selected.name })
@@ -55,7 +60,7 @@ export function Toolbar({ selected, onDelete }: { selected: FolderNode | null; o
             <button
                 type="button"
                 className="folderfolio-rail__tool"
-                disabled={!actable}
+                disabled={!actable || !can('delete')}
                 onClick={onDelete}
             >
                 <TrashIcon size={14} />

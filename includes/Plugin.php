@@ -16,6 +16,7 @@ use FolderFolio\Admin\MediaLibraryIntegration;
 use FolderFolio\Admin\MediaModalIntegration;
 use FolderFolio\Admin\Menu;
 use FolderFolio\Admin\Rail;
+use FolderFolio\Admin\SettingsPage;
 use FolderFolio\Database\Schema;
 use FolderFolio\Domain\AttachmentFolderRepository;
 use FolderFolio\Cli\FolderCommand;
@@ -101,10 +102,14 @@ final class Plugin
             // FolderFolio adds, and where list mode's drill-down happens.
             (new FoldersColumn())->register();
 
-            // One instance: Menu places the screen and hands it the hook
-            // suffix, ImportPage hangs its assets off that.
+            // One instance each. Menu places the screen and hands
+            // SettingsPage its hook suffix; SettingsPage owns the three tabs
+            // and asks ImportPage for the middle one.
             $import = new ImportPage();
-            (new Menu($import))->register();
+            $settings = new SettingsPage($import);
+
+            (new Menu($settings))->register();
+            $settings->register();
             $import->register();
 
             // The folder column inside the media picker — every screen that

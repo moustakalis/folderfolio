@@ -1,0 +1,12 @@
+/**
+ * Bundle for the FolderFolio settings screen.
+ *
+ * Separate from admin.css on purpose. admin.css still carries v0.2.0's
+ * media-library rules, and the settings screen is not the media library: it
+ * has no rail, no tree and no grid. Loading the library's stylesheet here
+ * would ship a few kilobytes of selectors that can never match, and would tie
+ * this screen to a file whose remaining job is to be deleted.
+ */
+
+@import './_tokens.css';
+@import './_settings.css';

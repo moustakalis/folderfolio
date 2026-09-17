@@ -71,10 +71,13 @@ class FolderController
                 'callback' => [$this, 'tree'],
                 'permission_callback' => [$this, 'canUseFolders'],
                 'args' => [
+                    // Deliberately no `default`. An absent parameter means
+                    // "use the site's count setting", which is what the rail
+                    // sends; a default here would answer for the setting
+                    // before FolderService ever saw the question.
                     'counts' => [
                         'type' => 'string',
                         'required' => false,
-                        'default' => 'inherited',
                         'enum' => ['inherited', 'direct', 'none'],
                     ],
                 ],
@@ -82,7 +85,7 @@ class FolderController
             [
                 'methods' => WP_REST_Server::CREATABLE,
                 'callback' => [$this, 'create'],
-                'permission_callback' => [$this, 'canManageFolders'],
+                'permission_callback' => [$this, 'canCreateFolders'],
                 'args' => $this->folderArguments(true),
             ],
         ]);
@@ -99,13 +102,13 @@ class FolderController
                 // PATCH is not locked out.
                 'methods' => WP_REST_Server::EDITABLE,
                 'callback' => [$this, 'update'],
-                'permission_callback' => [$this, 'canManageFolders'],
+                'permission_callback' => [$this, 'canRenameFolders'],
                 'args' => $this->folderArguments(false),
             ],
             [
                 'methods' => WP_REST_Server::DELETABLE,
                 'callback' => [$this, 'delete'],
-                'permission_callback' => [$this, 'canManageFolders'],
+                'permission_callback' => [$this, 'canDeleteFolders'],
                 'args' => [
                     // Required, with no default. "What happens to my
                     // subfolders" is not a question to answer silently.
@@ -129,7 +132,7 @@ class FolderController
         register_rest_route($ns, '/folders/(?P<id>\d+)/move', [
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => [$this, 'move'],
-            'permission_callback' => [$this, 'canManageFolders'],
+            'permission_callback' => [$this, 'canRenameFolders'],
             'args' => [
                 'parent_id' => [
                     'required' => true,
@@ -169,13 +172,13 @@ class FolderController
             [
                 'methods' => WP_REST_Server::CREATABLE,
                 'callback' => [$this, 'assign'],
-                'permission_callback' => [$this, 'canUseFolders'],
+                'permission_callback' => [$this, 'canAssignFiles'],
                 'args' => $this->assignmentArguments(true),
             ],
             [
                 'methods' => WP_REST_Server::DELETABLE,
                 'callback' => [$this, 'unassign'],
-                'permission_callback' => [$this, 'canUseFolders'],
+                'permission_callback' => [$this, 'canAssignFiles'],
                 'args' => $this->assignmentArguments(false),
             ],
         ]);
@@ -216,21 +219,21 @@ class FolderController
         register_rest_route($ns, '/attachments/assign', [
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => [$this, 'assign'],
-            'permission_callback' => [$this, 'canUseFolders'],
+            'permission_callback' => [$this, 'canAssignFiles'],
             'args' => $this->assignmentArguments(true),
         ]);
 
         register_rest_route($ns, '/attachments/unassign', [
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => [$this, 'unassign'],
-            'permission_callback' => [$this, 'canUseFolders'],
+            'permission_callback' => [$this, 'canAssignFiles'],
             'args' => $this->assignmentArguments(false),
         ]);
 
         register_rest_route($ns, '/attachments/bulk-move', [
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => [$this, 'bulkMove'],
-            'permission_callback' => [$this, 'canUseFolders'],
+            'permission_callback' => [$this, 'canAssignFiles'],
             'args' => [
                 'source_folder_id' => [
                     'type' => 'integer',
@@ -260,20 +263,50 @@ class FolderController
     }
 
     /**
-     * Changing the folder structure itself.
+     * One method per ability, because a permission_callback is a callable and
+     * WordPress gives it only the request.
+     *
+     * They used to be one `canManageFolders`, which meant a site could not say
+     * "Authors may create folders but not delete them" — the thing the roles
+     * matrix on screen 08 exists to say.
      */
-    public function canManageFolders(): bool
+    public function canCreateFolders(): bool
     {
-        return Capabilities::canManageFolders();
+        return Capabilities::can('create');
+    }
+
+    /**
+     * Renaming, recolouring, and moving: all three edit a folder that already
+     * exists, and the matrix has one column for that.
+     */
+    public function canRenameFolders(): bool
+    {
+        return Capabilities::can('rename');
+    }
+
+    public function canDeleteFolders(): bool
+    {
+        return Capabilities::can('delete');
+    }
+
+    /**
+     * Filing media into folders, and taking it out again.
+     *
+     * Which files may be filed is a separate question, asked per attachment by
+     * FolderService through Capabilities::canEditAttachment().
+     */
+    public function canAssignFiles(): bool
+    {
+        return Capabilities::can('assign');
     }
 
     public function tree(WP_REST_Request $request): WP_REST_Response
     {
-        $mode = (string) ($request->get_param('counts') ?? 'inherited');
+        $mode = $request->get_param('counts');
 
         return $this->success($this->folders->tree(
             FolderRepository::DEFAULT_OBJECT_TYPE,
-            $mode
+            is_string($mode) ? $mode : null
         ));
     }
 

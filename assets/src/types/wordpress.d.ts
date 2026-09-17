@@ -95,8 +95,21 @@ interface FolderFolioConfig {
   pluginUrl: string;
   mediaNewUrl: string;
   version: string;
-  canManageFolders: boolean;
+  /**
+   * The four abilities of the roles matrix, resolved for this user. Optional
+   * for the same reason the settings below are.
+   */
+  can?: Record<'create' | 'rename' | 'delete' | 'assign', boolean>;
   i18n: Record<string, string>;
+
+  /**
+   * Site settings — screen 08. Optional because two bundles write this object
+   * and the older of them predates them; every reader has a fallback.
+   */
+  countMode?: 'inherited' | 'direct';
+  defaultSort?: string;
+  /** The undo grace period, in seconds. */
+  undoWindow?: number;
 }
 
 declare const wp: WpGlobal | undefined;

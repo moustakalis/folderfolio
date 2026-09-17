@@ -1,0 +1,611 @@
+<?php
+
+declare(strict_types=1);
+
+namespace FolderFolio\Admin;
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+use FolderFolio\Database\Schema;
+use FolderFolio\Database\StatusReport;
+use FolderFolio\Domain\AttachmentFolderRepository;
+use FolderFolio\Support\Settings;
+
+/**
+ * The FolderFolio settings screen — screen 08.
+ *
+ * One page, three tabs: Settings, Import, Status. Not three menu entries: a
+ * plugin whose whole job is one media-library panel does not get four rows in
+ * the sidebar, and the three things here are read in sequence by the same
+ * person on the same afternoon.
+ *
+ * No React. The rail is an app because it is a live tree over a REST API; this
+ * is a form with eleven controls that is opened twice in a site's lifetime.
+ * A build step, a hydration pass and a REST round-trip to change a number in a
+ * text field would be machinery with nothing to do. It posts to
+ * admin-post.php, it redirects, it shows a notice — the pattern every
+ * WordPress admin already knows how to debug.
+ *
+ * ## Deltas from the design board
+ *
+ * 1. The roles matrix is editable. Screen 08 draws ●/○ glyphs; the blurb
+ *    beside them ("Two competitors charge for this table") only means anything
+ *    if the table decides something, so the glyphs are checkboxes. A tick is
+ *    an input a screen reader can announce and a keyboard can reach, which a
+ *    ● is not.
+ * 2. Status's first button is "Rebuild paths", not "Rebuild counts". Counts
+ *    are computed from the assignments table on every read — there is no cache
+ *    to rebuild, and a button that runs nothing is worse than no button. Its
+ *    place is taken by "Remove orphaned rows", which is the repair the Doctor
+ *    findings actually call for.
+ * 3. The Import tab lists detected sources and hands off to the existing
+ *    importer. The four-step wizard is screen 07 and is built next; the tab is
+ *    where it lands.
+ */
+final class SettingsPage
+{
+    /**
+     * Slug of the page and of the top-level menu.
+     *
+     * Not `folderfolio-import`, which is what v0.2.0's single screen used:
+     * that page is now one tab of this one, and a slug naming the tab would be
+     * wrong the moment Settings became the landing tab.
+     */
+    public const SLUG = 'folderfolio';
+
+    public const SAVE_ACTION = 'folderfolio_save_settings';
+
+    public const TOOL_ACTION = 'folderfolio_run_tool';
+
+    /** @var list<string> */
+    private const TABS = ['settings', 'import', 'status'];
+
+    /**
+     * The ten folder colours, as CSS custom property suffixes.
+     *
+     * The hexes live in _tokens.css and nowhere else: they change per admin
+     * colour scheme, and a second copy in PHP would be the copy that is wrong
+     * on Midnight.
+     *
+     * @var array<string, string>
+     */
+    private const SWATCHES = [
+        'slate' => 'Slate',
+        'red' => 'Red',
+        'clay' => 'Clay',
+        'ochre' => 'Ochre',
+        'moss' => 'Moss',
+        'teal' => 'Teal',
+        'steel' => 'Steel',
+        'indigo' => 'Indigo',
+        'plum' => 'Plum',
+        'ink' => 'Ink',
+    ];
+
+    private string $hookSuffix = '';
+
+    public function __construct(
+        private readonly ImportPage $import
+    ) {
+    }
+
+    public function register(): void
+    {
+        add_action('admin_enqueue_scripts', [$this, 'enqueueAssets']);
+        add_action('admin_post_' . self::SAVE_ACTION, [$this, 'handleSave']);
+        add_action('admin_post_' . self::TOOL_ACTION, [$this, 'handleTool']);
+    }
+
+    /**
+     * Told where it ended up, by whoever registered the menu. See Menu.
+     */
+    public function setHookSuffix(string $hookSuffix): void
+    {
+        $this->hookSuffix = $hookSuffix;
+    }
+
+    public function enqueueAssets(string $hookSuffix): void
+    {
+        if ('' === $this->hookSuffix || $hookSuffix !== $this->hookSuffix) {
+            return;
+        }
+
+        $style = 'assets/build/core/settings.css';
+
+        if (file_exists(FOLDERFOLIO_PLUGIN_DIR . $style)) {
+            wp_enqueue_style(
+                'folderfolio-settings',
+                FOLDERFOLIO_PLUGIN_URL . $style,
+                [],
+                FOLDERFOLIO_VERSION
+            );
+        }
+
+        // Only the Status tab has anything for a script to do, and all of it
+        // is the clipboard. Everything else on the page works with JavaScript
+        // off, including the report itself — it is in a textarea, which can be
+        // selected by hand.
+        $script = 'assets/build/core/settings.js';
+
+        if ('status' === $this->currentTab() && file_exists(FOLDERFOLIO_PLUGIN_DIR . $script)) {
+            wp_enqueue_script(
+                'folderfolio-settings',
+                FOLDERFOLIO_PLUGIN_URL . $script,
+                [],
+                FOLDERFOLIO_VERSION,
+                ['in_footer' => true, 'strategy' => 'defer']
+            );
+        }
+
+        // The importer's own assets still belong to the importer.
+        if ('import' === $this->currentTab()) {
+            $this->import->enqueueTabAssets();
+        }
+    }
+
+    public function renderPage(): void
+    {
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('You do not have permission to manage FolderFolio settings.', 'folderfolio'));
+        }
+
+        $tab = $this->currentTab();
+
+        ?>
+        <div class="wrap folderfolio">
+            <div class="folderfolio-settings">
+                <div class="folderfolio-settings__head">
+                    <?php
+                    /*
+                     * The h1 is here rather than directly inside .wrap because
+                     * core's common.js moves admin notices to just after the
+                     * first heading — so this is what puts "Settings saved."
+                     * inside the card, under the title, instead of above it
+                     * where it would be a notice about a form it is not
+                     * touching.
+                     */
+                    ?>
+                    <h1 class="folderfolio-settings__title">FolderFolio</h1>
+
+                    <?php $this->renderNotice(); ?>
+
+                    <nav class="folderfolio-settings__tabs" aria-label="<?php esc_attr_e('FolderFolio settings sections', 'folderfolio'); ?>">
+                        <?php foreach ($this->tabs() as $slug => $label) : ?>
+                            <a
+                                class="folderfolio-tab"
+                                href="<?php echo esc_url($this->tabUrl($slug)); ?>"
+                                <?php echo $slug === $tab ? 'aria-current="page"' : ''; ?>
+                            ><?php echo esc_html($label); ?></a>
+                        <?php endforeach; ?>
+                    </nav>
+                </div>
+
+                <div class="folderfolio-settings__body">
+                    <?php
+                    if ('import' === $tab) {
+                        $this->import->renderTab();
+                    } elseif ('status' === $tab) {
+                        $this->renderStatusTab();
+                    } else {
+                        $this->renderSettingsTab();
+                    }
+                    ?>
+                </div>
+            </div>
+        </div>
+        <?php
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function tabs(): array
+    {
+        return [
+            'settings' => __('Settings', 'folderfolio'),
+            'import' => __('Import', 'folderfolio'),
+            'status' => __('Status', 'folderfolio'),
+        ];
+    }
+
+    private function currentTab(): string
+    {
+        // Read-only navigation, so no nonce: there is nothing here to protect.
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $tab = isset($_GET['tab']) ? sanitize_key(wp_unslash((string) $_GET['tab'])) : 'settings';
+
+        return in_array($tab, self::TABS, true) ? $tab : 'settings';
+    }
+
+    private function tabUrl(string $tab): string
+    {
+        return add_query_arg(
+            ['page' => self::SLUG, 'tab' => $tab],
+            admin_url('admin.php')
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Settings tab
+    // -----------------------------------------------------------------------
+
+    private function renderSettingsTab(): void
+    {
+        $settings = Settings::get();
+
+        ?>
+        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+            <input type="hidden" name="action" value="<?php echo esc_attr(self::SAVE_ACTION); ?>">
+            <?php wp_nonce_field(self::SAVE_ACTION); ?>
+
+            <div class="folderfolio-field">
+                <div class="folderfolio-field__label">
+                    <div class="folderfolio-field__name"><?php esc_html_e('Folder counts', 'folderfolio'); ?></div>
+                    <div class="folderfolio-field__note"><?php esc_html_e('§4, the market’s worst bug', 'folderfolio'); ?></div>
+                </div>
+                <div class="folderfolio-field__control">
+                    <div class="folderfolio-seg" role="group" aria-label="<?php esc_attr_e('Folder counts', 'folderfolio'); ?>">
+                        <?php
+                        $modes = [
+                            'inherited' => __('Inherited', 'folderfolio'),
+                            'direct' => __('Direct only', 'folderfolio'),
+                        ];
+
+                        foreach ($modes as $value => $label) :
+                            $id = 'folderfolio-count-' . $value;
+                            ?>
+                            <input
+                                type="radio"
+                                id="<?php echo esc_attr($id); ?>"
+                                name="count_mode"
+                                value="<?php echo esc_attr($value); ?>"
+                                <?php checked($settings['count_mode'], $value); ?>
+                            >
+                            <label for="<?php echo esc_attr($id); ?>"><?php echo esc_html($label); ?></label>
+                        <?php endforeach; ?>
+                    </div>
+                    <div class="folderfolio-field__help">
+                        <?php esc_html_e('Inherited counts the subtree, so a parent holding a hundred files never reads 0.', 'folderfolio'); ?>
+                    </div>
+                </div>
+            </div>
+
+            <div class="folderfolio-field">
+                <div class="folderfolio-field__label">
+                    <label class="folderfolio-field__name" for="folderfolio-default-sort">
+                        <?php esc_html_e('Default sort', 'folderfolio'); ?>
+                    </label>
+                </div>
+                <div class="folderfolio-field__control">
+                    <select id="folderfolio-default-sort" name="default_sort">
+                        <?php foreach ($this->sortLabels() as $value => $label) : ?>
+                            <option value="<?php echo esc_attr($value); ?>" <?php selected($settings['default_sort'], $value); ?>>
+                                <?php echo esc_html($label); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+
+            <div class="folderfolio-field">
+                <div class="folderfolio-field__label">
+                    <label class="folderfolio-field__name" for="folderfolio-undo-window">
+                        <?php esc_html_e('Undo window', 'folderfolio'); ?>
+                    </label>
+                </div>
+                <div class="folderfolio-field__control folderfolio-field__inline">
+                    <input
+                        type="number"
+                        id="folderfolio-undo-window"
+                        name="undo_window"
+                        value="<?php echo esc_attr((string) $settings['undo_window']); ?>"
+                        min="<?php echo esc_attr((string) Settings::MIN_UNDO); ?>"
+                        max="<?php echo esc_attr((string) Settings::MAX_UNDO); ?>"
+                        step="1"
+                    >
+                    <span><?php esc_html_e('seconds before a delete is final', 'folderfolio'); ?></span>
+                </div>
+            </div>
+
+            <div class="folderfolio-field folderfolio-field--last">
+                <div class="folderfolio-field__label">
+                    <div class="folderfolio-field__name"><?php esc_html_e('Folder colours', 'folderfolio'); ?></div>
+                </div>
+                <div class="folderfolio-field__control">
+                    <div class="folderfolio-swatches">
+                        <?php foreach (self::SWATCHES as $slug => $name) : ?>
+                            <span
+                                class="folderfolio-swatch"
+                                style="background: var(--ff-folder-<?php echo esc_attr($slug); ?>)"
+                                title="<?php echo esc_attr($name); ?>"
+                            ></span>
+                        <?php endforeach; ?>
+                        <span class="folderfolio-swatches__note">
+                            <?php esc_html_e('Shown on the folder icon', 'folderfolio'); ?>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <?php $this->renderMatrix($settings['roles']); ?>
+
+            <p>
+                <button type="submit" class="button button-primary">
+                    <?php esc_html_e('Save changes', 'folderfolio'); ?>
+                </button>
+            </p>
+        </form>
+        <?php
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function sortLabels(): array
+    {
+        return [
+            'name-asc' => __('Name, A–Z', 'folderfolio'),
+            'name-desc' => __('Name, Z–A', 'folderfolio'),
+            'newest' => __('Newest first', 'folderfolio'),
+            'oldest' => __('Oldest first', 'folderfolio'),
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function abilityLabels(): array
+    {
+        return [
+            'create' => __('Create', 'folderfolio'),
+            'rename' => __('Rename', 'folderfolio'),
+            'delete' => __('Delete', 'folderfolio'),
+            'assign' => __('Assign files', 'folderfolio'),
+        ];
+    }
+
+    /**
+     * @param array<string, list<string>> $matrix
+     */
+    private function renderMatrix(array $matrix): void
+    {
+        $abilities = $this->abilityLabels();
+
+        ?>
+        <div class="folderfolio-matrix-wrap">
+            <div class="folderfolio-field__name"><?php esc_html_e('Who can manage folders', 'folderfolio'); ?></div>
+            <div class="folderfolio-field__help folderfolio-matrix-wrap__lede">
+                <?php esc_html_e('Two competitors charge for this table.', 'folderfolio'); ?>
+            </div>
+
+            <table class="folderfolio-matrix">
+                <thead>
+                    <tr>
+                        <th scope="col"><?php esc_html_e('Role', 'folderfolio'); ?></th>
+                        <?php foreach ($abilities as $label) : ?>
+                            <th scope="col"><?php echo esc_html($label); ?></th>
+                        <?php endforeach; ?>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($this->roles() as $role => $name) : ?>
+                        <?php
+                        $pinned = 'administrator' === $role;
+                        $granted = $matrix[$role] ?? Settings::defaultRoles()[$role] ?? [];
+                        ?>
+                        <tr class="<?php echo $pinned ? 'folderfolio-matrix__pinned' : ''; ?>">
+                            <th scope="row" class="folderfolio-matrix__role"><?php echo esc_html($name); ?></th>
+                            <?php foreach ($abilities as $ability => $label) : ?>
+                                <td>
+                                    <input
+                                        type="checkbox"
+                                        name="roles[<?php echo esc_attr($role); ?>][<?php echo esc_attr($ability); ?>]"
+                                        value="1"
+                                        <?php checked($pinned || in_array($ability, $granted, true)); ?>
+                                        <?php disabled($pinned); ?>
+                                        aria-label="<?php
+                                            echo esc_attr(sprintf(
+                                                /* translators: 1: ability, e.g. Rename. 2: role name, e.g. Editor. */
+                                                __('%1$s — %2$s', 'folderfolio'),
+                                                $label,
+                                                $name
+                                            ));
+                                        ?>"
+                                    >
+                                    <?php if ($pinned) : ?>
+                                        <?php // Disabled inputs post nothing, and a matrix that lost its administrator row on save would lock the site out of this screen. ?>
+                                        <input type="hidden" name="roles[<?php echo esc_attr($role); ?>][<?php echo esc_attr($ability); ?>]" value="1">
+                                    <?php endif; ?>
+                                </td>
+                            <?php endforeach; ?>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+
+            <p class="folderfolio-matrix__why">
+                <?php esc_html_e('Administrators always have every folder permission. Everyone else needs the ability to upload files as well as a tick here — this table narrows WordPress’s own permissions, it never widens them.', 'folderfolio'); ?>
+            </p>
+        </div>
+        <?php
+    }
+
+    /**
+     * Every role on the site, administrator first.
+     *
+     * Read from wp_roles() rather than hard-coded, so a site with Shop Manager
+     * or a membership plugin's roles can set them here instead of discovering
+     * that the table only knows about the five that ship with WordPress.
+     *
+     * @return array<string, string>
+     */
+    private function roles(): array
+    {
+        $roles = [];
+        $names = wp_roles()->get_names();
+
+        // translate_user_role() is what the Users screen uses; without it the
+        // role names are the only untranslated strings on a translated page.
+        foreach ($names as $slug => $name) {
+            $roles[(string) $slug] = translate_user_role((string) $name);
+        }
+
+        if (isset($roles['administrator'])) {
+            $administrator = $roles['administrator'];
+            unset($roles['administrator']);
+            $roles = ['administrator' => $administrator] + $roles;
+        }
+
+        return $roles;
+    }
+
+    // -----------------------------------------------------------------------
+    // Status tab
+    // -----------------------------------------------------------------------
+
+    private function renderStatusTab(): void
+    {
+        $report = new StatusReport();
+
+        ?>
+        <table class="folderfolio-status">
+            <tbody>
+                <?php foreach ($report->rows() as $row) : ?>
+                    <tr>
+                        <th scope="row"><?php echo esc_html($row['label']); ?></th>
+                        <td class="<?php echo $row['bad'] ? 'folderfolio-status__bad' : ''; ?>">
+                            <?php echo esc_html($row['value']); ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+
+        <div class="folderfolio-tools">
+            <?php foreach ($this->tools() as $tool => $label) : ?>
+                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                    <input type="hidden" name="action" value="<?php echo esc_attr(self::TOOL_ACTION); ?>">
+                    <input type="hidden" name="tool" value="<?php echo esc_attr($tool); ?>">
+                    <?php wp_nonce_field(self::TOOL_ACTION); ?>
+                    <button type="submit" class="button"><?php echo esc_html($label); ?></button>
+                </form>
+            <?php endforeach; ?>
+
+            <button type="button" class="button" data-folderfolio-copy="#folderfolio-report">
+                <?php esc_html_e('Copy report', 'folderfolio'); ?>
+            </button>
+        </div>
+
+        <label class="screen-reader-text" for="folderfolio-report">
+            <?php esc_html_e('Status report', 'folderfolio'); ?>
+        </label>
+        <textarea id="folderfolio-report" class="folderfolio-report" rows="10" readonly><?php
+            echo esc_textarea($report->text());
+        ?></textarea>
+        <?php
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function tools(): array
+    {
+        return [
+            'rebuild-paths' => __('Rebuild paths', 'folderfolio'),
+            'remove-orphans' => __('Remove orphaned rows', 'folderfolio'),
+        ];
+    }
+
+    // -----------------------------------------------------------------------
+    // Form handling
+    // -----------------------------------------------------------------------
+
+    public function handleSave(): void
+    {
+        $this->guard(self::SAVE_ACTION);
+
+        // Sanitising is Settings::sanitize()'s job, and it is the same
+        // function the REST and WP-CLI paths would use. Passing the raw array
+        // in is deliberate: one place decides what a valid value is.
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash
+        /** @var array<string, mixed> $raw */
+        $raw = wp_unslash($_POST);
+
+        Settings::save($raw);
+
+        $this->redirect('settings', 'saved');
+    }
+
+    public function handleTool(): void
+    {
+        $this->guard(self::TOOL_ACTION);
+
+        $tool = isset($_POST['tool']) ? sanitize_key(wp_unslash((string) $_POST['tool'])) : '';
+
+        if ('rebuild-paths' === $tool) {
+            (new Schema())->backfillPaths(true);
+
+            $this->redirect('status', 'paths');
+        }
+
+        if ('remove-orphans' === $tool) {
+            (new AttachmentFolderRepository())->deleteOrphans();
+
+            $this->redirect('status', 'orphans');
+        }
+
+        $this->redirect('status');
+    }
+
+    private function guard(string $action): void
+    {
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('You do not have permission to manage FolderFolio settings.', 'folderfolio'));
+        }
+
+        check_admin_referer($action);
+    }
+
+    /**
+     * Post, redirect, get. A settings screen that re-renders on POST is a
+     * settings screen that re-saves on refresh.
+     */
+    private function redirect(string $tab, string $done = ''): void
+    {
+        $args = ['page' => self::SLUG, 'tab' => $tab];
+
+        if ('' !== $done) {
+            $args['folderfolio-done'] = $done;
+        }
+
+        wp_safe_redirect(add_query_arg($args, admin_url('admin.php')));
+
+        exit;
+    }
+
+    private function renderNotice(): void
+    {
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $done = isset($_GET['folderfolio-done'])
+            // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            ? sanitize_key(wp_unslash((string) $_GET['folderfolio-done']))
+            : '';
+
+        $messages = [
+            'saved' => __('Settings saved.', 'folderfolio'),
+            'paths' => __('Folder paths rebuilt from parent_id.', 'folderfolio'),
+            'orphans' => __('Orphaned assignment rows removed.', 'folderfolio'),
+        ];
+
+        if (!isset($messages[$done])) {
+            return;
+        }
+
+        printf(
+            '<div class="notice notice-success is-dismissible"><p>%s</p></div>',
+            esc_html($messages[$done])
+        );
+    }
+}

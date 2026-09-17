@@ -18,8 +18,27 @@ import { UndoIcon } from './icons';
 import { useRail } from './store';
 import { t } from '../../core/api';
 
-/** The grace period, in ms. */
-export const UNDO_WINDOW = 5000;
+/**
+ * The grace period, in ms.
+ *
+ * From the settings screen, in seconds, clamped to the same range the form
+ * enforces — the form is not the only way into that option, and a window of
+ * zero is a delete with neither a dialog nor a recourse.
+ *
+ * Read once at module load rather than per toast: the value cannot change
+ * while the page is open, and a toast whose bar is animating off one number
+ * while its deadline was computed from another is the one bug this component
+ * exists to avoid.
+ */
+export const UNDO_WINDOW = (() => {
+    const seconds = window.folderFolio?.undoWindow;
+
+    if (typeof seconds !== 'number' || !Number.isFinite(seconds)) {
+        return 5000;
+    }
+
+    return Math.min(60, Math.max(3, Math.round(seconds))) * 1000;
+})();
 
 export function Toast({ onUndo, onExpire }: { onUndo: () => void; onExpire: () => void }) {
     const pending = useRail((s) => s.pendingUndo);

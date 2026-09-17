@@ -8,6 +8,9 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+use FolderFolio\Support\Capabilities;
+use FolderFolio\Support\Settings;
+
 /**
  * Mounts FolderFolio inside the native Media Library screen (upload.php).
  *
@@ -123,13 +126,39 @@ final class MediaLibraryIntegration
      */
     private function config(): array
     {
+        $settings = Settings::get();
+
         return [
             'restUrl' => esc_url_raw(rest_url('folderfolio/v1')),
             'nonce' => wp_create_nonce('wp_rest'),
             'pluginUrl' => FOLDERFOLIO_PLUGIN_URL,
             'mediaNewUrl' => esc_url_raw(admin_url('media-new.php')),
             'version' => FOLDERFOLIO_VERSION,
-            'canManageFolders' => current_user_can('upload_files'),
+            /*
+             * The four abilities of the roles matrix, resolved for this user.
+             *
+             * This used to be a single `canManageFolders` set to
+             * current_user_can('upload_files') — which nothing read, and which
+             * would have been the wrong answer if it had.
+             */
+            'can' => [
+                'create' => Capabilities::can('create'),
+                'rename' => Capabilities::can('rename'),
+                'delete' => Capabilities::can('delete'),
+                'assign' => Capabilities::can('assign'),
+            ],
+
+            /*
+             * Site settings — screen 08.
+             *
+             * Both writers of window.folderFolio carry them, because whichever
+             * bundle is enqueued first wins and the other does not clobber it;
+             * a key present in only one of the two is a setting that applies
+             * on some screens and not others.
+             */
+            'countMode' => $settings['count_mode'],
+            'defaultSort' => $settings['default_sort'],
+            'undoWindow' => $settings['undo_window'],
             // Every key here is read by upload-integration.ts or
             // media-library-integration.ts; the ones the deleted bulk bar
             // owned went with it. %s placeholders are filled positionally

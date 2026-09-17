@@ -9,6 +9,7 @@ if (!defined('ABSPATH')) {
 }
 
 use FolderFolio\Support\Capabilities;
+use FolderFolio\Support\Settings;
 use WP_Error;
 
 /**
@@ -85,8 +86,11 @@ class FolderService
     ): array {
         $nodes = FolderTree::fromRows($this->folders->all($objectType));
 
+        // No argument means "whatever the site is set to". The literal
+        // default used to live here, which made the setting unreachable from
+        // every caller that did not know to pass it.
         /** @var string $mode */
-        $mode = apply_filters('folderfolio_count_mode', $countMode ?? 'inherited');
+        $mode = apply_filters('folderfolio_count_mode', $countMode ?? Settings::get()['count_mode']);
 
         if ($mode === 'none') {
             return $nodes;

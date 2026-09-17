@@ -8,6 +8,9 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+use FolderFolio\Support\Capabilities;
+use FolderFolio\Support\Settings;
+
 /**
  * The folder column inside WordPress's media picker — screen 10.
  *
@@ -124,12 +127,27 @@ final class MediaModalIntegration
      */
     private function config(): array
     {
+        $settings = Settings::get();
+
         return [
             'restUrl' => esc_url_raw(rest_url('folderfolio/v1')),
             'nonce' => wp_create_nonce('wp_rest'),
             'pluginUrl' => FOLDERFOLIO_PLUGIN_URL,
             'version' => FOLDERFOLIO_VERSION,
-            'canManageFolders' => current_user_can('upload_files'),
+
+            // The same four abilities and the same three settings as the
+            // library's config. The modal renders the same components, so a
+            // key missing here is a component behaving differently inside the
+            // picker than it does in the library.
+            'can' => [
+                'create' => Capabilities::can('create'),
+                'rename' => Capabilities::can('rename'),
+                'delete' => Capabilities::can('delete'),
+                'assign' => Capabilities::can('assign'),
+            ],
+            'countMode' => $settings['count_mode'],
+            'defaultSort' => $settings['default_sort'],
+            'undoWindow' => $settings['undo_window'],
             'i18n' => [
                 'folders' => __('Folders', 'folderfolio'),
                 'folderActions' => __('Folder actions', 'folderfolio'),

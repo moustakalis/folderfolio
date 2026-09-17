@@ -38,7 +38,10 @@ export function useTree() {
         queryKey: treeKey,
         queryFn: async (): Promise<FolderNode[]> => {
             const response = await apiFetch<ApiEnvelope<FolderNode[]>>(
-                '/folders?counts=inherited'
+                // No ?counts=: the mode is a site setting now, and the
+                // server applies it. Sending 'inherited' from here made the
+                // rail the one place on the site that ignored it.
+                '/folders'
             );
 
             return response.data ?? [];

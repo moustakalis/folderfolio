@@ -84,6 +84,26 @@ export interface RailState {
 
 export type SortOrder = 'name-asc' | 'name-desc' | 'newest' | 'oldest';
 
+const SORT_ORDERS: readonly SortOrder[] = ['name-asc', 'name-desc', 'newest', 'oldest'];
+
+/**
+ * The sort the rail opens on.
+ *
+ * A site setting, not a user preference: it is the order a folder tree is
+ * filed in, which is a property of how the site is organised. Changing it in
+ * the toolbar is still per-session and still wins for the rest of that
+ * session.
+ *
+ * Validated rather than trusted. The value arrives from an option that a
+ * filter can rewrite, and an unrecognised one would leave the sort menu with
+ * nothing selected.
+ */
+function defaultSort(): SortOrder {
+    const configured = window.folderFolio?.defaultSort;
+
+    return SORT_ORDERS.find((order) => order === configured) ?? 'name-asc';
+}
+
 export interface Editing {
     mode: 'create' | 'rename';
     /** Where a new folder will go. `null` is the top level. */
@@ -108,7 +128,7 @@ export const useRail = create<RailState>((set) => ({
     expandedIds: new Set<number>(),
     query: '',
     editing: null,
-    sort: 'name-asc',
+    sort: defaultSort(),
     pendingUndo: null,
 
     select: (id) => set({ selectedId: id, focusedId: id }),

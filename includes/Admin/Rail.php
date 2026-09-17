@@ -8,6 +8,9 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+use FolderFolio\Support\Capabilities;
+use FolderFolio\Support\Settings;
+
 /**
  * The folder rail's shell: where it sits, how wide it is, and whether it is
  * open. What goes inside it is not this class's business.
@@ -321,12 +324,38 @@ final class Rail
      */
     private function appConfig(): array
     {
+        $settings = Settings::get();
+
         return [
             'restUrl' => esc_url_raw(rest_url('folderfolio/v1')),
             'nonce' => wp_create_nonce('wp_rest'),
             'pluginUrl' => FOLDERFOLIO_PLUGIN_URL,
             'version' => FOLDERFOLIO_VERSION,
-            'canManageFolders' => current_user_can('upload_files'),
+            /*
+             * The four abilities of the roles matrix, resolved for this user.
+             *
+             * This used to be a single `canManageFolders` set to
+             * current_user_can('upload_files') — which nothing read, and which
+             * would have been the wrong answer if it had.
+             */
+            'can' => [
+                'create' => Capabilities::can('create'),
+                'rename' => Capabilities::can('rename'),
+                'delete' => Capabilities::can('delete'),
+                'assign' => Capabilities::can('assign'),
+            ],
+
+            /*
+             * Site settings — screen 08.
+             *
+             * Both writers of window.folderFolio carry them, because whichever
+             * bundle is enqueued first wins and the other does not clobber it;
+             * a key present in only one of the two is a setting that applies
+             * on some screens and not others.
+             */
+            'countMode' => $settings['count_mode'],
+            'defaultSort' => $settings['default_sort'],
+            'undoWindow' => $settings['undo_window'],
             'i18n' => [
                 'folders' => __('Folders', 'folderfolio'),
                 'newFolder' => __('New folder', 'folderfolio'),

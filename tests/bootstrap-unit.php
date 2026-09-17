@@ -18,6 +18,11 @@ declare(strict_types=1);
  * from this suite, and loading the file does not need WordPress. If that ever
  * changes the require below will fail, which is the rule working.
  *
+ * Settings is here on the same terms, and matters more: it is the function
+ * standing between a form post and the option that decides who may delete a
+ * folder. get() and save() touch the options table and are not called from
+ * this suite; everything the tests exercise is pure.
+ *
  * Integration tests that do need WordPress live in tests/Integration and run
  * from phpunit.xml.dist against the WordPress test library.
  */
@@ -29,3 +34,4 @@ $root = dirname(__DIR__);
 require_once $root . '/includes/Domain/FolderPath.php';
 require_once $root . '/includes/Domain/FolderTree.php';
 require_once $root . '/includes/Admin/RailPreferences.php';
+require_once $root . '/includes/Support/Settings.php';

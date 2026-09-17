@@ -9,55 +9,60 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Import page admin UI.
+ * The Import tab of the settings screen — screen 08's second tab.
+ *
+ * It had a page of its own until the settings screen was built; it is a tab
+ * now, and SettingsPage owns the chrome around it. What is left here is the
+ * body and the two scripts it needs.
+ *
+ * The body itself is still v0.2.0's: a jQuery table with confirm() and
+ * alert(). It is deliberately untouched at this step. Screen 07 is a
+ * four-step wizard — detect, preview, run, report — and replacing a dialog
+ * with a dialog on the way there would be two rewrites of the same code. The
+ * wizard is the next step, and it lands in renderTab().
  */
 class ImportPage
 {
-
-    /**
-     * Hook suffix of the import screen, set once the menu is registered.
-     */
-    private string $hookSuffix = '';
-
     public function register(): void
     {
-        add_action('admin_enqueue_scripts', [$this, 'enqueueAssets']);
+        // No admin_enqueue_scripts hook of its own, and no hook suffix to
+        // remember. SettingsPage is the screen now: it knows which tab is
+        // showing, and these scripts have nothing to do on the other two.
     }
 
     /**
-     * Told where it ended up, by whoever registered the menu.
-     *
-     * The screen does not place itself: the hook suffix depends on placement,
-     * so a page that registers its own menu entry and then guards its assets
-     * on the suffix it got back is two facts that can drift apart. Menu owns
-     * both.
+     * The body is rendered with an inline script that uses both jQuery and
+     * wp.apiFetch; neither is enqueued by default on this screen.
      */
-    public function setHookSuffix(string $hookSuffix): void
+    public function enqueueTabAssets(): void
     {
-        $this->hookSuffix = $hookSuffix;
-    }
-
-    /**
-     * The page body is rendered with an inline script that uses both jQuery
-     * and wp.apiFetch; neither was previously enqueued.
-     *
-     * @param string $hookSuffix Current WordPress admin screen identifier.
-     */
-    public function enqueueAssets(string $hookSuffix): void
-    {
-        if ('' === $this->hookSuffix || $hookSuffix !== $this->hookSuffix) {
-            return;
-        }
-
         wp_enqueue_script('jquery');
         wp_enqueue_script('wp-api-fetch');
     }
 
+    /**
+     * The whole page, for anything still calling it directly.
+     *
+     * @deprecated The screen is a tab now: SettingsPage::renderPage() draws
+     *             the card and calls renderTab().
+     */
     public function renderPage(): void
     {
         ?>
         <div class="wrap">
             <h1><?php echo esc_html__('Import Folders', 'folderfolio'); ?></h1>
+            <?php $this->renderTab(); ?>
+        </div>
+        <?php
+    }
+
+    public function renderTab(): void
+    {
+        ?>
+        <div>
+            <p class="folderfolio-lede">
+                <?php esc_html_e('Folders from another plugin are copied, never moved: nothing is removed from the plugin you import from, and a folder you already have keeps the files it already has.', 'folderfolio'); ?>
+            </p>
 
             <div id="folderfolio-import-app"></div>
 

@@ -325,4 +325,44 @@ class AttachmentFolderRepository
 
         return true;
     }
+
+    /**
+     * Drop assignment rows that point at nothing.
+     *
+     * Two kinds, and they arrive by different routes. A row whose folder is
+     * gone is left by a delete that failed part-way — the folder row went, the
+     * assignments did not. A row whose attachment is gone is left by anything
+     * that removed a post without firing `delete_attachment`: a direct SQL
+     * delete, a migration, or a version of this plugin before that hook
+     * existed.
+     *
+     * Doctor reports both and repairs neither; this is the repair, run from
+     * the Status tab by somebody who has read what it found. Both statements
+     * are NOT EXISTS rather than joins, because a LEFT JOIN … IS NULL delete
+     * needs a different syntax on MySQL and MariaDB.
+     *
+     * @return int Rows removed.
+     */
+    public function deleteOrphans(): int
+    {
+        $table = $this->table();
+        $folders = $this->wpdb->prefix . 'folderfolio_folders';
+
+        // Identifiers cannot be bound and both are built from $wpdb->prefix.
+        $removed = (int) $this->wpdb->query(
+            "DELETE FROM {$table}
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM {$folders} f WHERE f.id = {$table}.folder_id
+             )"
+        );
+
+        $removed += (int) $this->wpdb->query(
+            "DELETE FROM {$table}
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM {$this->wpdb->posts} p WHERE p.ID = {$table}.attachment_id
+             )"
+        );
+
+        return $removed;
+    }
 }
