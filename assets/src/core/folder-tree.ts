@@ -1,4 +1,5 @@
 import { apiFetch, ApiEnvelope, Folder, t } from './api';
+import { hasListTable, refreshListTable } from '../lib/list-refresh';
 
 /** Must match MediaLibraryFilter::QUERY_VAR. */
 const FOLDER_QUERY_VAR = 'folderfolio_folder';
@@ -24,9 +25,17 @@ export class FolderTree {
   private tree: Folder[] = [];
   private activeFolderId: number | null = null;
 
-  async init(): Promise<void> {
-    this.positionPanel();
+  /**
+   * Which folders are open.
+   *
+   * In state rather than only as a class on the DOM, because render() rebuilds
+   * the whole list — so selecting a folder used to collapse every folder the
+   * user had opened. That is the same complaint as the page reloading: the
+   * tree resets itself underneath you while you are using it.
+   */
+  private expandedIds = new Set<number>();
 
+  async init(): Promise<void> {
     this.container = document.getElementById('folderfolio-folder-tree');
     if (!this.container) {
       console.warn('FolderFolio: #folderfolio-folder-tree not found');
@@ -52,23 +61,6 @@ export class FolderTree {
    * That hook is the only server-side point grid and list mode share; getting
    * the position right is the client's job.
    */
-  private positionPanel(): void {
-    const panel = document.getElementById('folderfolio-sidebar');
-    const wrap = document.querySelector('.wrap');
-
-    if (!panel || !wrap || wrap.contains(panel)) {
-      return;
-    }
-
-    const header = wrap.querySelector('.wp-header-end') ?? wrap.querySelector('h1');
-
-    if (header) {
-      header.insertAdjacentElement('afterend', panel);
-    } else {
-      wrap.prepend(panel);
-    }
-  }
-
   private async loadTree(): Promise<void> {
     try {
       const response = await apiFetch<ApiEnvelope<Folder[]>>('/tree');
@@ -115,15 +107,37 @@ export class FolderTree {
         (folder) => `
         <li class="folderfolio-tree-item ${this.activeFolderId === folder.id ? 'active' : ''}" data-folder-id="${folder.id}" data-depth="${depth}">
           <div class="folderfolio-folder-row">
-            <span class="folderfolio-toggle dashicons ${folder.children && folder.children.length > 0 ? 'dashicons-arrow-down-alt2' : ''}" data-folder-id="${folder.id}"></span>
+            <span class="folderfolio-toggle dashicons ${this.chevron(folder)}" data-folder-id="${folder.id}"></span>
             <span class="folderfolio-folder-name" data-folder-id="${folder.id}">${this.escapeHtml(folder.name)}</span>
             <span class="folderfolio-folder-count">${folder.children ? folder.children.length : 0}</span>
           </div>
-          ${folder.children && folder.children.length > 0 ? `<ul class="folderfolio-children" data-parent-id="${folder.id}">${this.renderTree(folder.children, depth + 1)}</ul>` : ''}
+          ${this.hasChildren(folder) ? `<ul class="folderfolio-children ${this.expandedIds.has(folder.id) ? 'expanded' : ''}" data-parent-id="${folder.id}">${this.renderTree(folder.children ?? [], depth + 1)}</ul>` : ''}
         </li>
       `
       )
       .join('');
+  }
+
+  private hasChildren(folder: Folder): boolean {
+    return Boolean(folder.children && folder.children.length > 0);
+  }
+
+  /**
+   * The arrow has to follow the state.
+   *
+   * It used to be rendered as arrow-down — "open" — on every parent, whether
+   * open or not, and only corrected itself after the user had clicked it once.
+   * So a tree of closed folders all claimed to be open, and nothing on screen
+   * said a row could be opened at all.
+   */
+  private chevron(folder: Folder): string {
+    if (!this.hasChildren(folder)) {
+      return '';
+    }
+
+    return this.expandedIds.has(folder.id)
+      ? 'dashicons-arrow-down-alt2'
+      : 'dashicons-arrow-right-alt2';
   }
 
   private bindEvents(): void {
@@ -223,12 +237,24 @@ export class FolderTree {
     const childrenContainer = this.container?.querySelector(`.folderfolio-children[data-parent-id="${folderId}"]`);
     const toggleIcon = this.container?.querySelector(`.folderfolio-toggle[data-folder-id="${folderId}"]`);
 
-    if (childrenContainer && toggleIcon) {
-      const isExpanded = childrenContainer.classList.contains('expanded');
-      childrenContainer.classList.toggle('expanded', !isExpanded);
-      toggleIcon.classList.toggle('dashicons-arrow-down-alt2', !isExpanded);
-      toggleIcon.classList.toggle('dashicons-arrow-right-alt2', isExpanded);
+    if (!childrenContainer || !toggleIcon) {
+      return;
     }
+
+    // The Set is the truth; the classes are how it looks. Applied here rather
+    // than by re-rendering, so opening a folder does not rebuild the list the
+    // user is pointing at.
+    const expanded = !this.expandedIds.has(folderId);
+
+    if (expanded) {
+      this.expandedIds.add(folderId);
+    } else {
+      this.expandedIds.delete(folderId);
+    }
+
+    childrenContainer.classList.toggle('expanded', expanded);
+    toggleIcon.classList.toggle('dashicons-arrow-down-alt2', expanded);
+    toggleIcon.classList.toggle('dashicons-arrow-right-alt2', !expanded);
   }
 
   private filterTree(query: string): void {
@@ -265,8 +291,16 @@ export class FolderTree {
   }
 
   /**
-   * Grid mode re-queries in place through the media frame's collection; list
-   * mode is an ordinary page load with the folder in the URL.
+   * Selecting a folder never navigates.
+   *
+   * Grid mode re-queries the media frame's collection in place. List mode has
+   * no collection to re-query, so list-refresh fetches the page WordPress
+   * would have served and swaps the table into the existing document — see
+   * that file for why it fetches the page rather than calling an API.
+   *
+   * The navigation below is the last resort, for a screen that is neither:
+   * refreshListTable() falls back to one itself if its fetch fails, so a
+   * folder the user asked for is always shown, even if only the slow way.
    */
   private applyFilter(folderId: number | null): void {
     const url = new URL(window.location.href);
@@ -288,6 +322,12 @@ export class FolderTree {
       // Grid re-queries in place, so nothing would otherwise update the address
       // bar - a refresh or a shared link would lose the filter.
       window.history.replaceState({}, '', url.toString());
+      return;
+    }
+
+    if (hasListTable()) {
+      void refreshListTable(url.toString());
+
       return;
     }
 

@@ -26,7 +26,10 @@ final class MediaLibraryIntegration
      * @var array<string, list<string>>
      */
     private const BUNDLES = [
-        'folder-tree' => ['wp-api-fetch'],
+        // wp-a11y: selecting a folder in list mode no longer reloads the page,
+        // so the new item count has to be spoken deliberately — nothing else
+        // tells a screen reader the table changed.
+        'folder-tree' => ['wp-api-fetch', 'wp-a11y'],
         'media-library-integration' => ['wp-api-fetch'],
         'bulk-actions' => ['wp-api-fetch'],
         'upload-integration' => ['wp-api-fetch', 'media-views'],

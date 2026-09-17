@@ -48,9 +48,18 @@ interface WpMediaFactory {
   frame?: WpMediaFrame;
 }
 
+/**
+ * wp-a11y. Optional because it is only present when something on the screen
+ * declared it as a script dependency.
+ */
+interface WpA11y {
+  speak(message: string, politeness?: 'polite' | 'assertive'): void;
+}
+
 interface WpGlobal {
   apiFetch<T>(options: WpApiFetchOptions): Promise<T>;
   media?: WpMediaFactory;
+  a11y?: WpA11y;
 
   /**
    * The `wp-element` script handle: WordPress's own React, react-dom and
