@@ -21,12 +21,14 @@ if (!defined('ABSPATH')) {
  *
  * `createdFolderIds` is bounded by the source's folder count — hundreds, at
  * worst thousands. The **assignments** an import makes are not stored, because
- * there can be a hundred thousand of them and they do not need to be: the
- * assignments table records `assigned_at`, so undo can find them by time and
- * folder without a list.
+ * there can be a hundred thousand of them and they do not need to be: each row
+ * carries this run's `id` in its `import_run` column, so undo finds them with
+ * one indexed delete and no list.
  *
- * That is also why `startedAt` and `finishedAt` are recorded to the second and
- * never rewritten.
+ * That was a window on `assigned_at` until it met a test: the timestamps are
+ * second-granular, and a file filed by hand in the same second — or at any
+ * point during a run the user was invited to walk away from — fell inside the
+ * window and was deleted by an undo that promises to keep it.
  */
 final class Run
 {

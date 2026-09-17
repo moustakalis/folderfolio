@@ -117,13 +117,22 @@ class AttachmentFolderRepository
         return $out;
     }
 
-    public function assign(int $folderId, int $attachmentId, int $sortOrder = 0): bool|WP_Error
-    {
+    public function assign(
+        int $folderId,
+        int $attachmentId,
+        int $sortOrder = 0,
+        ?string $importRun = null
+    ): bool|WP_Error {
         $result = $this->wpdb->replace($this->table(), [
             'folder_id' => $folderId,
             'attachment_id' => $attachmentId,
             'sort_order' => $sortOrder,
             'assigned_at' => current_time('mysql', true),
+            // Null for every row a person creates, which is what undo reads it
+            // for. REPLACE rather than INSERT, so a file the import filed and
+            // the user has since re-filed by hand loses the marker and stops
+            // being the import's to remove — which is the right way round.
+            'import_run' => $importRun,
         ]);
 
         if ($result === false) {
@@ -327,38 +336,31 @@ class AttachmentFolderRepository
     }
 
     /**
-     * Remove assignments made to these folders inside a time window.
+     * Remove every assignment one import run created.
      *
-     * This is how an import is undone without the import having stored a list
-     * of everything it filed. `assigned_at` is already on every row, so the
-     * question "what did that run add" is answerable from the data rather than
-     * from a hundred thousand pairs in an option.
+     * This is how an import is undone without the run having stored a list of
+     * everything it filed — there can be a hundred thousand pairs, and the run
+     * lives in an option.
      *
-     * The window is closed at both ends and the folder set is explicit, so a
-     * file somebody filed by hand during the import — in a folder the import
-     * never touched — is not in scope.
-     *
-     * @param list<int> $folderIds
-     * @param string    $from UTC 'Y-m-d H:i:s'.
-     * @param string    $to   UTC 'Y-m-d H:i:s'.
+     * It used to be a window on `assigned_at`, and that was wrong. `assigned_at`
+     * is second-granular, so a file filed by hand in the same second the run
+     * started was inside it; worse, so was anything filed by hand *during* a
+     * long import, which screen 07 invites by saying the run continues after
+     * you close the tab. Undo promises to keep what the import did not do, and
+     * a time window cannot tell the difference. A column on the row can.
      *
      * @return int Rows removed.
      */
-    public function deleteAssignedBetween(array $folderIds, string $from, string $to): int
+    public function deleteAssignedByRun(string $importRun): int
     {
-        if ($folderIds === [] || $from === '' || $to === '') {
+        if ($importRun === '') {
             return 0;
         }
 
-        $placeholders = implode(',', array_fill(0, count($folderIds), '%d'));
-
         $deleted = $this->wpdb->query(
             $this->wpdb->prepare(
-                "DELETE FROM {$this->table()}
-                 WHERE folder_id IN ({$placeholders})
-                   AND assigned_at >= %s
-                   AND assigned_at <= %s",
-                ...[...$folderIds, $from, $to]
+                "DELETE FROM {$this->table()} WHERE import_run = %s",
+                $importRun
             )
         );
 

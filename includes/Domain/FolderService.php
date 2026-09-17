@@ -476,6 +476,11 @@ class FolderService
      *
      * MODE_MOVE is the drag gesture: file here, and nowhere else.
      *
+     * $importRun marks the rows as one import's work, so that undoing that
+     * import removes exactly them and leaves anything a person filed — before
+     * it, or during it — where it is. Null for every other caller, which is
+     * all of them but the migration wizard.
+     *
      * @param list<int|string> $attachmentIds
      * @param string           $mode One of the MODE_* constants; validated below.
      * @return int|WP_Error Number of attachments filed.
@@ -483,7 +488,8 @@ class FolderService
     public function assignAttachments(
         int $folderId,
         array $attachmentIds,
-        string $mode = self::MODE_ADD
+        string $mode = self::MODE_ADD,
+        ?string $importRun = null
     ): int|WP_Error {
         if ($this->folders->find($folderId) === null) {
             return new WP_Error(
@@ -518,7 +524,7 @@ class FolderService
                 }
             }
 
-            $result = $this->assignments->assign($folderId, $attachmentId, $position);
+            $result = $this->assignments->assign($folderId, $attachmentId, $position, $importRun);
 
             if (is_wp_error($result)) {
                 return $result;

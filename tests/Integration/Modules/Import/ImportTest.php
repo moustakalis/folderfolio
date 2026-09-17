@@ -33,9 +33,13 @@ final class FakeSource extends Source
      */
     public function __construct(
         private readonly array $folders,
-        private readonly array $files
+        private readonly array $files,
+        string $key = 'fake'
     ) {
-        parent::__construct('fake', 'Fake Folders', 'fake/fake.php');
+        // The key is a parameter because the runner re-reads its source from
+        // the catalogue every batch, by key — two fixtures sharing one key
+        // means the second run reads the first fixture's folders.
+        parent::__construct($key, 'Fake Folders', 'fake/fake.php');
     }
 
     public function hasData(): bool
@@ -293,6 +297,74 @@ class ImportTest extends WP_UnitTestCase
             [$ownFile],
             \FolderFolio::getAttachmentIds($mine->id),
             'A file filed by hand before the import is not an import artefact.'
+        );
+    }
+
+    /**
+     * The case the `import_run` column exists for.
+     *
+     * Screen 07 says the run continues after you close the tab, so the user is
+     * invited to go back to the media library and carry on working — into the
+     * very folders the import is merging into — while it runs. Undo used to
+     * delete assignments by (folder, time window), which cannot tell that row
+     * from one of its own.
+     *
+     * Thirty folders, so that one batch of twenty-five leaves the run going.
+     *
+     * @test
+     */
+    public function undo_keeps_a_file_somebody_filed_while_the_import_was_running(): void
+    {
+        $folders = [];
+
+        for ($i = 1; $i <= 30; $i++) {
+            $folders[] = new SourceFolder($i, null, 'Folder ' . $i);
+        }
+
+        $source = new FakeSource($folders, [1 => [$this->attachment]], 'fake-wide');
+
+        add_filter(
+            'folderfolio_import_sources',
+            static fn (array $sources): array => [...$sources, $source]
+        );
+
+        $runner = new Runner();
+        $runner->start($source);
+
+        $run = $runner->step();
+
+        $this->assertInstanceOf(Run::class, $run);
+        $this->assertFalse($run->isFinished(), 'One batch of 25 leaves five folders to go.');
+
+        $first = null;
+
+        foreach (\FolderFolio::getTree() as $node) {
+            if ('Folder 1' === $node['name']) {
+                $first = (int) $node['id'];
+            }
+        }
+
+        $this->assertNotNull($first);
+
+        // Somebody drags a file into a folder the import has already made,
+        // while the rest of the import is still running.
+        $theirs = $this->factory->post->create(['post_type' => 'attachment']);
+        \FolderFolio::assign([$theirs], $first);
+
+        $this->runToCompletion($runner);
+
+        $undone = (new Runner())->undo();
+
+        $this->assertInstanceOf(Run::class, $undone);
+        $this->assertContains(
+            'Folder 1',
+            array_column(\FolderFolio::getTree(), 'name'),
+            'A folder the import made is kept when somebody has filed into it.'
+        );
+        $this->assertSame(
+            [$theirs],
+            \FolderFolio::getAttachmentIds($first),
+            'Their file stays; the one the import filed there is gone.'
         );
     }
 

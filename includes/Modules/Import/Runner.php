@@ -95,7 +95,13 @@ final class Runner
         $tree = SourceTree::of($source->folders());
 
         $run = new Run(
-            id: (string) time() . '-' . $source->key(),
+            // Bounded, because it is written into `import_run VARCHAR(32)` on
+            // every row the run files and undo matches on it exactly: a key
+            // long enough to be truncated by the column would be a marker that
+            // silently matches nothing. Ten digits of timestamp, a hyphen, and
+            // at most twenty of the key — the longest shipped key is
+            // 'wp-media-library-folders', and a site can filter in anything.
+            id: time() . '-' . substr($source->key(), 0, 20),
             sourceKey: $source->key(),
             sourceLabel: $source->label(),
             status: Run::RUNNING,
@@ -241,11 +247,7 @@ final class Runner
             );
         }
 
-        $this->assignments->deleteAssignedBetween(
-            $run->touchedFolderIds,
-            $run->startedAt,
-            '' === $run->finishedAt ? current_time('mysql', true) : $run->finishedAt
-        );
+        $this->assignments->deleteAssignedByRun($run->id);
 
         // Deepest first. `delete()` reparents children rather than cascading,
         // so removing a parent first would leave its children at the top level
@@ -382,7 +384,15 @@ final class Runner
             return $folderId;
         }
 
-        $added = $this->service->assignAttachments($folderId, $new, FolderService::MODE_ADD);
+        // Marked with the run id: this is what undo deletes by, and it is the
+        // only thing that can tell a row this import made from one somebody
+        // filed by hand a second — or ten minutes — earlier.
+        $added = $this->service->assignAttachments(
+            $folderId,
+            $new,
+            FolderService::MODE_ADD,
+            $run->id
+        );
 
         if (is_wp_error($added)) {
             // Not fatal to the migration: the folder is made, the files stay

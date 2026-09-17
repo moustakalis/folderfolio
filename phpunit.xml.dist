@@ -1,8 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+    The integration suite: a real WordPress, a real database, the WordPress
+    test library.
+
+    Every attribute and element here is valid on PHPUnit 9, which is what
+    composer.json pins (^9.6, because that is what the WordPress test library
+    requires). `cacheDirectory` and `<source>` are PHPUnit 10 spellings and
+    were both in this file: 9.6 does not fail on them, it prints "The
+    configuration file did not pass validation" and carries on, which is a
+    warning nobody reads in a log that also has failures in it.
+    phpunit-unit.xml.dist already said this; this file had not been run since
+    it was written.
+-->
 <phpunit
     bootstrap="tests/bootstrap.php"
     colors="true"
-    cacheDirectory=".phpunit.cache"
+    cacheResultFile=".phpunit.result.cache"
     failOnRisky="false"
     failOnWarning="false"
     stopOnError="false"
@@ -14,11 +27,11 @@
         </testsuite>
     </testsuites>
 
-    <source>
+    <coverage>
         <include>
             <directory suffix=".php">./includes</directory>
         </include>
-    </source>
+    </coverage>
 
     <php>
         <ini name="display_errors" value="1"/>

@@ -69,14 +69,24 @@ class Schema
         // competitor examined the code permits it too: assignment is an add,
         // not a delete-then-insert. That is what lets the migration wizard
         // import without taking files out of folders the user made.
+        //
+        // `import_run` is the id of the import that created the row, and null
+        // on every row a person created. Undo deletes by it. It replaced a
+        // window on `assigned_at`, which was wrong in a way no amount of care
+        // with the window could fix: a row filed by hand *during* the import —
+        // which screen 07 invites, by saying the run continues after you leave
+        // the page — sat inside the window and was deleted by an undo that
+        // promises to keep exactly that.
         $table_assignments = $wpdb->prefix . 'folderfolio_attachment_folders';
         $sql_assignments = "CREATE TABLE {$table_assignments} (
             folder_id BIGINT UNSIGNED NOT NULL,
             attachment_id BIGINT UNSIGNED NOT NULL,
             sort_order INT NOT NULL DEFAULT 0,
             assigned_at DATETIME NOT NULL,
+            import_run VARCHAR(32) NULL DEFAULT NULL,
             PRIMARY KEY  (folder_id, attachment_id),
-            KEY attachment_id (attachment_id)
+            KEY attachment_id (attachment_id),
+            KEY import_run (import_run)
         ) {$charset_collate};";
 
         \dbDelta($sql_assignments);
