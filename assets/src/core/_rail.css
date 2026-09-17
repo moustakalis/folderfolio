@@ -1,0 +1,307 @@
+/**
+ * The rail shell — design screens 03 and 04, spec "The rail — mount point".
+ *
+ * This file is the container and the chrome: where the rail sits in the admin
+ * layout, how it sticks, how it resizes, and what it looks like collapsed.
+ * The tree inside it is _row.css; the header, toolbar and search are step 4.
+ *
+ * No hex literals — see _tokens.css.
+ */
+
+/* ------------------------------------------------------------ the layout */
+
+/**
+ * #wpbody-content is `float: left; width: 100%` in core, which leaves no room
+ * beside it for anything. Unfloating it and making #wpbody a flex row is the
+ * whole intervention, and it is scoped to the class Rail.php adds to <body>
+ * on the library screen — so on every other admin screen core's layout is
+ * untouched, including when another plugin is doing something unusual there.
+ */
+body.folderfolio-has-rail #wpbody {
+  display: flex;
+  align-items: flex-start;
+}
+
+body.folderfolio-has-rail #wpbody > #wpbody-content {
+  float: none;
+  width: auto;
+  flex: 1 1 auto;
+
+  /* Without this a wide table or a long filename stretches the flex item and
+     pushes the rail off the screen, because a flex item's default min-width is
+     its content. The media grid has both. */
+  min-width: 0;
+}
+
+/* The float clearer core prints after the content column. In a flex row it is
+   a third item with nothing to clear. */
+body.folderfolio-has-rail #wpbody > .clear {
+  display: none;
+}
+
+/* ------------------------------------------------------------- the rail */
+
+.folderfolio-rail {
+  flex: 0 0 var(--ff-rail-w);
+  width: var(--ff-rail-w);
+  box-sizing: border-box;
+
+  /**
+   * Sticky under the admin bar, full viewport height, its own scrollbar.
+   *
+   * --wp-admin--admin-bar--height is core's own custom property, so this
+   * follows the bar's real height rather than assuming 32px — the bar is 46px
+   * below 782px wide, and it is not fixed at all when printing or in some
+   * accessibility modes. The fallback is the desktop value.
+   */
+  position: sticky;
+  top: var(--wp-admin--admin-bar--height, 32px);
+  align-self: flex-start;
+  height: calc(100vh - var(--wp-admin--admin-bar--height, 32px));
+
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+
+  background: var(--ff-panel);
+  color: var(--ff-ink);
+
+  /* 2px rule between major sections. The 5px handle sits just outside it. */
+  border-right: 2px solid var(--ff-rule);
+}
+
+/* The scrolling region. min-height:0 on both this and the rail is what lets it
+   scroll instead of growing the flex column past the viewport. */
+.folderfolio-rail__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px 0 12px;
+}
+
+/* ----------------------------------------------------------- the footer */
+
+.folderfolio-rail__footer {
+  flex: 0 0 32px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 8px;
+  border-top: 1px solid var(--ff-line);
+  font-size: 11px;
+  color: var(--ff-dim);
+}
+
+.folderfolio-rail__total {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.folderfolio-rail__collapse {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 6px;
+  background: transparent;
+  border: 1px solid var(--ff-line);
+  border-radius: 0;
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--ff-muted);
+  cursor: pointer;
+}
+
+.folderfolio-rail__collapse:hover {
+  background: var(--ff-hover);
+}
+
+.folderfolio-rail__collapse:focus-visible,
+.folderfolio-rail__expand:focus-visible {
+  outline: 2px solid var(--ff-sel);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+/* ---------------------------------------------------- the collapsed tab */
+
+/**
+ * 28px, a reopen chevron and the word Folders set vertically.
+ *
+ * Both states are always in the DOM and CSS picks one, so collapsing is a
+ * single class change: no node is created or destroyed, so there is no frame
+ * in which the rail is neither open nor collapsed, and nothing inside it
+ * loses state on the way.
+ */
+.folderfolio-rail__tab {
+  display: none;
+}
+
+/**
+ * The tab width is set on `width` and `flex-basis` directly, not by
+ * redeclaring --ff-rail-w.
+ *
+ * rail.ts writes the dragged width to the element's inline style, and an
+ * inline custom property beats any rule in this file — so a `--ff-rail-w: 28px`
+ * here would be silently ignored for every user who has ever dragged the
+ * handle, and the rail would collapse its contents while staying 300px wide.
+ * It did exactly that until the harness measured it.
+ *
+ * Overriding the two properties that read the variable sidesteps the cascade
+ * problem entirely, and leaves the stored width in place so reopening returns
+ * to it.
+ */
+.folderfolio-rail.is-collapsed {
+  flex-basis: 28px;
+  width: 28px;
+}
+
+.folderfolio-rail.is-collapsed .folderfolio-rail__body,
+.folderfolio-rail.is-collapsed .folderfolio-rail__footer {
+  display: none;
+}
+
+.folderfolio-rail.is-collapsed .folderfolio-rail__tab {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding-top: 14px;
+  overflow: hidden;
+}
+
+.folderfolio-rail__expand {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 44px;
+  padding: 0;
+  background: var(--ff-field);
+  border: 1px solid var(--ff-off);
+  border-radius: 0;
+  color: var(--ff-ink);
+  cursor: pointer;
+}
+
+.folderfolio-rail__expand:hover {
+  background: var(--ff-hover);
+}
+
+.folderfolio-rail__tab-label {
+  writing-mode: vertical-rl;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ff-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ----------------------------------------------------- the resize handle */
+
+/**
+ * A sibling rather than an overlay on the rail's edge, so it is never clipped
+ * by the rail's own overflow and needs no negative offset. 5px is the target;
+ * the visible 2px rule is the rail's border, immediately to its left.
+ */
+.folderfolio-resize {
+  flex: 0 0 5px;
+  width: 5px;
+  box-sizing: border-box;
+
+  position: sticky;
+  top: var(--wp-admin--admin-bar--height, 32px);
+  align-self: flex-start;
+  height: calc(100vh - var(--wp-admin--admin-bar--height, 32px));
+
+  background: transparent;
+  cursor: col-resize;
+
+  /* Otherwise a drag on a touch screen scrolls the page instead. */
+  touch-action: none;
+}
+
+.folderfolio-resize:hover,
+.folderfolio-resize.is-dragging {
+  background: var(--ff-sel);
+}
+
+.folderfolio-resize:focus-visible {
+  outline: 2px solid var(--ff-sel);
+  outline-offset: -1px;
+}
+
+/* No handle when there is nothing to resize. */
+body.folderfolio-rail-collapsed .folderfolio-resize {
+  display: none;
+}
+
+/**
+ * While dragging, the pointer is over the handle but the cursor should not
+ * flicker as it crosses onto the grid, and a drag that starts on the rail
+ * should not select the folder names it passes over.
+ */
+body.folderfolio-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+body.folderfolio-resizing * {
+  cursor: col-resize !important;
+}
+
+/* ------------------------------------------------------------- narrow */
+
+/**
+ * Core drops the admin to its mobile layout at 782px, where the menu becomes
+ * an overlay and the content column is the whole screen. A 300px rail beside
+ * it would leave the grid about two thumbnails wide, so below that the rail
+ * stacks above the library at full width and stops being sticky.
+ *
+ * Deliberately not a collapse: collapsing writes a preference, and a
+ * preference set by a narrow window would follow the user back to their
+ * desktop.
+ */
+@media screen and (max-width: 782px) {
+  body.folderfolio-has-rail #wpbody {
+    display: block;
+  }
+
+  body.folderfolio-has-rail #wpbody > #wpbody-content {
+    float: left;
+    width: 100%;
+  }
+
+  body.folderfolio-has-rail #wpbody > .clear {
+    display: block;
+  }
+
+  .folderfolio-rail {
+    position: static;
+    width: auto;
+    height: auto;
+    max-height: 60vh;
+    border-right: 0;
+    border-bottom: 2px solid var(--ff-rule);
+  }
+
+  .folderfolio-resize {
+    display: none;
+  }
+}
+
+/* Windows High Contrast: the handle's accent fill is dropped by the forced
+   palette, so focus needs a border the mode honours. */
+@media (forced-colors: active) {
+  .folderfolio-resize:focus-visible {
+    outline: 2px solid Highlight;
+  }
+}

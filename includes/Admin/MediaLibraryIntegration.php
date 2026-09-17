@@ -35,7 +35,13 @@ final class MediaLibraryIntegration
     public function register(): void
     {
         add_action('admin_enqueue_scripts', [$this, 'enqueueAssets']);
-        add_action('all_admin_notices', [$this, 'renderMountPoint']);
+
+        // The mount point moved to Rail. It used to be rendered here, into
+        // all_admin_notices, which put the folder tree inside the content
+        // column and in the notices stack — so it scrolled away with the page
+        // and a plugin update notice could push it down the screen. Rail
+        // renders #folderfolio-folder-tree inside the rail proper; this class
+        // still owns the bundles that populate it.
     }
 
     /**
@@ -85,30 +91,6 @@ final class MediaLibraryIntegration
                 'before'
             );
         }
-    }
-
-    /**
-     * Render the container the folder tree mounts into.
-     *
-     * all_admin_notices fires inside #wpbody-content ahead of the page body,
-     * which is the one insertion point shared by the grid and list views.
-     */
-    public function renderMountPoint(): void
-    {
-        if (!function_exists('get_current_screen')) {
-            return;
-        }
-
-        $screen = get_current_screen();
-
-        if (!$screen || self::SCREEN_ID !== $screen->id || !current_user_can('upload_files')) {
-            return;
-        }
-
-        printf(
-            '<div id="folderfolio-sidebar" class="folderfolio folderfolio-sidebar"><div id="folderfolio-folder-tree" class="folderfolio-folder-tree" role="navigation" aria-label="%s"></div></div>',
-            esc_attr__('Media folders', 'folderfolio')
-        );
     }
 
     /**

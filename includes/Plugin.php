@@ -12,11 +12,13 @@ use FolderFolio\Admin\ImportPage;
 use FolderFolio\Admin\MediaLibraryFilter;
 use FolderFolio\Admin\MediaLibraryIntegration;
 use FolderFolio\Admin\Menu;
+use FolderFolio\Admin\Rail;
 use FolderFolio\Database\Schema;
 use FolderFolio\Domain\AttachmentFolderRepository;
 use FolderFolio\Cli\FolderCommand;
 use FolderFolio\Cli\RootCommand;
 use FolderFolio\Rest\FolderController;
+use FolderFolio\Rest\PreferenceController;
 use FolderFolio\Support\UploadRouter;
 use FolderFolio\Rest\ImportController;
 
@@ -81,6 +83,10 @@ final class Plugin
         (new UploadRouter())->register();
 
         if (is_admin()) {
+            // The rail owns the shell — where it mounts, its width, whether it
+            // is open. MediaLibraryIntegration still enqueues and populates
+            // the tree that goes inside it.
+            (new Rail())->register();
             (new MediaLibraryIntegration())->register();
 
             // One instance: Menu places the screen and hands it the hook
@@ -135,6 +141,7 @@ final class Plugin
     {
         (new FolderController())->registerRoutes();
         (new ImportController())->registerRoutes();
+        (new PreferenceController())->registerRoutes();
     }
 
     /**

@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FolderFolio — rail shell review harness</title>
+
+<!--
+  Screens 03 and 04, outside WordPress.
+
+  The rail's whole problem is where it sits: it is a sibling of
+  #wpbody-content inside #wpbody, and everything about it — the stickiness,
+  the height, the fact that the media grid narrows rather than being covered —
+  depends on that. So this page is not a mock of the rail; it is a mock of
+  wp-admin's layout boxes, with the shipping stylesheet and the shipping
+  rail.js loaded into it unchanged.
+
+  The skeleton below reproduces only what the rail's CSS touches:
+  #wpwrap > #adminmenumain + #wpcontent > #wpbody > (rail, handle,
+  #wpbody-content), a 32px fixed admin bar, and core's float on the content
+  column. Nothing is styled to look like wp-admin beyond that, on purpose —
+  anything prettier here would be a second implementation to keep in step.
+
+  Open it directly in a browser. Toggle the scheme with the buttons: the class
+  goes on <body>, exactly as WordPress puts it there.
+-->
+
+<link rel="stylesheet" href="../../assets/build/core/admin.css">
+
+<style>
+  /* ------------------------------------------------- wp-admin's own boxes */
+  /* Values copied from core's common.css, not invented. */
+
+  html { box-sizing: border-box; }
+  *, *::before, *::after { box-sizing: inherit; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans,
+      Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+    font-size: 13px;
+    line-height: 1.4em;
+    background: #f0f0f1;
+    color: #3c434a;
+  }
+
+  #wpadminbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 32px;
+    background: #1d2327;
+    color: #f0f0f1;
+    font-size: 13px;
+    line-height: 32px;
+    padding: 0 12px;
+    z-index: 99999;
+  }
+
+  #wpwrap { min-height: 100%; position: relative; }
+  #adminmenumain { position: relative; float: left; }
+  #adminmenuwrap { width: 160px; background: #1d2327; min-height: 100vh; margin-top: 32px; }
+  #adminmenu { list-style: none; margin: 0; padding: 0; }
+  #adminmenu li { color: #c3c4c7; padding: 8px 12px; font-size: 14px; }
+  #adminmenu li.current { background: #2271b1; color: #fff; }
+
+  #wpcontent { margin-left: 160px; padding-left: 20px; padding-top: 32px; }
+  #wpbody { position: relative; }
+  #wpbody-content { float: left; width: 100%; padding-bottom: 65px; overflow: visible; }
+  .clear { clear: both; }
+
+  /* Enough of the media grid to show the rail narrowing it rather than
+     covering it. */
+  .wrap { margin: 10px 20px 0 2px; }
+  .wrap h1 { font-size: 23px; font-weight: 400; margin: 0 0 12px; color: #1d2327; }
+  .ff-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+  .ff-tile { aspect-ratio: 1; background: #c3c4c7; display: grid; place-items: center; color: #50575e; }
+
+  /* ---------------------------------------------------------- the harness */
+
+  .ff-harness {
+    position: fixed;
+    right: 12px;
+    bottom: 12px;
+    z-index: 100000;
+    background: #1d2327;
+    color: #f0f0f1;
+    padding: 10px 12px;
+    font-size: 11px;
+    line-height: 1.6;
+    max-width: 320px;
+  }
+
+  .ff-harness button {
+    font: inherit;
+    background: transparent;
+    border: 1px solid #8c8f94;
+    color: inherit;
+    padding: 2px 7px;
+    cursor: pointer;
+  }
+
+  .ff-harness code { color: #9ec8d6; }
+
+  /* Stand-in rows, so the rail has something to scroll. Replaced by the real
+     tree at step 4; the geometry here is _row.css's, not this file's. */
+  .ff-fake-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 10px 0 12px;
+    font-size: 13px;
+    color: var(--ff-ink);
+  }
+  .ff-fake-row span:last-child { margin-left: auto; font-size: 11px; color: var(--ff-dim); }
+</style>
+</head>
+
+<body class="wp-admin admin-color-fresh">
+
+<div id="wpadminbar">wp-admin bar (32px, fixed)</div>
+
+<div id="wpwrap">
+  <div id="adminmenumain">
+    <div id="adminmenuwrap">
+      <ul id="adminmenu">
+        <li>Dashboard</li>
+        <li>Posts</li>
+        <li class="current">Media</li>
+        <li>Pages</li>
+        <li>FolderFolio</li>
+      </ul>
+    </div>
+  </div>
+
+  <div id="wpcontent">
+    <div id="wpbody" role="main">
+
+      <!--
+        Rendered by Rail::render() at the top of #wpbody-content and moved here
+        by its inline script. Written in its final position, because what this
+        page checks is the CSS once the move has happened; the move itself is
+        checked in the browser against a real install.
+      -->
+      <div id="folderfolio-rail" class="folderfolio folderfolio-rail" style="--ff-rail-w: 300px">
+        <div class="folderfolio-rail__body">
+          <div id="folderfolio-folder-tree" class="folderfolio-folder-tree">
+            <div class="ff-fake-row"><span>Brand</span><span>12</span></div>
+            <div class="ff-fake-row"><span>Archive</span><span>48</span></div>
+            <div class="ff-fake-row"><span>Client Work</span><span>7</span></div>
+            <div class="ff-fake-row"><span>Product shots</span><span>132</span></div>
+            <div class="ff-fake-row"><span>Screenshots</span><span>0</span></div>
+            <div class="ff-fake-row"><span>Team</span><span>9</span></div>
+            <div class="ff-fake-row"><span>Press</span><span>3</span></div>
+            <div class="ff-fake-row"><span>Social</span><span>66</span></div>
+            <div class="ff-fake-row"><span>Icons</span><span>21</span></div>
+            <div class="ff-fake-row"><span>Illustration</span><span>5</span></div>
+            <div class="ff-fake-row"><span>Video</span><span>14</span></div>
+            <div class="ff-fake-row"><span>Audio</span><span>2</span></div>
+            <div class="ff-fake-row"><span>Documents</span><span>38</span></div>
+            <div class="ff-fake-row"><span>Legacy</span><span>401</span></div>
+            <div class="ff-fake-row"><span>Unsorted</span><span>17</span></div>
+            <div class="ff-fake-row"><span>2019</span><span>88</span></div>
+            <div class="ff-fake-row"><span>2020</span><span>91</span></div>
+            <div class="ff-fake-row"><span>2021</span><span>104</span></div>
+            <div class="ff-fake-row"><span>2022</span><span>77</span></div>
+            <div class="ff-fake-row"><span>2023</span><span>63</span></div>
+          </div>
+        </div>
+
+        <div class="folderfolio-rail__footer">
+          <span class="folderfolio-rail__total" data-folderfolio-total>20 folders</span>
+          <button type="button" class="folderfolio-rail__collapse" data-folderfolio-collapse
+                  aria-controls="folderfolio-rail" aria-expanded="true">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.5" stroke-linecap="square" aria-hidden="true" focusable="false"><path d="m15 18-6-6 6-6"></path></svg>
+            Collapse
+          </button>
+        </div>
+
+        <div class="folderfolio-rail__tab">
+          <button type="button" class="folderfolio-rail__expand" data-folderfolio-expand
+                  aria-controls="folderfolio-rail" aria-expanded="false" title="Show folders">
+            <span class="screen-reader-text">Show folders</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.5" stroke-linecap="square" aria-hidden="true" focusable="false"><path d="m9 18 6-6-6-6"></path></svg>
+          </button>
+          <span class="folderfolio-rail__tab-label" aria-hidden="true">Folders</span>
+        </div>
+      </div>
+
+      <div id="folderfolio-rail-handle" class="folderfolio folderfolio-resize"
+           role="separator" tabindex="0" aria-orientation="vertical"
+           aria-controls="folderfolio-rail" aria-label="Resize the folders panel"
+           aria-valuenow="300" aria-valuemin="240" aria-valuemax="560"></div>
+
+      <div id="wpbody-content">
+        <div class="wrap">
+          <h1>Media Library</h1>
+          <div class="ff-grid">
+            <div class="ff-tile">design</div><div class="ff-tile">design</div>
+            <div class="ff-tile">design</div><div class="ff-tile">design</div>
+            <div class="ff-tile">design</div><div class="ff-tile">design</div>
+            <div class="ff-tile">design</div><div class="ff-tile">design</div>
+            <div class="ff-tile">design</div><div class="ff-tile">design</div>
+            <div class="ff-tile">design</div><div class="ff-tile">design</div>
+            <div class="ff-tile">design</div><div class="ff-tile">design</div>
+            <div class="ff-tile">design</div><div class="ff-tile">design</div>
+            <div class="ff-tile">design</div><div class="ff-tile">design</div>
+            <div class="ff-tile">design</div><div class="ff-tile">design</div>
+            <div class="ff-tile">design</div><div class="ff-tile">design</div>
+            <div class="ff-tile">design</div><div class="ff-tile">design</div>
+          </div>
+        </div>
+      </div>
+      <div class="clear"></div>
+    </div>
+  </div>
+</div>
+
+<div class="ff-harness">
+  Scheme:
+  <button type="button" data-scheme="fresh">Fresh</button>
+  <button type="button" data-scheme="modern">Modern</button>
+  <button type="button" data-scheme="midnight">Midnight</button>
+  <div id="ff-readout">—</div>
+  <div>Drag the 5px strip, or focus it and use <code>←</code> <code>→</code>
+    (<code>Shift</code> ×4), <code>Home</code>, <code>End</code>. Double-click resets to 300.</div>
+</div>
+
+<script>
+  // Rail.php's body class, and the preference payload its inline script emits.
+  document.body.classList.add('folderfolio-has-rail');
+
+  window.folderFolioRail = {
+    open: true,
+    width: 300,
+    defaultWidth: 300,
+    minWidth: 240,
+    maxWidth: 560,
+    i18n: {
+      collapse: 'Collapse',
+      expand: 'Show folders',
+      width: 'Folders panel width: %d pixels'
+    }
+  };
+
+  // wp-api-fetch, stubbed. The rail persists through it; here the write is
+  // just echoed into the readout so the debounce is visible.
+  window.wp = {
+    apiFetch: function (options) {
+      var box = document.getElementById('ff-readout');
+      box.textContent = 'saved ' + JSON.stringify(options.data.rail);
+      return Promise.resolve({ success: true });
+    }
+  };
+
+  document.querySelectorAll('.ff-harness [data-scheme]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      document.body.classList.remove(
+        'admin-color-fresh', 'admin-color-modern', 'admin-color-midnight'
+      );
+      document.body.classList.add('admin-color-' + button.dataset.scheme);
+    });
+  });
+</script>
+
+<script src="../../assets/build/core/rail.js"></script>
+</body>
+</html>
