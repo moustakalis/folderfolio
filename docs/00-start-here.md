@@ -26,10 +26,10 @@ the current diff. The domain layer, the REST surface and the importers are
 | Filter-row folder select + bulk Add-to-folder flyout | done |
 | List mode — the Folders column | done |
 | Media picker — the folder column at 240px | done |
-| Block inspector tree at 268px | waiting on the gallery block |
+| Block inspector tree at 268px | done |
 | Settings screen — three tabs, and the roles matrix | done |
 | Migration wizard — four steps, nine sources, undo | done |
-| Gallery block | not started |
+| Gallery block | block, render.php, inspector — done; shortcode, lightbox, theme compat to come |
 
 `DESIGN-TO-CODE.md`'s "Suggested order" is the sequence being followed, and its
 screen numbers are referenced throughout the code comments.
@@ -50,7 +50,7 @@ the design steps all sit inside phases 4–6.
 | 5 | Interaction | done |
 | 6 | Modal and settings | done |
 | 7 | Import | done |
-| 8 | Gallery block | **current**; unblocks the 268px inspector tree |
+| 8 | Gallery block | **current** — the block itself is in |
 | 9 | Release candidate and hardening | not started |
 | 10 | Release | not started |
 
@@ -116,8 +116,32 @@ The properties worth knowing:
   tell a row the import wrote from one written by the person the run invited
   to carry on working while it ran.
 
-**Phase 8 is next**: the gallery block, which also unblocks design step 9b —
-the 268px inspector tree, whose geometry is already in `_row.css`.
+**Phase 8, in progress.** The block is in: `folderfolio/gallery`, a folder as
+a content source, server-rendered from `blocks/gallery/render.php`. Grid and
+masonry, columns, gap, order, link-to, include-subfolders.
+
+Three properties worth knowing before touching it:
+
+- **Server-rendered is a security decision**, not a performance one. A
+  client-rendered block needs a publicly readable REST route, which is a new
+  unauthenticated query surface on every site that installs this. As it
+  stands the front end makes no API call and ships **no JavaScript at all** —
+  one 782-byte stylesheet, verified on a real page.
+- **`Blocks\GalleryQuery` is the first code path an unauthenticated visitor
+  reaches.** Attachments, `post_status = inherit`, and WP_Query rather than
+  SQL of ours, so core's own visibility rules apply. Folders are not access
+  control and never will be. 500 images is the ceiling.
+- **The editor preview is the same renderer**, through
+  `wp.serverSideRender` — so a preview cannot promise a layout the page does
+  not deliver.
+
+This also closed design step 9b. The 268px inspector tree turned out to be a
+container class and an error state, because `.folderfolio-tree--inspector`
+had been in `_row.css` since step 2 waiting for a block to live in.
+
+Still to come in the phase: the `[folderfolio_gallery]` shortcode, core's
+Interactivity-API lightbox, theme-compat passes, and the
+unauthenticated-access tests.
 
 ### The three debts, and what they became
 
@@ -362,6 +386,18 @@ fatals before a single test runs. `phpstan.neon` pins `phpVersion` to the
 8.1–8.4 range the plugin claims, so the analyser reports them; PHPStan runs
 first in the PHP job for that reason. If you add a language feature, check
 which version introduced it.
+
+**Core puts a block's class on the editor's wrapper too.** `gallery.css`
+loads in the editor canvas as well as on the page, so an unqualified
+`.wp-block-folderfolio-gallery { display: grid }` turned the editor's wrapper
+`<div>` into a three-column grid and squeezed the placeholder into 204px.
+Every selector in that file is qualified `ul.` for that reason.
+
+**`ServerSideRender` re-fetches when its `attributes` prop changes identity.**
+Passing `{{ ...attributes }}` is a new object every render, so it fetches every
+render, and each fetch causes the next one. It shows up as "this block has
+encountered an error and cannot be previewed" and React #185 in the console.
+Pass the object itself.
 
 **The WordPress test suite makes every table temporary.** `WP_UnitTestCase`
 rewrites `CREATE TABLE` into `CREATE TEMPORARY TABLE` so a test's schema dies
