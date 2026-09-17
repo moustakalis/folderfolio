@@ -7,8 +7,10 @@ Planning, research and design documents. Not shipped in the plugin ZIP —
 
 | Document | What it is |
 |---|---|
-| [`architecture-plan.md`](architecture-plan.md) | **Start here.** Tech stack, layering, data model, REST surface, developer platform, gallery block, build, testing, and the phase-by-phase sequence to 1.0 |
-| [`design-handoff.md`](design-handoff.md) | Input brief for brand identity and app design — patterns to take, anti-patterns to avoid, screens and states, measured specs |
+| [`00-start-here.md`](00-start-here.md) | **Start here.** What state the plugin is in, how to build and test it, the three rules that shaped the code, and the WordPress traps that already cost a day each |
+| [`../DESIGN-TO-CODE.md`](../DESIGN-TO-CODE.md) | The design handoff the admin UI is being rebuilt against: screens, measured geometry, row states, the keyboard and ARIA contract, definition of done |
+| [`architecture-plan.md`](architecture-plan.md) | Tech stack, layering, data model, REST surface, developer platform, gallery block, build, testing, and the phase-by-phase sequence to 1.0 |
+| [`design-handoff.md`](design-handoff.md) | The *input brief* that produced the design — patterns to take, anti-patterns to avoid. Superseded as a spec by `DESIGN-TO-CODE.md`; kept as the record of what was asked for |
 | [`m1-research-and-design-plan.md`](m1-research-and-design-plan.md) | The research plan these came out of |
 | [`m2-importer-matrix.md`](m2-importer-matrix.md) | Verified schemas and detection keys for every migration source |
 
