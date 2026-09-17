@@ -44,8 +44,8 @@ the design steps all sit inside phases 4–6.
 | 1 | Schema, domain, hooks | done |
 | 2 | Facade and REST | done |
 | 3 | WP-CLI | done |
-| 4 | Frontend foundation | done **except virtualisation** |
-| 5 | Interaction | done **except keyboard drag and Playwright** |
+| 4 | Frontend foundation | done |
+| 5 | Interaction | done |
 | 6 | Modal and settings | **current** — modal done, settings not started |
 | 7 | Import | not started |
 | 8 | Gallery block | not started; unblocks the 268px inspector tree |
@@ -58,33 +58,44 @@ way the plan specified — on `wp.media.view.AttachmentsBrowser`, not the
 settings screen with its three tabs has not started: the FolderFolio admin menu
 has exactly one page, Import, and that page is still 0.2.0's.
 
-### Three debts carried from phases 4 and 5
+### The three debts, and what they became
 
-Why "done" above is qualified. Each was found by re-reading the plan against the
-code, not by something breaking.
+Found by re-reading the plan against the code, and closed the same day. None
+was what it first looked like, and the measurements are in
+`tools/measure-tree.mjs` so the next person does not have to take this on
+trust.
 
-1. **Virtualisation was skipped** (phase 4 asks for it). The tree renders every
-   visible node. Windowing is not free here: the ARIA tree is nested `ul` /
-   `role="group"`, and a windowed tree has to become flat `treeitem`s with
-   `aria-setsize` and `aria-posinset` — a restructure of the most carefully
-   built part of the UI. Measure before building.
-2. **No keyboard equivalent for the move a drag performs.** The pointer has two
-   verbs — a drag *moves* files out of the folder being viewed, the bulk flyout
-   *adds* — and the keyboard only has add. dnd-kit, which the plan assumed, is
-   the wrong tool for this drag: the draggables are core's own attachment tiles
-   and table rows, not React components. Folder reordering inside the tree —
-   what the plan actually had in mind — is not built in *any* input mode yet,
-   and must ship with its keyboard path when it is.
-3. **The Playwright suite is stale.** `tests/e2e/`'s two specs are 0.2.0's and
-   reference markup that no longer exists; they would fail today. Phase 5 said
-   "Playwright throughout"; what exists instead is live-browser verification
-   plus the two standalone Chromium harnesses.
+**Virtualisation (phase 4) — measured, then not built.** Size was never the
+problem. Two pieces of work were O(n) that did not need to be, and the one the
+plan pointed at was the less important:
 
-**The root `README.md` overstates what works.** Its feature list describes
-0.2.0's intent, not the current state — folder icons are unwired, and
-auto-assigning uploads to the active folder does nothing until something uses
-the `folderfolio_default_folder_for_upload` filter. That is open item #28 in
-`deep-review-2026-09-16.md`.
+| | before | after |
+|---|---|---|
+| Flyout open, 1,000 folders | 227ms | ~140ms |
+| Flyout keystroke, 5,000 | 257ms | ~160ms |
+| Tree arrow key, 5,000 rows | 177ms | 1.3ms |
+| Tree arrow key, 20,000 rows | 654ms | 9.9ms |
+
+The flyout's list box is 168px — six rows — and it rendered one row per folder
+every time it opened and again on every character typed into its own search. It
+renders 100 now and says how many it is not showing. **Capping, not windowing**:
+a checkbox that is not in the DOM cannot be reached with Tab.
+
+The tree's arrow key was O(n) because `Tree` subscribed to `focusedId`, so one
+keypress re-created every row beneath it. Rows read focus and selection
+themselves now. The filter-row `<select>` renders every folder too and is fine
+— 36ms at 5,000 options — so it was left alone.
+
+**The keyboard's missing verb — a second control, not dnd-kit.** `Move to
+folder` sits beside `Add to folder`, enabled only when a real folder is being
+viewed, and calls the same mutation the drop handler calls. dnd-kit was the
+wrong tool here: the draggables are core's own attachment tiles and table rows,
+not React components. Folder reordering inside the tree — what the plan
+actually had in mind — is still not built in any input mode, and must ship with
+its keyboard path when it is.
+
+**The Playwright suite — replaced, and it brings its own WordPress.** See
+below.
 
 ## Building and testing
 
@@ -93,18 +104,27 @@ mise install                 # PHP 8.2, Node 20, Composer
 mise run deps:install
 make build                   # typecheck + esbuild → assets/build/ (gitignored)
 make test                    # PHPUnit
-yarn test:pipeline           # React-on-wp-element, in a real browser
-yarn test:slot               # the media-frame / toolbar slot, in a real browser
+yarn test:pipeline           # React on wp-element, in a real browser
+yarn test:slot               # the toolbar slot surviving core's re-renders
+yarn test:tree               # the tree's roving-tabindex invariant
+yarn test:e2e                # end to end, against a WordPress it boots itself
+yarn measure:tree            # render cost at 200 / 1k / 5k / 20k folders
 ```
 
 `make wp-link WP_ROOT=/path/to/wordpress` symlinks the checkout into an install.
 
-The two `yarn test:*` harnesses are not ordinary unit tests: each builds a
-fixture through the **shipping** alias table or the **shipping** module, runs it
-in Chromium, and asserts on the DOM. They exist because the things they check —
-whether the React alias applied, whether a portal survived its container being
-replaced, whether focus came back — all fail silently and look fine in a
-screenshot.
+`test:pipeline`, `test:slot` and `test:tree` are not ordinary unit tests: each
+builds a fixture through the **shipping** alias table or the **shipping**
+module, runs it in Chromium, and asserts on the DOM. They exist because the
+things they check — whether the React alias applied, whether a portal survived
+its container being replaced, whether focus came back, whether exactly one row
+is tabbable — all fail silently and look fine in a screenshot. Each has
+negative controls that were run: break the mechanism and the harness fails.
+
+`test:e2e` needs nothing installed. WordPress Playground runs real WordPress on
+php-wasm inside Node, so Playwright's `webServer` boots one, mounts this
+checkout into it as a plugin, logs in and tears it down. `WP_BASE_URL`
+overrides it to run against a real install instead.
 
 ## Three rules that shaped most of the code
 
@@ -169,6 +189,18 @@ plugins wrapping it means one wins by enqueue order. 0.2.0 did this, which is
 why its modal integration sat unregistered through the whole rebuild. The
 replacement (`lib/media-frame.ts`) wraps one view method, additively, purely to
 publish a reference.
+
+**`.folderfolio-row` is also the loading skeleton's class.** The rail renders
+three ghost rows carrying it while the tree query is in flight, so any wait on
+that selector is satisfied by the skeleton and everything after it races the
+data. Four of the first seventeen e2e tests failed on exactly that; `waitForTree()`
+in `tests/e2e/helpers/folders.ts` is the fix.
+
+**Row geometry and focus both live in the row, not in the tree.** Beyond the
+custom properties above: `Tree` deliberately does not subscribe to `focusedId`
+or `selectedId`, because re-rendering it re-creates every row. If you find
+yourself reaching for either in `Tree`, read the comment there first — and
+`yarn test:tree` is what stops the roving tabindex breaking when you do.
 
 **Swapping a list table's tbody is safe on WP 7.1** only because core binds the
 checkbox handlers by delegation. That was read from the shipped `common.min.js`,
