@@ -5,10 +5,16 @@
 # The integration suite was, for months, the one check that ran nowhere but
 # CI — which meant CI was the first thing to execute tests written days
 # earlier, and when it finally did it found three real problems in one run.
-# This is what makes it runnable before a push instead.
+# This is what makes it runnable before a push instead, and it is what CI
+# runs too, so the two cannot drift.
 #
-# It does what CI's setup action does: a WordPress to load, the test library
-# from the same tag, and a wp-tests-config.php pointing both at a database.
+# **No Subversion.** The usual recipe for this (install-wp-tests.sh, and the
+# action this replaced) exports the library from develop.svn.wordpress.org,
+# and svn is no longer installed on GitHub's runner images — the failure is
+# `spawn svn ENOENT`, after which the job carries on and fails later for a
+# reason that looks unrelated. macOS has not shipped svn since Catalina
+# either. The same files are in the wordpress-develop tarball, over HTTPS,
+# which every machine can already do.
 #
 # Usage:
 #   bin/setup-wp-tests.sh [db-name] [db-user] [db-pass] [db-host] [wp-version]
@@ -16,9 +22,9 @@
 # Then:
 #   WP_TESTS_DIR=var/wp-tests-lib composer run test:integration
 #
-# Needs: svn (the test library is not in the wordpress.org tarball), curl,
-# and a MySQL or MariaDB the credentials reach. The database is emptied by
-# the suite on every run — point it at one you do not care about.
+# Needs curl and tar, and a MySQL or MariaDB the credentials reach. The
+# database is emptied by the suite on every run — point it at one you do not
+# care about.
 
 set -euo pipefail
 
@@ -33,7 +39,7 @@ TARGET="${ROOT}/var"
 CORE_DIR="${TARGET}/wordpress"
 LIB_DIR="${TARGET}/wp-tests-lib"
 
-for tool in svn curl; do
+for tool in curl tar; do
   if ! command -v "$tool" >/dev/null 2>&1; then
     echo "FATAL: ${tool} is required." >&2
     exit 1
@@ -44,29 +50,50 @@ mkdir -p "${TARGET}"
 
 if [ ! -d "${CORE_DIR}" ]; then
   echo "Downloading WordPress (${WP_VERSION})…"
+
   if [ "${WP_VERSION}" = "latest" ]; then
-    curl -sSL https://wordpress.org/latest.tar.gz -o "${TARGET}/wp.tgz"
+    CORE_URL="https://wordpress.org/latest.tar.gz"
   else
-    curl -sSL "https://wordpress.org/wordpress-${WP_VERSION}.tar.gz" -o "${TARGET}/wp.tgz"
+    CORE_URL="https://wordpress.org/wordpress-${WP_VERSION}.tar.gz"
   fi
-  tar xzf "${TARGET}/wp.tgz" -C "${TARGET}"
-  rm "${TARGET}/wp.tgz"
+
+  curl -fsSL "${CORE_URL}" | tar xz -C "${TARGET}"
 fi
 
 # The version the library must match is the one that was just unpacked, not
-# the one that was asked for: "latest" is a moving target and a test library
-# from a different release fails in ways that look like plugin bugs.
+# the one that was asked for: "latest" is a moving target, and a library from
+# a different release fails in ways that read as plugin bugs.
 CORE_VERSION="$(sed -n "s/^\$wp_version = '\(.*\)';/\1/p" "${CORE_DIR}/wp-includes/version.php")"
-SVN_TAG="https://develop.svn.wordpress.org/tags/${CORE_VERSION}"
 
-if [ ! -d "${LIB_DIR}/includes" ]; then
-  echo "Exporting the test library for ${CORE_VERSION}…"
-  svn export -q --force "${SVN_TAG}/tests/phpunit/includes" "${LIB_DIR}/includes"
-  svn export -q --force "${SVN_TAG}/tests/phpunit/data" "${LIB_DIR}/data"
-  svn export -q --force "${SVN_TAG}/wp-tests-config-sample.php" "${TARGET}/wp-tests-config-sample.php"
+if [ ! -f "${LIB_DIR}/includes/bootstrap.php" ]; then
+  echo "Downloading the test library for ${CORE_VERSION}…"
+
+  TESTS_URL="https://github.com/WordPress/wordpress-develop/archive/refs/tags/${CORE_VERSION}.tar.gz"
+  WORK="$(mktemp -d)"
+  trap 'rm -rf "${WORK}"' EXIT
+
+  # The whole development repository is ~60MB and the library is a few of it,
+  # but a tarball cannot be fetched in part. It is downloaded once and then
+  # cached — in CI by actions/cache, locally by this directory existing.
+  if ! curl -fsSL "${TESTS_URL}" \
+    | tar xz -C "${WORK}" \
+        "wordpress-develop-${CORE_VERSION}/tests/phpunit/includes" \
+        "wordpress-develop-${CORE_VERSION}/tests/phpunit/data"; then
+    echo "FATAL: could not fetch the test library for WordPress ${CORE_VERSION}." >&2
+    echo "       Tried ${TESTS_URL}" >&2
+    exit 1
+  fi
+
+  mkdir -p "${LIB_DIR}"
+  rm -rf "${LIB_DIR}/includes" "${LIB_DIR}/data"
+  mv "${WORK}/wordpress-develop-${CORE_VERSION}/tests/phpunit/includes" "${LIB_DIR}/includes"
+  mv "${WORK}/wordpress-develop-${CORE_VERSION}/tests/phpunit/data" "${LIB_DIR}/data"
 fi
 
-# The polyfills are a hard requirement of the WP test suite and come with
+# Written every run, never cached: the database and the paths are the part
+# that changes between a laptop and a CI job.
+#
+# The polyfills are a hard requirement of the WP test suite and arrive with
 # composer install; the constant saves the suite guessing where they are.
 cat > "${LIB_DIR}/wp-tests-config.php" <<PHP
 <?php

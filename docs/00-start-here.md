@@ -218,6 +218,16 @@ It matches the library to the WordPress it actually unpacked rather than to
 what was asked for, because a library from a different release fails in ways
 that read as plugin bugs. **The database is emptied on every run.**
 
+It needs curl and tar and nothing else — **no Subversion**, deliberately. The
+usual recipes for this (`install-wp-tests.sh`, and the action CI used to use)
+export the library from `develop.svn.wordpress.org`, and svn is not on
+GitHub's runner images any more and has not shipped with macOS since
+Catalina. The failure mode was worth the change on its own: the action logged
+`spawn svn ENOENT`, carried on, and the job died later at a bootstrap that
+could not find a library nobody had told it was missing. The same files are
+in the wordpress-develop tarball, over HTTPS. CI runs this script too, so the
+setup a developer uses and the setup that is tested cannot drift.
+
 The first time it ran, it found three real problems in one go — an undo that
 deleted a file the import had not filed, a test file written against an API
 that changed underneath it, and a config in PHPUnit 10 spelling. CI runs the

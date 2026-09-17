@@ -173,26 +173,64 @@ jobs:
       - name: Run unit tests
         run: composer run test:unit
 
-      - name: Set up WordPress test library
-        uses: sjinks/setup-wordpress-test-library@master
-        with:
-          version: latest
-          db_name: wordpress_test
-          db_user: wordpress
-          db_password: wordpress
-          db_host: 127.0.0.1:${{ job.services.mysql.ports[3306] }}
+      # The WordPress version is resolved here, in one step, for two reasons:
+      # the cache key has to name it, and all four PHP legs should test against
+      # the same WordPress rather than each resolving "latest" for itself on a
+      # release day.
+      - name: Resolve the WordPress version
+        id: wp
+        run: |
+          version="$(curl -fsS https://api.wordpress.org/core/version-check/1.7/ \
+            | php -r 'echo json_decode(stream_get_contents(STDIN))->offers[0]->current;')"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "WordPress ${version}"
 
+      - name: Cache WordPress and the test library
+        uses: actions/cache@v4
+        with:
+          path: |
+            var/wordpress
+            var/wp-tests-lib
+          key: wp-tests-${{ steps.wp.outputs.version }}-${{ hashFiles('bin/setup-wp-tests.sh') }}
+
+      # Ours, not sjinks/setup-wordpress-test-library@master, and not
+      # install-wp-tests.sh either. Both of those export the library from
+      # develop.svn.wordpress.org, and **svn is no longer on the runner
+      # image**: the action failed with `spawn svn ENOENT`, carried on, and
+      # the job died later at a bootstrap that could not find the library.
+      # The same files come out of the wordpress-develop tarball over HTTPS.
+      #
+      # It is also the script a developer runs, so the setup cannot drift from
+      # the setup that is tested.
+      - name: Set up the WordPress test library
+        run: |
+          bin/setup-wp-tests.sh \
+            wordpress_test \
+            wordpress \
+            wordpress \
+            127.0.0.1:${{ job.services.mysql.ports[3306] }} \
+            ${{ steps.wp.outputs.version }}
+
+      # The service has a health check, so this is belt and braces — but it
+      # is written in PHP on purpose. It used to shell out to `mysqladmin`,
+      # and a step that depends on a client binary the runner image happens to
+      # ship is exactly the thing that broke the library setup on this job.
+      # setup-php has already run; php is not in doubt.
       - name: Verify database connection
         run: |
-          while ! mysqladmin ping \
-            -h 127.0.0.1 \
-            -P "${{ job.services.mysql.ports[3306] }}" \
-            -uwordpress \
-            -pwordpress \
-            --silent; do
-            sleep 1
-          done
+          php -r '
+            $port = (int) "${{ job.services.mysql.ports[3306] }}";
+            for ($i = 0; $i < 30; $i++) {
+              $db = @new mysqli("127.0.0.1", "wordpress", "wordpress", "wordpress_test", $port);
+              if (!$db->connect_errno) { echo "Database is up.\n"; exit(0); }
+              sleep(1);
+            }
+            fwrite(STDERR, "No database after 30s: " . $db->connect_error . "\n");
+            exit(1);
+          '
         timeout-minutes: 1
 
       - name: Run integration tests
         run: composer run test:integration
+        env:
+          WP_TESTS_DIR: ${{ github.workspace }}/var/wp-tests-lib
