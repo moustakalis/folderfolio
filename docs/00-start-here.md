@@ -27,7 +27,8 @@ the current diff. The domain layer, the REST surface and the importers are
 | List mode — the Folders column | done |
 | Media picker — the folder column at 240px | done |
 | Block inspector tree at 268px | waiting on the gallery block |
-| Migration wizard and settings screens | not started |
+| Settings screen — three tabs, and the roles matrix | done |
+| Migration wizard | not started |
 
 `DESIGN-TO-CODE.md`'s "Suggested order" is the sequence being followed, and its
 screen numbers are referenced throughout the code comments.
@@ -46,17 +47,44 @@ the design steps all sit inside phases 4–6.
 | 3 | WP-CLI | done |
 | 4 | Frontend foundation | done |
 | 5 | Interaction | done |
-| 6 | Modal and settings | **current** — modal done, settings not started |
-| 7 | Import | not started |
+| 6 | Modal and settings | done |
+| 7 | Import | **current** — the tab exists, the wizard does not |
 | 8 | Gallery block | not started; unblocks the 268px inspector tree |
 | 9 | Release candidate and hardening | not started |
 | 10 | Release | not started |
 
-**Phase 6, half done.** The media picker's folder column is in and landed the
-way the plan specified — on `wp.media.view.AttachmentsBrowser`, not the
-`wp.media.create` monkey-patch the plan names as the thing to avoid. The
-settings screen with its three tabs has not started: the FolderFolio admin menu
-has exactly one page, Import, and that page is still 0.2.0's.
+**Phase 6, done.** The media picker's folder column landed the way the plan
+specified — on `wp.media.view.AttachmentsBrowser`, not the `wp.media.create`
+monkey-patch the plan names as the thing to avoid. The settings screen is in:
+one page at `admin.php?page=folderfolio`, three tabs, no React.
+
+The plugin had no options layer before it — `grep -rn "get_option" includes/`
+returned the DB version constant and nothing else. It has one now, in a single
+option row, and three of its five settings reach the library: `count_mode`
+decides what a folder badge counts, `default_sort` seeds the rail's sort, and
+`undo_window` is the toast's grace period.
+
+The fifth is the roles matrix, which two competitors charge for. It made
+`Capabilities` answer four questions instead of one, and two rules hold
+whatever the table says: **`upload_files` first**, so no tick box can hand the
+folder tree to somebody WordPress keeps out of the media library, and
+**administrators are pinned**, because a matrix that locks every administrator
+out leaves nobody able to open the screen that would undo it. A role the table
+has never heard of — Shop Manager, or anything a plugin registers — keeps the
+capability its route asked for before the table existed. Nothing is written to
+`wp_user_roles`.
+
+Three deltas from the design board, each recorded in `SettingsPage`'s docblock:
+the matrix is editable so its ●/○ glyphs are checkboxes; Status's first button
+is "Rebuild paths" rather than "Rebuild counts", because counts are computed on
+every read and a button that runs nothing is worse than no button; and
+v0.2.0's `folderfolio-import` slug is gone rather than redirected, because
+wp-admin refuses an unregistered page slug before `admin_init` runs.
+
+**Phase 7 is next**: screen 07's four-step wizard, which lands in the Import
+tab. What is in that tab today is v0.2.0's jQuery table, `confirm()` and
+`alert()` included, moved rather than rewritten — replacing a dialog with a
+dialog on the way to the wizard would have been two rewrites of the same code.
 
 ### The three debts, and what they became
 
@@ -120,6 +148,10 @@ things they check — whether the React alias applied, whether a portal survived
 its container being replaced, whether focus came back, whether exactly one row
 is tabbable — all fail silently and look fine in a screenshot. Each has
 negative controls that were run: break the mechanism and the harness fails.
+
+`test:e2e` is 22 tests, five of them on the settings screen. Two of those five
+cross the line that matters for a settings screen: a value saved on it changing
+what the media library does on the next page load.
 
 `test:e2e` needs nothing installed. WordPress Playground runs real WordPress on
 php-wasm inside Node, so Playwright's `webServer` boots one, mounts this
@@ -195,6 +227,17 @@ three ghost rows carrying it while the tree query is in flight, so any wait on
 that selector is satisfied by the skeleton and everything after it races the
 data. Four of the first seventeen e2e tests failed on exactly that; `waitForTree()`
 in `tests/e2e/helpers/folders.ts` is the fix.
+
+**A visually hidden radio sits under its own label.** The segmented control's
+inputs are `position: absolute` with a clip path, so their box stays at the
+start of the flex row — underneath the *first* label. Clicking the input
+directly hits whichever label is on top, which made a Playwright `check()` on
+"Direct only" silently target "Inherited" until it started failing outright.
+Click the label; it is what a user clicks.
+
+**`rows` is a reserved word in MySQL 8.** `SELECT COUNT(*) AS rows` is a syntax
+error there and runs fine on 5.7 — the kind of difference that ships. See
+`StatusReport::assignmentSummary()`.
 
 **Row geometry and focus both live in the row, not in the tree.** Beyond the
 custom properties above: `Tree` deliberately does not subscribe to `focusedId`
