@@ -247,6 +247,14 @@ final class Runner
             );
         }
 
+        // Every row this run filed carries its id; nothing else does. One
+        // indexed delete, and a file somebody filed by hand — before the run,
+        // or in the middle of it — is not in scope by construction.
+        //
+        // A run that finished before DB_VERSION 4 has no marked rows at all,
+        // so undoing it now removes folders and leaves files where they are.
+        // That is the conservative direction, and the only honest one: the
+        // rows it filed are no longer distinguishable from anybody else's.
         $this->assignments->deleteAssignedByRun($run->id);
 
         // Deepest first. `delete()` reparents children rather than cascading,
