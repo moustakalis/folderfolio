@@ -12,6 +12,7 @@
 @import './_rail.css';
 @import './_rail-chrome.css';
 @import './_content.css';
+@import './_toolbar.css';
 
 :root {
   --ff-brand-700: #3047a8;

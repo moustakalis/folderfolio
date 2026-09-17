@@ -32,6 +32,23 @@
   --ff-danger-text: #b32d2e;  /* on white */
   --ff-accent-text: #135e96;  /* accent as body-size text on white */
 
+  /*
+   * The undo toast names a context none of the tokens above describe: a dark
+   * sheet that stays dark in every scheme, because it is chrome rather than
+   * page. Borrowing --ff-bar and --ff-canvas for it worked on Fresh and was
+   * dark-on-dark at 1.2:1 on Midnight — the same mistake --ff-accent-text
+   * made, and found the same way, by looking at it on a dark scheme.
+   *
+   * Deliberately identical across all schemes, and listed as shared in
+   * TokensTest for that reason. The accents are Midnight's, because they are
+   * the ones drawn to sit on something this dark.
+   */
+  --ff-toast-bg: #1d2327;
+  --ff-toast-ink: #f0f0f1;
+  --ff-toast-edge: rgba(240, 240, 241, 0.18);
+  --ff-toast-accent: #9ec8d6;  /* the undo icon */
+  --ff-toast-bar: #69a8bb;     /* the window draining */
+
   /* Geometry. Zero radius throughout; spacing on a 4px scale. */
   --ff-row-h: 36px;
   --ff-indent: 24px;

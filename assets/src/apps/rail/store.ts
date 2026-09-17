@@ -39,6 +39,34 @@ export interface RailState {
     /** Non-empty switches the rail from the tree to a flat result list. */
     query: string;
 
+    /**
+     * The one row that is currently an input.
+     *
+     * Creating and renaming are the same mechanic — an input where a row's
+     * name would be — so they are one piece of state. Two would allow both at
+     * once, which is a state nobody designed and the tree would have to
+     * render.
+     */
+    editing: Editing | null;
+
+    /**
+     * How the tree is ordered. Applied client-side to each level.
+     *
+     * A view preference, not data: the folders keep their own sort_order for
+     * manual arrangement, and this is what the user happens to be looking at.
+     */
+    sort: SortOrder;
+
+    /**
+     * A delete the user can still take back.
+     *
+     * The row is gone from the tree the moment it is deleted, but the server
+     * has not been told yet — see useDeleteFolder. `deadline` is a timestamp
+     * rather than a remaining duration so that pausing on hover is a matter of
+     * moving it, not of running a second clock.
+     */
+    pendingUndo: PendingUndo | null;
+
     select: (id: number | null) => void;
     focus: (id: number | null) => void;
     toggle: (id: number) => void;
@@ -47,6 +75,31 @@ export interface RailState {
     /** Open every ancestor of a folder, so a deep link can reveal its row. */
     reveal: (ancestorIds: number[]) => void;
     setQuery: (query: string) => void;
+
+    edit: (editing: Editing | null) => void;
+    setEditValue: (value: string) => void;
+    setSort: (sort: SortOrder) => void;
+    setPendingUndo: (undo: PendingUndo | null) => void;
+}
+
+export type SortOrder = 'name-asc' | 'name-desc' | 'newest' | 'oldest';
+
+export interface Editing {
+    mode: 'create' | 'rename';
+    /** Where a new folder will go. `null` is the top level. */
+    parentId: number | null;
+    /** Which folder is being renamed. Unused when creating. */
+    folderId: number | null;
+    value: string;
+}
+
+export interface PendingUndo {
+    folderId: number;
+    name: string;
+    /** Files that will be left unassigned — what the toast promises. */
+    fileCount: number;
+    /** When the delete becomes permanent, in ms. Moved forward while hovered. */
+    deadline: number;
 }
 
 export const useRail = create<RailState>((set) => ({
@@ -54,6 +107,9 @@ export const useRail = create<RailState>((set) => ({
     focusedId: folderFromUrl(),
     expandedIds: new Set<number>(),
     query: '',
+    editing: null,
+    sort: 'name-asc',
+    pendingUndo: null,
 
     select: (id) => set({ selectedId: id, focusedId: id }),
     focus: (id) => set({ focusedId: id }),
@@ -99,4 +155,43 @@ export const useRail = create<RailState>((set) => ({
         }),
 
     setQuery: (query) => set({ query }),
+
+    edit: (editing) => set({ editing }),
+    setEditValue: (value) =>
+        set((state) => (state.editing ? { editing: { ...state.editing, value } } : state)),
+    setSort: (sort) => set({ sort }),
+    setPendingUndo: (pendingUndo) => set({ pendingUndo }),
 }));
+
+/**
+ * The tree, in the order the user asked for.
+ *
+ * Applied at render rather than in the query, so changing the order costs
+ * nothing and never refetches. Recursive, because a sort that only reordered
+ * the top level would be a strange half-measure.
+ */
+export function sortTree<T extends { name: string; id: number; children: T[] }>(
+    nodes: T[],
+    order: SortOrder
+): T[] {
+    const sorted = [...nodes].sort((a, b) => {
+        switch (order) {
+            case 'name-desc':
+                return b.name.localeCompare(a.name, undefined, { numeric: true });
+
+            // No created_at on the node type, and adding one to sort by would
+            // mean trusting a string date from the server. Ids are assigned in
+            // creation order by the database, which is the same answer.
+            case 'newest':
+                return b.id - a.id;
+
+            case 'oldest':
+                return a.id - b.id;
+
+            default:
+                return a.name.localeCompare(b.name, undefined, { numeric: true });
+        }
+    });
+
+    return sorted.map((node) => ({ ...node, children: sortTree(node.children, order) }));
+}

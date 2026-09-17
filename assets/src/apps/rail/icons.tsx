@@ -112,3 +112,45 @@ export function InboxIcon(props: IconProps) {
         </Svg>
     );
 }
+
+export function PencilIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+        </Svg>
+    );
+}
+
+export function TrashIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+        </Svg>
+    );
+}
+
+export function ArrowUpDownIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <path d="m21 16-4 4-4-4M17 20V4M3 8l4-4 4 4M7 4v16" />
+        </Svg>
+    );
+}
+
+export function EllipsisIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <circle cx="12" cy="12" r="1" />
+            <circle cx="19" cy="12" r="1" />
+            <circle cx="5" cy="12" r="1" />
+        </Svg>
+    );
+}
+
+export function UndoIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <path d="M3 2v6h6M21 12A9 9 0 0 0 6 5.3L3 8" />
+        </Svg>
+    );
+}

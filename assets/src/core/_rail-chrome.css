@@ -95,42 +95,8 @@
   box-shadow: none;
 }
 
-/* ----------------------------------------------------------- inline create */
-
-.folderfolio-rail__inline {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px 12px;
-  background: var(--ff-wash);
-  border-bottom: 1px solid var(--ff-line);
-}
-
-/**
- * _row.css gives this input `flex: 1` so it fills the space between the icon
- * and the count inside a row, which is a *row* flex container. Here the
- * container is a column, so `flex: 1` sets the basis on the vertical axis and
- * the 24px height is ignored — it collapsed to 17px, the height of its text.
- * The axis is the thing that changed, so the flex is what has to be undone.
- */
-.folderfolio-rail__inline .folderfolio-row__input.folderfolio-row__input {
-  flex: 0 0 auto;
-  width: 100%;
-  height: 28px;
-}
-
-/* Which folder this will land in, said before it happens rather than
-   discovered afterwards. */
-.folderfolio-rail__inline-parent {
-  font-size: 11px;
-  color: var(--ff-muted);
-}
-
-.folderfolio-rail__inline-actions {
-  display: flex;
-  gap: 6px;
-}
+/* The inline create/rename input is a row now, styled by _row.css — see
+   Row.tsx. The block that used to sit under the header is gone. */
 
 /* ------------------------------------------------------------- fixed rows */
 

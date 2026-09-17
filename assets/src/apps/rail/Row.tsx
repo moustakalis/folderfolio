@@ -10,6 +10,8 @@ import { useEffect, useRef } from 'react';
 
 import { ChevronDownIcon, ChevronRightIcon, FolderIcon, FolderOpenIcon } from './icons';
 import type { FolderNode } from './queries';
+import { useRail } from './store';
+import { t } from '../../core/api';
 
 export interface RowProps {
     node: FolderNode;
@@ -17,6 +19,8 @@ export interface RowProps {
     expanded: boolean;
     selected: boolean;
     focused: boolean;
+    /** True while this row's name is an input. */
+    renaming: boolean;
     onSelect: () => void;
     onToggle: () => void;
     /** The child group, when this row is expanded. Rendered inside the <li>. */
@@ -29,6 +33,7 @@ export function Row({
     expanded,
     selected,
     focused,
+    renaming,
     onSelect,
     onToggle,
     children,
@@ -39,10 +44,11 @@ export function Row({
     // The tree is a single tab stop, so focus is moved rather than tabbed to.
     // Only ever when this row is the focused one *and* focus is already inside
     // the tree — otherwise arrowing would steal focus from the search field.
+    // Never while renaming: the input owns focus then.
     useEffect(() => {
         const el = ref.current;
 
-        if (!focused || !el) {
+        if (!focused || renaming || !el) {
             return;
         }
 
@@ -51,27 +57,31 @@ export function Row({
         if (active && el.parentElement?.closest('[role="tree"]')?.contains(active)) {
             el.focus();
         }
-    }, [focused]);
+    }, [focused, renaming]);
 
     return (
         <li role="none">
             <div
                 ref={ref}
-                className={`folderfolio-row${hasChildren ? '' : ' folderfolio-row--leaf'}`}
+                className={
+                    'folderfolio-row'
+                    + (hasChildren ? '' : ' folderfolio-row--leaf')
+                    + (renaming ? ' is-renaming' : '')
+                }
                 role="treeitem"
                 aria-level={depth + 1}
                 aria-selected={selected}
                 aria-expanded={hasChildren ? expanded : undefined}
                 // Roving tabindex: exactly one row is reachable by Tab, and
                 // the arrow keys move which one that is.
-                tabIndex={focused ? 0 : -1}
+                tabIndex={focused && !renaming ? 0 : -1}
                 style={
                     {
                         '--ff-depth': depth,
                         ...(node.color ? { '--ff-folder': node.color } : {}),
                     } as React.CSSProperties
                 }
-                onClick={onSelect}
+                onClick={renaming ? undefined : onSelect}
             >
                 {/*
                   One guide per ancestor level. Absolutely positioned by the
@@ -118,18 +128,99 @@ export function Row({
                     {expanded && hasChildren ? <FolderOpenIcon /> : <FolderIcon />}
                 </span>
 
-                <span className="folderfolio-row__name">{node.name}</span>
+                {renaming ? (
+                    <NameInput label={t('renameFolder', 'Rename folder')} />
+                ) : (
+                    <>
+                        <span className="folderfolio-row__name">{node.name}</span>
 
-                {/*
-                  The subtree total, not the folder's own count. A parent whose
-                  files all live in its children reads 0 in every competitor
-                  tested, which anyone would take to mean empty.
-                */}
-                <span className="folderfolio-row__count">{node.total_count}</span>
+                        {/*
+                          The subtree total, not the folder's own count. A
+                          parent whose files all live in its children reads 0
+                          in every competitor tested, which anyone would take
+                          to mean empty.
+                        */}
+                        <span className="folderfolio-row__count">{node.total_count}</span>
+                    </>
+                )}
             </div>
 
             {children}
         </li>
+    );
+}
+
+/**
+ * A row that is only an input: the folder being created.
+ *
+ * Sits where the folder will live rather than above the tree, so "inside
+ * which folder?" is answered by position instead of by a sentence. Screen 05
+ * draws it exactly here.
+ */
+export function CreateRow({ depth }: { depth: number }) {
+    return (
+        <li role="none">
+            <div
+                className="folderfolio-row is-renaming"
+                style={{ '--ff-depth': depth } as React.CSSProperties}
+            >
+                {Array.from({ length: depth }, (_, i) => (
+                    <span
+                        key={i}
+                        className="folderfolio-row__guide"
+                        style={{ '--ff-guide-i': i } as React.CSSProperties}
+                    />
+                ))}
+
+                <span className="folderfolio-row__switcher folderfolio-row__switcher--leaf" />
+
+                <span className="folderfolio-row__icon">
+                    <FolderIcon />
+                </span>
+
+                <NameInput label={t('newFolderName', 'Name for the new folder')} />
+            </div>
+        </li>
+    );
+}
+
+/**
+ * The input itself, shared by both.
+ *
+ * It reads and writes the store directly rather than taking props: there is
+ * only ever one of these on screen — that is what a single `editing` slot in
+ * the store means — and threading four callbacks through Tree and Row to
+ * reach it would be ceremony around a fact the store already states.
+ *
+ * Save and Cancel are the toolbar-height buttons beside it, not blur. A field
+ * that commits on blur loses what you typed the moment you reach for anything
+ * else, and one that cancels on blur does the same in the other direction.
+ */
+function NameInput({ label }: { label: string }) {
+    const value = useRail((s) => s.editing?.value ?? '');
+    const setEditValue = useRail((s) => s.setEditValue);
+    const ref = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        ref.current?.focus();
+        // Selected, not just focused: renaming usually replaces the whole name,
+        // and when it does not, one arrow key undoes the selection.
+        ref.current?.select();
+    }, []);
+
+    return (
+        <input
+            ref={ref}
+            type="text"
+            className="folderfolio-row__input"
+            aria-label={label}
+            value={value}
+            onChange={(event) => setEditValue(event.target.value)}
+            // Enter and Escape reach the tree's key handler by bubbling; it
+            // owns every other key in the tree and ignores the rest while an
+            // input has focus, so arrows and typing behave normally in here.
+            onClick={(event) => event.stopPropagation()}
+        />
     );
 }
 

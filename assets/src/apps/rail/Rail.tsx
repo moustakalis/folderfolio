@@ -6,7 +6,7 @@
  * everything between the top edge and the footer.
  */
 
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 import { Content } from './Content';
@@ -14,8 +14,16 @@ import { FixedRows } from './FixedRows';
 import { Header } from './Header';
 import { Results } from './Results';
 import { Search } from './Search';
+import { Toast, UNDO_WINDOW } from './Toast';
+import { Toolbar } from './Toolbar';
 import { Tree } from './Tree';
-import { useTree, type FolderNode } from './queries';
+import {
+    useCreateFolder,
+    useDeleteFolder,
+    useRenameFolder,
+    useTree,
+    type FolderNode,
+} from './queries';
 import { useRail } from './store';
 import { applyFolderFilter } from '../../lib/filter';
 import { t } from '../../core/api';
@@ -27,6 +35,127 @@ export function Rail({ contentMount }: { contentMount: HTMLElement | null }) {
     const query = useRail((s) => s.query);
     const selectedId = useRail((s) => s.selectedId);
     const reveal = useRail((s) => s.reveal);
+    const editing = useRail((s) => s.editing);
+    const edit = useRail((s) => s.edit);
+    const select = useRail((s) => s.select);
+    const pendingUndo = useRail((s) => s.pendingUndo);
+    const setPendingUndo = useRail((s) => s.setPendingUndo);
+
+    const create = useCreateFolder();
+    const rename = useRenameFolder();
+    const remove = useDeleteFolder();
+
+    /**
+     * The delete that has not been sent yet.
+     *
+     * Held in a ref rather than in the store because it is a pair of closures,
+     * not state: nothing renders differently because of it, and putting
+     * functions in a store makes it something other than a description of the
+     * screen.
+     */
+    const deferred = useRef<{ commit: () => Promise<void>; restore: () => void } | null>(null);
+
+    const findNode = useCallback(
+        function find(list: FolderNode[], id: number): FolderNode | null {
+            for (const node of list) {
+                if (node.id === id) {
+                    return node;
+                }
+
+                const deeper = find(node.children, id);
+
+                if (deeper) {
+                    return deeper;
+                }
+            }
+
+            return null;
+        },
+        []
+    );
+
+    const selectedNode = selectedId !== null && selectedId > 0 ? findNode(nodes, selectedId) : null;
+
+    const saveEdit = useCallback(() => {
+        if (!editing) {
+            return;
+        }
+
+        const name = editing.value.trim();
+
+        if (name === '') {
+            return;
+        }
+
+        if (editing.mode === 'rename' && editing.folderId !== null) {
+            rename.mutate({ id: editing.folderId, name });
+            edit(null);
+
+            return;
+        }
+
+        create.mutate(
+            { name, parentId: editing.parentId },
+            {
+                onSuccess: (folder) => {
+                    select(folder.id);
+                    edit(null);
+                },
+            }
+        );
+    }, [editing, rename, create, edit, select]);
+
+    const startDelete = useCallback(
+        (node: FolderNode) => {
+            // A second delete while one is still pending commits the first.
+            // Two toasts would be two undo windows for two different folders
+            // in one corner, and only one of them could be shown.
+            void deferred.current?.commit();
+
+            deferred.current = remove.remove(node.id);
+
+            setPendingUndo({
+                folderId: node.id,
+                name: node.name,
+                fileCount: node.count,
+                deadline: Date.now() + UNDO_WINDOW,
+            });
+
+            // Standing on the row that just vanished is not a place to be.
+            if (selectedId === node.id) {
+                select(null);
+            }
+        },
+        [remove, setPendingUndo, selectedId, select]
+    );
+
+    const undoDelete = useCallback(() => {
+        deferred.current?.restore();
+        deferred.current = null;
+        setPendingUndo(null);
+    }, [setPendingUndo]);
+
+    const commitDelete = useCallback(() => {
+        void deferred.current?.commit();
+        deferred.current = null;
+        setPendingUndo(null);
+    }, [setPendingUndo]);
+
+    /**
+     * Leaving the page inside the window still deletes.
+     *
+     * pagehide rather than beforeunload: it fires on the back/forward cache
+     * path too, which beforeunload does not. If the request does not make it,
+     * the folder is still there on the next load — the safe direction for a
+     * failure to fall.
+     */
+    useEffect(() => {
+        const flush = () => void deferred.current?.commit();
+
+        window.addEventListener('pagehide', flush);
+
+        return () => window.removeEventListener('pagehide', flush);
+    }, []);
 
     /**
      * Selection drives the library, and only when it changes.
@@ -97,6 +226,7 @@ export function Rail({ contentMount }: { contentMount: HTMLElement | null }) {
 
             <div className="folderfolio-rail__app">
                 <Header />
+                <Toolbar selected={selectedNode} onDelete={() => selectedNode && startDelete(selectedNode)} />
                 <FixedRows />
                 <Search />
 
@@ -114,10 +244,25 @@ export function Rail({ contentMount }: { contentMount: HTMLElement | null }) {
                     ) : query.trim() !== '' ? (
                         <Results nodes={nodes} />
                     ) : (
-                        <Tree nodes={nodes} loading={isPending} />
+                        <Tree
+                            nodes={nodes}
+                            loading={isPending}
+                            onSaveEdit={saveEdit}
+                            onCancelEdit={() => edit(null)}
+                            onDelete={startDelete}
+                        />
                     )}
                 </div>
             </div>
+
+            {/*
+              Bottom-left of the content area, per screen 05 — portaled next to
+              the breadcrumb rather than rendered inside the rail, which is a
+              300px column with its own overflow and stacking context.
+            */}
+            {contentMount && pendingUndo
+                ? createPortal(<Toast onUndo={undoDelete} onExpire={commitDelete} />, document.body)
+                : null}
         </>
     );
 }

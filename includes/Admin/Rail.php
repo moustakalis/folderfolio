@@ -339,6 +339,24 @@ final class Rail
                 'createAtRoot' => __('New folder at the top level', 'folderfolio'),
                 'createInFolder' => __('New folder inside the selected folder', 'folderfolio'),
                 'searchPlaceholder' => __('Search folders', 'folderfolio'),
+                'folderActions' => __('Folder actions', 'folderfolio'),
+                'rename' => __('Rename', 'folderfolio'),
+                'renameFolder' => __('Rename folder', 'folderfolio'),
+                'newFolderName' => __('Name for the new folder', 'folderfolio'),
+                'delete' => __('Delete', 'folderfolio'),
+                'sort' => __('Sort', 'folderfolio'),
+                'sortNameAsc' => __('Name, A to Z', 'folderfolio'),
+                'sortNameDesc' => __('Name, Z to A', 'folderfolio'),
+                'sortNewest' => __('Newest first', 'folderfolio'),
+                'sortOldest' => __('Oldest first', 'folderfolio'),
+                'undo' => __('Undo', 'folderfolio'),
+                /* translators: %s is the folder name. */
+                'deleted' => __('Deleted “%s”', 'folderfolio'),
+                /* translators: 1: folder name, 2: number of files. */
+                'deletedWithFiles' => __(
+                    'Deleted “%s” — %s files moved to Unassigned',
+                    'folderfolio'
+                ),
                 'emptyTree' => __('No folders yet', 'folderfolio'),
                 'createFailed' => __('Could not create that folder.', 'folderfolio'),
                 'treeFailed' => __('Could not load your folders.', 'folderfolio'),

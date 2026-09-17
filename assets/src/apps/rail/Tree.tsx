@@ -10,14 +10,10 @@
 
 import { useCallback, useMemo } from 'react';
 
-import { Row, GhostRows } from './Row';
+import { CreateRow, Row, GhostRows } from './Row';
 import type { FolderNode } from './queries';
-import { useRail } from './store';
-
-interface Visible {
-    node: FolderNode;
-    depth: number;
-}
+import { sortTree, useRail } from './store';
+import { t } from '../../core/api';
 
 /**
  * The type-ahead buffer: 1s, as the handoff specifies.
@@ -30,6 +26,11 @@ interface Visible {
  * instance.
  */
 const typed = { text: '', at: 0 };
+
+interface Visible {
+    node: FolderNode;
+    depth: number;
+}
 
 /** Depth-first, skipping anything inside a collapsed parent. */
 function flatten(nodes: FolderNode[], expanded: Set<number>, depth = 0, out: Visible[] = []) {
@@ -44,18 +45,29 @@ function flatten(nodes: FolderNode[], expanded: Set<number>, depth = 0, out: Vis
     return out;
 }
 
-export function Tree({ nodes, loading }: { nodes: FolderNode[]; loading: boolean }) {
+export interface TreeProps {
+    nodes: FolderNode[];
+    loading: boolean;
+    onSaveEdit: () => void;
+    onCancelEdit: () => void;
+    onDelete: (node: FolderNode) => void;
+}
+
+export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: TreeProps) {
     const selectedId = useRail((s) => s.selectedId);
     const focusedId = useRail((s) => s.focusedId);
     const expandedIds = useRail((s) => s.expandedIds);
+    const editing = useRail((s) => s.editing);
+    const sort = useRail((s) => s.sort);
     const select = useRail((s) => s.select);
     const focus = useRail((s) => s.focus);
     const toggle = useRail((s) => s.toggle);
     const expand = useRail((s) => s.expand);
     const collapse = useRail((s) => s.collapse);
+    const edit = useRail((s) => s.edit);
 
-    const visible = useMemo(() => flatten(nodes, expandedIds), [nodes, expandedIds]);
-
+    const ordered = useMemo(() => sortTree(nodes, sort), [nodes, sort]);
+    const visible = useMemo(() => flatten(ordered, expandedIds), [ordered, expandedIds]);
 
     const parentOf = useCallback(
         (id: number) => visible.find((v) => v.node.children.some((c) => c.id === id))?.node ?? null,
@@ -64,6 +76,28 @@ export function Tree({ nodes, loading }: { nodes: FolderNode[]; loading: boolean
 
     const onKeyDown = useCallback(
         (event: React.KeyboardEvent) => {
+            /**
+             * While a row is an input, the tree owns exactly two keys.
+             *
+             * Everything else — arrows, Home, End, printable characters —
+             * belongs to the field, and intercepting them would make the
+             * caret unusable in the one place the user is typing.
+             */
+            if (editing) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    onSaveEdit();
+                }
+
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onCancelEdit();
+                }
+
+                return;
+            }
+
             if (visible.length === 0) {
                 return;
             }
@@ -137,6 +171,24 @@ export function Tree({ nodes, loading }: { nodes: FolderNode[]; loading: boolean
 
                     return toggle(current.node.id);
 
+                case 'F2':
+                    event.preventDefault();
+
+                    return edit({
+                        mode: 'rename',
+                        parentId: null,
+                        folderId: current.node.id,
+                        value: current.node.name,
+                    });
+
+                case 'Delete':
+                case 'Backspace':
+                    event.preventDefault();
+
+                    // No confirm. The toast is the confirmation, and it is the
+                    // kind you can answer after seeing what happened.
+                    return onDelete(current.node);
+
                 case '*': {
                     event.preventDefault();
 
@@ -173,7 +225,11 @@ export function Tree({ nodes, loading }: { nodes: FolderNode[]; loading: boolean
                 focus(hit.node.id);
             }
         },
-        [visible, focusedId, expandedIds, focus, select, toggle, expand, collapse, parentOf]
+        [
+            visible, focusedId, expandedIds, editing,
+            focus, select, toggle, expand, collapse, edit, parentOf,
+            onSaveEdit, onCancelEdit, onDelete,
+        ]
     );
 
     if (loading) {
@@ -184,12 +240,14 @@ export function Tree({ nodes, loading }: { nodes: FolderNode[]; loading: boolean
         );
     }
 
+    const creatingAtRoot = editing?.mode === 'create' && editing.parentId === null;
+
     // Nothing in the tree is not an error, and it is not the search's empty
     // state either — it is a library nobody has filed yet.
-    if (nodes.length === 0) {
+    if (ordered.length === 0 && !creatingAtRoot) {
         return (
             <p className="folderfolio-rail__empty">
-                {window.folderFolio?.i18n?.emptyTree ?? 'No folders yet'}
+                {t('emptyTree', 'No folders yet')}
             </p>
         );
     }
@@ -200,16 +258,18 @@ export function Tree({ nodes, loading }: { nodes: FolderNode[]; loading: boolean
         <ul
             className="folderfolio-tree"
             role="tree"
-            aria-label={window.folderFolio?.i18n?.folders ?? 'Folders'}
+            aria-label={t('folders', 'Folders')}
             onKeyDown={onKeyDown}
         >
-            {renderLevel(nodes, 0)}
+            {renderLevel(ordered, 0)}
+            {creatingAtRoot ? <CreateRow depth={0} /> : null}
         </ul>
     );
 
     function renderLevel(level: FolderNode[], depth: number): React.ReactNode {
         return level.map((node) => {
             const expanded = expandedIds.has(node.id);
+            const creatingHere = editing?.mode === 'create' && editing.parentId === node.id;
 
             return (
                 <Row
@@ -218,9 +278,10 @@ export function Tree({ nodes, loading }: { nodes: FolderNode[]; loading: boolean
                     depth={depth}
                     expanded={expanded}
                     selected={selectedId === node.id}
-                    // If the focused row has been collapsed out of sight,
-                    // the first row takes the tab stop — otherwise Tab would
-                    // land on nothing.
+                    renaming={editing?.mode === 'rename' && editing.folderId === node.id}
+                    // If the focused row has been collapsed out of sight, the
+                    // first row takes the tab stop — otherwise Tab would land
+                    // on nothing.
                     focused={
                         focusedIsVisible
                             ? focusedId === node.id
@@ -230,7 +291,17 @@ export function Tree({ nodes, loading }: { nodes: FolderNode[]; loading: boolean
                     onToggle={() => toggle(node.id)}
                 >
                     {expanded && node.children.length > 0 ? (
-                        <ul role="group">{renderLevel(node.children, depth + 1)}</ul>
+                        <ul role="group">
+                            {renderLevel(node.children, depth + 1)}
+                            {creatingHere ? <CreateRow depth={depth + 1} /> : null}
+                        </ul>
+                    ) : creatingHere ? (
+                        // A folder with no children yet, or a collapsed one:
+                        // the new row still has to appear inside it, so the
+                        // group is created for it.
+                        <ul role="group">
+                            <CreateRow depth={depth + 1} />
+                        </ul>
                     ) : null}
                 </Row>
             );

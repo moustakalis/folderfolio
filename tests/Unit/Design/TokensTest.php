@@ -37,6 +37,18 @@ final class TokensTest extends TestCase
     private const SHARED = [
         '--ff-off',
         '--ff-field-line',
+
+        /*
+         * The undo toast is a dark sheet on every scheme — chrome, not page —
+         * so its five tokens are the same everywhere by design. They exist at
+         * all because borrowing the page's tokens for that context produced
+         * dark-on-dark on Midnight.
+         */
+        '--ff-toast-bg',
+        '--ff-toast-ink',
+        '--ff-toast-edge',
+        '--ff-toast-accent',
+        '--ff-toast-bar',
     ];
 
     /**
