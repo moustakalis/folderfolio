@@ -10,6 +10,7 @@ import { useEffect, useRef } from 'react';
 
 import { ChevronDownIcon, ChevronRightIcon, FolderIcon, FolderOpenIcon } from './icons';
 import type { FolderNode } from './queries';
+import { useDropTarget } from './useDropTarget';
 import { useRail } from './store';
 import { t } from '../../core/api';
 
@@ -40,6 +41,7 @@ export function Row({
 }: RowProps) {
     const ref = useRef<HTMLDivElement>(null);
     const hasChildren = node.children.length > 0;
+    const drop = useDropTarget(node.id);
 
     // The tree is a single tab stop, so focus is moved rather than tabbed to.
     // Only ever when this row is the focused one *and* focus is already inside
@@ -67,7 +69,9 @@ export function Row({
                     'folderfolio-row'
                     + (hasChildren ? '' : ' folderfolio-row--leaf')
                     + (renaming ? ' is-renaming' : '')
+                    + (drop.isOver ? ' is-dragover' : '')
                 }
+                {...drop.handlers}
                 role="treeitem"
                 aria-level={depth + 1}
                 aria-selected={selected}
@@ -140,7 +144,15 @@ export function Row({
                           in every competitor tested, which anyone would take
                           to mean empty.
                         */}
-                        <span className="folderfolio-row__count">{node.total_count}</span>
+                        {/*
+                          While files are hovering, the tag previews what the
+                          folder will hold rather than what it holds — the
+                          answer to "will this do what I think" given before
+                          the drop rather than after it.
+                        */}
+                        <span className="folderfolio-row__count">
+                            {drop.isOver ? `+${drop.incoming}` : node.total_count}
+                        </span>
                     </>
                 )}
             </div>

@@ -170,6 +170,61 @@ export function useDeleteFolder() {
     };
 }
 
+/**
+ * What a drop does.
+ *
+ * Two endpoints behind one intent, chosen by whether there is a folder to move
+ * out of — see drag.ts for why that is one rule and not two behaviours.
+ *
+ * Not optimistic. The counts that would have to be adjusted are subtree totals
+ * all the way up two different branches, and the library itself re-queries
+ * from the server anyway; guessing the numbers here would mean two sources for
+ * one figure, which is the thing the tree badge is supposed to stop doing.
+ */
+export function useMoveAttachments() {
+    const client = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (input: {
+            ids: number[];
+            sourceFolderId: number | null;
+            destinationFolderId: number;
+        }) => {
+            if (input.sourceFolderId !== null) {
+                await apiFetch<ApiEnvelope<unknown>>('/attachments/bulk-move', {
+                    method: 'POST',
+                    data: {
+                        source_folder_id: input.sourceFolderId,
+                        destination_folder_id: input.destinationFolderId,
+                        attachment_ids: input.ids,
+                    },
+                });
+
+                return;
+            }
+
+            // No source: add a membership, and leave every other one alone.
+            await apiFetch<ApiEnvelope<unknown>>('/attachments/assign', {
+                method: 'POST',
+                data: {
+                    folder_id: input.destinationFolderId,
+                    attachment_ids: input.ids,
+                    mode: 'add',
+                },
+            });
+        },
+
+        onSuccess: () => {
+            void client.invalidateQueries({ queryKey: treeKey });
+            void client.invalidateQueries({ queryKey: countsKey });
+
+            // The library is showing a folder whose contents just changed.
+            // Nothing else would tell it.
+            window.dispatchEvent(new CustomEvent('folderfolio:library-changed'));
+        },
+    });
+}
+
 /** A copy of the tree with one node replaced wherever it appears. */
 function mapTree(nodes: FolderNode[], fn: (node: FolderNode) => FolderNode): FolderNode[] {
     return nodes.map((node) => ({ ...fn(node), children: mapTree(node.children, fn) }));

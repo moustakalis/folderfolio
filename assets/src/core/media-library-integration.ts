@@ -7,6 +7,8 @@
  * level of it including All media is a way back out.
  */
 
+import { hasListTable, refreshListTable } from '../lib/list-refresh';
+
 interface FolderSelectedDetail {
     folderId: number | null;
 }
@@ -41,6 +43,28 @@ function start(): void {
         const { detail } = event as FolderFolioMediaEvent;
 
         emitMediaFilter(detail?.folderId ?? null);
+    });
+
+    /*
+     * A drop changed which files are in the folder being viewed, so the
+     * library is now showing a stale answer to a question it was not asked
+     * again. In grid mode the collection re-queries itself; in list mode the
+     * table is re-fetched the same way a folder change re-fetches it.
+     */
+    window.addEventListener('folderfolio:library-changed', () => {
+        const collection = window.wp?.media?.frame?.content?.get?.()?.collection as
+            | { props?: { trigger?: (event: string) => void } }
+            | undefined;
+
+        if (collection?.props?.trigger) {
+            collection.props.trigger('change');
+
+            return;
+        }
+
+        if (hasListTable()) {
+            void refreshListTable(window.location.href);
+        }
     });
 }
 

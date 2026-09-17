@@ -15,12 +15,11 @@
 
 import { FolderIcon } from './icons';
 import type { FolderNode } from './queries';
+import { useDropTarget } from './useDropTarget';
 import { useRail } from './store';
 import { t } from '../../core/api';
 
 export function Cards({ children, list }: { children: FolderNode[]; list: boolean }) {
-    const select = useRail((s) => s.select);
-
     if (children.length === 0) {
         return null;
     }
@@ -31,19 +30,7 @@ export function Cards({ children, list }: { children: FolderNode[]; list: boolea
                 <span className="folderfolio-eyebrow">{t('foldersHere', 'Folders here')}</span>
 
                 {children.map((node) => (
-                    <button
-                        key={node.id}
-                        type="button"
-                        className="folderfolio-chip"
-                        onClick={() => select(node.id)}
-                        style={node.color ? ({ '--ff-folder': node.color } as React.CSSProperties) : undefined}
-                    >
-                        <span className="folderfolio-chip__icon">
-                            <FolderIcon size={14} />
-                        </span>
-                        <span className="folderfolio-chip__name">{node.name}</span>
-                        <span className="folderfolio-chip__count">{node.total_count}</span>
-                    </button>
+                    <Chip key={node.id} node={node} />
                 ))}
             </div>
         );
@@ -55,21 +42,60 @@ export function Cards({ children, list }: { children: FolderNode[]; list: boolea
 
             <div className="folderfolio-cards">
                 {children.map((node) => (
-                    <button
-                        key={node.id}
-                        type="button"
-                        className="folderfolio-card"
-                        onClick={() => select(node.id)}
-                        style={node.color ? ({ '--ff-folder': node.color } as React.CSSProperties) : undefined}
-                    >
-                        <span className="folderfolio-card__icon">
-                            <FolderIcon size={20} />
-                        </span>
-                        <span className="folderfolio-card__name">{node.name}</span>
-                        <span className="folderfolio-card__count">{node.total_count}</span>
-                    </button>
+                    <Card key={node.id} node={node} />
                 ))}
             </div>
         </>
+    );
+}
+
+/**
+ * A card is a drop target as well as a way in — the same 2px frame the tree
+ * row gets, because they are the same affordance in two places and looking
+ * different would suggest they behave differently.
+ */
+function Card({ node }: { node: FolderNode }) {
+    const select = useRail((s) => s.select);
+    const drop = useDropTarget(node.id);
+
+    return (
+        <button
+            type="button"
+            className={`folderfolio-card${drop.isOver ? ' is-dragover' : ''}`}
+            onClick={() => select(node.id)}
+            style={node.color ? ({ '--ff-folder': node.color } as React.CSSProperties) : undefined}
+            {...drop.handlers}
+        >
+            <span className="folderfolio-card__icon">
+                <FolderIcon size={20} />
+            </span>
+            <span className="folderfolio-card__name">{node.name}</span>
+            <span className="folderfolio-card__count">
+                {drop.isOver ? `+${drop.incoming}` : node.total_count}
+            </span>
+        </button>
+    );
+}
+
+function Chip({ node }: { node: FolderNode }) {
+    const select = useRail((s) => s.select);
+    const drop = useDropTarget(node.id);
+
+    return (
+        <button
+            type="button"
+            className={`folderfolio-chip${drop.isOver ? ' is-dragover' : ''}`}
+            onClick={() => select(node.id)}
+            style={node.color ? ({ '--ff-folder': node.color } as React.CSSProperties) : undefined}
+            {...drop.handlers}
+        >
+            <span className="folderfolio-chip__icon">
+                <FolderIcon size={14} />
+            </span>
+            <span className="folderfolio-chip__name">{node.name}</span>
+            <span className="folderfolio-chip__count">
+                {drop.isOver ? `+${drop.incoming}` : node.total_count}
+            </span>
+        </button>
     );
 }

@@ -186,6 +186,40 @@
   border-color: var(--ff-sel);
 }
 
+/**
+ * Drop target — the same 2px frame the tree row gets, and for the same reason:
+ * a fill would say "this is selected", and a card the files are about to land
+ * in is not selected, it is aimed at.
+ */
+.folderfolio-card.is-dragover,
+.folderfolio-chip.is-dragover {
+  background: var(--ff-wash);
+  border-color: var(--ff-sel);
+  box-shadow: inset 0 0 0 2px var(--ff-sel);
+}
+
+.folderfolio-card.is-dragover .folderfolio-card__name,
+.folderfolio-chip.is-dragover .folderfolio-chip__name {
+  font-weight: 700;
+  color: var(--ff-accent-text);
+}
+
+.folderfolio-card.is-dragover .folderfolio-card__count,
+.folderfolio-chip.is-dragover .folderfolio-chip__count {
+  font-weight: 700;
+  color: var(--ff-accent-text);
+}
+
+/**
+ * While a drag is in progress, nothing in the library should look clickable
+ * and no text should select under the pointer.
+ */
+body.folderfolio-dragging .folderfolio-card,
+body.folderfolio-dragging .folderfolio-chip,
+body.folderfolio-dragging .folderfolio-row {
+  user-select: none;
+}
+
 /* Colour paints the icon and nothing else — the same rule as the tree row, so
    a folder looks like itself in both places. */
 .folderfolio-card__icon,

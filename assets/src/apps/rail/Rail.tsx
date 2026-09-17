@@ -15,6 +15,7 @@ import { Header } from './Header';
 import { Results } from './Results';
 import { Search } from './Search';
 import { Toast, UNDO_WINDOW } from './Toast';
+import { watchDrags } from './drag';
 import { Toolbar } from './Toolbar';
 import { Tree } from './Tree';
 import {
@@ -140,6 +141,19 @@ export function Rail({ contentMount }: { contentMount: HTMLElement | null }) {
         deferred.current = null;
         setPendingUndo(null);
     }, [setPendingUndo]);
+
+    /**
+     * Files become draggable onto folders.
+     *
+     * The source folder is read at drag time through a ref-like getter rather
+     * than captured, because the user changes folders between page load and
+     * the drag — and the source is what decides whether the drop moves or
+     * adds.
+     */
+    const selectedRef = useRef(selectedId);
+    selectedRef.current = selectedId;
+
+    useEffect(() => watchDrags(() => selectedRef.current), []);
 
     /**
      * Leaving the page inside the window still deletes.
