@@ -313,6 +313,14 @@ parent by parent through `findByName()` rather than going through
 `getOrCreateByPath()`, which splits on `/` and would turn one folder into two
 with no way to tell afterwards.
 
+**The plugin supports PHP 8.1, and the machine you are on probably does not
+run it.** `readonly class` and a standalone `true` return type are both 8.2 —
+valid everywhere you will test, and a *parse error* on the 8.1 leg of CI, which
+fatals before a single test runs. `phpstan.neon` pins `phpVersion` to the
+8.1–8.4 range the plugin claims, so the analyser reports them; PHPStan runs
+first in the PHP job for that reason. If you add a language feature, check
+which version introduced it.
+
 **PHPUnit 9 ignores attributes, without saying so.** composer.json pins
 phpunit ^9.6 because that is what the WordPress test library needs, and 9.6
 reads `@dataProvider` and skips `#[DataProvider]` silently — the test runs with
