@@ -1,0 +1,280 @@
+/**
+ * The asset build.
+ *
+ * Two jobs that a bare `esbuild` CLI invocation cannot do:
+ *
+ *  1. Map `react` and friends onto WordPress's own bundle, so the plugin does
+ *     not ship a second React. See assets/src/shims/wp-element.ts.
+ *
+ *  2. Write a `.asset.php` next to every bundle, naming the script handles
+ *     that bundle needs and a version derived from its contents. PHP reads
+ *     that file instead of hard-coding a dependency array, so a dependency can
+ *     never drift out of step with what the bundle actually imports — which is
+ *     the specific failure that makes a React app in wp-admin blow up on
+ *     somebody else's site and not on yours.
+ *
+ * Both are what @wordpress/scripts does with webpack. We do it here because
+ * @wordpress/scripts owns the whole toolchain — its own webpack config, Babel,
+ * Jest, its own TypeScript story — and we would be fighting it inside a week.
+ * esbuild plus this file is about 200 lines, builds in under a second, and has
+ * no opinions about anything else.
+ *
+ * Usage:
+ *   node tools/esbuild.mjs            production: minified, hashed
+ *   node tools/esbuild.mjs --dev      readable output, inline sourcemaps
+ *   node tools/esbuild.mjs --watch    --dev, and stays up
+ */
+
+import { createHash } from 'node:crypto';
+import { mkdir, readdir, writeFile } from 'node:fs/promises';
+import { dirname, join, relative, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+import * as esbuild from 'esbuild';
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const SRC = join(ROOT, 'assets/src');
+const OUT = join(ROOT, 'assets/build');
+
+const argv = new Set(process.argv.slice(2));
+const dev = argv.has('--dev') || argv.has('--watch');
+const watch = argv.has('--watch');
+
+/**
+ * Bare import path -> the file that satisfies it.
+ *
+ * Subpaths matter. esbuild applies an alias as a path *prefix*, so an entry
+ * for `react` alone would rewrite `react/jsx-runtime` to
+ * `<the react shim>/jsx-runtime`. Because the target is a file rather than a
+ * directory that fails the build outright — which is the behaviour we want,
+ * but only if someone reads the error. Listing every subpath we use means
+ * nobody has to.
+ */
+const ALIAS = {
+    react: join(SRC, 'shims/wp-element.ts'),
+    'react/jsx-runtime': join(SRC, 'shims/jsx-runtime.ts'),
+    'react/jsx-dev-runtime': join(SRC, 'shims/jsx-runtime.ts'),
+    'react-dom': join(SRC, 'shims/wp-element-dom.ts'),
+    'react-dom/client': join(SRC, 'shims/wp-element-dom.ts'),
+};
+
+/**
+ * Shim file -> the WordPress script handle that has to be enqueued for it.
+ *
+ * Keyed by the path esbuild reports in its metafile, so a bundle's dependency
+ * list is derived from what it actually pulled in. Nothing declares its own
+ * dependencies; they are observed.
+ */
+const HANDLES = new Map([
+    [rel(ALIAS.react), 'wp-element'],
+    [rel(ALIAS['react/jsx-runtime']), 'wp-element'],
+    [rel(ALIAS['react-dom']), 'wp-element'],
+]);
+
+function rel(absolute) {
+    return relative(ROOT, absolute);
+}
+
+/** Entry points, by kind. Discovered rather than listed, so adding a screen is adding a file. */
+async function entries() {
+    const found = { js: [], css: [] };
+
+    for (const [dir, ext] of [
+        ['core', /\.ts$/],
+        ['apps', /\.tsx?$/],
+    ]) {
+        const at = join(SRC, dir);
+
+        let names;
+        try {
+            names = await readdir(at);
+        } catch {
+            continue; // assets/src/apps does not exist until the first app does.
+        }
+
+        for (const name of names.sort()) {
+            // A leading underscore marks a partial: _tokens.css and _row.css
+            // are @import-ed by admin.css, never built on their own.
+            if (name.startsWith('_')) {
+                continue;
+            }
+
+            if (ext.test(name)) {
+                found.js.push(join(at, name));
+            } else if (name.endsWith('.css')) {
+                found.css.push(join(at, name));
+            }
+        }
+    }
+
+    return found;
+}
+
+const shared = {
+    bundle: true,
+    absWorkingDir: ROOT,
+    target: ['es2020'],
+    logLevel: 'info',
+    // Sourcemaps ship in both modes. A minified stack trace from a user's
+    // browser is the only report we will ever get of a bug we cannot
+    // reproduce, and the .map is inert until a devtools pane is open.
+    sourcemap: dev ? 'inline' : true,
+    minify: !dev,
+};
+
+/**
+ * `<?php return array(...)` next to each bundle — the same shape
+ * @wordpress/scripts emits, so wp_enqueue_script() reads it the familiar way:
+ *
+ *   $asset = require FOLDERFOLIO_DIR . 'assets/build/apps/rail.asset.php';
+ *   wp_enqueue_script($handle, $url, $asset['dependencies'], $asset['version'], true);
+ */
+function assetPhp(dependencies, version) {
+    const list = dependencies.length
+        ? dependencies.map((d) => `'${d}'`).join(', ')
+        : '';
+
+    return `<?php
+
+/**
+ * Generated by tools/esbuild.mjs. Do not edit.
+ *
+ * 'dependencies' is derived from what the bundle imports, not declared by
+ * hand — see the header of that file.
+ */
+
+return array(
+\t'dependencies' => array(${list}),
+\t'version'      => '${version}',
+);
+`;
+}
+
+/**
+ * Reads the metafile and writes one .asset.php per JS bundle.
+ *
+ * Also the guard: a bundle built from a .tsx entry that did not end up
+ * depending on wp-element means the alias silently did not apply, and the
+ * bundle either has no React in it or has its own copy. Both are worth
+ * stopping the build for.
+ */
+async function writeManifests(result) {
+    const outputs = Object.entries(result.metafile.outputs);
+
+    await Promise.all(
+        outputs.map(async ([outPath, meta]) => {
+            if (!outPath.endsWith('.js')) {
+                return;
+            }
+
+            const dependencies = new Set();
+
+            for (const input of Object.keys(meta.inputs)) {
+                const handle = HANDLES.get(input);
+
+                if (handle) {
+                    dependencies.add(handle);
+                }
+            }
+
+            const entry = meta.entryPoint ?? outPath;
+
+            if (/\.tsx$/.test(entry) && !dependencies.has('wp-element')) {
+                throw new Error(
+                    `${entry} is a React entry but its bundle does not depend on wp-element. `
+                        + 'The react alias in tools/esbuild.mjs did not apply, which means this '
+                        + 'bundle is either empty or carries its own React.'
+                );
+            }
+
+            const bytes = await readOutput(outPath);
+            const version = createHash('sha256').update(bytes).digest('hex').slice(0, 20);
+
+            await writeFile(
+                join(ROOT, outPath.replace(/\.js$/, '.asset.php')),
+                assetPhp([...dependencies].sort(), version)
+            );
+        })
+    );
+}
+
+async function readOutput(outPath) {
+    const { readFile } = await import('node:fs/promises');
+
+    return readFile(join(ROOT, outPath));
+}
+
+async function run() {
+    const { js, css } = await entries();
+
+    await mkdir(OUT, { recursive: true });
+
+    const jsOptions = {
+        ...shared,
+        entryPoints: js,
+        outbase: SRC,
+        outdir: OUT,
+        format: 'iife',
+        alias: ALIAS,
+        jsx: 'automatic',
+        // Never jsx-dev-runtime. One runtime file, one code path, and the
+        // thing we test is the thing that ships.
+        jsxDev: false,
+        metafile: true,
+    };
+
+    const cssOptions = {
+        ...shared,
+        entryPoints: css,
+        outbase: SRC,
+        outdir: OUT,
+        metafile: true,
+    };
+
+    if (watch) {
+        const contexts = await Promise.all([
+            esbuild.context({
+                ...jsOptions,
+                plugins: [
+                    {
+                        name: 'asset-php',
+                        setup(build) {
+                            build.onEnd(async (result) => {
+                                if (result.metafile) {
+                                    await writeManifests(result);
+                                }
+                            });
+                        },
+                    },
+                ],
+            }),
+            esbuild.context(cssOptions),
+        ]);
+
+        await Promise.all(contexts.map((c) => c.watch()));
+        console.log('watching assets/src');
+
+        return;
+    }
+
+    const jsResult = await esbuild.build(jsOptions);
+    await esbuild.build(cssOptions);
+    await writeManifests(jsResult);
+}
+
+/**
+ * Exported so tools/verify-pipeline.mjs builds its fixture through the same
+ * table this file ships with. A verification that maintains its own copy of
+ * the alias map verifies the copy.
+ */
+export { ALIAS, ROOT, SRC };
+
+const invokedDirectly =
+    process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (invokedDirectly) {
+    run().catch((error) => {
+        console.error(error.message ?? error);
+        process.exit(1);
+    });
+}

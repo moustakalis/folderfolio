@@ -16,6 +16,8 @@ var/
 tmp/
 
 # JavaScript development/build tooling
+tools/
+assets/src/
 node_modules/
 package.json
 package-lock.json

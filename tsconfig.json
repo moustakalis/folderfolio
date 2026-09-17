@@ -10,11 +10,12 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "outDir": "assets/build/core",
     "rootDir": "assets/src",
     "declaration": false,
     "moduleResolution": "node",
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "jsx": "react-jsx",
+    "noEmit": true
   },
   "include": [
     "assets/src/**/*"

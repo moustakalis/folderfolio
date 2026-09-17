@@ -51,6 +51,18 @@ interface WpMediaFactory {
 interface WpGlobal {
   apiFetch<T>(options: WpApiFetchOptions): Promise<T>;
   media?: WpMediaFactory;
+
+  /**
+   * The `wp-element` script handle: WordPress's own React, react-dom and
+   * react-dom/client flattened into one namespace.
+   *
+   * Typed as `unknown` on purpose. The shims in assets/src/shims are the only
+   * code that should touch it, and each of them casts this to the precise
+   * module type it stands in for — `typeof import('react')` and friends.
+   * Anything else importing `react` gets the real @types/react, because the
+   * substitution happens in the bundler, not in the type system.
+   */
+  element?: unknown;
 }
 
 /**

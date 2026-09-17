@@ -12,8 +12,13 @@ vendor/
 !.yarn/versions
 .pnp.*
 
-# Build output
-build/
+# Build output.
+#
+# `assets/build/` rather than a bare `build/`: gitignore patterns without a
+# slash match at every depth, so `build/` also ignored a top-level build/
+# directory — which is where the esbuild scripts first lived, and why they are
+# in tools/ now. Naming the real output directory removes the trap.
+assets/build/
 dist/
 
 # PHPStan

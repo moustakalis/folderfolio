@@ -44,6 +44,18 @@ jobs:
       - name: Build assets
         run: yarn build
 
+      # The React-onto-wp.element aliasing is the one piece of the build whose
+      # failure modes are all silent: a bundled second React works perfectly
+      # until it renders inside a core tree, and a jsx runtime that loses
+      # `key` renders a correct-looking list that reorders wrongly. Neither is
+      # visible to tsc or to a successful build, so it is checked in a real
+      # browser. See tools/verify-pipeline.mjs.
+      - name: Install Chromium
+        run: yarn playwright install --with-deps chromium
+
+      - name: Verify the wp-element pipeline
+        run: yarn test:pipeline
+
       # No PHP here on purpose: bin/build-zip.sh copies an allowlist and zips
       # it. It runs no PHP and needs no Composer.
       - name: Assemble installable plugin
