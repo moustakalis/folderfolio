@@ -1,0 +1,288 @@
+/**
+ * The rail's contents — design screen 03: header, fixed rows, search.
+ *
+ * _rail.css is the container (width, stickiness, collapse). _row.css is the
+ * folder row. This is everything between them.
+ *
+ * No hex literals; every colour resolves through _tokens.css.
+ */
+
+/* The React root fills the rail between its top edge and the footer. */
+.folderfolio-rail__app {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --------------------------------------------------------------- header */
+
+.folderfolio-rail__header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 12px 10px;
+  border-bottom: 1px solid var(--ff-line);
+}
+
+/* 10px uppercase at 0.12em — the design's eyebrow, used for every label of
+   this kind. Not an <h2>: it names a region, and the region already has an
+   accessible name from the rail's own landmark. */
+.folderfolio-rail__eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ff-ink);
+}
+
+/* ---------------------------------------------------------------- buttons */
+
+.folderfolio-rail__primary {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 0;
+  background: var(--ff-sel);
+  color: var(--ff-on-sel);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.folderfolio-rail__primary:hover:not(:disabled) {
+  background: var(--ff-sel-hover);
+}
+
+.folderfolio-rail__primary:disabled {
+  background: var(--ff-off);
+  cursor: default;
+}
+
+.folderfolio-rail__ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid var(--ff-field-line);
+  border-radius: 0;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--ff-ink);
+  cursor: pointer;
+}
+
+.folderfolio-rail__ghost:hover {
+  background: var(--ff-hover);
+}
+
+.folderfolio-rail__primary:focus-visible,
+.folderfolio-rail__ghost:focus-visible,
+.folderfolio-rail__search-input:focus-visible,
+.folderfolio-rail__fixed-row:focus-visible,
+.folderfolio-results__row:focus-visible {
+  outline: 2px solid var(--ff-sel);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+/* ----------------------------------------------------------- inline create */
+
+.folderfolio-rail__inline {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--ff-wash);
+  border-bottom: 1px solid var(--ff-line);
+}
+
+/**
+ * _row.css gives this input `flex: 1` so it fills the space between the icon
+ * and the count inside a row, which is a *row* flex container. Here the
+ * container is a column, so `flex: 1` sets the basis on the vertical axis and
+ * the 24px height is ignored — it collapsed to 17px, the height of its text.
+ * The axis is the thing that changed, so the flex is what has to be undone.
+ */
+.folderfolio-rail__inline .folderfolio-row__input.folderfolio-row__input {
+  flex: 0 0 auto;
+  width: 100%;
+  height: 28px;
+}
+
+/* Which folder this will land in, said before it happens rather than
+   discovered afterwards. */
+.folderfolio-rail__inline-parent {
+  font-size: 11px;
+  color: var(--ff-muted);
+}
+
+.folderfolio-rail__inline-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* ------------------------------------------------------------- fixed rows */
+
+.folderfolio-rail__fixed {
+  flex: 0 0 auto;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--ff-line);
+}
+
+/* Buttons, so they are reachable and pressable without any extra wiring —
+   but drawn as rows. Everything the row stylesheet sets is inherited; only
+   what <button> brings of its own is undone here. */
+.folderfolio-rail__fixed-row {
+  width: 100%;
+  padding-left: 8px;
+  padding-right: 8px;
+  border: 0;
+  font-family: inherit;
+  text-align: left;
+}
+
+/* ------------------------------------------------------------------ search */
+
+.folderfolio-rail__search {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  margin: 10px 12px;
+  padding: 0 8px;
+  border: 1px solid var(--ff-field-line);
+  background: var(--ff-field);
+}
+
+.folderfolio-rail__search-icon {
+  display: inline-flex;
+  flex: 0 0 14px;
+  color: var(--ff-dim);
+}
+
+/**
+ * The class is doubled on purpose.
+ *
+ * Core styles `input[type="search"]` and `input[type="text"]` with a type
+ * plus attribute selector — specificity 0,1,1 — which outranks any single
+ * class of ours, so its white background, 1px border, radius, min-height and
+ * box-shadow all win. On Fresh that is invisible, white on white. On Midnight
+ * it is a white box sitting on a dark panel, which is exactly how it was
+ * found. Repeating the class is 0,2,0 and costs nothing.
+ */
+.folderfolio-rail__search-input.folderfolio-rail__search-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  box-shadow: none;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: normal;
+  color: var(--ff-ink);
+  min-height: 0;
+}
+
+.folderfolio-rail__search-input.folderfolio-rail__search-input:focus {
+  border: 0;
+  box-shadow: none;
+  outline: none;
+  background: transparent;
+}
+
+.folderfolio-rail__search:focus-within {
+  border-color: var(--ff-sel);
+  box-shadow: inset 0 0 0 1px var(--ff-sel);
+}
+
+.folderfolio-rail__search-input::-webkit-search-cancel-button {
+  cursor: pointer;
+}
+
+/* ----------------------------------------------------------- result list */
+
+.folderfolio-results__row {
+  width: 100%;
+  height: auto;
+  min-height: var(--ff-row-h);
+  padding: 7px 10px 7px 12px;
+  align-items: flex-start;
+  border: 0;
+  font-family: inherit;
+  text-align: left;
+}
+
+.folderfolio-results__row .folderfolio-row__icon {
+  margin-top: 2px;
+}
+
+.folderfolio-results__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.folderfolio-results__text .folderfolio-row__name {
+  display: block;
+  font-weight: 600;
+}
+
+/* The path is why this is a flat list rather than a filtered tree: a result
+   is useless without knowing where it lives. */
+.folderfolio-results__path {
+  display: block;
+  font-size: 11px;
+  color: var(--ff-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ----------------------------------------------------- empty and error */
+
+.folderfolio-rail__empty {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--ff-muted);
+}
+
+/**
+ * Errors are framed and name the endpoint that failed.
+ *
+ * "Something went wrong" is not something anyone can act on. A site owner with
+ * a REST route blocked by a security plugin — by far the most common cause —
+ * needs the path to search for.
+ */
+.folderfolio-rail__error {
+  margin: 10px 12px;
+  padding: 10px;
+  border: 1px solid var(--ff-danger);
+  color: var(--ff-ink);
+  font-size: 13px;
+}
+
+.folderfolio-rail__error p {
+  margin: 0 0 8px;
+}
+
+.folderfolio-rail__error-detail {
+  font-size: 11px;
+  color: var(--ff-muted);
+}

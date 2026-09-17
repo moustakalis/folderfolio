@@ -8,6 +8,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+use FolderFolio\Domain\AttachmentFolderRepository;
 use FolderFolio\Domain\Folder;
 use FolderFolio\Domain\FolderRepository;
 use FolderFolio\Domain\FolderService;
@@ -446,7 +447,14 @@ class FolderController
             }
         );
 
-        return $this->success(['counts' => $counts]);
+        return $this->success([
+            'counts' => $counts,
+            // The rail's All media and Unassigned rows. Here rather than in a
+            // route of their own because they are read at the same moment, by
+            // the same component, and a second round trip for two integers is
+            // a second chance for one of them to be stale.
+            'library' => (new AttachmentFolderRepository())->libraryCounts(),
+        ]);
     }
 
     public function attachmentFolders(WP_REST_Request $request): WP_REST_Response

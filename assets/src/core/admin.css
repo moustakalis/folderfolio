@@ -10,6 +10,7 @@
 @import './_tokens.css';
 @import './_row.css';
 @import './_rail.css';
+@import './_rail-chrome.css';
 
 :root {
   --ff-brand-700: #3047a8;

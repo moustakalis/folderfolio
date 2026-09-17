@@ -77,23 +77,51 @@ final class Rail
             return;
         }
 
-        $path = FOLDERFOLIO_PLUGIN_DIR . 'assets/build/core/rail.js';
+        // The shell's own script: resize, collapse, persistence. Vanilla, and
+        // loaded whether or not the app below it does.
+        if (file_exists(FOLDERFOLIO_PLUGIN_DIR . 'assets/build/core/rail.js')) {
+            wp_enqueue_script(
+                'folderfolio-rail',
+                FOLDERFOLIO_PLUGIN_URL . 'assets/build/core/rail.js',
+                ['wp-api-fetch'],
+                FOLDERFOLIO_VERSION,
+                ['in_footer' => true, 'strategy' => 'defer']
+            );
 
-        if (!file_exists($path)) {
+            wp_add_inline_script(
+                'folderfolio-rail',
+                'window.folderFolioRail = ' . wp_json_encode($this->config()) . ';',
+                'before'
+            );
+        }
+
+        /*
+         * The app. Its dependencies and version come from the .asset.php that
+         * tools/esbuild.mjs writes beside the bundle, derived from what the
+         * bundle actually imported — so `wp-element` can never fall out of
+         * step with the code, which is the failure that makes a React app in
+         * wp-admin work on one site and not another.
+         */
+        $manifest = FOLDERFOLIO_PLUGIN_DIR . 'assets/build/apps/rail.asset.php';
+
+        if (!file_exists($manifest)) {
             return;
         }
 
+        /** @var array{dependencies: list<string>, version: string} $asset */
+        $asset = require $manifest;
+
         wp_enqueue_script(
-            'folderfolio-rail',
-            FOLDERFOLIO_PLUGIN_URL . 'assets/build/core/rail.js',
-            ['wp-api-fetch'],
-            FOLDERFOLIO_VERSION,
+            'folderfolio-rail-app',
+            FOLDERFOLIO_PLUGIN_URL . 'assets/build/apps/rail.js',
+            array_merge($asset['dependencies'], ['wp-api-fetch', 'wp-a11y']),
+            $asset['version'],
             ['in_footer' => true, 'strategy' => 'defer']
         );
 
         wp_add_inline_script(
-            'folderfolio-rail',
-            'window.folderFolioRail = ' . wp_json_encode($this->config()) . ';',
+            'folderfolio-rail-app',
+            'window.folderFolio = window.folderFolio || ' . wp_json_encode($this->appConfig()) . ';',
             'before'
         );
     }
@@ -137,14 +165,25 @@ final class Rail
             style="--ff-rail-w: <?php echo (int) $width; ?>px"
             hidden
         >
-            <div class="folderfolio-rail__body">
-                <div
-                    id="folderfolio-folder-tree"
-                    class="folderfolio-folder-tree"
-                    role="navigation"
-                    aria-label="<?php esc_attr_e('Media folders', 'folderfolio'); ?>"
-                ></div>
-            </div>
+            <?php
+            /*
+             * The React root. Empty on the server because everything in it
+             * depends on data this page does not have — and printing a
+             * skeleton here would mean maintaining the rail's markup twice,
+             * once in PHP and once in TSX, with only a visual diff to catch
+             * them drifting. The app renders ghost rows while the tree loads.
+             *
+             * The rail's own geometry is server-rendered, which is the part
+             * that has to be right before first paint; what goes inside it can
+             * arrive a frame later without anything moving.
+             */
+            ?>
+            <div
+                id="folderfolio-rail-app"
+                class="folderfolio-rail__app"
+                role="navigation"
+                aria-label="<?php esc_attr_e('Media folders', 'folderfolio'); ?>"
+            ></div>
 
             <div class="folderfolio-rail__footer">
                 <span class="folderfolio-rail__total" data-folderfolio-total></span>
@@ -265,6 +304,50 @@ final class Rail
                 // carrying it: the width announcement for the splitter.
                 /* translators: %d is the rail width in pixels. */
                 'width' => __('Folders panel width: %d pixels', 'folderfolio'),
+            ],
+        ];
+    }
+
+    /**
+     * Labels for the app.
+     *
+     * Merged into window.folderFolio rather than a second global, because
+     * core/api.ts's t() already reads that object and every existing bundle
+     * shares it. MediaLibraryIntegration sets it first when it is enqueued;
+     * the `||` above means whichever runs first wins and the other does not
+     * clobber it.
+     *
+     * @return array<string, mixed>
+     */
+    private function appConfig(): array
+    {
+        return [
+            'restUrl' => esc_url_raw(rest_url('folderfolio/v1')),
+            'nonce' => wp_create_nonce('wp_rest'),
+            'pluginUrl' => FOLDERFOLIO_PLUGIN_URL,
+            'version' => FOLDERFOLIO_VERSION,
+            'canManageFolders' => current_user_can('upload_files'),
+            'i18n' => [
+                'folders' => __('Folders', 'folderfolio'),
+                'newFolder' => __('New folder', 'folderfolio'),
+                'save' => __('Save', 'folderfolio'),
+                'cancel' => __('Cancel', 'folderfolio'),
+                'retry' => __('Retry', 'folderfolio'),
+                'allMedia' => __('All media', 'folderfolio'),
+                'unassigned' => __('Unassigned', 'folderfolio'),
+                'atTopLevel' => __('Top level', 'folderfolio'),
+                'createAtRoot' => __('New folder at the top level', 'folderfolio'),
+                'createInFolder' => __('New folder inside the selected folder', 'folderfolio'),
+                'searchPlaceholder' => __('Search folders', 'folderfolio'),
+                'emptyTree' => __('No folders yet', 'folderfolio'),
+                'createFailed' => __('Could not create that folder.', 'folderfolio'),
+                'treeFailed' => __('Could not load your folders.', 'folderfolio'),
+                'treeFailedWhere' => __(
+                    'The request to /folderfolio/v1/folders did not succeed.',
+                    'folderfolio'
+                ),
+                /* translators: %s is the search term that matched nothing. */
+                'noMatch' => __('No folder matches “%s”.', 'folderfolio'),
             ],
         ];
     }

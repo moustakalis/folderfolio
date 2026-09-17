@@ -160,6 +160,47 @@ class AttachmentFolderRepository
      * That roll-up is fast and directionally right for the tree badge; this is
      * the number shown above the grid, and where they disagree this one wins.
      */
+    /**
+     * The two counts the rail's fixed rows show.
+     *
+     * "Unassigned" is not derivable from the per-folder counts: subtracting
+     * assigned from total double-counts anything filed in two folders, and it
+     * counts assignments whose attachment has since been deleted. It has to be
+     * asked of the media table directly.
+     *
+     * Trashed attachments are excluded from both, so the numbers agree with
+     * what the library actually lists.
+     *
+     * @return array{all: int, unassigned: int}
+     */
+    public function libraryCounts(): array
+    {
+        global $wpdb;
+
+        $table = $this->table();
+
+        // Not prepared: $table is built from $wpdb->prefix, and an identifier
+        // cannot be a bound parameter in any case. No user input reaches this.
+        $unassigned = (int) $wpdb->get_var(
+            "SELECT COUNT(*)
+             FROM {$wpdb->posts} p
+             WHERE p.post_type = 'attachment'
+               AND p.post_status <> 'trash'
+               AND NOT EXISTS (
+                   SELECT 1 FROM {$table} a WHERE a.attachment_id = p.ID
+               )"
+        );
+
+        // Core's own, and it is cached — cheaper than a second COUNT(*) and it
+        // already applies the same trash rule.
+        $all = (int) array_sum((array) wp_count_attachments());
+
+        return [
+            'all' => $all,
+            'unassigned' => $unassigned,
+        ];
+    }
+
     public function subtreeCount(string $path): int
     {
         $folders = $this->wpdb->prefix . 'folderfolio_folders';

@@ -26,10 +26,10 @@ final class MediaLibraryIntegration
      * @var array<string, list<string>>
      */
     private const BUNDLES = [
-        // wp-a11y: selecting a folder in list mode no longer reloads the page,
-        // so the new item count has to be spoken deliberately — nothing else
-        // tells a screen reader the table changed.
-        'folder-tree' => ['wp-api-fetch', 'wp-a11y'],
+        // 'folder-tree' is gone: the rail is a React app now (assets/src/apps)
+        // and it renders the tree. What is left here is the three bundles that
+        // work on the library rather than on the rail, and they still listen
+        // for folderfolio:folder-selected exactly as before.
         'media-library-integration' => ['wp-api-fetch'],
         'bulk-actions' => ['wp-api-fetch'],
         'upload-integration' => ['wp-api-fetch', 'media-views'],

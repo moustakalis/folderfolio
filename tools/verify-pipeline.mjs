@@ -121,6 +121,78 @@ const PAGE = `<!DOCTYPE html>
 <script src="./app.js"></script>
 </body></html>`;
 
+/**
+ * The second fixture: the actual state layer.
+ *
+ * Zustand and TanStack Query are the two dependencies the architecture plan
+ * picked, and both subscribe through `useSyncExternalStore` imported from
+ * `react` by name. Neither has heard of WordPress. If the alias failed for
+ * third-party code — as opposed to our own — this is where it would show, and
+ * it would show as a store that never re-renders rather than as an error.
+ *
+ * It also proves React context survives the shim: QueryClientProvider is one.
+ */
+const LIBS = `
+import { create } from 'zustand';
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import { createRoot } from 'react-dom/client';
+
+const useSelection = create((set) => ({
+    selected: null,
+    select: (id) => set({ selected: id }),
+}));
+
+const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+});
+
+function Rail() {
+    const selected = useSelection((s) => s.selected);
+    const select = useSelection((s) => s.select);
+
+    const { data, isPending } = useQuery({
+        queryKey: ['folders'],
+        queryFn: async () => {
+            await new Promise((r) => setTimeout(r, 20));
+            return [{ id: 1, name: 'Brand' }, { id: 20, name: 'Archive' }];
+        },
+    });
+
+    if (isPending) {
+        return <p id="state">loading</p>;
+    }
+
+    return (
+        <div>
+            <ul id="folders">
+                {data.map((folder) => (
+                    <li
+                        key={folder.id}
+                        data-id={folder.id}
+                        aria-selected={selected === folder.id}
+                        onClick={() => select(folder.id)}
+                    >
+                        {folder.name}
+                    </li>
+                ))}
+            </ul>
+            <p id="selected">{selected === null ? 'none' : String(selected)}</p>
+        </div>
+    );
+}
+
+createRoot(document.getElementById('root')).render(
+    <QueryClientProvider client={client}><Rail /></QueryClientProvider>
+);
+`;
+
+const LIBS_PAGE = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body><div id="root"></div>
+<script src="./wp-element.js"></script>
+<script src="./libs.js"></script>
+</body></html>`;
+
 async function main() {
     const dir = await mkdtemp(join(tmpdir(), 'folderfolio-pipeline-'));
     let browser;
@@ -282,8 +354,73 @@ async function main() {
                 + `Got ${JSON.stringify(probed)}`
         );
 
+        // ---------------------------------------------------- the state layer
+
+        await writeFile(join(dir, 'libs.tsx'), LIBS);
+        await writeFile(join(dir, 'libs.html'), LIBS_PAGE);
+
+        await esbuild.build({
+            absWorkingDir: ROOT,
+            entryPoints: [join(dir, 'libs.tsx')],
+            outfile: join(dir, 'libs.js'),
+            bundle: true,
+            format: 'iife',
+            target: ['es2020'],
+            alias: ALIAS,
+            jsx: 'automatic',
+            jsxDev: false,
+            minify: true,
+            define: { 'process.env.NODE_ENV': '"production"' },
+            logLevel: 'warning',
+            nodePaths: [join(ROOT, 'node_modules')],
+        });
+
+        const libs = await import('node:fs/promises').then((fs) =>
+            fs.readFile(join(dir, 'libs.js'), 'utf8')
+        );
+
+        for (const fingerprint of ['react-dom.production', 'Minified React error']) {
+            assert.ok(
+                !libs.includes(fingerprint),
+                `zustand/TanStack Query pulled React into the bundle via "${fingerprint}" — `
+                    + 'a dependency resolved react on its own instead of through the alias'
+            );
+        }
+
+        const libsPage = await browser.newPage();
+        const libsProblems = [];
+        libsPage.on('console', (m) => m.type() === 'error' && libsProblems.push(m.text()));
+        libsPage.on('pageerror', (e) => libsProblems.push(String(e)));
+
+        await libsPage.goto(pathToFileURL(join(dir, 'libs.html')).href);
+
+        // TanStack Query resolved and re-rendered when its promise settled.
+        await libsPage.waitForSelector('#folders li');
+        assert.deepEqual(libsProblems, [], `the state-layer page logged errors: ${libsProblems.join(' | ')}`);
+
+        assert.deepEqual(
+            await libsPage.$$eval('#folders li', (els) => els.map((el) => el.textContent)),
+            ['Brand', 'Archive'],
+            'useQuery did not deliver its data through the shimmed React'
+        );
+
+        // Zustand: a store outside React, read through useSyncExternalStore.
+        assert.equal(await libsPage.$eval('#selected', (el) => el.textContent), 'none');
+
+        await libsPage.click('#folders li[data-id="20"]');
+        await libsPage.waitForFunction(
+            () => document.querySelector('#selected').textContent === '20'
+        );
+
+        assert.equal(
+            await libsPage.$eval('#folders li[data-id="20"]', (el) => el.getAttribute('aria-selected')),
+            'true',
+            'the zustand store updated but the subscribed component did not re-render'
+        );
+
         console.log('wp-element pipeline: ok');
-        console.log(`  app bundle ${(bundle.length / 1024).toFixed(1)}KB, no React inside`);
+        console.log(`  app bundle   ${(bundle.length / 1024).toFixed(1)}KB, no React inside`);
+        console.log(`  state layer  ${(libs.length / 1024).toFixed(1)}KB — zustand + TanStack Query, no React inside`);
     } finally {
         await browser?.close();
         await rm(dir, { recursive: true, force: true });
