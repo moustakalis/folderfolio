@@ -1,8 +1,25 @@
 /**
- * Bulk "Add to folder" — the trigger in WordPress's toolbar, and the flyout
- * drawn on screen 11.
+ * The two bulk folder actions — the triggers in WordPress's toolbar, and the
+ * flyout drawn on screen 11.
  *
- * ## Adds, never moves
+ * ## Why there are two
+ *
+ * With a pointer this plugin has two verbs: dragging files onto a folder
+ * *moves* them out of the folder being viewed, and this flyout *adds*. With a
+ * keyboard there was only one, because a drag has no keyboard form — so a
+ * keyboard user could file a copy but could not do the thing every mouse user
+ * can. That is an accessibility gap, not a missing feature, and it is closed
+ * by giving the move its own control rather than by adding a mode to this one.
+ *
+ * `Move to folder` is therefore a second trigger, enabled only when a real
+ * folder is being viewed — exactly the condition the drag uses, for the same
+ * reason: a move needs somewhere to move out of. It borrows this panel with a
+ * different verb, radios instead of checkboxes (a move has one destination),
+ * and the same `useMoveAttachments` the drag calls, so the two cannot drift.
+ *
+ * Screens 03 and 06 draw only `Add to folder`. This is a deliberate delta.
+ *
+ * ## Add adds, never moves
  *
  * Checkboxes, not radios, and the footer says so in words: "Adds a copy of the
  * membership". A file can be in several folders, so filing it into Campaigns
@@ -23,7 +40,12 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createPortal } from 'react-dom';
 
 import { ChevronDownIcon, SearchIcon } from './icons';
-import { flattenTree, useAddToFolders, type FolderNode } from './queries';
+import {
+    flattenTree,
+    useAddToFolders,
+    useMoveAttachments,
+    type FolderNode,
+} from './queries';
 import { sortTree, useRail } from './store';
 import { watchSelection } from '../../lib/selection';
 import { t, tn } from '../../core/api';
@@ -37,10 +59,31 @@ import { t, tn } from '../../core/api';
  */
 const LIST_LIMIT = 100;
 
+export type PickerMode = 'add' | 'move';
+
 export function AddToFolder({ nodes }: { nodes: FolderNode[] }) {
+    return <FolderAction nodes={nodes} mode="add" />;
+}
+
+export function MoveToFolder({ nodes }: { nodes: FolderNode[] }) {
+    return <FolderAction nodes={nodes} mode="move" />;
+}
+
+function FolderAction({ nodes, mode }: { nodes: FolderNode[]; mode: PickerMode }) {
     const [ids, setIds] = useState<number[]>([]);
     const [open, setOpen] = useState(false);
     const triggerRef = useRef<HTMLButtonElement>(null);
+
+    /**
+     * Only a real folder is a source.
+     *
+     * `null` is All media, which is not a folder; `0` is Unassigned, where
+     * "move out of" and "add to" are the same operation, so Add is the right
+     * control and this one stays out of the way.
+     */
+    const selectedId = useRail((s) => s.selectedId);
+    const source = selectedId !== null && selectedId > 0 ? selectedId : null;
+    const blocked = mode === 'move' && source === null;
 
     useEffect(() => watchSelection(setIds), []);
 
@@ -52,23 +95,36 @@ export function AddToFolder({ nodes }: { nodes: FolderNode[] }) {
      * a dead end the user has to find their own way out of.
      */
     useEffect(() => {
-        if (ids.length === 0) {
+        if (ids.length === 0 || blocked) {
             setOpen(false);
         }
-    }, [ids.length]);
+    }, [ids.length, blocked]);
 
     return (
         <>
             <button
                 ref={triggerRef}
                 type="button"
-                className={`button folderfolio-bulk${open ? ' is-open' : ''}`}
-                disabled={ids.length === 0}
+                className={`button folderfolio-bulk folderfolio-bulk--${mode}${open ? ' is-open' : ''}`}
+                disabled={ids.length === 0 || blocked}
                 aria-haspopup="dialog"
                 aria-expanded={open}
+                // A disabled control that never says why is a dead end. This
+                // one has two reasons to be disabled and they are different
+                // problems to fix.
+                title={
+                    blocked
+                        ? t(
+                              'moveNeedsFolder',
+                              'Open a folder first — a move needs a folder to move out of.'
+                          )
+                        : undefined
+                }
                 onClick={() => setOpen((was) => !was)}
             >
-                {t('addToFolder', 'Add to folder')}
+                {mode === 'move'
+                    ? t('moveToFolder', 'Move to folder')
+                    : t('addToFolder', 'Add to folder')}
                 <ChevronDownIcon size={13} />
             </button>
 
@@ -77,6 +133,8 @@ export function AddToFolder({ nodes }: { nodes: FolderNode[] }) {
                     <Flyout
                         nodes={nodes}
                         ids={ids}
+                        mode={mode}
+                        source={source}
                         anchor={triggerRef.current}
                         onClose={() => {
                             setOpen(false);
@@ -129,21 +187,34 @@ function headParts(count: number): React.ReactNode {
 interface FlyoutProps {
     nodes: FolderNode[];
     ids: number[];
+    mode: PickerMode;
+    /** The folder being moved out of. Always set when mode is 'move'. */
+    source: number | null;
     anchor: HTMLElement | null;
     onClose: () => void;
 }
 
-function Flyout({ nodes, ids, anchor, onClose }: FlyoutProps) {
+function Flyout({ nodes, ids, mode, source, anchor, onClose }: FlyoutProps) {
     const sort = useRail((s) => s.sort);
     const [checked, setChecked] = useState<ReadonlySet<number>>(new Set());
     const [query, setQuery] = useState('');
     const add = useAddToFolders();
+    const move = useMoveAttachments();
+    const pending = mode === 'move' ? move.isPending : add.isPending;
+    const failed = mode === 'move' ? move.isError : add.isError;
     const ref = useRef<HTMLDivElement>(null);
 
     // Sorting and flattening the whole tree is the one cost here that does not
     // depend on what is typed, so it must not be paid per keystroke. At 20,000
     // folders that alone was most of the 348ms a character cost.
-    const rows = useMemo(() => flattenTree(sortTree(nodes, sort)), [nodes, sort]);
+    const rows = useMemo(() => {
+        const all = flattenTree(sortTree(nodes, sort));
+
+        // Moving a folder's files into the folder they are already in is a
+        // no-op the drag catches before it sends. Here there is room to simply
+        // not offer it.
+        return source === null ? all : all.filter((row) => row.node.id !== source);
+    }, [nodes, sort, source]);
     const needle = query.trim().toLowerCase();
     const matches = needle === ''
         ? rows
@@ -195,17 +266,36 @@ function Flyout({ nodes, ids, anchor, onClose }: FlyoutProps) {
     const shown = ordered.slice(0, LIST_LIMIT);
     const hidden = ordered.length - shown.length;
 
-    const toggle = useCallback((id: number) => {
-        setChecked((was) => {
-            const next = new Set(was);
+    const sourceName =
+        source === null
+            ? ''
+            : (flattenTree(nodes).find((row) => row.node.id === source)?.node.name ?? '');
 
-            if (!next.delete(id)) {
-                next.add(id);
-            }
+    /**
+     * Adding takes any number of destinations; a move takes exactly one.
+     *
+     * Which is why the rows are checkboxes in one mode and radios in the
+     * other — the control says how many answers it wants before you give it
+     * the wrong number.
+     */
+    const toggle = useCallback(
+        (id: number) => {
+            setChecked((was) => {
+                if (mode === 'move') {
+                    return was.has(id) ? new Set<number>() : new Set([id]);
+                }
 
-            return next;
-        });
-    }, []);
+                const next = new Set(was);
+
+                if (!next.delete(id)) {
+                    next.add(id);
+                }
+
+                return next;
+            });
+        },
+        [mode]
+    );
 
     /**
      * Pinned to the trigger, in viewport coordinates.
@@ -269,11 +359,44 @@ function Flyout({ nodes, ids, anchor, onClose }: FlyoutProps) {
     }, [onClose, anchor]);
 
     const submit = () => {
-        if (checked.size === 0 || add.isPending) {
+        if (checked.size === 0 || pending) {
             return;
         }
 
         const folderIds = [...checked];
+        const names = rows
+            .filter((row) => folderIds.includes(row.node.id))
+            .map((row) => row.node.name)
+            .join(', ');
+
+        if (mode === 'move') {
+            move.mutate(
+                {
+                    ids,
+                    sourceFolderId: source,
+                    destinationFolderId: folderIds[0],
+                },
+                {
+                    onSuccess: () => {
+                        window.wp?.a11y?.speak(
+                            tn(
+                                'movedFile',
+                                'movedFiles',
+                                ids.length,
+                                'Moved %s file to %s',
+                                'Moved %s files to %s',
+                                ids.length,
+                                names
+                            ),
+                            'polite'
+                        );
+                        onClose();
+                    },
+                }
+            );
+
+            return;
+        }
 
         add.mutate(
             { ids, folderIds },
@@ -289,11 +412,6 @@ function Flyout({ nodes, ids, anchor, onClose }: FlyoutProps) {
                      * plural instead of two, which is the difference between a
                      * translatable string and a combinatorial one.
                      */
-                    const names = rows
-                        .filter((row) => folderIds.includes(row.node.id))
-                        .map((row) => row.node.name)
-                        .join(', ');
-
                     window.wp?.a11y?.speak(
                         tn(
                             'addedFile',
@@ -317,7 +435,11 @@ function Flyout({ nodes, ids, anchor, onClose }: FlyoutProps) {
             ref={ref}
             className="folderfolio folderfolio-flyout"
             role="dialog"
-            aria-label={t('addToFolder', 'Add to folder')}
+            aria-label={
+                mode === 'move'
+                    ? t('moveToFolder', 'Move to folder')
+                    : t('addToFolder', 'Add to folder')
+            }
             style={{
                 top: at ? `${at.top}px` : '-9999px',
                 left: at ? `${at.left}px` : '-9999px',
@@ -368,7 +490,8 @@ function Flyout({ nodes, ids, anchor, onClose }: FlyoutProps) {
                             style={{ '--ff-depth': depth } as React.CSSProperties}
                         >
                             <input
-                                type="checkbox"
+                                type={mode === 'move' ? 'radio' : 'checkbox'}
+                                name={mode === 'move' ? 'folderfolio-move-to' : undefined}
                                 checked={checked.has(node.id)}
                                 onChange={() => toggle(node.id)}
                             />
@@ -397,16 +520,28 @@ function Flyout({ nodes, ids, anchor, onClose }: FlyoutProps) {
                 <button
                     type="button"
                     className="button button-primary"
-                    disabled={checked.size === 0 || add.isPending}
+                    disabled={checked.size === 0 || pending}
                     onClick={submit}
                 >
-                    {t('addToFolder', 'Add to folder')}
+                    {mode === 'move'
+                        ? t('moveToFolder', 'Move to folder')
+                        : t('addToFolder', 'Add to folder')}
                 </button>
 
+                {/*
+                  The sentence is the one place the screen says which of the
+                  two verbs this is. For a move it names the folder the files
+                  are leaving, because that is the part that is not visible
+                  anywhere else in the panel.
+                */}
                 <span className="folderfolio-flyout__note">
-                    {add.isError
-                        ? t('addFailed', 'Could not file those files.')
-                        : t('addsACopy', 'Adds a copy of the membership')}
+                    {failed
+                        ? mode === 'move'
+                            ? t('moveFailed', 'Could not move those files.')
+                            : t('addFailed', 'Could not file those files.')
+                        : mode === 'move'
+                          ? t('movesOutOf', 'Moves them out of “%s”', sourceName)
+                          : t('addsACopy', 'Adds a copy of the membership')}
                 </span>
             </div>
         </div>

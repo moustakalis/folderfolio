@@ -13,13 +13,13 @@
  *    every list refresh — see FolderSelect.tsx. It also has to be able to
  *    disappear with core's own filters when the grid enters "Bulk select",
  *    which is a thing the trigger beside it must not do.
- *  - the **trigger** exists in both modes, and in grid has to outlive core
- *    hiding the row it sits in.
+ *  - the **triggers** — Add to folder and Move to folder — exist in both
+ *    modes, and in grid have to outlive core hiding the row they sit in.
  */
 
 import { createPortal } from 'react-dom';
 
-import { AddToFolder } from './AddToFolder';
+import { AddToFolder, MoveToFolder } from './AddToFolder';
 import { FolderSelect, useNativeFolderSelect } from './FolderSelect';
 import type { FolderNode } from './queries';
 import { bulkSlotPlace, filterSlotPlace, useToolbarSlot } from '../../lib/toolbar-slot';
@@ -36,7 +36,21 @@ export function LibraryToolbar({ nodes }: { nodes: FolderNode[] }) {
     return (
         <>
             {filterSlot ? createPortal(<FolderSelect nodes={nodes} />, filterSlot) : null}
-            {bulkSlot ? createPortal(<AddToFolder nodes={nodes} />, bulkSlot) : null}
+            {bulkSlot
+                ? createPortal(
+                      <>
+                          <AddToFolder nodes={nodes} />
+                          {/*
+                            The keyboard's half of what a drag does. Disabled
+                            until a folder is being viewed, because a move
+                            needs somewhere to move out of — the same rule
+                            drag.ts states, enforced in the same place.
+                          */}
+                          <MoveToFolder nodes={nodes} />
+                      </>,
+                      bulkSlot
+                  )
+                : null}
         </>
     );
 }

@@ -362,6 +362,18 @@ final class Rail
                 // The filter-row controls — screens 03, 06 and 11.
                 'filterByFolder' => __('Filter by folder', 'folderfolio'),
                 'addToFolder' => __('Add to folder', 'folderfolio'),
+                'moveToFolder' => __('Move to folder', 'folderfolio'),
+                'moveNeedsFolder' => __(
+                    'Open a folder first — a move needs a folder to move out of.',
+                    'folderfolio'
+                ),
+                /* translators: %s is the folder the files are being moved out of. */
+                'movesOutOf' => __('Moves them out of “%s”', 'folderfolio'),
+                'moveFailed' => __('Could not move those files.', 'folderfolio'),
+                /* translators: 1: number of files, 2: the destination folder name. */
+                'movedFile' => __('Moved %s file to %s', 'folderfolio'),
+                /* translators: 1: number of files, 2: the destination folder name. */
+                'movedFiles' => __('Moved %s files to %s', 'folderfolio'),
                 'findFolder' => __('Find a folder', 'folderfolio'),
                 'addsACopy' => __('Adds a copy of the membership', 'folderfolio'),
                 /* translators: %s is the number of folders not shown. */
