@@ -15,23 +15,28 @@ if (!defined('ABSPATH')) {
  * action carries it. It is readonly so a hook callback cannot mutate a folder
  * by accident, and it is a class rather than an array so that adding a field
  * later does not silently change the shape other people's code reads.
+ *
+ * Property by property, not `readonly class`, which is PHP **8.2** — and this
+ * plugin supports 8.1, where it is a parse error rather than a warning. Same
+ * guarantee either way; `phpstan.neon` pins the version range so the analyser
+ * catches the next one instead of the 8.1 leg of CI.
  */
-final readonly class Folder
+final class Folder
 {
     public function __construct(
-        public int $id,
-        public string $name,
-        public ?int $parentId = null,
-        public string $path = '',
-        public int $depth = 0,
-        public string $objectType = FolderRepository::DEFAULT_OBJECT_TYPE,
-        public ?string $slug = null,
-        public ?string $color = null,
-        public ?string $icon = null,
-        public int $sortOrder = 0,
-        public ?int $createdBy = null,
-        public string $createdAt = '',
-        public string $updatedAt = '',
+        public readonly int $id,
+        public readonly string $name,
+        public readonly ?int $parentId = null,
+        public readonly string $path = '',
+        public readonly int $depth = 0,
+        public readonly string $objectType = FolderRepository::DEFAULT_OBJECT_TYPE,
+        public readonly ?string $slug = null,
+        public readonly ?string $color = null,
+        public readonly ?string $icon = null,
+        public readonly int $sortOrder = 0,
+        public readonly ?int $createdBy = null,
+        public readonly string $createdAt = '',
+        public readonly string $updatedAt = '',
     ) {
     }
 

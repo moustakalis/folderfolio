@@ -157,6 +157,17 @@ jobs:
       - name: Install PHP dependencies
         run: composer install --prefer-dist --no-interaction
 
+      # PHPStan first, and deliberately.
+      #
+      # phpstan.neon pins phpVersion to the 8.1–8.4 range this plugin claims,
+      # so syntax that is valid on the interpreter but not across that range —
+      # `readonly class`, a standalone `true` return type — is reported here in
+      # seconds. Both of those got past every other check once and fatalled the
+      # 8.1 leg at parse time, after WordPress had been installed and before a
+      # single test ran.
+      - name: Run PHPStan
+        run: composer run phpstan
+
       # The unit suite needs no database and no WordPress, so it runs before
       # any of that is set up. When it fails, it fails in seconds.
       - name: Run unit tests
@@ -185,6 +196,3 @@ jobs:
 
       - name: Run integration tests
         run: composer run test:integration
-
-      - name: Run PHPStan
-        run: composer run phpstan

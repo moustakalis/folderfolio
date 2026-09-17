@@ -655,9 +655,18 @@ class FolderService
     }
 
     /**
+     * Native `bool|WP_Error`, docblock `true|WP_Error`.
+     *
+     * A standalone `true` in a type position is PHP **8.2**, and this plugin
+     * supports 8.1 — where the parser reads it as a class name and fatals with
+     * "Cannot use 'FolderFolio\Domain\true' as class name as it is reserved",
+     * before a single test runs. The docblock keeps the precision for the
+     * analyser; phpstan.neon pins the version range so the next one is caught
+     * here rather than by the 8.1 leg of CI.
+     *
      * @return true|WP_Error
      */
-    private function guardDepth(int $depth): true|WP_Error
+    private function guardDepth(int $depth): bool|WP_Error
     {
         /** @var int $max */
         $max = apply_filters('folderfolio_max_depth', FolderPath::MAX_DEPTH);
@@ -680,7 +689,7 @@ class FolderService
      * @param list<int> $ids
      * @return true|WP_Error
      */
-    private function guardAttachments(array $ids, bool $requireAttachment = true): true|WP_Error
+    private function guardAttachments(array $ids, bool $requireAttachment = true): bool|WP_Error
     {
         foreach ($ids as $attachmentId) {
             // wp_attachment_is_image() implied the post type anyway; the only
@@ -759,7 +768,7 @@ class FolderService
      * @param FolderData $data
      * @return true|WP_Error
      */
-    private function validate(array $data, bool $creating): true|WP_Error
+    private function validate(array $data, bool $creating): bool|WP_Error
     {
         if ($creating && ($data['name'] ?? '') === '') {
             return new WP_Error(

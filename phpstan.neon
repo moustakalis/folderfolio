@@ -4,6 +4,19 @@ includes:
 parameters:
     level: 6
 
+    # The whole range the plugin claims to support, not the one that happens
+    # to be installed.
+    #
+    # `composer.json` requires >=8.1 and CI runs the test matrix on 8.1 through
+    # 8.4, but PHPStan analyses against the running interpreter unless told
+    # otherwise — so three `true|WP_Error` return types, which are PHP 8.2
+    # syntax, passed every local check and then fatalled the 8.1 leg at parse
+    # time, before a single test ran. With a range, PHPStan reports anything
+    # that is not valid across all of it.
+    phpVersion:
+        min: 80100
+        max: 80400
+
     paths:
         - folderfolio.php
         - includes
