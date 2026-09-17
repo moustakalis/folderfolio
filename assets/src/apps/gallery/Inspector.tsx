@@ -118,6 +118,24 @@ export function Inspector({ attributes, setAttributes }: InspectorProps) {
                     help={0 === attributes.limit ? t('limitAll', 'All of them') : undefined}
                 />
 
+                {/*
+                  Core's lightbox, not one of ours — and only offered when the
+                  images are not already links, because a click cannot do both
+                  and core disables it in exactly that case.
+                */}
+                {'none' === attributes.linkTo ? (
+                    <ToggleControl
+                        __nextHasNoMarginBottom
+                        label={t('lightbox', 'Expand on click')}
+                        checked={attributes.lightbox}
+                        help={t(
+                            'lightboxHelp',
+                            'Uses the lightbox WordPress already ships, so the page stays free of extra scripts until someone clicks.'
+                        )}
+                        onChange={(lightbox: boolean) => setAttributes({ lightbox })}
+                    />
+                ) : null}
+
                 <SelectControl
                     __nextHasNoMarginBottom
                     label={t('linkTo', 'Link to')}

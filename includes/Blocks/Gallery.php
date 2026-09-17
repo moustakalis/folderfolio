@@ -34,6 +34,10 @@ final class Gallery
     public function register(): void
     {
         add_action('init', [$this, 'registerBlock']);
+
+        // Same renderer, different door: classic themes and page builders get
+        // the gallery through a shortcode that takes a folder *path*.
+        (new GalleryShortcode())->register();
     }
 
     public function registerBlock(): void
@@ -168,6 +172,11 @@ final class Gallery
                 'limit' => __('Maximum images', 'folderfolio'),
                 'limitAll' => __('All of them', 'folderfolio'),
                 'linkTo' => __('Link to', 'folderfolio'),
+                'lightbox' => __('Expand on click', 'folderfolio'),
+                'lightboxHelp' => __(
+                    'Uses the lightbox WordPress already ships, so the page stays free of extra scripts until someone clicks.',
+                    'folderfolio'
+                ),
                 'linkNone' => __('Nothing', 'folderfolio'),
                 'linkMedia' => __('The image file', 'folderfolio'),
                 'linkAttachment' => __('The attachment page', 'folderfolio'),

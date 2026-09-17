@@ -81,7 +81,10 @@ final class GalleryQuery
             'post__in' => $ids,
             'orderby' => $orderBy,
             'order' => $order,
-            'posts_per_page' => $limit > 0 ? min($limit, self::MAX) : self::MAX,
+            // Always the ceiling, not the block's limit: the visibility filter
+            // below removes rows, and slicing afterwards is what keeps
+            // "show me six" meaning six.
+            'posts_per_page' => self::MAX,
             'ignore_sticky_posts' => true,
             // Nothing paginates, so the second COUNT query is waste on a page
             // that is very often served from a full-page cache anyway.
@@ -92,7 +95,47 @@ final class GalleryQuery
         /** @var list<WP_Post> $posts */
         $posts = $query->posts;
 
-        return $posts;
+        $posts = $this->publiclyViewable($posts);
+
+        return $limit > 0 ? array_slice($posts, 0, $limit) : $posts;
+    }
+
+    /**
+     * Drop anything the theme would not show anyway.
+     *
+     * **WP_Query does not do this for us, and the test that says so was worth
+     * writing.** `post_status = 'inherit'` returns an attachment whose parent
+     * is private, draft or trashed, to a logged-out visitor — measured, not
+     * assumed. Core's own gallery never hits this because its ids live in post
+     * content; ours come from a folder, and a folder is not access control.
+     *
+     * `is_post_publicly_viewable()` is the right question because it is the
+     * same question the rest of WordPress asks, and because it does not depend
+     * on who is looking: an editor previewing the page sees exactly the
+     * gallery a visitor will get. A gallery that shows the author one more
+     * image than it shows the world is the worst version of this bug — it
+     * publishes a page that does not contain what they saw.
+     *
+     * @param list<WP_Post> $posts
+     *
+     * @return list<WP_Post>
+     */
+    private function publiclyViewable(array $posts): array
+    {
+        $parents = array_values(array_unique(array_filter(
+            array_map(static fn (WP_Post $post): int => (int) $post->post_parent, $posts)
+        )));
+
+        if ([] !== $parents) {
+            // One query for the parents rather than one per image: the check
+            // below reads each attachment's parent status.
+            _prime_post_caches($parents, false, false);
+        }
+
+        return array_values(array_filter(
+            $posts,
+            static fn (WP_Post $post): bool => is_post_publicly_viewable($post)
+        ));
     }
 
     /**

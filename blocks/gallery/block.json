@@ -20,7 +20,8 @@
         "orderBy": { "type": "string", "default": "date", "enum": ["date", "title", "menu_order", "rand"] },
         "order": { "type": "string", "default": "desc", "enum": ["asc", "desc"] },
         "limit": { "type": "number", "default": 0 },
-        "linkTo": { "type": "string", "default": "none", "enum": ["none", "media", "attachment"] }
+        "linkTo": { "type": "string", "default": "none", "enum": ["none", "media", "attachment"] },
+        "lightbox": { "type": "boolean", "default": false }
     },
     "supports": {
         "html": false,

@@ -10,4 +10,5 @@ export interface GalleryAttributes {
     order: 'asc' | 'desc';
     limit: number;
     linkTo: 'none' | 'media' | 'attachment';
+    lightbox: boolean;
 }

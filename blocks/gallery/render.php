@@ -47,6 +47,27 @@ $folderfolio_columns = max(1, min(8, (int) ($attributes['columns'] ?? 3)));
 $folderfolio_gap = max(0, min(96, (int) ($attributes['gap'] ?? 16)));
 $folderfolio_link = is_string($attributes['linkTo'] ?? null) ? $attributes['linkTo'] : 'none';
 
+/*
+ * The lightbox is core's, not ours.
+ *
+ * WordPress has shipped an Interactivity-API lightbox on the Image block since
+ * 6.4. Opting into it means rendering each image *as* a `core/image` block —
+ * core reads `attrs.lightbox.enabled` there, adds its own filter, and enqueues
+ * its own view module. So this plugin ships no lightbox, no PhotoSwipe, and no
+ * front-end JavaScript of its own; what arrives is the same lightbox the rest
+ * of the site already uses, which is the point.
+ *
+ * It costs core's image markup in place of the bare figure below. That is the
+ * honest trade: you cannot opt into a behaviour and keep markup it does not
+ * recognise.
+ *
+ * `galleryId` is context core's own gallery provides so its lightbox can page
+ * between images with the arrow keys. One id per rendered gallery, so two
+ * galleries on a page stay two galleries.
+ */
+$folderfolio_lightbox = !empty($attributes['lightbox']) && 'none' === $folderfolio_link;
+$folderfolio_gallery_id = $folderfolio_lightbox ? wp_unique_id('folderfolio-gallery-') : null;
+
 $folderfolio_wrapper = get_block_wrapper_attributes([
     'class' => 'folderfolio-gallery--' . $folderfolio_layout,
     // Two custom properties rather than two rules: the stylesheet is static
@@ -77,6 +98,42 @@ foreach ($folderfolio_attachments as $folderfolio_attachment) {
     if ('' === $folderfolio_image) {
         // A non-image attachment — a PDF in a folder of photographs. Skipped
         // rather than rendered as a broken tile.
+        continue;
+    }
+
+    if ($folderfolio_lightbox) {
+        $folderfolio_figure = '<figure class="wp-block-image size-large">' . $folderfolio_image;
+
+        $folderfolio_lightbox_caption = wp_get_attachment_caption($folderfolio_attachment->ID);
+
+        if (is_string($folderfolio_lightbox_caption) && '' !== $folderfolio_lightbox_caption) {
+            $folderfolio_figure .= '<figcaption class="wp-element-caption">'
+                . wp_kses_post($folderfolio_lightbox_caption)
+                . '</figcaption>';
+        }
+
+        $folderfolio_figure .= '</figure>';
+
+        $folderfolio_block = new WP_Block(
+            [
+                'blockName' => 'core/image',
+                'attrs' => [
+                    'id' => $folderfolio_attachment->ID,
+                    'sizeSlug' => 'large',
+                    'linkDestination' => 'none',
+                    'lightbox' => ['enabled' => true],
+                ],
+                'innerBlocks' => [],
+                'innerHTML' => $folderfolio_figure,
+                'innerContent' => [$folderfolio_figure],
+            ],
+            ['galleryId' => $folderfolio_gallery_id]
+        );
+
+        $folderfolio_out .= '<li class="wp-block-folderfolio-gallery__item">'
+            . $folderfolio_block->render()
+            . '</li>';
+
         continue;
     }
 
