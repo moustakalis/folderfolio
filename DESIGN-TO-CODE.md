@@ -123,9 +123,17 @@ hard-coded:
 | Count | Square tag | Plain text | Omitted (count is in the block) |
 | Scroll cap | Viewport | Frame | 192px — six whole rows |
 
-At depth 5 in the 300px rail the name still gets 132px: `12 + (24 × 4)` indent,
-20px switcher, 16px icon, 6px gaps, count tag, 10px padding. Verify this
-holds — it is the constraint the 24px indent was chosen against.
+At depth 5 in the 300px rail the name gets **110px**, measured: rail 300 −
+118 padding (`12 + 24 × 4` left, 10 right) − 20px switcher − 16px icon − 18px
+count tag − three 6px gaps.
+
+> This originally read 132px. That figure left out the count tag and one gap;
+> the arithmetic never reached it. Accepted at 110px — "On red", "Dark
+> variants" and most real folder names fit, and longer ones ellipsize, which
+> is the normal behaviour of a tree at depth. Reaching a true 132px would need
+> the indent down at roughly 18px, which buys 22px of name at the cost of the
+> structure the guide lines carry. Re-measured by
+> `design/preview/folder-row.html` on every open.
 
 ## Row states
 
@@ -274,7 +282,8 @@ REST surface already exists: `/folderfolio/v1/tree`, `/folders`,
   not injected into a notices hook.
 - All three designed schemes are correct, and the five undesigned ones fall
   through to Fresh without a stray colour.
-- Depth 5 in a 300px rail leaves 132px for the name.
+- Depth 5 in a 300px rail leaves 110px for the name (measured; the 132px
+  first stated here omitted the count tag and a gap).
 - The tree is one tab stop, fully operable from the keyboard, and announces
   selection.
 - No parent folder holding files ever shows a bare `0`.

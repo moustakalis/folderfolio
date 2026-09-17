@@ -62,11 +62,18 @@
   --ff-hover: rgba(255, 255, 255, 0.07);
   --ff-field: #32373c;
 
-  /* Fresh's --ff-accent-text is accent-on-white and unreadable on a dark
-     row. Without a value here it inherited straight through, so the
-     drag-over row's name rendered dark-on-dark. Found rendering screen 02
-     in Midnight. */
+  /* These three name a context — "on white" — that Midnight does not have.
+     With no value here they inherited Fresh's straight through and rendered
+     dark-on-dark: --ff-accent-text at 2.5:1, --ff-danger-text at 2.32:1.
+     Found rendering screen 02 in Midnight; TokensTest now fails the build if
+     any colour token loses its Midnight override again.
+
+     --ff-danger is a light red here, for text, borders and icons. A
+     destructive *fill* on Midnight needs a paired ink on top of it; that
+     pairing is settled when the delete button is built, not guessed now. */
   --ff-accent-text: #9ec8d6;
+  --ff-danger: #f39a9b;
+  --ff-danger-text: #f39a9b;
 }
 
 /**
