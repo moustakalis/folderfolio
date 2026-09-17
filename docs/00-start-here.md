@@ -187,6 +187,17 @@ the unit suite on 10 or 11 would hide exactly the incompatibility that broke CI
 once already. PHPStan is the same story — `phpstan.phar` plus the WordPress
 stubs needs no Composer either.
 
+**A stand-in analyser must run with this repository's parameters.** The one
+kept outside the checkout had `treatPhpDocTypesAsCertain: false` in a config of
+its own while `phpstan.neon` did not, so it reported clean on a commit CI
+failed with thirteen errors. It generates its config from `phpstan.neon` now
+and overrides only what it physically cannot have: the phpstan-wordpress
+extension and the php-stubs package, replaced by stubs on disk. That leaves one
+known blind spot — without the extension, `apply_filters()` return types are
+not read out of docblocks, so four of those thirteen could not have been
+reproduced there under any setting. Level, `phpVersion`,
+`treatPhpDocTypesAsCertain` and `ignoreErrors` all come from this file.
+
 The **integration** suite is the one that genuinely needs Composer, the
 WordPress test library and a MySQL. There is no shortcut; CI runs it on PHP
 8.1 through 8.4.
@@ -320,6 +331,14 @@ fatals before a single test runs. `phpstan.neon` pins `phpVersion` to the
 8.1–8.4 range the plugin claims, so the analyser reports them; PHPStan runs
 first in the PHP job for that reason. If you add a language feature, check
 which version introduced it.
+
+**A PHPDoc type in WordPress is a claim, not a guarantee**, which is why
+`phpstan.neon` sets `treatPhpDocTypesAsCertain: false`. `apply_filters()` is
+typed from the `@param` of its own docblock, so without it PHPStan calls the
+guards in `Catalog::all()` and `UploadRouter::route()` dead code — and they are
+the only thing between a third-party filter returning junk and a white screen.
+Errors that come from real PHP types are still reported. If you are told a
+check can never be true, look at where the type came from before deleting it.
 
 **PHPUnit 9 ignores attributes, without saying so.** composer.json pins
 phpunit ^9.6 because that is what the WordPress test library needs, and 9.6
