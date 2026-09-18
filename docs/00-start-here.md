@@ -369,10 +369,35 @@ matches.
 What *was* ours is the grid toolbar's second row. `.media-toolbar-secondary`
 wraps, core's five controls need 451px, ours add 395, and there are 628px
 beside a 310px rail — so it wrapped wherever the window happened to put the
-break. It is declared now: core's filters keep the first line, ours take the
-second. The break is a `::before` on the filter slot, which means core hiding
-that slot in select mode removes the break with it and the bulk actions come
-back up to one line.
+break. It is declared now, **before the bulk pair**, so that both modes read:
+
+    filter line   view switch · media type · date · folder
+    bulk group    [core's bulk control] · Add to folder · Move to folder
+
+The first version broke before the *folder select*, which pushed it off the
+filter line in grid while leaving it on that line in list — the same control in
+two places depending on a view toggle, which is worse than the wrap it
+replaced. Breaking before the bulk pair costs one extra rule: the break used to
+disappear for free in select mode, because core hides the filter slot and a
+hidden element generates no pseudo-element, but the bulk slot deliberately
+survives that and so the break has to be switched off by hand.
+
+**Verify a toolbar in its totality.** `library.spec.ts` surveys every control
+in the library chrome, groups them into lines, classifies each and compares the
+shapes in both modes — which is the only reason any of the above was caught.
+Three of its own assertions were wrong before it was right, and each mistake is
+worth not repeating:
+
+- **Counting core's filters asserts the fixture, not the layout.** Core drops
+  the date dropdown when every attachment is from one month — in list mode
+  only. A fresh Playground always is. Assert that ours is *last*, not that
+  there are two before it.
+- **A DOM-presence check does not compare against a visibility survey.** On an
+  empty library core still prints the bulk row and hides it, so `count() > 0`
+  reported a defect that was not there.
+- **Clustering by top and reading in that order is not reading order.** A 40px
+  select and a 28px icon on the same line have different tops; each line has to
+  be sorted by `left` before it means anything.
 
 > **A container cannot query itself.** `@container` resolves against the
 > nearest *ancestor* container, so a rule naming `.folderfolio-rail` inside the
