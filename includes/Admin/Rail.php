@@ -451,6 +451,11 @@ final class Rail
                 // Core's own wording for the same field, so the placeholder and
                 // the screen-reader label do not disagree.
                 'searchMedia' => __('Search media', 'folderfolio'),
+                // The narrow-width disclosure that stands for media type,
+                // date and folder once they no longer fit on one line.
+                'filters' => __('Filter', 'folderfolio'),
+                /* translators: %s is how many filters are currently set. */
+                'filtersActive' => __('%s filters active', 'folderfolio'),
                 'verbAdd' => __('Add to', 'folderfolio'),
                 'verbMove' => __('Move to', 'folderfolio'),
                 'moveNeedsFolder' => __(

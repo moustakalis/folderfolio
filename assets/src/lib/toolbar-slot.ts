@@ -64,6 +64,47 @@ export function filterSlotPlace(): Place | null {
 }
 
 /**
+ * Where the narrow-width `Filter` disclosure goes.
+ *
+ * First among the filters in both modes, because it *is* the filters once the
+ * container is narrow enough to collapse them — a control that stands for a
+ * group belongs where the group began, not after it.
+ *
+ * Grid: straight after the view switch, which is the one control that stays on
+ * the line at every width.
+ *
+ * List: inside `.wp-filter`, before the media-type select. Not inside
+ * `.actions`, which holds only the date and folder selects and core's `Filter`
+ * submit — the disclosure speaks for the media-type select too, so it has to
+ * sit outside the group it is not a member of.
+ *
+ * Returning null above the breakpoint is deliberately *not* how this is
+ * scoped: the width that decides it belongs to a container query, which script
+ * cannot read. The button is always placed and CSS decides whether it is on
+ * screen. See FilterDisclosure.tsx.
+ */
+export function disclosureSlotPlace(): Place | null {
+    const grid = document.querySelector('.media-toolbar-secondary');
+
+    if (grid) {
+        const viewSwitch = grid.querySelector('.view-switch');
+
+        return {
+            parent: grid,
+            before: viewSwitch ? viewSwitch.nextElementSibling : grid.firstElementChild,
+        };
+    }
+
+    const list = document.querySelector('#wpbody-content .wp-filter .filter-items');
+
+    if (list) {
+        return { parent: list, before: list.querySelector('.actions') };
+    }
+
+    return null;
+}
+
+/**
  * Where the bulk "Add to folder" trigger goes.
  *
  * List: inside the bulk-actions group, before Apply. Screen 06 draws exactly

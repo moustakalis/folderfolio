@@ -118,6 +118,14 @@ export function ArrowUpDownIcon(props: IconProps) {
     );
 }
 
+export function FilterIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <path d="M3 4h18l-7 8v6l-4 2v-8Z" />
+        </Svg>
+    );
+}
+
 export function EllipsisIcon(props: IconProps) {
     return (
         <Svg {...props}>

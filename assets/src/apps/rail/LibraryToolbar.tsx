@@ -24,9 +24,15 @@ import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
 import { AddToFolder } from './AddToFolder';
+import { FilterDisclosure } from './FilterDisclosure';
 import { FolderSelect, useNativeFolderSelect } from './FolderSelect';
 import type { FolderNode } from './queries';
-import { bulkSlotPlace, filterSlotPlace, useToolbarSlot } from '../../lib/toolbar-slot';
+import {
+    bulkSlotPlace,
+    disclosureSlotPlace,
+    filterSlotPlace,
+    useToolbarSlot,
+} from '../../lib/toolbar-slot';
 import { t } from '../../core/api';
 
 /**
@@ -72,6 +78,8 @@ export function LibraryToolbar({ nodes }: { nodes: FolderNode[] }) {
 
     const filterSlot = useToolbarSlot(filterSlotPlace, 'filter');
     const bulkSlot = useToolbarSlot(bulkSlotPlace, 'bulk');
+    // Placed in both modes and at every width; CSS decides where it shows.
+    const disclosureSlot = useToolbarSlot(disclosureSlotPlace, 'disclosure');
 
     useSearchPlaceholder(filterSlot, bulkSlot);
 
@@ -79,6 +87,7 @@ export function LibraryToolbar({ nodes }: { nodes: FolderNode[] }) {
         <>
             {filterSlot ? createPortal(<FolderSelect nodes={nodes} />, filterSlot) : null}
             {bulkSlot ? createPortal(<AddToFolder nodes={nodes} />, bulkSlot) : null}
+            {disclosureSlot ? createPortal(<FilterDisclosure />, disclosureSlot) : null}
         </>
     );
 }
