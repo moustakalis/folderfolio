@@ -36,17 +36,27 @@ test.describe('the library toolbar', () => {
         await expect(select.locator('option')).toContainText(['All media', 'Unassigned', 'Brand']);
     });
 
-    test('offers both bulk verbs, each disabled until it can do anything', async ({ page }) => {
-        const add = page.getByRole('button', { name: /add to folder/i });
-        const move = page.getByRole('button', { name: /move to folder/i });
+    test('spends one toolbar control on folders, not two', async ({ page }) => {
+        // The row has no width to spare, and a second trigger spent about
+        // 250px of it to sit there disabled — which is what both buttons were
+        // whenever nothing was selected, which is most of the time.
+        await expect(page.getByRole('button', { name: /add to folder/i })).toHaveCount(1);
+        await expect(page.getByRole('button', { name: /^move to folder$/i })).toHaveCount(0);
 
-        await expect(add).toBeDisabled();
-        await expect(move).toBeDisabled();
-
-        // A move needs a folder to move out of, so it says so rather than
-        // sitting there greyed with no explanation.
-        await expect(move).toHaveAttribute('title', /move needs a folder/i);
+        // Disabled until there is a selection, and that is now its only reason
+        // to be — which is visible on the screen behind it and needs no title.
+        await expect(page.getByRole('button', { name: /add to folder/i })).toBeDisabled();
     });
+
+    /*
+     * The move verb itself is exercised in upload.spec.ts, not here.
+     *
+     * Opening the flyout needs a selection, a selection needs an attachment,
+     * and a fresh Playground's library is empty — so a test here would have to
+     * upload one, which costs about twenty seconds on php-wasm. That spec
+     * already uploads, and already has a folder selected when it does, which
+     * is the state in which Move is enabled rather than greyed.
+     */
 
     test('keeps the bulk controls when core rebuilds the toolbar', async ({ page }) => {
         // Entering Bulk select re-renders the media frame's toolbar and hides
@@ -76,7 +86,7 @@ test.describe('the library toolbar', () => {
      * shapes:
      *
      *     filter line   view · view · filter · filter · FOLDER  [· commit]
-     *     bulk line     [· bulk] · ADD · MOVE · commit
+     *     bulk line     [· bulk] · ADD · commit
      *
      * An earlier version of the grid's line break put our select on its own
      * row, which left it fifth on core's filter line in list and first on a
@@ -210,14 +220,16 @@ test.describe('the library toolbar', () => {
             ).toBe('FOLDER');
 
             if (shape.bulkLine.length > 0) {
+                // One folder control here, not two. The move verb lives inside
+                // the flyout now; see AddToFolder's docblock.
                 expect(
                     shape.bulkLine.filter((k) => k === 'ADD' || k === 'MOVE'),
-                    `${mode}: the bulk pair is not together on one line`
-                ).toEqual(['ADD', 'MOVE']);
+                    `${mode}: expected exactly one folder action on the bulk line`
+                ).toEqual(['ADD']);
 
                 expect(
                     shape.bulkLine.includes('FOLDER'),
-                    `${mode}: the bulk pair shares a line with the folder select`
+                    `${mode}: the bulk action shares a line with the folder select`
                 ).toBe(false);
             }
         }

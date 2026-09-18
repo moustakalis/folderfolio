@@ -435,6 +435,15 @@ final class Rail
                 'filterByFolder' => __('Filter by folder', 'folderfolio'),
                 'addToFolder' => __('Add to folder', 'folderfolio'),
                 'moveToFolder' => __('Move to folder', 'folderfolio'),
+                // The verb switch inside the flyout. Short, because they sit
+                // in a segmented pair reading "Add to | Move to" above a list
+                // of folders that completes the sentence.
+                'folderAction' => __('What to do with the selection', 'folderfolio'),
+                // Core's own wording for the same field, so the placeholder and
+                // the screen-reader label do not disagree.
+                'searchMedia' => __('Search media', 'folderfolio'),
+                'verbAdd' => __('Add to', 'folderfolio'),
+                'verbMove' => __('Move to', 'folderfolio'),
                 'moveNeedsFolder' => __(
                     'Open a folder first — a move needs a folder to move out of.',
                     'folderfolio'

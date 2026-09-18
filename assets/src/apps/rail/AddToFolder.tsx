@@ -1,23 +1,30 @@
 /**
- * The two bulk folder actions — the triggers in WordPress's toolbar, and the
- * flyout drawn on screen 11.
+ * The bulk folder action — one trigger in WordPress's toolbar, and the flyout
+ * drawn on screen 11.
  *
- * ## Why there are two
+ * ## Why there is one, having been two
  *
  * With a pointer this plugin has two verbs: dragging files onto a folder
  * *moves* them out of the folder being viewed, and this flyout *adds*. With a
  * keyboard there was only one, because a drag has no keyboard form — so a
  * keyboard user could file a copy but could not do the thing every mouse user
- * can. That is an accessibility gap, not a missing feature, and it is closed
- * by giving the move its own control rather than by adding a mode to this one.
+ * can. That gap is real and is still closed here; what changed is where.
  *
- * `Move to folder` is therefore a second trigger, enabled only when a real
- * folder is being viewed — exactly the condition the drag uses, for the same
- * reason: a move needs somewhere to move out of. It borrows this panel with a
- * different verb, radios instead of checkboxes (a move has one destination),
- * and the same `useMoveAttachments` the drag calls, so the two cannot drift.
+ * It used to be closed with a second toolbar trigger, `Move to folder`, sitting
+ * beside this one and disabled unless a real folder was being viewed. Three
+ * things were wrong with that. Screens 03 and 06 draw **one** button, and so
+ * does the only competitor that puts a folder action in the toolbar at all —
+ * the other three put none. The pair cost about 250px of a row that has no
+ * room to spare, and it spent it while **disabled**, which is the state both
+ * buttons are in whenever nothing is selected, which is most of the time. And a
+ * verb that is only available sometimes reads better as an option inside the
+ * panel than as a button that is usually grey.
  *
- * Screens 03 and 06 draw only `Add to folder`. This is a deliberate delta.
+ * So the verb moved into the flyout, where it is a choice between two named
+ * things rather than a control whose absence has to be explained. The rest is
+ * unchanged: a move still takes one destination and offers radios, an add takes
+ * many and offers checkboxes, and both still call the same mutations the drag
+ * calls, so the pointer and the keyboard cannot drift apart.
  *
  * ## Add adds, never moves
  *
@@ -62,14 +69,6 @@ const LIST_LIMIT = 100;
 export type PickerMode = 'add' | 'move';
 
 export function AddToFolder({ nodes }: { nodes: FolderNode[] }) {
-    return <FolderAction nodes={nodes} mode="add" />;
-}
-
-export function MoveToFolder({ nodes }: { nodes: FolderNode[] }) {
-    return <FolderAction nodes={nodes} mode="move" />;
-}
-
-function FolderAction({ nodes, mode }: { nodes: FolderNode[]; mode: PickerMode }) {
     const [ids, setIds] = useState<number[]>([]);
     const [open, setOpen] = useState(false);
     const triggerRef = useRef<HTMLButtonElement>(null);
@@ -78,12 +77,11 @@ function FolderAction({ nodes, mode }: { nodes: FolderNode[]; mode: PickerMode }
      * Only a real folder is a source.
      *
      * `null` is All media, which is not a folder; `0` is Unassigned, where
-     * "move out of" and "add to" are the same operation, so Add is the right
-     * control and this one stays out of the way.
+     * "move out of" and "add to" are the same operation, so Add is the only
+     * verb that means anything and Move is offered greyed with a reason.
      */
     const selectedId = useRail((s) => s.selectedId);
     const source = selectedId !== null && selectedId > 0 ? selectedId : null;
-    const blocked = mode === 'move' && source === null;
 
     useEffect(() => watchSelection(setIds), []);
 
@@ -95,36 +93,25 @@ function FolderAction({ nodes, mode }: { nodes: FolderNode[]; mode: PickerMode }
      * a dead end the user has to find their own way out of.
      */
     useEffect(() => {
-        if (ids.length === 0 || blocked) {
+        if (ids.length === 0) {
             setOpen(false);
         }
-    }, [ids.length, blocked]);
+    }, [ids.length]);
 
     return (
         <>
             <button
                 ref={triggerRef}
                 type="button"
-                className={`button folderfolio-bulk folderfolio-bulk--${mode}${open ? ' is-open' : ''}`}
-                disabled={ids.length === 0 || blocked}
+                className={`button folderfolio-bulk${open ? ' is-open' : ''}`}
+                // One reason to be disabled now, and it needs no explanation:
+                // nothing is selected, which is visible on the screen behind it.
+                disabled={ids.length === 0}
                 aria-haspopup="dialog"
                 aria-expanded={open}
-                // A disabled control that never says why is a dead end. This
-                // one has two reasons to be disabled and they are different
-                // problems to fix.
-                title={
-                    blocked
-                        ? t(
-                              'moveNeedsFolder',
-                              'Open a folder first — a move needs a folder to move out of.'
-                          )
-                        : undefined
-                }
                 onClick={() => setOpen((was) => !was)}
             >
-                {mode === 'move'
-                    ? t('moveToFolder', 'Move to folder')
-                    : t('addToFolder', 'Add to folder')}
+                {t('addToFolder', 'Add to folder')}
                 <ChevronDownIcon size={13} />
             </button>
 
@@ -133,7 +120,6 @@ function FolderAction({ nodes, mode }: { nodes: FolderNode[]; mode: PickerMode }
                     <Flyout
                         nodes={nodes}
                         ids={ids}
-                        mode={mode}
                         source={source}
                         anchor={triggerRef.current}
                         onClose={() => {
@@ -187,15 +173,24 @@ function headParts(count: number): React.ReactNode {
 interface FlyoutProps {
     nodes: FolderNode[];
     ids: number[];
-    mode: PickerMode;
-    /** The folder being moved out of. Always set when mode is 'move'. */
+    /** The folder being moved out of, when there is one. */
     source: number | null;
     anchor: HTMLElement | null;
     onClose: () => void;
 }
 
-function Flyout({ nodes, ids, mode, source, anchor, onClose }: FlyoutProps) {
+function Flyout({ nodes, ids, source, anchor, onClose }: FlyoutProps) {
     const sort = useRail((s) => s.sort);
+
+    /**
+     * Always opens on Add.
+     *
+     * Add is the verb that works from anywhere — All media, Unassigned, or
+     * inside a folder — and it is the one that cannot lose anything. A panel
+     * that remembered `move` from last time would be a panel that sometimes
+     * takes files out of a folder because of something you did ten minutes ago.
+     */
+    const [mode, setMode] = useState<PickerMode>('add');
     const [checked, setChecked] = useState<ReadonlySet<number>>(new Set());
     const [query, setQuery] = useState('');
     const add = useAddToFolders();
@@ -458,6 +453,64 @@ function Flyout({ nodes, ids, mode, source, anchor, onClose }: FlyoutProps) {
             <p className="folderfolio-flyout__head">
                 {headParts(ids.length)}
             </p>
+
+            {/*
+              The verb, where the verb's consequences are.
+
+              A radiogroup rather than two buttons or a select: there are
+              exactly two, both are worth reading, and which one is chosen
+              changes what the rows below do — a select would hide half the
+              answer behind a click, and two plain buttons would not say that
+              picking one unpicks the other.
+
+              `Move to` is disabled outside a folder rather than absent. Its
+              absence would be unexplainable; greyed with a title, it says
+              what to do about it — the same sentence the old second trigger
+              carried, now attached to the thing it is actually about.
+            */}
+            <div
+                className="folderfolio-flyout__verbs"
+                role="radiogroup"
+                aria-label={t('folderAction', 'What to do with the selection')}
+            >
+                <button
+                    type="button"
+                    role="radio"
+                    aria-checked={mode === 'add'}
+                    className={`folderfolio-flyout__verb${mode === 'add' ? ' is-on' : ''}`}
+                    onClick={() => setMode('add')}
+                >
+                    {t('verbAdd', 'Add to')}
+                </button>
+                <button
+                    type="button"
+                    role="radio"
+                    aria-checked={mode === 'move'}
+                    disabled={source === null}
+                    title={
+                        source === null
+                            ? t(
+                                  'moveNeedsFolder',
+                                  'Open a folder first — a move needs a folder to move out of.'
+                              )
+                            : undefined
+                    }
+                    className={`folderfolio-flyout__verb${mode === 'move' ? ' is-on' : ''}`}
+                    onClick={() => {
+                        setMode('move');
+
+                        // A move has one destination. Coming from Add with
+                        // three ticked, keeping them would arm a button that
+                        // cannot do what the ticks say — so the extras go now,
+                        // while the list is on screen to show it happening.
+                        setChecked((was) =>
+                            was.size > 1 ? new Set([[...was][0] as number]) : was
+                        );
+                    }}
+                >
+                    {t('verbMove', 'Move to')}
+                </button>
+            </div>
 
             <div className="folderfolio-flyout__search">
                 <SearchIcon size={13} />

@@ -110,6 +110,28 @@ test.describe('uploading into the selected folder', () => {
         await expect.poll(() => directCount(page, folder.id), { timeout: 90_000 }).toBe(1);
     });
 
+    /*
+     * NOT COVERED: the flyout's Add/Move verb switch.
+     *
+     * It was written here and taken out again, and the reason is worth having
+     * on the record rather than rediscovering. Opening the flyout needs a
+     * selection; a selection needs an attachment; a fresh Playground's library
+     * is empty, so the test has to upload one, which costs about twenty
+     * seconds — and then Playwright's click on a tile in the grid's Bulk-select
+     * mode does not produce a selection the trigger can see, so the button
+     * never enables and the run burns its whole 180s budget. Six attempts went
+     * into the harness rather than the feature.
+     *
+     * Verified by hand instead, against a real WordPress on 18 Sep: Move is
+     * greyed with its title outside a folder, enabled inside one, flips the
+     * rows to radios, and the footer names the folder being moved out of. The
+     * toolbar half — one control where there used to be two — is covered in
+     * library.spec.ts, which needs no attachment.
+     *
+     * Worth doing properly when there is a cheap way to seed an attachment
+     * without an upload, or a selection without a click.
+     */
+
     test('an upload with no folder selected is filed nowhere', async ({ page }) => {
         const folder = await createFolder(page, 'Not this one');
         await page.reload();
