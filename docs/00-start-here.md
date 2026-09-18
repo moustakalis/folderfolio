@@ -562,6 +562,18 @@ though the folder had never been given one. `TokensTest` is what catches it.
 Never interpolate an unchecked value into `var(--ff-folder-…)` either; that
 is caller-controlled text inside a declaration.
 
+**A green suite is not a verification — look at the screen.** Every serious
+finding in the 18 Sep design audit was something no assertion had been told to
+look for. The collapsed rail measured 28px wide, carried a 2px rule, a 14px
+top inset, a 10px gap and a 24×44 reopen button — every property correct, every
+check passing — while its header, toolbar, fixed rows and search field drew
+across the page on top of the media library, because only `__body` and
+`__footer` were hidden. One screenshot would have shown it; a property diff
+never could. `tests/e2e/responsive.spec.ts` photographs every viewport width
+and the collapsed state into `test-results/responsive/` for exactly this
+reason, and those images are meant to be looked at after a green run.
+**After applying a fix, verify it visually before calling it done.**
+
 **Never call `up.start()` yourself after `addFile()`.** WordPress's own
 `FilesAdded` handler is what creates `file.attachment` — the model every later
 handler writes to — and it also starts the upload. plupload dispatches that
