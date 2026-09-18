@@ -97,9 +97,40 @@ final class FolderSelect
             <option value="0" <?php selected(0 === $current); ?>>
                 <?php echo esc_html(self::label(__('Unassigned', 'folderfolio'), 0, (int) $counts['unassigned'])); ?>
             </option>
-            <?php foreach ($rows as $row) : ?>
-                <option value="<?php echo (int) $row['id']; ?>" <?php selected($row['id'] === $current); ?>>
-                    <?php echo esc_html(self::label((string) $row['name'], $row['depth'] + 1, (int) $row['total_count'])); ?>
+            <?php
+            foreach ($rows as $row) :
+                $selected = $row['id'] === $current;
+                $indented = self::label((string) $row['name'], $row['depth'] + 1, (int) $row['total_count']);
+                ?>
+                <option
+                    value="<?php echo (int) $row['id']; ?>"
+                    data-folderfolio-indented="<?php echo esc_attr($indented); ?>"
+                    <?php selected($selected); ?>
+                >
+                    <?php
+                    /*
+                     * The selected row is printed without its indent, because
+                     * a shut <select> shows only this one option and nine
+                     * non-breaking spaces in front of a name reads as a
+                     * control that has lost its value. The indent says "inside
+                     * that one", and that sentence needs the other rows on
+                     * screen to mean anything.
+                     *
+                     * The indented label rides along in the data attribute so
+                     * that FolderSelect.tsx can put it back the instant before
+                     * the list opens — and so that it is put back from what
+                     * was printed rather than from a reconstruction.
+                     *
+                     * With scripts off nothing puts it back, and the open list
+                     * shows one un-indented row. That is the right way round:
+                     * the control is readable, and it is the degraded path.
+                     */
+                    echo esc_html(
+                        $selected
+                            ? self::label((string) $row['name'], 0, (int) $row['total_count'])
+                            : $indented
+                    );
+                    ?>
                 </option>
             <?php endforeach; ?>
         </select>

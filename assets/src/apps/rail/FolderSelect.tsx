@@ -28,9 +28,21 @@
  * concatenated, and an `<option>` has exactly one label for both states. The
  * indent is the instruction; the full path is already on screen, larger, in
  * the breadcrumb directly above.
+ *
+ * ## …but not while the control is closed
+ *
+ * An `<option>`'s single label is the reason the indent leaked: pick a folder
+ * three levels down and the closed control showed nine non-breaking spaces of
+ * nothing before the name, which reads as a control that has lost its value.
+ * The indent means "this folder is inside that one", and that sentence only
+ * has a referent while the list is open and the other folders are visible.
+ *
+ * So the selected option's indent is dropped while the list is shut and put
+ * back before it opens. `mousedown` and `keydown` both fire before the popup
+ * is painted, which is what makes it safe to rewrite the label there.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { flattenTree, useLibraryCounts, type FolderNode } from './queries';
 import { sortTree, useRail } from './store';
@@ -71,7 +83,16 @@ export function FolderSelect({ nodes }: { nodes: FolderNode[] }) {
     const sort = useRail((s) => s.sort);
     const { data: counts } = useLibraryCounts();
 
+    // Whether the list is being looked at, which is the only time the indent
+    // says anything. Both events that open a native select fire before it
+    // paints, so the labels are already right by the time it does.
+    const [open, setOpen] = useState(false);
+
     const rows = flattenTree(sortTree(nodes, sort));
+
+    /** A row's indent, unless it is the one showing in a shut control. */
+    const depthOf = (id: number | null, depth: number): number =>
+        !open && id === selectedId ? 0 : depth;
 
     return (
         <>
@@ -86,7 +107,13 @@ export function FolderSelect({ nodes }: { nodes: FolderNode[] }) {
                     + (selectedId === null ? '' : ' is-active')
                 }
                 value={toValue(selectedId)}
-                onChange={(event) => select(fromValue(event.target.value))}
+                onChange={(event) => {
+                    select(fromValue(event.target.value));
+                    setOpen(false);
+                }}
+                onMouseDown={() => setOpen(true)}
+                onKeyDown={() => setOpen(true)}
+                onBlur={() => setOpen(false)}
             >
                 <option value="">
                     {label(t('allMedia', 'All media'), 0, counts?.all ?? 0)}
@@ -97,12 +124,44 @@ export function FolderSelect({ nodes }: { nodes: FolderNode[] }) {
 
                 {rows.map(({ node, depth }) => (
                     <option key={node.id} value={node.id}>
-                        {label(node.name, depth + 1, node.total_count)}
+                        {label(node.name, depthOf(node.id, depth + 1), node.total_count)}
                     </option>
                 ))}
             </select>
         </>
     );
+}
+
+/** The indent `label()` writes and `Admin\FolderSelect::label()` prints. */
+const INDENT = /^\u00a0+/;
+
+/**
+ * The indent, on or off, for the select Admin\FolderSelect prints.
+ *
+ * That one is not ours to render, so its labels are rewritten in place. The
+ * indented label is printed into `data-folderfolio-indented`, which means
+ * restoring it is exact rather than a reconstruction — and means a select that
+ * has just come back from the server on a list refresh is already correct
+ * without this having run at all, because PHP prints the selected row
+ * un-indented.
+ */
+function setIndentVisible(select: HTMLSelectElement, visible: boolean): void {
+    const selected = select.selectedOptions[0];
+
+    for (const option of select.options) {
+        const indented = option.dataset.folderfolioIndented;
+
+        if (indented === undefined) {
+            // All media and Unassigned, which have no indent to hide.
+            continue;
+        }
+
+        const next = visible || option !== selected ? indented : indented.replace(INDENT, '');
+
+        if (option.text !== next) {
+            option.text = next;
+        }
+    }
 }
 
 /**
@@ -126,20 +185,54 @@ export function useNativeFolderSelect() {
     const select = useRail((s) => s.select);
 
     useEffect(() => {
-        const onChange = (event: Event) => {
+        const ours = (event: Event): HTMLSelectElement | null => {
             const target = event.target;
 
-            if (
-                target instanceof HTMLSelectElement
-                && target.name === FOLDER_QUERY_VAR
-            ) {
-                select(fromValue(target.value));
+            return target instanceof HTMLSelectElement && target.name === FOLDER_QUERY_VAR
+                ? target
+                : null;
+        };
+
+        const onChange = (event: Event) => {
+            const el = ours(event);
+
+            if (el) {
+                setIndentVisible(el, false);
+                select(fromValue(el.value));
+            }
+        };
+
+        // Both fire before the popup paints, which is what makes rewriting the
+        // labels here safe rather than a flicker.
+        const onOpen = (event: Event) => {
+            const el = ours(event);
+
+            if (el) {
+                setIndentVisible(el, true);
+            }
+        };
+
+        // focusout rather than blur: it is the bubbling one, so it reaches a
+        // listener on the document without a capture pass.
+        const onLeave = (event: Event) => {
+            const el = ours(event);
+
+            if (el) {
+                setIndentVisible(el, false);
             }
         };
 
         document.addEventListener('change', onChange);
+        document.addEventListener('mousedown', onOpen);
+        document.addEventListener('keydown', onOpen);
+        document.addEventListener('focusout', onLeave);
 
-        return () => document.removeEventListener('change', onChange);
+        return () => {
+            document.removeEventListener('change', onChange);
+            document.removeEventListener('mousedown', onOpen);
+            document.removeEventListener('keydown', onOpen);
+            document.removeEventListener('focusout', onLeave);
+        };
     }, [select]);
 
     useEffect(() => {
@@ -156,6 +249,10 @@ export function useNativeFolderSelect() {
                 if ([...el.options].some((option) => option.value === value)) {
                     el.value = value;
                 }
+
+                // The selected row changed, so the row that must lose its
+                // indent changed with it.
+                setIndentVisible(el, false);
 
                 el.classList.toggle('is-active', selectedId !== null);
             });
