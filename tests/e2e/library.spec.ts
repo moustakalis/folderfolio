@@ -57,6 +57,92 @@ test.describe('the library toolbar', () => {
         await expect(page.getByRole('button', { name: /add to folder/i })).toBeVisible();
         await expect(page.locator('#folderfolio-folder-filter')).toBeHidden();
     });
+
+    /**
+     * Two rows, and always the same two.
+     *
+     * `.media-toolbar-secondary` is a wrap container with 628px beside a
+     * 310px rail. Core's own five controls need 451px and ours add 395, so it
+     * wraps — and without a declared break, *where* it wraps moves with the
+     * window: the folder select on the first line at one width and the second
+     * at another. A row whose composition changes as you resize is worse than
+     * a row that is always two lines, so the break is declared.
+     *
+     * Asserted by line, not by pixel: what matters is that core's filters and
+     * ours are never on the same one, at any width, and that select mode
+     * collapses back to a single line rather than leaving an empty one where
+     * the filters were.
+     */
+    test('gives our controls the second line, at every width', async ({ page }) => {
+        const lines = () =>
+            page.evaluate(() => {
+                const top = (selector: string) => {
+                    const el = document.querySelector(selector);
+
+                    return el ? Math.round(el.getBoundingClientRect().top) : null;
+                };
+
+                return {
+                    dateFilter: top('#media-attachment-date-filters'),
+                    folderSelect: top('#folderfolio-folder-filter'),
+                    addToFolder: top('.folderfolio-slot--bulk button'),
+                    // The top of the toolbar's first line of controls.
+                    // Counting rows means guessing a bucket size, and a
+                    // spread cannot tell a second line from two controls of
+                    // different heights; "is this thing on the first line"
+                    // is the question actually being asked.
+                    firstLine: (() => {
+                        const tops = [
+                            ...document.querySelectorAll(
+                                '.media-toolbar-secondary > *, .media-toolbar-secondary > .folderfolio-slot > *'
+                            ),
+                        ]
+                            .filter((el) => el.getBoundingClientRect().width > 2)
+                            .map((el) => el.getBoundingClientRect().top);
+
+                        return tops.length ? Math.round(Math.min(...tops)) : 0;
+                    })(),
+                };
+            });
+
+        for (const width of [1600, 1280, 1024]) {
+            await page.setViewportSize({ width, height: 900 });
+            await page.waitForTimeout(300);
+
+            const at = await lines();
+
+            expect(
+                at.folderSelect,
+                `the folder select shares core's line at ${width}px`
+            ).toBeGreaterThan(at.dateFilter!);
+            expect(
+                at.addToFolder,
+                `the bulk triggers left the folder select's line at ${width}px`
+            ).toBe(at.folderSelect);
+        }
+
+        /*
+         * Select mode hides the filter slot, and a hidden element generates no
+         * pseudo-element — so the declared break goes with it and the bulk
+         * actions come back up to the first line. If the break were a real
+         * element instead, this is where it would show: an empty line above
+         * "Delete permanently" where the filters used to be.
+         *
+         * Asserted as "Add to folder is on the first line" rather than as a
+         * row count, because core's four buttons may themselves wrap on a
+         * narrow window and that is core's business, not ours.
+         */
+        await page.setViewportSize({ width: 1280, height: 900 });
+        await page.getByRole('button', { name: /bulk select/i }).click();
+        await page.waitForTimeout(300);
+
+        const selecting = await lines();
+
+        expect(
+            selecting.addToFolder! - selecting.firstLine,
+            'select mode left an empty line where the filters were'
+        ).toBeLessThan(20);
+    });
 });
 
 test.describe('list mode', () => {

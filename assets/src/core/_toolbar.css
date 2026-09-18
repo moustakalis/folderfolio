@@ -457,6 +457,38 @@
   display: contents !important;
 }
 
+/**
+ * The grid toolbar's second row, chosen rather than fallen into.
+ *
+ * `.media-toolbar-secondary` is `display: flex; flex-wrap: wrap`. Core's own
+ * five controls measure 451px; ours add 395 more, and the toolbar has 628px
+ * beside a 310px rail on a 1440 laptop — so it wraps, and *where* it wraps
+ * depends on the window: the folder select on the first line at one width and
+ * the second at another, with the two triggers following it or not. A row
+ * whose composition changes as you resize is worse than a row that is always
+ * two lines.
+ *
+ * So the break is declared. Core's view switch and its two filters keep the
+ * first line; ours take the second, in the order screens 03 and 11 draw them.
+ * `Bulk select` and the spinner follow ours on that line because they come
+ * after in source order, which is right: the control that turns selection on
+ * belongs beside the two things you would then do.
+ *
+ * A zero-height flex item at 100% basis is what forces a line break in a wrap
+ * container; there is no `break-before` for flex. It is a pseudo-element of
+ * the filter slot rather than an element of its own so that nothing has to
+ * keep it positioned — and so that it disappears exactly when it should:
+ * pressing `Bulk select` makes core hide the filter slot inline, which removes
+ * its pseudo-element too, and select mode collapses back to one row with no
+ * empty line above it. A real element would have needed its own rule for that
+ * and would have been wrong the day core changed what it hides.
+ */
+.media-toolbar-secondary > .folderfolio-slot--filter::before {
+  content: '';
+  flex: 0 0 100%;
+  height: 0;
+}
+
 .folderfolio-folder-select {
   max-width: 14rem;
   margin: 0 6px 0 0;
