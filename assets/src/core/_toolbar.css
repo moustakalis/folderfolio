@@ -562,10 +562,11 @@
   box-shadow: inset 0 0 0 1px var(--ff-sel);
 }
 
+/* No gap: the caret it used to separate is gone, and the label carries an
+   ellipsis instead. See AddToFolder's trigger. */
 .folderfolio-bulk {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
   margin: 0 6px 0 0;
   vertical-align: top;
   font-size: 12.5px;

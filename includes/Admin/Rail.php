@@ -434,6 +434,15 @@ final class Rail
                 // The filter-row controls — screens 03, 06 and 11.
                 'filterByFolder' => __('Filter by folder', 'folderfolio'),
                 'addToFolder' => __('Add to folder', 'folderfolio'),
+                /*
+                 * The toolbar trigger, separate from the label above because
+                 * only this one opens something. The ellipsis is the
+                 * convention for "asks before it acts" — `Apply` sits next to
+                 * it in list mode and does not ask. Translators: keep or drop
+                 * the ellipsis to match your language's own convention for a
+                 * command that opens a dialog.
+                 */
+                'addToFolderOpens' => __('Add to folder…', 'folderfolio'),
                 'moveToFolder' => __('Move to folder', 'folderfolio'),
                 // The verb switch inside the flyout. Short, because they sit
                 // in a segmented pair reading "Add to | Move to" above a list

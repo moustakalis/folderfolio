@@ -46,7 +46,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-import { ChevronDownIcon, SearchIcon } from './icons';
+import { SearchIcon } from './icons';
 import {
     flattenTree,
     useAddToFolders,
@@ -111,8 +111,17 @@ export function AddToFolder({ nodes }: { nodes: FolderNode[] }) {
                 aria-expanded={open}
                 onClick={() => setOpen((was) => !was)}
             >
-                {t('addToFolder', 'Add to folder')}
-                <ChevronDownIcon size={13} />
+                {/*
+                  An ellipsis, not a caret.
+
+                  Something has to say this opens a picker rather than filing
+                  immediately, because `Apply` sits right beside it in list mode
+                  and does act immediately. The board draws a caret here; an
+                  ellipsis carries the same meaning by an older and quieter
+                  convention, and costs about 6px of a row with none to spare
+                  instead of about 21. Recorded as a deliberate deviation.
+                */}
+                {t('addToFolderOpens', 'Add to folder…')}
             </button>
 
             {open ? (
