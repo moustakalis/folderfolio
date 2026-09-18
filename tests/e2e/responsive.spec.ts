@@ -10,15 +10,16 @@ import { createFolder, resetFolders, waitForTree } from './helpers/folders';
  * left the browser at 640px by accident. This makes that accident repeatable.
  *
  * **It asserts mechanics, not taste.** The design board has thirteen screens
- * and not one of them is narrow, so there is no specification for what the
- * rail should *be* on a phone; asserting a number here would be inventing one
- * and freezing it. What is checked instead is the set of things that are
- * wrong at any width under any design: a page that scrolls sideways, a label
- * clipped by its own button, a child rendering outside its parent, a
+ * and not one of them is narrow. What is checked is the set of things that
+ * are wrong at any width under any design: a page that scrolls sideways, a
+ * label clipped by its own button, a child rendering outside its parent, a
  * breakpoint that does not fire where its own CSS says it does.
  *
- * The undesigned figures are measured and printed rather than asserted, so
- * the numbers are in the run output when the design question is answered.
+ * The one narrow decision that has since been made — below 782px the rail is
+ * a closed bar that opens on a tap, argued and measured in the disclosure
+ * block at the foot of _rail.css — is asserted as a shape and a default, not
+ * as a pixel count. Everything else undesigned is still measured and printed
+ * rather than asserted, so the numbers are in the run output.
  *
  * **Every width is also photographed**, into `test-results/responsive/`. An
  * assertion can only fail on what it was told to look for, and every serious
@@ -50,9 +51,17 @@ interface Shot {
     railBeforeTitlePx: number;
     toolWidths: number[];
     searchWidth: number;
+
+    /** The rail's height in the state the page loads in at this width. */
+    closedHeight: number;
+
+    /** Whether the reopen bar is on screen — i.e. whether this is a phone. */
+    disclosure: boolean;
 }
 
-async function measure(page: Page, width: number): Promise<Shot> {
+type Measured = Omit<Shot, 'closedHeight' | 'disclosure'>;
+
+async function measure(page: Page, width: number): Promise<Measured> {
     return page.evaluate((w) => {
         const q = (s: string) => document.querySelector(s);
         const r = (el: Element) => el.getBoundingClientRect();
@@ -121,18 +130,48 @@ test.describe('the rail across viewport widths', () => {
             await page.setViewportSize({ width, height: 900 });
             // Let flex and the media query settle before reading geometry.
             await page.waitForTimeout(400);
-            shots.push(await measure(page, width));
+
+            /*
+             * Below the breakpoint the rail loads closed, and everything the
+             * measurements below look at is display:none inside it. So: record
+             * the state the page actually loads in, photograph it, then open
+             * the bar so that the furniture being compared across widths is
+             * the same furniture at every one of them.
+             */
+            const closedHeight = await page.evaluate(() =>
+                Math.round(document.getElementById('folderfolio-rail')!.getBoundingClientRect().height)
+            );
+            const disclosure = await page.evaluate(
+                () =>
+                    getComputedStyle(document.querySelector('.folderfolio-rail__tab')!).display
+                    !== 'none'
+            );
+
             await page.screenshot({ path: `test-results/responsive/${width}.png` });
+
+            if (disclosure) {
+                await page.locator('.folderfolio-rail__tab').click();
+                await page.waitForTimeout(250);
+            }
+
+            shots.push({ ...(await measure(page, width)), closedHeight, disclosure });
+
+            if (disclosure) {
+                await page.screenshot({ path: `test-results/responsive/${width}-open.png` });
+                await page.locator('[data-folderfolio-collapse]').click();
+                await page.waitForTimeout(200);
+            }
         }
 
         // eslint-disable-next-line no-console
         console.log(
-            '\n  width   overflowX  layout        railBeforeTitle  tools                 search\n'
+            '\n  width   overflowX  layout        closed  railBeforeTitle  tools                 search\n'
                 + shots
                     .map(
                         (s) =>
                             `  ${String(s.width).padEnd(6)}  ${String(s.docOverflowX).padEnd(9)}  `
                             + `${(s.stacked ? 'stacked' : s.sideBySide ? 'side-by-side' : 'overlapping').padEnd(12)}  `
+                            + `${`${s.closedHeight}px`.padEnd(6)}  `
                             + `${String(s.railBeforeTitlePx).padEnd(15)}  `
                             + `${s.toolWidths.join('/').padEnd(20)}  ${s.searchWidth}`
                     )
@@ -164,6 +203,36 @@ test.describe('the rail across viewport widths', () => {
 
         expect(at783.sideBySide, '783px should still be two columns').toBe(true);
         expect(at782.stacked, '782px should stack').toBe(true);
+
+        /*
+         * And below it the rail is a disclosure rather than a panel: closed
+         * when the page loads, a bar rather than a band.
+         *
+         * The second loop is the control, and it is the one that matters. A
+         * rule that hid the rail at every width would satisfy the first loop
+         * completely — it is only by asserting that 783px and up still get a
+         * full-height column, and no bar to open, that the first loop means
+         * "below the breakpoint" rather than "everywhere".
+         */
+        const phones = shots.filter((s) => s.disclosure);
+        const desktops = shots.filter((s) => !s.disclosure);
+
+        expect(
+            phones.map((s) => s.width),
+            'the bar belongs below the breakpoint and nowhere else'
+        ).toEqual([782, 600, 390]);
+        expect(desktops.map((s) => s.width)).toEqual([1600, 1280, 960, 783]);
+
+        for (const s of phones) {
+            // A row, not a band. The band this replaced was 375px, which put
+            // the first thumbnail 1.34 screens down the page; the bar is 44px
+            // plus the rule under it.
+            expect(s.closedHeight, `the closed bar at ${s.width}px`).toBeLessThanOrEqual(56);
+        }
+
+        for (const s of desktops) {
+            expect(s.closedHeight, `the rail column at ${s.width}px`).toBeGreaterThan(300);
+        }
 
         /*
          * And stacking must not stretch the design.
@@ -266,6 +335,112 @@ test.describe('the rail across viewport widths', () => {
             expect(clipped[w], `labels clipped at a ${w}px rail`).toEqual([]);
             expect(crushed[w], `icon shrunk below 14px at a ${w}px rail`).toEqual([]);
         }
+    });
+
+    /**
+     * The phone disclosure, end to end.
+     *
+     * Three things have to be true together, and each of them was wrong at
+     * some point while this was being built:
+     *
+     * 1. It is closed on load — and closed *by CSS*, from a selector that
+     *    matches before any script runs, so a phone never paints the 375px
+     *    band first. Asserted as the absence of the class rather than as its
+     *    presence, which is the only way the "before JS" part is testable
+     *    from here at all.
+     * 2. A tap on the row opens it — the row, not the 24px button inside it,
+     *    because the row is the tap target the platform asks for.
+     * 3. Neither of those touches the stored preference. `open` is what the
+     *    user chose on their desktop; a narrow window is not a choice. This
+     *    is checked by reloading: if the tap had been persisted, the bar would
+     *    come back open.
+     *
+     * And throughout: the folder select on the toolbar's filter line is
+     * present and complete, because it, not the bar, is what carries
+     * navigation at this width. The bar is for managing folders.
+     */
+    test('below the breakpoint the rail is a bar that opens on a tap, and forgets it', async ({
+        page,
+    }) => {
+        /*
+         * The fixture is built at desktop width, because building it means
+         * seeing the tree and at 390px the tree is behind the bar — which is
+         * the feature. Then the viewport shrinks and the page is loaded
+         * again, so that what follows is a real load at phone width and not a
+         * resize of a page that opened wide.
+         */
+        await page.setViewportSize({ width: 1280, height: 900 });
+        await page.goto('/wp-admin/upload.php?mode=grid');
+        await page.locator('#folderfolio-rail').waitFor();
+        await resetFolders(page);
+        await createFolder(page, 'Brand');
+        await page.reload();
+        await waitForTree(page, 'Brand');
+
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.reload();
+        await page.locator('#folderfolio-rail').waitFor();
+
+        const rail = page.locator('#folderfolio-rail');
+        const bar = page.locator('.folderfolio-rail__tab');
+        // By id, not by class: the server prints the shell with this class and
+        // React renders a second element with the same class inside it, so
+        // `.folderfolio-rail__app` matches two nested nodes. (Worth tidying;
+        // it is not this change's business.)
+        const tree = page.locator('#folderfolio-rail-app');
+
+        // 1. Closed on load.
+        await expect(bar).toBeVisible();
+        await expect(tree).toBeHidden();
+        await expect(page.locator('body.folderfolio-rail-peek')).toHaveCount(0);
+        await expect(page.locator('[data-folderfolio-expand]')).toHaveAttribute(
+            'aria-expanded',
+            'false'
+        );
+
+        // Navigation does not depend on opening it: the whole tree is on the
+        // select, indented, with counts.
+        const select = page.locator('#folderfolio-folder-filter');
+        await expect(select).toBeVisible();
+        await expect(select.locator('option')).toContainText(['All media', 'Unassigned', 'Brand']);
+
+        // 2. A tap on the row opens it.
+        await bar.click();
+        await expect(tree).toBeVisible();
+        await expect(bar).toBeHidden();
+        await expect(page.locator('[data-folderfolio-collapse]')).toHaveAttribute(
+            'aria-expanded',
+            'true'
+        );
+        await page.screenshot({ path: 'test-results/responsive/phone-open.png' });
+
+        // Open, it is still the rail: the tools are there, which is the point
+        // of having a bar rather than hiding the rail outright.
+        await expect(page.getByRole('button', { name: /new folder/i })).toBeVisible();
+        await expect(page.locator('.folderfolio-rail__tool')).toHaveCount(4);
+
+        // Collapse closes it again, and focus lands on the control that
+        // replaces the one that just disappeared.
+        await page.locator('[data-folderfolio-collapse]').click();
+        await expect(tree).toBeHidden();
+        await expect(page.locator('.folderfolio-rail__expand')).toBeFocused();
+
+        // 3. None of that was written down.
+        await bar.click();
+        await expect(tree).toBeVisible();
+        await page.reload();
+        await page.locator('#folderfolio-rail').waitFor();
+        await expect(page.locator('.folderfolio-rail__tab')).toBeVisible();
+        await expect(tree).toBeHidden();
+
+        // The control for that last clause: widen, and the desktop preference
+        // is exactly where it was left — open, a column, no bar. A tap that
+        // had persisted would show up here as a collapsed desktop rail.
+        await page.setViewportSize({ width: 1280, height: 900 });
+        await page.waitForTimeout(400);
+        await expect(page.locator('.folderfolio-rail__tab')).toBeHidden();
+        await expect(rail).not.toHaveClass(/is-collapsed/);
+        await expect(tree).toBeVisible();
     });
 
     /**

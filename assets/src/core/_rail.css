@@ -423,14 +423,119 @@ body.folderfolio-resizing * {
    * the full width, which is what makes it read as a section above the
    * library rather than a panel beside it.
    *
-   * This is not an answer to the design question — at phone width, is the
-   * rail a tab, a sheet, or a select? The board has no narrow screen at all.
-   * It stops the stretch until that is decided, and it is one declaration to
-   * remove when it is.
+   * The board has no narrow screen at all, so the design question — at phone
+   * width, is the rail a tab, a sheet, or a select? — was answered below
+   * rather than on it. The answer is "a tab that opens a sheet", and this cap
+   * is what the sheet keeps of the 300px design once it is open.
    */
   .folderfolio-rail__app,
   .folderfolio-rail__footer {
     max-width: min(var(--ff-rail-w), 100%);
+  }
+
+  /* --------------------------------------- the rail as a disclosure */
+
+  /**
+   * At phone width the rail is closed by default and opens on a tap.
+   *
+   * Stacked open it is a 375px band above the library, which puts the first
+   * thumbnail 960px down the page — 1.34 screens of scrolling before you
+   * reach a single file. Measured against the market at the same 528px
+   * viewport: Real Media Library stacks too, at 953px; FileBird and
+   * CatFolders keep two columns and leave the grid 205px and 225px of the
+   * 528; Folders (Premio) drops its tree at 640px and reaches the first file
+   * in 344px. Premio is right about the priority and wrong about the exit —
+   * the same breakpoint also hides .wcp-hide-show-buttons, so once the tree
+   * is gone at that width there is no way back to it.
+   *
+   * So: closed to a 44px bar. Premio's saving without Premio's dead end, and
+   * every folder still one tap away. Navigation does not even need the tap —
+   * the folder select on the toolbar's filter line carries the whole tree,
+   * indented, with counts — which makes the bar the thing you open in order
+   * to *manage* folders: new, rename, delete, sort, search.
+   *
+   * The state is a body class and nothing else. Deliberately not the stored
+   * collapse preference, for the reason at the top of this block: a
+   * preference set by turning a phone sideways would follow the user back to
+   * their desktop. It is also why the closed state is written as
+   * :not(.folderfolio-rail-peek) rather than as a class a script adds — the
+   * bar is what the page paints before any script runs, so there is no flash
+   * of a 375px rail on a phone.
+   */
+
+  /**
+   * .is-collapsed sets width and flex-basis to 28px at (0,2,0), which beats
+   * the `.folderfolio-rail { width: auto }` a few rules above it in this same
+   * block. Without this, someone who left the rail collapsed on their desktop
+   * would get a 28px sliver here instead of a full-width bar.
+   */
+  .folderfolio-rail.is-collapsed {
+    width: auto;
+    flex-basis: auto;
+    overflow: visible;
+  }
+
+  /* Closed. */
+  body.folderfolio-has-rail:not(.folderfolio-rail-peek) .folderfolio-rail {
+    max-height: none;
+  }
+
+  body.folderfolio-has-rail:not(.folderfolio-rail-peek) .folderfolio-rail__app,
+  body.folderfolio-has-rail:not(.folderfolio-rail-peek) .folderfolio-rail__footer {
+    display: none;
+  }
+
+  /**
+   * Open.
+   *
+   * (0,3,1) against `.folderfolio-rail.is-collapsed .folderfolio-rail__app` at
+   * (0,3,0). The body element selector is the single point of difference, and
+   * it is what lets a tap here win over a collapse stored from the desktop.
+   */
+  body.folderfolio-has-rail.folderfolio-rail-peek .folderfolio-rail__app,
+  body.folderfolio-has-rail.folderfolio-rail-peek .folderfolio-rail__footer {
+    display: flex;
+  }
+
+  /**
+   * The tab, laid on its side.
+   *
+   * On the desktop these two nodes are a 28px column: a 24px chevron with the
+   * word Folders set vertically under it. Here they are a 44px row — the
+   * platform's minimum tap target, which the 24px button alone is not, and
+   * why rail.ts listens on the row rather than on the button.
+   */
+  body.folderfolio-has-rail:not(.folderfolio-rail-peek) .folderfolio-rail__tab {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    height: 44px;
+    padding: 0 8px;
+    cursor: pointer;
+  }
+
+  body.folderfolio-has-rail.folderfolio-rail-peek .folderfolio-rail__tab {
+    display: none;
+  }
+
+  .folderfolio-rail__tab-label {
+    writing-mode: horizontal-tb;
+  }
+
+  /* 24x44 is the shape of a control in a 28px column. In a 44px row the same
+     box reads as a tall pill standing on its own, so it is squared off; the
+     row, not the button, is what carries the tap target. */
+  body.folderfolio-has-rail:not(.folderfolio-rail-peek) .folderfolio-rail__expand {
+    width: 28px;
+    height: 28px;
+  }
+
+  /* The chevron points the way the panel opens. The rotation is on the glyph
+     and not on the button, whose border and focus ring are both square to the
+     row. */
+  .folderfolio-rail__expand svg {
+    transform: rotate(90deg);
   }
 }
 

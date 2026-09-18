@@ -230,14 +230,87 @@ function start(config: RailConfig, rail: HTMLElement, handle: HTMLElement): void
         persist();
     });
 
+    // -------------------------------------------------------------- narrow
+
+    /**
+     * Below core's own mobile breakpoint the rail is not a column beside the
+     * library but a bar above it, closed until it is tapped. The disclosure
+     * block at the foot of _rail.css has the reasoning and the numbers.
+     *
+     * The state there is a body class and not `open`, because `open` is a
+     * stored preference and a phone is not a preference. Nothing in this
+     * section calls persist() or assigns to `open`, so a window that goes
+     * back to full width goes back to whatever the rail was set to.
+     */
+    const narrow = window.matchMedia('(max-width: 782px)');
+    const tab = rail.querySelector<HTMLElement>('.folderfolio-rail__tab');
+
+    function peek(next: boolean, moveFocus: boolean): void {
+        document.body.classList.toggle('folderfolio-rail-peek', next);
+
+        // Both buttons describe the same region, and at this width the body
+        // class is what that region's state is. applyOpen's value, which
+        // comes from the preference, would be wrong in both directions.
+        collapseButton?.setAttribute('aria-expanded', String(next));
+        expandButton?.setAttribute('aria-expanded', String(next));
+
+        // Same reason as in applyOpen: opening hides the control that was
+        // pressed, and focus left on a display:none element goes to the top
+        // of the document.
+        if (moveFocus) {
+            (next ? collapseButton : expandButton)?.focus();
+        }
+    }
+
+    // On the row rather than on the button: the button is 24px wide and the
+    // row is a 44px tap target. A click on the button bubbles to here, which
+    // is why the button's own handler returns early at this width instead of
+    // toggling a second time.
+    tab?.addEventListener('click', () => {
+        if (narrow.matches) {
+            peek(true, true);
+        }
+    });
+
+    /**
+     * Crossing the breakpoint gives each side its own default back: the bar
+     * closes, and the desktop gets the stored preference, unread and
+     * unwritten in the meantime.
+     *
+     * The order is the same as the startup sequence at the foot of this
+     * function, and for the same reason: applyOpen writes both aria-expanded
+     * attributes from the preference, so on a phone peek has to have the last
+     * word on them. Written the other way round — which it was — a window
+     * dragged narrow ended up with a closed bar announcing itself as expanded.
+     */
+    narrow.addEventListener('change', () => {
+        document.body.classList.remove('folderfolio-rail-peek');
+        applyOpen(open, false);
+
+        if (narrow.matches) {
+            peek(false, false);
+        }
+    });
+
     // ------------------------------------------------------------ collapse
 
     collapseButton?.addEventListener('click', () => {
+        if (narrow.matches) {
+            peek(false, true);
+
+            return;
+        }
+
         applyOpen(false, true);
         persist();
     });
 
     expandButton?.addEventListener('click', () => {
+        // The tab's listener above already has this click, on its way up.
+        if (narrow.matches) {
+            return;
+        }
+
         applyOpen(true, true);
         persist();
     });
@@ -247,6 +320,13 @@ function start(config: RailConfig, rail: HTMLElement, handle: HTMLElement): void
     // markup if either is ever changed in one place and not the other.
     applyOpen(open, false);
     applyWidth(width, false);
+
+    // After applyOpen, not before: on a phone the bar is closed whatever the
+    // preference says, so this has to be the last word on the two
+    // aria-expanded attributes it just set.
+    if (narrow.matches) {
+        peek(false, false);
+    }
 }
 
 export {};
