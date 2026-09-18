@@ -562,11 +562,17 @@ though the folder had never been given one. `TokensTest` is what catches it.
 Never interpolate an unchecked value into `var(--ff-folder-…)` either; that
 is caller-controlled text inside a declaration.
 
-**plupload will not upload twice from one page without a reload.** A second
-`addFile()` + `start()` in the same page session quietly does nothing — no
-error, no event — which looks exactly like the upload feature being broken.
-Reload between uploads when checking by hand; `tests/e2e/upload.spec.ts`
-uploads once per test for the same reason.
+**Never call `up.start()` yourself after `addFile()`.** WordPress's own
+`FilesAdded` handler is what creates `file.attachment` — the model every later
+handler writes to — and it also starts the upload. plupload dispatches that
+event asynchronously, so a `start()` called straight after `addFile()` begins
+uploading before the model exists, `UploadProgress` throws
+`Cannot read properties of undefined (reading 'set')` inside
+`wp-plupload.js`, and the uploader is left in STARTED for good. The file
+still reaches the server; nothing else ever uploads again on that page,
+because `start()` on a STARTED uploader is a no-op. It reads exactly like
+"uploads only work once", and it is not — add the file and let WordPress
+start it.
 
 **An upload's folder travels on the request, not in the DOM.** `UploadTarget`
 reads `folderfolio_folder` from `$_REQUEST` on `add_attachment`, and
