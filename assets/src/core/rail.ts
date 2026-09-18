@@ -28,6 +28,13 @@ declare global {
     }
 }
 
+/**
+ * The collapsed rail's width, which is RailPreferences::TAB_WIDTH and the
+ * 28px in _rail.css's .is-collapsed rule. It is not in RailConfig because the
+ * server sends what the user chose, and this is a constant of the design.
+ */
+const TAB_WIDTH = 28;
+
 const config = window.folderFolioRail;
 
 const rail = document.getElementById('folderfolio-rail');
@@ -67,6 +74,7 @@ function start(config: RailConfig, rail: HTMLElement, handle: HTMLElement): void
         width = clamp(next);
 
         rail.style.setProperty('--ff-rail-w', `${width}px`);
+        gutter();
         handle.setAttribute('aria-valuenow', String(width));
 
         if (announce) {
@@ -79,6 +87,7 @@ function start(config: RailConfig, rail: HTMLElement, handle: HTMLElement): void
 
         rail.classList.toggle('is-collapsed', !open);
         document.body.classList.toggle('folderfolio-rail-collapsed', !open);
+        gutter();
         handle.hidden = !open;
 
         collapseButton?.setAttribute('aria-expanded', String(open));
@@ -90,6 +99,20 @@ function start(config: RailConfig, rail: HTMLElement, handle: HTMLElement): void
         if (moveFocus) {
             (open ? collapseButton : expandButton)?.focus();
         }
+    }
+
+    /**
+     * The width the rail occupies right now, on <body> for the rest of the
+     * admin page — _rail.css indents core's footer by it so that the footer
+     * neither sits under the rail nor takes the clicks aimed at Collapse.
+     *
+     * Rail.php prints the same property before first paint; this keeps it
+     * true through a drag and through collapsing. Collapsed it is the tab
+     * width, not the stored one, which is the difference between this and
+     * --ff-rail-w.
+     */
+    function gutter(): void {
+        document.body.style.setProperty('--ff-rail-gutter', `${open ? width : TAB_WIDTH}px`);
     }
 
     function clamp(value: number): number {

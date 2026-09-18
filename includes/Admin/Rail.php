@@ -166,7 +166,22 @@ final class Rail
         $prefs = RailPreferences::forUser(get_current_user_id());
         $width = $prefs['open'] ? $prefs['width'] : RailPreferences::TAB_WIDTH;
 
+        /*
+         * The width the rail actually occupies, published where the rest of
+         * the admin page can read it.
+         *
+         * Core's #wpfooter is absolutely positioned across the whole content
+         * area, the rail's column included, so its text slides under the rail
+         * and — because it comes later in the document — its transparent box
+         * swallows clicks meant for Collapse. _rail.css indents the footer by
+         * this much. It is a second property rather than --ff-rail-w because
+         * that one keeps the stored width while the rail is collapsed, which
+         * is what reopening restores; this one is the width on screen now.
+         */
         ?>
+        <style id="folderfolio-rail-gutter">
+            body.folderfolio-has-rail { --ff-rail-gutter: <?php echo (int) $width; ?>px; }
+        </style>
         <div
             id="folderfolio-rail"
             class="folderfolio folderfolio-rail<?php echo $prefs['open'] ? '' : ' is-collapsed'; ?>"

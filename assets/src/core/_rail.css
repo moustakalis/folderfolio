@@ -39,6 +39,31 @@ body.folderfolio-has-rail #wpbody > .clear {
   display: none;
 }
 
+/**
+ * Core's footer, moved out from under the rail.
+ *
+ * #wpfooter is `position: absolute; bottom: 0` across the whole content area
+ * — the rail's column included — so at the foot of a scrolled page it lay on
+ * top of the rail's last 32px. Two things went wrong there: its text was
+ * hidden behind the opaque rail, and its transparent box, being later in the
+ * document, took every click aimed at Collapse. elementFromPoint over the
+ * Collapse button returned core's "WordPress" link.
+ *
+ * --ff-rail-gutter is the width the rail occupies right now — printed by
+ * Rail.php before first paint and kept true by rail.ts through drags and
+ * collapses. The 20px is core's own padding, which this replaces.
+ */
+body.folderfolio-has-rail #wpfooter {
+  padding-left: calc(var(--ff-rail-gutter, 0px) + 20px);
+}
+
+/* And the rail paints over the footer rather than under it, so that the
+   handful of pixels the indent cannot account for — a theme with its own
+   footer padding, say — still belong to the rail. */
+body.folderfolio-has-rail .folderfolio-rail {
+  z-index: 1;
+}
+
 /* ------------------------------------------------------------- the rail */
 
 .folderfolio-rail {
@@ -286,6 +311,12 @@ body.folderfolio-resizing * {
  * desktop.
  */
 @media screen and (max-width: 782px) {
+  /* The rail is a static, full-width band above the library here, so nothing
+     is beside the footer to indent it past. */
+  body.folderfolio-has-rail #wpfooter {
+    padding-left: 20px;
+  }
+
   body.folderfolio-has-rail #wpbody {
     display: block;
   }
