@@ -357,6 +357,23 @@ reading — none of them had an answer in the board:
 
 **The conformance backlog is empty.** What remains is the release track.
 
+One more came out of asking why the two library modes have different
+toolbars. Most of that difference is core's — grid has one Backbone
+`.media-toolbar`; list has a PHP `.wp-filter` *and* a separate `.tablenav.top`,
+with Filter and Search Media buttons because `#posts-filter` is a GET form,
+`Bulk actions ▾` + Apply instead of `Bulk select` because list tables select by
+checkbox, and pagination the grid does not have. The board has two screens for
+exactly that reason, and our controls go into whichever of core's groups
+matches.
+
+What *was* ours is the grid toolbar's second row. `.media-toolbar-secondary`
+wraps, core's five controls need 451px, ours add 395, and there are 628px
+beside a 310px rail — so it wrapped wherever the window happened to put the
+break. It is declared now: core's filters keep the first line, ours take the
+second. The break is a `::before` on the filter slot, which means core hiding
+that slot in select mode removes the break with it and the bulk actions come
+back up to one line.
+
 > **A container cannot query itself.** `@container` resolves against the
 > nearest *ancestor* container, so a rule naming `.folderfolio-rail` inside the
 > rail's own container query matches nothing — it failed silently and left the
