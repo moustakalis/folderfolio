@@ -33,10 +33,39 @@ the current diff. The domain layer, the REST surface and the importers are
 | More, and the colour picker behind it | done — and a folder stores a swatch name now, not a hex |
 | Uploads into the selected folder | done — a request parameter, not a DOM watcher |
 | The rail footer's folder total | done — it had been an empty span since step 3 |
-| Design audit of the library screen | 14 findings, plus 4 found alongside — all closed |
+| Design audit of the library screen | 14 findings, plus 5 found alongside — all closed |
+
+**The design conformance backlog is empty.** Every finding from the 18 Sep
+audit is closed and verified in the browser; what remains before 1.0 is the
+release track — `readme.txt`, Plugin Check in CI, the version bump and an RC
+tag, and five review items.
+
+Checks at the end of 18 Sep: **PHPStan clean, 107 unit, 34 e2e, `tsc` clean**,
+and **no `test.fail()` left anywhere in the suite** — both annotations came off
+the moment their fixes landed, which is what they are for. The 40 integration
+tests could not run that day: `github.com` is 403 at the session's egress
+proxy, which is where the WordPress test library comes from.
 
 `DESIGN-TO-CODE.md`'s "Suggested order" is the sequence being followed, and its
 screen numbers are referenced throughout the code comments.
+
+### Three recorded deviations from the board
+
+Each was a decision the handoff does not contain, taken deliberately:
+
+1. **The eyebrow carries the product's name**, not "Folders" — in the rail and
+   in the media modal's folder column. Not run through `t()`; a brand is not
+   translated.
+2. **Below a 300px rail the toolbar is icons only, and the indent drops to
+   16px.** At 300 and up both are exactly the board. 298px in the container
+   queries, not 300: a container query resolves against the **content** box,
+   and the rail's 2px rule is inside its border box.
+3. **The cards block renders nothing when a folder has no children.** The board
+   draws "No folders in Brand" and "Files in no folder — nothing to drill
+   into"; `DESIGN-TO-CODE.md` lists that very question under *Still open*, and
+   this is the answer. Its second eyebrow, "41 files here" above the file grid,
+   was declined for the same reason plus the count already being in the filter
+   row.
 
 ### Two numberings — do not confuse them
 
@@ -172,9 +201,10 @@ document is not pushed sideways**. Then it puts the theme back. A page builder
 is not in the suite: Elementor is 10MB and belongs on the development site,
 where the shortcode path was verified by hand.
 
-**Phase 8 is done.** Phase 9, the release candidate, is current — and the
-first work inside it was the four design leftovers rather than the release
-items.
+**Phase 8 is done.** Phase 9, the release candidate, is current — and all of
+its work so far has been UI: the four design leftovers, then four passes over
+the design audit. The release items are untouched and are now the whole of what
+is left.
 
 **Folder colour is a swatch name, not a hex.** The `color` column held a free
 `#rrggbb` and the folder row wrote it straight into `--ff-folder`, which meant
@@ -573,6 +603,22 @@ by construction.
 ## Things that will bite you
 
 Every one of these cost real time and is now load-bearing somewhere.
+
+**A container cannot query itself.** `@container` resolves against the nearest
+*ancestor* container, so a rule naming `.folderfolio-rail` inside the rail's own
+container query matches nothing — and it fails **silently**, leaving the
+property at exactly what it had been. Put those rules on a descendant:
+`__body`, `__tool`, the slots. Only reading the computed value catches it.
+
+**Check a component in its totality, and in every state.** Two of this
+project's worst regressions were introduced by a fix that was correct for the
+one element it was aimed at: a toolbar break that fixed grid and broke the
+agreement with list mode, and a collapsed rail that measured perfectly while
+drawing across the page. `library.spec.ts` therefore surveys *every* control in
+the library chrome, groups them into lines and compares the shapes in both
+modes — and `responsive.spec.ts` photographs every width. Look at the
+screenshots of the states side by side; a number from one of them is not the
+verification.
 
 **Tokens resolve only inside `.folderfolio`.** Anything printed into core's own
 markup — a list-table cell, a `<th>`, a node portaled to `<body>` — needs the
