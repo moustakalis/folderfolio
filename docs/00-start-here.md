@@ -33,7 +33,7 @@ the current diff. The domain layer, the REST surface and the importers are
 | More, and the colour picker behind it | done — and a folder stores a swatch name now, not a hex |
 | Uploads into the selected folder | done — a request parameter, not a DOM watcher |
 | The rail footer's folder total | done — it had been an empty span since step 3 |
-| Design audit of the library screen | 14 findings, 10 closed; 4 more found and closed alongside — see below |
+| Design audit of the library screen | 14 findings, plus 4 found alongside — all closed |
 
 `DESIGN-TO-CODE.md`'s "Suggested order" is the sequence being followed, and its
 screen numbers are referenced throughout the code comments.
@@ -232,7 +232,7 @@ Screen 10's footer line renders left of Select, and only while a folder is
 selected: a sentence that is false half the time teaches people to stop
 reading it.
 
-### The 18 Sep design audit — fourteen findings, ten closed
+### The 18 Sep design audit — eighteen findings, all closed
 
 The library screen was read against the board area by area, at seven viewport
 widths, collapsed and expanded, in every admin colour scheme. Fourteen gaps
@@ -329,13 +329,40 @@ as:
     being 28px against core's 32 — which is the board's number, in a different
     column, optically centred.
 
-Still open: the 20px seam between the admin menu and the rail; a folder name
-collapsing at depth 5; the static "Folders here" eyebrow, which the board
-computes; and the narrow layout below 782px, which does not break so much as
-stretch a 300px design across the viewport and has no design to be built
-against yet.
+A fourth pass closed the last four, each after a decision rather than a
+reading — none of them had an answer in the board:
 
-Two of these need a decision rather than a fix, which is why they are last.
+14. **The rail sits against the admin menu.** `#wpcontent`'s 20px left padding
+    is zeroed on this screen above the breakpoint. Safe because the only child
+    that padding reaches is `#wpbody`: the admin bar is fixed and the notices
+    are inside `#wpbody-content`, which carries its own `--ff-rail-gap`. The
+    library column keeps its gutter and gains the 20px.
+15. **16px of indent below a 300px rail.** The board measures a depth-5 name at
+    110px in a 300px rail and *accepts* it, noting that a smaller indent "buys
+    22px of name at the cost of the structure the guide lines carry". That
+    trade is wrong at 300px and right at 240, where the same name gets 47px —
+    at which point the structure is carrying nothing. Measured on a real
+    depth-5 chain: 47px becomes 79px, and 300 and up is untouched.
+16. **The eyebrow says how many and where** — "2 top-level folders", "1 folder
+    in Screenshots", through `tn()` with the name as `%2$s`. The board's two
+    other cases, which put the line alone over empty space, are deliberately
+    not built: `Cards` renders nothing there, which is the answer the *Still
+    open* list in `DESIGN-TO-CODE.md` was waiting for.
+17. **Stacking makes the band full width, not the design.** Below 782px the
+    rail's contents cap at its own width, so every stacked width now measures
+    what 783px measures — 83.5/83.5/66.5/66.5 against 83/83/66/66, and a 276px
+    search against 274, where 782px used to give 201px buttons and a 748px
+    search. It is not an answer to what a phone should get; it stops the
+    stretch until there is one.
+
+**The conformance backlog is empty.** What remains is the release track.
+
+> **A container cannot query itself.** `@container` resolves against the
+> nearest *ancestor* container, so a rule naming `.folderfolio-rail` inside the
+> rail's own container query matches nothing — it failed silently and left the
+> indent at exactly what it had been, which only a measurement catches. Put
+> those rules on a descendant; `__body` and `__tool` are inside the container,
+> the rail is the container.
 
 ### The three debts, and what they became
 
