@@ -48,23 +48,25 @@ export function Toolbar({ selected, onDelete }: { selected: FolderNode | null; o
                 type="button"
                 className="folderfolio-rail__tool"
                 disabled={!actable || !can('rename')}
+                title={t('rename', 'Rename')}
                 onClick={() =>
                     selected &&
                     edit({ mode: 'rename', parentId: null, folderId: selected.id, value: selected.name })
                 }
             >
                 <PencilIcon size={14} />
-                {t('rename', 'Rename')}
+                <span className="folderfolio-rail__tool-label">{t('rename', 'Rename')}</span>
             </button>
 
             <button
                 type="button"
                 className="folderfolio-rail__tool"
                 disabled={!actable || !can('delete')}
+                title={t('delete', 'Delete')}
                 onClick={onDelete}
             >
                 <TrashIcon size={14} />
-                {t('delete', 'Delete')}
+                <span className="folderfolio-rail__tool-label">{t('delete', 'Delete')}</span>
             </button>
 
             {/* Sort is about the view, not the selection, so it is never disabled. */}
@@ -74,10 +76,11 @@ export function Toolbar({ selected, onDelete }: { selected: FolderNode | null; o
                     className="folderfolio-rail__tool"
                     aria-haspopup="menu"
                     aria-expanded={sortOpen}
+                    title={t('sort', 'Sort')}
                     onClick={() => setSortOpen((open) => !open)}
                 >
                     <ArrowUpDownIcon size={14} />
-                    {t('sort', 'Sort')}
+                    <span className="folderfolio-rail__tool-label">{t('sort', 'Sort')}</span>
                 </button>
 
                 {sortOpen ? (
@@ -119,10 +122,11 @@ export function Toolbar({ selected, onDelete }: { selected: FolderNode | null; o
                     disabled={!actable || !can('rename')}
                     aria-haspopup="menu"
                     aria-expanded={moreOpen}
+                    title={t('more', 'More')}
                     onClick={() => setMoreOpen((open) => !open)}
                 >
                     <EllipsisIcon size={14} />
-                    {t('more', 'More')}
+                    <span className="folderfolio-rail__tool-label">{t('more', 'More')}</span>
                 </button>
 
                 {moreOpen && selected ? (

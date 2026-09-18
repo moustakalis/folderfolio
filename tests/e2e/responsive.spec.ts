@@ -30,10 +30,11 @@ import { createFolder, resetFolders, waitForTree } from './helpers/folders';
  * One page load, then the viewport changes: media queries and flex respond
  * live, and a reload per width would cost seven wp-admin boots on php-wasm.
  *
- * One test still carries `test.fail()`: the 240px clipping, which nobody has
- * fixed yet. Playwright reports a `test.fail()` that passes as a failure, so
- * the annotation cannot survive the fix by accident — which is how the
- * collapsed rail's annotation came off the moment that was fixed.
+ * No test carries `test.fail()` any more. Both that did — the 240px clipping
+ * and the collapsed rail — came off the moment their fixes landed, because
+ * Playwright reports a `test.fail()` that passes as a failure and so an
+ * annotation cannot survive its fix by accident. That is what the annotation
+ * is for; add one rather than deleting a test that describes a real defect.
  */
 
 /** 783 and 782 bracket the one breakpoint the rail declares. */
@@ -167,17 +168,21 @@ test.describe('the rail across viewport widths', () => {
 
     /**
      * The toolbar against the rail's own width, which the viewport sweep
-     * cannot see: a fresh Playground opens at the 300px default, and the
-     * labels only clip below 280. The rail is resizable down to 240, so the
-     * bottom third of its own permitted range hides the label on the first
-     * button.
+     * cannot see: a fresh Playground opens at the 300px default, and the rail
+     * is resizable down to 240.
+     *
+     * What was wrong here was not the label. `.folderfolio-rail__tool svg` had
+     * no `flex: 0 0 auto`, so a button short of room shrank its **icon to zero
+     * width** before clipping anything else — which is why Rename and Delete
+     * looked iconless while Sort and More, which had slack, did not. With the
+     * icon back, four labelled buttons need a 300px rail exactly, so below
+     * that the labels are hidden the wp-admin way and the icons stay.
+     *
+     * So this now asserts two things, and the second is the one that was
+     * missed: nothing is clipped, **and** every icon is still 14px wide. A
+     * button can always avoid clipping by crushing its contents to nothing.
      */
     test('the toolbar labels fit at every width the rail can be dragged to', async ({ page }) => {
-        // Known-failing: at the 240px minimum "Rename" needs 66px of label in
-        // a 57px box. Remove this annotation with the fix — Playwright fails a
-        // test.fail() that passes, so it cannot be left behind.
-        test.fail();
-
         await page.setViewportSize({ width: 1280, height: 900 });
         await page.goto('/wp-admin/upload.php?mode=grid');
         await page.locator('#folderfolio-rail').waitFor();
@@ -185,6 +190,7 @@ test.describe('the rail across viewport widths', () => {
         const min = await page.evaluate(() => window.folderFolio?.rail?.minWidth ?? 240);
         const widths = [min, 260, 280, 300, 360];
         const clipped: Record<number, string[]> = {};
+        const crushed: Record<number, string[]> = {};
 
         for (const w of widths) {
             await page.evaluate((width) => {
@@ -200,6 +206,16 @@ test.describe('the rail across viewport widths', () => {
                     .map((t) => t.textContent!.trim())
             );
 
+            crushed[w] = await page.evaluate(() =>
+                [...document.querySelectorAll('.folderfolio-rail__tool')]
+                    .filter((t) => {
+                        const icon = t.querySelector('svg');
+
+                        return !icon || Math.round(icon.getBoundingClientRect().width) < 14;
+                    })
+                    .map((t) => t.getAttribute('title') ?? t.textContent!.trim())
+            );
+
             await page
                 .locator('#folderfolio-rail')
                 .screenshot({ path: `test-results/responsive/rail-${w}.png` });
@@ -207,14 +223,19 @@ test.describe('the rail across viewport widths', () => {
 
         // eslint-disable-next-line no-console
         console.log(
-            '\n  rail width   clipped labels\n'
+            '\n  rail width   clipped labels   crushed icons\n'
                 + widths
-                    .map((w) => `  ${String(w).padEnd(11)}  ${clipped[w].join(', ') || '—'}`)
+                    .map(
+                        (w) =>
+                            `  ${String(w).padEnd(11)}  ${(clipped[w].join(', ') || '—').padEnd(15)}  `
+                            + (crushed[w].join(', ') || '—')
+                    )
                     .join('\n')
         );
 
         for (const w of widths) {
             expect(clipped[w], `labels clipped at a ${w}px rail`).toEqual([]);
+            expect(crushed[w], `icon shrunk below 14px at a ${w}px rail`).toEqual([]);
         }
     });
 

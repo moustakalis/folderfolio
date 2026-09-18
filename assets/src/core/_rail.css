@@ -82,6 +82,20 @@ body.folderfolio-has-rail .folderfolio-rail {
   box-sizing: border-box;
 
   /**
+   * A query container, so the toolbar can answer "how wide is the rail" —
+   * which no media query can, because the rail's width is a user preference
+   * and has nothing to do with the viewport's.
+   *
+   * inline-size containment is safe here: the rail's width comes from
+   * --ff-rail-w and never from its contents, which is the one thing the
+   * containment takes away. Where it is not supported the @container block is
+   * skipped and the toolbar keeps its labels at every width, which is the
+   * behaviour this replaces.
+   */
+  container-type: inline-size;
+  container-name: folderfolio-rail;
+
+  /**
    * Sticky under the admin bar, full viewport height, its own scrollbar.
    *
    * --wp-admin--admin-bar--height is core's own custom property, so this
