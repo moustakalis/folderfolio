@@ -24,6 +24,33 @@ const baseURL = process.env.WP_BASE_URL || `http://127.0.0.1:${port}`;
 export default defineConfig({
   testDir: './tests/e2e',
   globalSetup: './tests/e2e/global-setup.ts',
+
+  /**
+   * 90 seconds, not Playwright's 30.
+   *
+   * The default is calibrated for a web server; this suite runs WordPress on
+   * php-wasm, where a wp-admin page load is measured in seconds and a reload
+   * of upload.php on a two-core box takes 25–30 of them. At the default, most
+   * of the rail and grid-toolbar specs sat *just* under the line — passing on
+   * a fast machine, failing on a slow one, and passing again on retry #2,
+   * which is the worst possible signal: a suite nobody trusts is a suite
+   * nobody reads.
+   *
+   * Assertions keep their own 5s timeout; this is the whole-test budget.
+   */
+  timeout: 90_000,
+
+  /**
+   * And 15 seconds for a single assertion, not 5.
+   *
+   * Same reasoning, one level down: `await expect(tree).toContainText('Brand')`
+   * is waiting for a REST round trip through php-wasm and a re-render, which
+   * is two to five seconds on a good day. The rail's inline-create test failed
+   * three runs in a row at the 5s default on a loaded machine and passed
+   * everywhere else — a race the suite was reporting as a bug in the plugin.
+   */
+  expect: { timeout: 15_000 },
+
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
