@@ -94,25 +94,6 @@ export function PlusIcon(props: IconProps) {
     );
 }
 
-export function ImageIcon(props: IconProps) {
-    return (
-        <Svg {...props}>
-            <rect width="18" height="18" x="3" y="3" rx="0" />
-            <circle cx="9" cy="9" r="2" />
-            <path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21" />
-        </Svg>
-    );
-}
-
-export function InboxIcon(props: IconProps) {
-    return (
-        <Svg {...props}>
-            <path d="M22 12h-6l-2 3h-4l-2-3H2" />
-            <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
-        </Svg>
-    );
-}
-
 export function PencilIcon(props: IconProps) {
     return (
         <Svg {...props}>

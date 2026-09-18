@@ -10,9 +10,16 @@
  * again does nothing in this rail, deliberately: a toggle that clears means
  * the same click does two different things depending on state, and you cannot
  * see which from looking.
+ *
+ * Both rows carry a folder glyph — open for All media, closed for Unassigned
+ * — rather than a picture and an inbox. Screen 03 draws them that way, and it
+ * is the right call: the rail is a column of folder rows, and two foreign
+ * shapes at the top of it read as a different kind of control rather than as
+ * the two ends of the same list. They stay --ff-muted, which _row.css gives
+ * any row with no folder colour of its own.
  */
 
-import { ImageIcon, InboxIcon } from './icons';
+import { FolderIcon, FolderOpenIcon } from './icons';
 import { useLibraryCounts } from './queries';
 import { useRail } from './store';
 import { t } from '../../core/api';
@@ -29,7 +36,7 @@ export function FixedRows() {
                 count={data?.all}
                 selected={selectedId === null}
                 onSelect={() => select(null)}
-                icon={<ImageIcon />}
+                icon={<FolderOpenIcon />}
             />
 
             {/*
@@ -41,7 +48,7 @@ export function FixedRows() {
                 count={data?.unassigned}
                 selected={selectedId === 0}
                 onSelect={() => select(0)}
-                icon={<InboxIcon />}
+                icon={<FolderIcon />}
             />
         </div>
     );
