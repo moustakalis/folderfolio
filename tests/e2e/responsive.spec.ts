@@ -164,6 +164,35 @@ test.describe('the rail across viewport widths', () => {
 
         expect(at783.sideBySide, '783px should still be two columns').toBe(true);
         expect(at782.stacked, '782px should stack').toBe(true);
+
+        /*
+         * And stacking must not stretch the design.
+         *
+         * The rail's internals are all fractions of its width, so a full-width
+         * band made the four toolbar buttons 201px each at 782px and the
+         * search field 748px — a 300px design spread across a phone. The
+         * contents are capped at the rail's own width now, which means every
+         * stacked width should measure what 783px measures.
+         *
+         * Asserted against 783 rather than against a literal, so the day the
+         * board answers what a narrow rail should be, this fails and says so
+         * instead of quietly passing on numbers nobody chose.
+         */
+        for (const s of shots.filter((shot) => shot.stacked)) {
+            // Within 2px, not exactly: stacked, the rail drops its 2px right
+            // border for a bottom one, so every fraction inside it lands half
+            // a pixel differently. 83.5 against 83 is the layout being
+            // correct, and an exact comparison would report it as a defect.
+            const stretched = s.toolWidths.filter(
+                (w, i) => Math.abs(w - (at783.toolWidths[i] ?? 0)) > 2
+            );
+
+            expect(stretched, `toolbar stretched at ${s.width}px`).toEqual([]);
+            expect(
+                s.searchWidth,
+                `search field stretched at ${s.width}px`
+            ).toBeLessThanOrEqual(at783.searchWidth + 4);
+        }
     });
 
     /**

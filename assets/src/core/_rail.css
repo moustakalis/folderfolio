@@ -408,6 +408,30 @@ body.folderfolio-resizing * {
   .folderfolio-resize {
     display: none;
   }
+
+  /**
+   * The band is full width; what is in it is not.
+   *
+   * Stacked, the rail went from 300px to the whole viewport, and every one of
+   * its internals has a width expressed as a fraction of it — so at 782px the
+   * four toolbar buttons became 201px each, the search field 748px, and the
+   * fixed rows put their counts some 700px from their labels. Nothing broke;
+   * it stretched a 300px design across a phone.
+   *
+   * Capping the contents at the width the rail is actually set to keeps every
+   * proportion the board drew, and leaves the 2px rule under the band running
+   * the full width, which is what makes it read as a section above the
+   * library rather than a panel beside it.
+   *
+   * This is not an answer to the design question — at phone width, is the
+   * rail a tab, a sheet, or a select? The board has no narrow screen at all.
+   * It stops the stretch until that is decided, and it is one declaration to
+   * remove when it is.
+   */
+  .folderfolio-rail__app,
+  .folderfolio-rail__footer {
+    max-width: min(var(--ff-rail-w), 100%);
+  }
 }
 
 /* Windows High Contrast: the handle's accent fill is dropped by the forced
