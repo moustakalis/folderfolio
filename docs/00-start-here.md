@@ -33,7 +33,7 @@ the current diff. The domain layer, the REST surface and the importers are
 | More, and the colour picker behind it | done — and a folder stores a swatch name now, not a hex |
 | Uploads into the selected folder | done — a request parameter, not a DOM watcher |
 | The rail footer's folder total | done — it had been an empty span since step 3 |
-| Design audit of the library screen | 14 findings, 4 closed; 4 more found and closed on a second pass — see below |
+| Design audit of the library screen | 14 findings, 10 closed; 4 more found and closed alongside — see below |
 
 `DESIGN-TO-CODE.md`'s "Suggested order" is the sequence being followed, and its
 screen numbers are referenced throughout the code comments.
@@ -232,7 +232,7 @@ Screen 10's footer line renders left of Select, and only while a folder is
 selected: a sentence that is false half the time teaches people to stop
 reading it.
 
-### The 18 Sep design audit — fourteen findings, four closed, plus four from a second pass
+### The 18 Sep design audit — fourteen findings, ten closed
 
 The library screen was read against the board area by area, at seven viewport
 widths, collapsed and expanded, in every admin colour scheme. Fourteen gaps
@@ -296,16 +296,46 @@ Three more came from a second look at the same screen, and are closed too:
    to read it and neither is inside that class. It carries no colour, so
    `TokensTest`'s sweep does not see it.
 
-Still open, in the order they were ranked: the 20px seam between the admin
-menu and the rail; "Rename" clipped at a 240px rail (the one `test.fail()`
-left in `responsive.spec.ts`); a folder name collapsing at depth 5; the static
-"Folders here" eyebrow, which the board computes; the drag-over fill; the
-breadcrumb's leading "/"; the missing rule under search; the faint pencil
-icon; the 8px misalignment between the page heading and the rail's own header
-— **8px, not the 60 first reported**, which came from CSS injected to simulate
-a wide desktop; and the narrow layout below 782px, which does not break so
-much as stretch a 300px design across the viewport, and has no design to be
-built against yet.
+A third pass closed six more, and three of them were not what they were filed
+as:
+
+9. **The clipped label and the faint pencil were one missing declaration.**
+   `.folderfolio-rail__tool svg` had no `flex: 0 0 auto`, so a button short of
+   room shrank its **icon to zero width** before clipping anything else —
+   which is why Rename and Delete looked iconless while Sort and More, which
+   had slack, did not. The pencil was never faint; it was 0px wide. With the
+   icon back, four labelled buttons need a 300px rail exactly, so the rail is
+   a query container and below 300 the labels are hidden the wp-admin way and
+   the icons stay. 298px in the condition, not 300: a container query resolves
+   against the content box and the rail's 2px rule is inside its border box.
+10. **Drag-over is a frame now**, as both its rules already said in a comment
+    while painting a fill — and the fill was `--ff-wash`, the selected row's
+    own background, so a row you were about to drop into was indistinguishable
+    from the row you were looking at. The count tag's `+3` delta preview, the
+    other half of that spec line, turned out to be built already.
+11. **The search band closes with a hairline**, on the tree's top edge rather
+    than the field's bottom: the field is inset 12px and the rule is full
+    bleed like the other three, and a border on a scrolling box stays at its
+    edge.
+12. **The breadcrumb's leading "/" does not reproduce** — not in the library,
+    not in the media modal, at any depth. Every crumb carries the slash that
+    precedes it and the first one's is hidden; the audit read the element and
+    not its computed display. There is now an assertion so that answer stays
+    true.
+13. **The 8px head misalignment was the header alignment** already closed
+    above, and the list-mode column heads do not reproduce either: our
+    `Folders` head sits exactly over its own cells, where core's own sortable
+    heads are 2px out. What is left of that finding is the primary button
+    being 28px against core's 32 — which is the board's number, in a different
+    column, optically centred.
+
+Still open: the 20px seam between the admin menu and the rail; a folder name
+collapsing at depth 5; the static "Folders here" eyebrow, which the board
+computes; and the narrow layout below 782px, which does not break so much as
+stretch a 300px design across the viewport and has no design to be built
+against yet.
+
+Two of these need a decision rather than a fix, which is why they are last.
 
 ### The three debts, and what they became
 
@@ -637,6 +667,14 @@ resolves to nothing and the icon renders in the default colour, exactly as
 though the folder had never been given one. `TokensTest` is what catches it.
 Never interpolate an unchecked value into `var(--ff-folder-…)` either; that
 is caller-controlled text inside a declaration.
+
+**A check can pass by crushing the thing it was checking.** The toolbar's
+"Rename is clipped" spec asserted that no label overflowed its button. A
+button can always satisfy that by shrinking its icon to zero width, which is
+exactly what flex was doing — so the same defect was filed twice, once as a
+clipped label and once as a faint icon, and the assertion could not have
+distinguished the fix from the symptom. Assert what should be there, not only
+what should not overflow.
 
 **A green suite is not a verification — look at the screen.** Every serious
 finding in the 18 Sep design audit was something no assertion had been told to
