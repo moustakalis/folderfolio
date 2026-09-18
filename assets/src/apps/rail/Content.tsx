@@ -7,6 +7,13 @@
  * folder tree, fetched twice and free to disagree — and a Zustand store that
  * only happens to be shared because it is a module global. A portal makes the
  * sharing structural: this is the same tree, drawn somewhere else in the DOM.
+ *
+ * Two portals, not one. Screen 03 stacks the column crumbs → rule → core's
+ * filter row → folders → files, and core's filter row is not ours to move: in
+ * grid mode it belongs to a Backbone view, in list mode to a form printed by
+ * PHP. So the crumbs mount above it and the cards mount below it, and each
+ * piece goes where it belongs rather than the whole block sitting above the
+ * toolbar because that is where there happened to be a seam.
  */
 
 import { Breadcrumb, type Crumb } from './Breadcrumb';
@@ -16,7 +23,31 @@ import { useRail } from './store';
 import { hasListTable } from '../../lib/list-refresh';
 import { t } from '../../core/api';
 
-export function Content({ nodes }: { nodes: FolderNode[] }) {
+/**
+ * @param cards Whether to draw the folders here too, which is the fallback for
+ *              a library whose filter row this build does not recognise —
+ *              better above the toolbar than nowhere.
+ */
+export function Content({ nodes, cards }: { nodes: FolderNode[]; cards: boolean }) {
+    const { crumbs, children } = useFolderContent(nodes);
+
+    return (
+        <>
+            <Breadcrumb crumbs={crumbs} />
+            <div className="folderfolio-content__rule" />
+            {cards ? <Cards children={children} list={hasListTable()} /> : null}
+        </>
+    );
+}
+
+/** The same children, drawn under core's filter row where screen 03 puts them. */
+export function ContentCards({ nodes }: { nodes: FolderNode[] }) {
+    const { children } = useFolderContent(nodes);
+
+    return <Cards children={children} list={hasListTable()} />;
+}
+
+function useFolderContent(nodes: FolderNode[]): { crumbs: Crumb[]; children: FolderNode[] } {
     const selectedId = useRail((s) => s.selectedId);
 
     const trail = selectedId === null || selectedId <= 0 ? [] : trailTo(nodes, selectedId) ?? [];
@@ -39,13 +70,7 @@ export function Content({ nodes }: { nodes: FolderNode[] }) {
               ? []
               : (trail[trail.length - 1]?.children ?? []);
 
-    return (
-        <>
-            <Breadcrumb crumbs={crumbs} />
-            <div className="folderfolio-content__rule" />
-            <Cards children={children} list={hasListTable()} />
-        </>
-    );
+    return { crumbs, children };
 }
 
 /** The chain of nodes from the root down to `id`, inclusive. */

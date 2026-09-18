@@ -12,6 +12,20 @@
   margin: 0 20px 0 2px;
 }
 
+/**
+ * The folders block, which sits under core's filter row rather than under the
+ * heading — see rail.tsx, cardsMount.
+ *
+ * Its container is not .wrap but core's own attachment browser (grid) or the
+ * posts form (list), neither of which carries .wrap's right-hand gutter. So
+ * the 20px comes off and the cards run to the same right edge as the files
+ * below them: 2px each side is .attachments' own padding, which is what the
+ * thumbnails are inset by.
+ */
+.folderfolio-content--under-toolbar {
+  margin: 16px 2px 0;
+}
+
 /* --------------------------------------------------------- the breadcrumb */
 
 .folderfolio-crumbs {

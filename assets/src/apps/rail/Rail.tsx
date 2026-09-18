@@ -6,10 +6,10 @@
  * everything between the top edge and the footer.
  */
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-import { Content } from './Content';
+import { Content, ContentCards } from './Content';
 import { FixedRows } from './FixedRows';
 import { Header } from './Header';
 import { LibraryToolbar } from './LibraryToolbar';
@@ -30,7 +30,15 @@ import { useRail } from './store';
 import { applyFolderFilter, watchFolderLinks } from '../../lib/filter';
 import { t } from '../../core/api';
 
-export function Rail({ contentMount }: { contentMount: HTMLElement | null }) {
+export function Rail({
+    contentMount,
+    findCardsMount,
+}: {
+    contentMount: HTMLElement | null;
+    findCardsMount: () => HTMLElement | null;
+}) {
+    const cardsMount = useLateMount(findCardsMount);
+
     const { data, isPending, isError, refetch } = useTree();
     const nodes = data ?? [];
 
@@ -258,7 +266,11 @@ export function Rail({ contentMount }: { contentMount: HTMLElement | null }) {
               they share the store and the query client rather than fetching
               the folders a second time.
             */}
-            {contentMount && !isError ? createPortal(<Content nodes={nodes} />, contentMount) : null}
+            {contentMount && !isError
+                ? createPortal(<Content nodes={nodes} cards={cardsMount === null} />, contentMount)
+                : null}
+
+            {cardsMount && !isError ? createPortal(<ContentCards nodes={nodes} />, cardsMount) : null}
 
             {/*
               The folder select and the bulk Add-to-folder flyout, inside
@@ -388,4 +400,64 @@ function ancestorsOf(nodes: FolderNode[], id: number, trail: number[] = []): num
     }
 
     return null;
+}
+
+/**
+ * A mount point that may not exist yet, and may go away.
+ *
+ * The grid library's filter row is rendered by a Backbone view some time after
+ * this bundle runs, and that view is re-rendered on a few of core's own
+ * transitions — so resolving the anchor once at startup gives null on most
+ * page loads, and holding the node it returned gives a detached div on the
+ * rest. This resolves it whenever the document changes and stops as soon as it
+ * has one, then watches for that node being torn out so it can be put back.
+ *
+ * The observer is the whole of #wpbody-content rather than a narrower root
+ * because the element it is waiting for is the one that tells it where to
+ * look.
+ */
+function useLateMount(find: () => HTMLElement | null): HTMLElement | null {
+    const [mount, setMount] = useState<HTMLElement | null>(find);
+
+    useEffect(() => {
+        if (mount?.isConnected) {
+            // Already placed: watch only for it being removed.
+            const root = document.getElementById('wpbody-content');
+
+            if (!root) {
+                return;
+            }
+
+            const observer = new MutationObserver(() => {
+                if (!mount.isConnected) {
+                    setMount(find());
+                }
+            });
+
+            observer.observe(root, { childList: true, subtree: true });
+
+            return () => observer.disconnect();
+        }
+
+        const root = document.getElementById('wpbody-content');
+
+        if (!root) {
+            return;
+        }
+
+        const observer = new MutationObserver(() => {
+            const next = find();
+
+            if (next) {
+                observer.disconnect();
+                setMount(next);
+            }
+        });
+
+        observer.observe(root, { childList: true, subtree: true });
+
+        return () => observer.disconnect();
+    }, [find, mount]);
+
+    return mount;
 }

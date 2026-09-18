@@ -51,6 +51,42 @@ function contentMount(): HTMLElement | null {
 }
 
 /**
+ * Where the drill-down cards go: under core's own filter row, above the files.
+ *
+ * Screen 03 stacks the column crumbs → rule → filter row → folders → files.
+ * The filter row is core's, and it is a different element in each library
+ * mode — a Backbone view's .media-toolbar in grid, the bulk-action .tablenav
+ * printed by PHP in list — so this is two anchors rather than one, and null
+ * when neither is there. Rail.tsx keeps the cards above the toolbar in that
+ * case, which is where they were before this: wrong, but visible.
+ *
+ * In grid mode the frame is built by script after this file runs, so the
+ * anchor usually does not exist yet on the first call. Rail.tsx waits for it.
+ */
+export function cardsMount(): HTMLElement | null {
+    const existing = document.getElementById('folderfolio-cards');
+
+    if (existing?.isConnected) {
+        return existing;
+    }
+
+    const anchor =
+        document.querySelector('#wpbody-content .attachments-browser > .media-toolbar') ??
+        document.querySelector('#wpbody-content #posts-filter > .tablenav.top');
+
+    if (!anchor) {
+        return null;
+    }
+
+    const el = document.createElement('div');
+    el.id = 'folderfolio-cards';
+    el.className = 'folderfolio folderfolio-content folderfolio-content--under-toolbar';
+    anchor.insertAdjacentElement('afterend', el);
+
+    return el;
+}
+
+/**
  * Uploads follow the folder — screen 10's footer line, made true.
  *
  * Here rather than inside a component: it is not rendering anything, it has
@@ -80,7 +116,7 @@ if (mount) {
 
     createRoot(mount).render(
         <QueryClientProvider client={client}>
-            <Rail contentMount={contentMount()} />
+            <Rail contentMount={contentMount()} findCardsMount={cardsMount} />
         </QueryClientProvider>
     );
 }
