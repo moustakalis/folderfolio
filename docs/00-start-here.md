@@ -414,6 +414,21 @@ reading — none of them had an answer in the board:
     bar is what the page paints **before any script runs** — there is no frame
     in which a phone shows the 375px band.
 
+    The market at a 528px viewport, measured the same way:
+
+    | | Strategy | Folder panel | Content | To first file |
+    |---|---|---|---|---|
+    | FolderFolio (before) | stacks | 518 × 375px | 491 full | 958px |
+    | **FolderFolio (now)** | **bar, opens on tap** | **518 × 44px** | **491 full** | **631px** |
+    | Real Media Library | stacks | full width | 491 full | 953px |
+    | FileBird | two columns | 319px (60%) | 205px | 516px |
+    | CatFolders | two columns | 300px (57%) | 225px | 516px |
+    | Folders (Premio) | drops the tree | none — a toolbar select | 516 full | 344px |
+
+    Premio's `@media screen and (max-width: 640px)` block also sets
+    `.wcp-hide-show-buttons { display: none }`, so the breakpoint that removes
+    its tree removes the way back to it.
+
     The ARIA is the part that went wrong twice. `applyOpen` writes both
     `aria-expanded` attributes from the preference, so on a phone `peek` has to
     have the last word on them — in the startup sequence *and* in the
@@ -461,8 +476,12 @@ worth not repeating:
   empty library core still prints the bulk row and hides it, so `count() > 0`
   reported a defect that was not there.
 - **Clustering by top and reading in that order is not reading order.** A 40px
-  select and a 28px icon on the same line have different tops; each line has to
-  be sorted by `left` before it means anything.
+  select and a 28px icon on the same line have different tops; cluster on the
+  vertical **centre**, and sort each line by `left`, before it means anything.
+- **An assertion without its negative control asserts almost nothing.** "The
+  rail is a bar below 782px" is satisfied by a rule that hides the rail at
+  *every* width, until the spec also asserts that 783px and up get a
+  full-height column and no bar. `responsive.spec.ts` asserts both halves.
 
 **And one control, not two.** The bulk group used to hold *Add to folder* and
 *Move to folder* side by side, which spent about 250px of a row that has none
@@ -969,6 +988,7 @@ reports a failure that CI does not have.
 | `m2-importer-matrix.md` | Verified schemas and detection keys per migration source | Yes, when the importers are rewritten |
 | `research/01..04-*.md` | FileBird, Real Media Library, Folders, CatFolders — measured live and read from source | Background, and the reason for several decisions |
 | `deep-review-2026-09-16.md` | 29 numbered findings against 0.2.0 | Partly — #15 is closed; #24, #26, #27, #28 and #29 are still open |
+| *(Claude project)* `progress-2026-09-18h-transactions-toolbar-phone.md` | #15, the merged bulk trigger, the phone bar — the most recent build log | **Yes — the newest, and outside this repo** |
 | `design-handoff.md` | The brief that produced the design | History |
 | `m1-research-and-design-plan.md` | The plan that produced the research | History |
 | `code-analysis-2026-09-16.md`, `merge-status-2026-09-16.md` | The codebase and the `src/` → `includes/` merge, before the rebuild | History |
