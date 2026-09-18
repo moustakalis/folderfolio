@@ -31,6 +31,7 @@ the current diff. The domain layer, the REST surface and the importers are
 | Migration wizard — four steps, nine sources, undo | done |
 | Gallery block | done — block, shortcode, lightbox, inspector, and a theme-compat spec |
 | More, and the colour picker behind it | done — and a folder stores a swatch name now, not a hex |
+| Uploads into the selected folder | done — a request parameter, not a DOM watcher |
 | The rail footer's folder total | done — it had been an empty span since step 3 |
 
 `DESIGN-TO-CODE.md`'s "Suggested order" is the sequence being followed, and its
@@ -196,23 +197,39 @@ is all of it — the board draws nothing else inside it, and every other folder
 action already has a home. Setting a colour checks the `rename` ability,
 because it is the same route.
 
-**`upload-integration.ts` is deleted.** Every path through it was unreachable:
-its modal ran only from an event nothing dispatches, and its MutationObserver
-returned on its first line because `.attachments` is Backbone-rendered after
-`wp.media` boots and `init()` runs at `DOMContentLoaded`. So **"Uploads go to
-the selected folder" — the line screen 10 draws in the media modal's footer —
-has never been true on any screen.** It is an unimplemented feature.
+**Uploads go to the selected folder**, which they never did before 18 Sep.
+`upload-integration.ts` was supposed to do it and every path through it was
+unreachable: its modal ran only from an event nothing dispatches, and its
+MutationObserver returned on its first line because `.attachments` is
+Backbone-rendered after `wp.media` boots while `init()` runs at
+`DOMContentLoaded`. It is deleted.
 
-**And it is table stakes.** FileBird, CatFolders, Real Media Library and
-Folders all do it, all in their free tiers, and all by the same two-part
-mechanism: a parameter on the upload request (`fbv`, `catf`, `rmlFolder`,
-`folder_for_media`, each set on plupload's `multipart_params`) read back on
-`add_attachment`. None of them watches the DOM. `Support\UploadRouter` already
-hooks `add_attachment` and asks `folderfolio_default_folder_for_upload`, so the
-server side is one callback on a filter that ships. Two of them accept a
-`/`-path and **create** the missing folders from it, which is a write triggered
-by an upload parameter — take the id, not the path, for the same reason the
-gallery shortcode resolves with `findByPath()`.
+What replaced it is the mechanism all four competitors use — a parameter on
+the upload request, read back on `add_attachment`. `Support\UploadTarget`
+answers `folderfolio_default_folder_for_upload`, the filter `UploadRouter`
+already asks, so the grid, the picker, drag-and-drop and `media-new.php` are
+one path. `core/upload-target.ts` puts the id on the request.
+
+Four properties worth knowing before touching it:
+
+- **An id, never a path.** FileBird and CatFolders both accept
+  `12/Brand/Logos` on their parameter and *create* the missing segments,
+  which makes an upload a way to write folders. `ctype_digit` or nothing.
+- **Priority 5, below the default.** A site's own callback on that filter is
+  a standing rule, and a person's current folder must not silently beat it.
+- **No permission check in `UploadTarget`.** It answers *which folder*;
+  `assignAttachments()` checks the `assign` ability and `edit_post`.
+- **Two client seams, because neither covers the other.**
+  `wp.Uploader.defaults.multipart_params` is what a *new* uploader copies
+  from; `param()` sets one on a live instance; and a live uploader's
+  `multipart_params` is a different object from the defaults. Live instances
+  are not enumerable, so `wp.Uploader.prototype.init` is wrapped additively to
+  record them — the `lib/media-frame.ts` shape, not the forbidden
+  `wp.media.create` patch.
+
+Screen 10's footer line renders left of Select, and only while a folder is
+selected: a sentence that is false half the time teaches people to stop
+reading it.
 
 ### The three debts, and what they became
 
@@ -336,8 +353,9 @@ its container being replaced, whether focus came back, whether exactly one row
 is tabbable — all fail silently and look fine in a screenshot. Each has
 negative controls that were run: break the mechanism and the harness fails.
 
-The unit suite is 89 tests. `test:e2e` is 27, five on the settings screen,
-four on the import wizard and one that renders the gallery in three themes. Two of those five
+The unit suite is 107 tests. `test:e2e` is 29, five on the settings screen,
+four on the import wizard, one that renders the gallery in three themes, and
+two that upload a real PNG through the media grid. Two of those five
 cross the line that matters for a settings screen: a value saved on it changing
 what the media library does on the next page load.
 
@@ -543,6 +561,16 @@ resolves to nothing and the icon renders in the default colour, exactly as
 though the folder had never been given one. `TokensTest` is what catches it.
 Never interpolate an unchecked value into `var(--ff-folder-…)` either; that
 is caller-controlled text inside a declaration.
+
+**An upload's folder travels on the request, not in the DOM.** `UploadTarget`
+reads `folderfolio_folder` from `$_REQUEST` on `add_attachment`, and
+`core/upload-target.ts` is what puts it there. Two seams are needed on the
+client and neither covers the other: `wp.Uploader.defaults.multipart_params`
+is copied by a *new* uploader, `param()` sets one on a live one, and the two
+objects are not the same object — so mutating the defaults never reaches an
+uploader that already exists. Measured on WP 7.1. Live uploaders are not
+enumerable, which is why `wp.Uploader.prototype.init` is wrapped to record
+them.
 
 **A module can ship, enqueue and do nothing.** `upload-integration.ts` did,
 for the whole life of 0.2.0 and the rebuild: an event listener for an event
