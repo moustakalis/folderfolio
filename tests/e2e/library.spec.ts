@@ -58,6 +58,69 @@ test.describe('the library toolbar', () => {
      * is the state in which Move is enabled rather than greyed.
      */
 
+    /**
+     * The folder select stays with the other filters as the column narrows.
+     *
+     * It used to leave them at about 860px of toolbar and land on a line with
+     * the search, because `.media-toolbar`'s two children — the filters and
+     * the search — were both `flex: 0 1 auto`, so the filters shrank instead of
+     * pushing the search down, then wrapped internally. The folder select is
+     * last among them, so the folder select is what went.
+     *
+     * Measured by vertical **centre**, not by top edge: a 40px select and a
+     * 28px icon button on the same visual line have different tops, and a
+     * survey that clusters by top reports controls stranded that are not. That
+     * mistake has been made twice in this project and once in the analysis that
+     * led to this fix.
+     */
+    test('the folder select stays on the filter line as the column narrows', async ({ page }) => {
+        const sameLineAsDate = async () =>
+            page.evaluate(() => {
+                const date = document.querySelector('#media-attachment-date-filters');
+                const folder = document.querySelector('#folderfolio-folder-filter');
+
+                if (!date || !folder) {
+                    return null;
+                }
+
+                const a = date.getBoundingClientRect();
+                const b = folder.getBoundingClientRect();
+
+                return Math.abs(a.top + a.height / 2 - (b.top + b.height / 2)) < 10;
+            });
+
+        // Wide enough for all three groups on one line, and narrow enough that
+        // they cannot be — the width at which the select used to be evicted.
+        for (const width of [1440, 1200]) {
+            await page.setViewportSize({ width, height: 900 });
+            await page.locator('#folderfolio-folder-filter').waitFor();
+            await page.waitForTimeout(300);
+
+            expect(
+                await sameLineAsDate(),
+                `at ${width}px the folder select left the filter group`
+            ).toBe(true);
+        }
+    });
+
+    /**
+     * Core's bulk control first, ours second — the same order in both modes.
+     */
+    test('the folder action follows core bulk control, not precedes it', async ({ page }) => {
+        const order = await page.evaluate(() => {
+            const toggle = document.querySelector('.select-mode-toggle-button');
+            const ours = document.querySelector('.media-toolbar-secondary .folderfolio-bulk');
+
+            if (!toggle || !ours) {
+                return null;
+            }
+
+            return toggle.getBoundingClientRect().left < ours.getBoundingClientRect().left;
+        });
+
+        expect(order, 'grid paints the folder action before core’s bulk control').toBe(true);
+    });
+
     test('keeps the bulk controls when core rebuilds the toolbar', async ({ page }) => {
         // Entering Bulk select re-renders the media frame's toolbar and hides
         // every child of it but three. The slot has to survive that, and the

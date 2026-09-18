@@ -496,6 +496,78 @@
 }
 
 /**
+ * Grid's search drops to its own line before the filters are allowed to break.
+ *
+ * ## What was wrong
+ *
+ * The two modes narrowed by different rules, which is worse than either rule.
+ * `.media-toolbar` is a wrap container with exactly two children — the filters
+ * (`.media-toolbar-secondary`, itself a wrap container) and the search
+ * (`.media-toolbar-primary`). Both were `flex: 0 1 auto`, so as the column
+ * narrowed the filters *shrank* rather than pushing the search down, and once
+ * they were narrower than their contents they wrapped internally. The folder
+ * select is last among them, so the folder select is what left — landing on a
+ * line with the search, measured at every width from 860px down.
+ *
+ * List mode never had this: its search is a block below the filter row, not a
+ * sibling competing for the same line, so its filters keep the full width and
+ * hold together to about 660px.
+ *
+ * ## The fix
+ *
+ * Below the width where all three groups fit on one line, give the filters the
+ * whole line and let the search take the next one — which is what list mode
+ * does structurally, expressed here as a declared break rather than left to
+ * whatever the window happens to do.
+ *
+ * Measured after, at a 310px rail:
+ *
+ *     985, 900   view · type · date · FOLDER · search   /  add · bulk
+ *     860 → 620  view · type · date · FOLDER   /  add · bulk  /  search
+ *     460        view · type · date  /  FOLDER  /  add · bulk  /  search
+ *
+ * The folder select now stays with the other filters down to about 500px,
+ * where four filters genuinely do not fit on one line and something has to
+ * give. Before this it left at 860.
+ *
+ * ## Two things that look like they should work and do not
+ *
+ * `flex: 0 0 auto` on both children changes nothing at all — the filters still
+ * shrink and still wrap internally. And `flex-basis: 100%` on the search alone
+ * is clamped to 200px by core's own width on that element, so it never claims
+ * a line. The size has to be asserted on the *filters*, not on the search.
+ *
+ * ## Why a container query and not a media query
+ *
+ * The thing that decides this is the width of the library column, which is the
+ * viewport minus the admin menu minus the rail — and the rail is dragged to
+ * whatever width Nick likes. A media query would be measuring the wrong box.
+ *
+ * `container-type` goes on `.media-toolbar` and the rules name its
+ * descendants, because a container cannot query itself — the same trap that
+ * silently cost an afternoon on the rail's own indent.
+ *
+ * Scoped to `#wpbody-content` so a media modal's toolbar, which is a different
+ * shape in a much narrower frame, is not dragged into this.
+ */
+#wpbody-content .media-toolbar {
+  container-type: inline-size;
+  container-name: folderfolio-toolbar;
+}
+
+@container folderfolio-toolbar (width < 860px) {
+  #wpbody-content .media-toolbar-secondary {
+    flex: 1 0 100%;
+    max-width: none;
+  }
+
+  #wpbody-content .media-toolbar-primary.search-form {
+    flex: 0 0 auto;
+    margin-left: 0;
+  }
+}
+
+/**
  * …except in select mode, where there is nothing above it to break from.
  *
  * Pressing `Bulk select` makes core hide every child of this toolbar but
@@ -511,6 +583,62 @@
  */
 .media-frame.mode-select .folderfolio-slot--bulk::before {
   content: none;
+}
+
+/**
+ * Core's bulk control first, ours second — in grid as in list.
+ *
+ * List already reads `Bulk actions · Add to folder… · Apply`, because our slot
+ * has to sit inside the form before Apply. Grid read `Add to folder… · Bulk
+ * select`: the same control on the other side of core's, which is exactly the
+ * "a control must not move depending on the view toggle" complaint.
+ *
+ * Done with `order` rather than by inserting the element after the toggle,
+ * because its DOM position is load-bearing in the *other* state. Pressing
+ * `Bulk select` makes core hide every child of this toolbar but three, and what
+ * survives, in source order, is
+ *
+ *     Delete permanently | Add to folder | Cancel
+ *
+ * Move the element after the toggle and select mode becomes
+ * `Delete permanently | Cancel | Add to folder` — the destructive action, the
+ * way out, and then the thing you actually came to do. So the element stays
+ * where it is and only its painted position changes.
+ *
+ * The usual objection to `order` is that it desynchronises the visual and the
+ * tab order. It does not bite here: in grid's normal state this button is
+ * disabled unless something is selected, and in grid nothing *can* be selected
+ * without first entering select mode — where the order is reset below and DOM
+ * and paint agree again. The one state where the two disagree is the one state
+ * where the control is not in the tab order at all.
+ */
+.media-toolbar-secondary > .folderfolio-slot--bulk .folderfolio-bulk {
+  order: 1;
+}
+
+.media-frame.mode-select .folderfolio-slot--bulk .folderfolio-bulk {
+  order: 0;
+}
+
+/**
+ * And the spinner goes with it, or it lands in the middle of the pair.
+ *
+ * Core's spinner sits after `Bulk select` in source order and is
+ * `visibility: hidden` rather than `display: none`, so it holds its 20px
+ * whether or not anything is loading. Reordering our trigger past the toggle
+ * without it left 44px between two buttons that should be 6 apart — a gap made
+ * of an invisible element, which is the kind of thing that gets measured three
+ * times before anyone thinks to ask what is standing there.
+ *
+ * `order: 2` rather than hiding it: it is core's, it means something while the
+ * grid is fetching, and trailing the row is where it belongs anyway.
+ */
+.media-toolbar-secondary > .spinner {
+  order: 2;
+}
+
+.media-frame.mode-select .media-toolbar-secondary > .spinner {
+  order: 0;
 }
 
 /**
