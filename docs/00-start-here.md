@@ -29,7 +29,7 @@ the current diff. The domain layer, the REST surface and the importers are
 | Block inspector tree at 268px | done |
 | Settings screen — three tabs, and the roles matrix | done |
 | Migration wizard — four steps, nine sources, undo | done |
-| Gallery block | block, shortcode, lightbox, inspector — done; theme-compat pass to come |
+| Gallery block | done — block, shortcode, lightbox, inspector, and a theme-compat spec |
 
 `DESIGN-TO-CODE.md`'s "Suggested order" is the sequence being followed, and its
 screen numbers are referenced throughout the code comments.
@@ -50,8 +50,8 @@ the design steps all sit inside phases 4–6.
 | 5 | Interaction | done |
 | 6 | Modal and settings | done |
 | 7 | Import | done |
-| 8 | Gallery block | **current** — the block itself is in |
-| 9 | Release candidate and hardening | not started |
+| 8 | Gallery block | done |
+| 9 | Release candidate and hardening | **current** |
 | 10 | Release | not started |
 
 **Phase 6, done.** The media picker's folder column landed the way the plan
@@ -158,8 +158,17 @@ editor sees exactly the gallery a visitor gets. That filter exists because the
 test found the hole: `post_status => 'inherit'` returns attachments whose
 parent is private, draft or trashed, to anybody.
 
-Still to come in the phase: the theme-compat pass against the last three
-default themes and a page builder.
+**Theme compatibility is a test**, not an afternoon of looking at screens:
+`tests/e2e/gallery.spec.ts` publishes a page carrying the block and the
+shortcode, then walks every theme this WordPress has — Twenty Twenty-Five,
+Twenty Twenty-Four and Twenty Twenty-Three — activating each one, checking the
+grid really is a grid with the right number of tracks, that the images have
+width, that the masonry variant has the right `column-count`, and that **the
+document is not pushed sideways**. Then it puts the theme back. A page builder
+is not in the suite: Elementor is 10MB and belongs on the development site,
+where the shortcode path was verified by hand.
+
+**Phase 8 is done.** Next is phase 9, the release candidate.
 
 ### The three debts, and what they became
 
@@ -283,8 +292,8 @@ its container being replaced, whether focus came back, whether exactly one row
 is tabbable — all fail silently and look fine in a screenshot. Each has
 negative controls that were run: break the mechanism and the harness fails.
 
-`test:e2e` is 26 tests, five on the settings screen and four on the import
-wizard. Two of those five
+`test:e2e` is 27 tests, five on the settings screen, four on the import wizard
+and one that renders the gallery in three themes. Two of those five
 cross the line that matters for a settings screen: a value saved on it changing
 what the media library does on the next page load.
 
@@ -404,6 +413,14 @@ fatals before a single test runs. `phpstan.neon` pins `phpVersion` to the
 8.1–8.4 range the plugin claims, so the analyser reports them; PHPStan runs
 first in the PHP job for that reason. If you add a language feature, check
 which version introduced it.
+
+**The e2e suite's timeouts are 90s and 15s, not Playwright's 30s and 5s, and
+that is deliberate.** A wp-admin page load through php-wasm on a two-core
+machine is 25–35 seconds. At the defaults, most of the rail and grid-toolbar
+specs sat *just* under the line: green on a fast machine, red on a slow one,
+green again on retry #2 — ten "failures" that were nothing but the clock, and
+an hour spent looking for a bug in the plugin. If a spec starts failing at
+almost exactly 30 or 5 seconds, suspect the harness before the code.
 
 **Core puts a block's class on the editor's wrapper too.** `gallery.css`
 loads in the editor canvas as well as on the page, so an unqualified
