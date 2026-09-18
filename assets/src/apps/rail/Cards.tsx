@@ -18,6 +18,7 @@ import type { FolderNode } from './queries';
 import { useDropTarget } from './useDropTarget';
 import { useRail } from './store';
 import { t } from '../../core/api';
+import { swatchStyle } from '../../lib/swatches';
 
 export function Cards({ children, list }: { children: FolderNode[]; list: boolean }) {
     if (children.length === 0) {
@@ -63,7 +64,7 @@ function Card({ node }: { node: FolderNode }) {
             type="button"
             className={`folderfolio-card${drop.isOver ? ' is-dragover' : ''}`}
             onClick={() => select(node.id)}
-            style={node.color ? ({ '--ff-folder': node.color } as React.CSSProperties) : undefined}
+            style={swatchStyle(node.color)}
             {...drop.handlers}
         >
             <span className="folderfolio-card__icon">
@@ -86,7 +87,7 @@ function Chip({ node }: { node: FolderNode }) {
             type="button"
             className={`folderfolio-chip${drop.isOver ? ' is-dragover' : ''}`}
             onClick={() => select(node.id)}
-            style={node.color ? ({ '--ff-folder': node.color } as React.CSSProperties) : undefined}
+            style={swatchStyle(node.color)}
             {...drop.handlers}
         >
             <span className="folderfolio-chip__icon">

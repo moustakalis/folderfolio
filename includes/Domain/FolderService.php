@@ -10,6 +10,7 @@ if (!defined('ABSPATH')) {
 
 use FolderFolio\Support\Capabilities;
 use FolderFolio\Support\Settings;
+use FolderFolio\Support\Swatches;
 use WP_Error;
 
 /**
@@ -747,11 +748,12 @@ class FolderService
             if ($data['color'] === null || $data['color'] === '') {
                 $result['color'] = null;
             } else {
-                // Keep the raw value when sanitize_hex_color() rejects it, so
-                // validate() can report the problem. Nulling it here would turn
+                // A swatch name, or a hex snapped to the nearest one — see
+                // Support\Swatches. Keep the raw value when it is neither, so
+                // validate() can report the problem; nulling it here would turn
                 // a bad colour into a silent no-op.
                 $raw = (string) $data['color'];
-                $result['color'] = sanitize_hex_color($raw) ?? $raw;
+                $result['color'] = Swatches::normalize($raw) ?? $raw;
             }
         }
 
@@ -800,11 +802,15 @@ class FolderService
         if (
             array_key_exists('color', $data)
             && $data['color'] !== null
-            && !preg_match('/^#[a-fA-F0-9]{6}$/', $data['color'])
+            && !Swatches::isKey($data['color'])
         ) {
             return new WP_Error(
                 'folderfolio_invalid_color',
-                __('Choose a valid folder color.', 'folderfolio')
+                sprintf(
+                    /* translators: %s: comma-separated list of the ten folder colour names. */
+                    __('Choose one of the folder colors: %s.', 'folderfolio'),
+                    implode(', ', Swatches::keys())
+                )
             );
         }
 

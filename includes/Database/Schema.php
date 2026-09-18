@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace FolderFolio\Database;
 
 use FolderFolio\Domain\FolderPath;
+use FolderFolio\Support\Swatches;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -41,7 +42,7 @@ class Schema
             object_type VARCHAR(20) NOT NULL DEFAULT 'attachment',
             name VARCHAR(191) NOT NULL,
             slug VARCHAR(191) NULL,
-            color CHAR(7) NULL,
+            color VARCHAR(20) NULL,
             icon VARCHAR(50) NULL,
             sort_order INT NOT NULL DEFAULT 0,
             created_by BIGINT UNSIGNED NULL,
@@ -62,6 +63,16 @@ class Schema
         // 1.0, is the cheap moment — once a column ships to real sites,
         // removing it is a migration with a support cost.
         $this->dropColumns($table_folders, ['template_id', 'owner_id', 'visibility']);
+
+        // 0.2.0 stored a free hex in `color`; a folder stores a swatch name
+        // now. See Support\Swatches for why — in one line, a hex can only be
+        // right on one admin colour scheme, and eight of them ship with core.
+        //
+        // Run unconditionally rather than behind a DB_VERSION check: it only
+        // touches rows whose colour still starts with '#', so a second run is
+        // a no-op, and a site that upgraded through a version where the check
+        // did not fire is repaired rather than left half-converted.
+        $this->migrateFolderColours($table_folders);
 
         // Attachment-folder assignments table.
         //
@@ -206,6 +217,40 @@ class Schema
         }
 
         return $written;
+    }
+
+    /**
+     * Turn every stored hex colour into the nearest swatch name.
+     *
+     * Reads the distinct values rather than the rows: a site with 5,000
+     * folders has at most ten colours among them, so this is ten small
+     * UPDATEs and not one per folder.
+     */
+    private function migrateFolderColours(string $table): void
+    {
+        global $wpdb;
+
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is built from $wpdb->prefix.
+        $hexes = $wpdb->get_col(
+            "SELECT DISTINCT color FROM {$table} WHERE color LIKE '#%'"
+        );
+        // phpcs:enable
+
+        foreach ($hexes as $hex) {
+            // null when the value is not a hex this can read — '#nope', or a
+            // truncation. Clearing it is the safe end of the two: the column
+            // is validated against the ten names from here on, and a value
+            // that is none of them would fail every later save of that folder.
+            $swatch = Swatches::nearest((string) $hex);
+
+            $wpdb->update(
+                $table,
+                ['color' => $swatch],
+                ['color' => $hex],
+                ['%s'],
+                ['%s']
+            );
+        }
     }
 
     /**

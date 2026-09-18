@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FolderFolio\Tests\Unit\Design;
 
+use FolderFolio\Support\Swatches;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -276,5 +277,73 @@ final class TokensTest extends TestCase
         return 0.2126 * $channel((float) hexdec(substr($hex, 0, 2)))
             + 0.7152 * $channel((float) hexdec(substr($hex, 2, 2)))
             + 0.0722 * $channel((float) hexdec(substr($hex, 4, 2)));
+    }
+
+    /**
+     * The ten folder colours are one decision written in three places.
+     *
+     * `Support\Swatches::HEX` is what the server validates against and what
+     * the import wizard files a colour as; the `--ff-folder-*` block in
+     * _tokens.css is what actually paints; `lib/swatches.ts` is what the
+     * picker draws and what the row interpolates into its style attribute. A
+     * name present in one and missing from another does not fail: the row
+     * sets `--ff-folder: var(--ff-folder-mauve)`, the property resolves to
+     * nothing, and the icon renders in the default colour as though the
+     * folder had never been given one.
+     *
+     * Midnight is in here too, because a swatch declared only in the base
+     * block is the original bug this file was written for, one context along.
+     */
+    public function test_the_ten_swatches_agree_across_php_css_and_typescript(): void
+    {
+        $css = self::css();
+        $base = self::declarations($css, '.folderfolio');
+        $midnight = self::declarations($css, '.admin-color-midnight .folderfolio');
+
+        foreach (Swatches::HEX as $key => $hex) {
+            $token = "--ff-folder-{$key}";
+
+            self::assertArrayHasKey($token, $base, "{$token} is not declared in _tokens.css.");
+            self::assertSame(
+                $hex,
+                $base[$token],
+                "Swatches::HEX['{$key}'] and {$token} disagree; the PHP copy is the one "
+                . "imports and the nearest-swatch migration read."
+            );
+            self::assertArrayHasKey(
+                $token,
+                $midnight,
+                "{$token} has no Midnight pair, so a {$key} folder renders a colour chosen "
+                . "for a white panel on a dark one."
+            );
+        }
+
+        // And nothing in the stylesheet that PHP has never heard of.
+        $declared = array_filter(
+            array_keys($base),
+            static fn (string $token): bool => str_starts_with($token, '--ff-folder-')
+        );
+
+        sort($declared);
+        $expected = array_map(static fn (string $key): string => "--ff-folder-{$key}", Swatches::keys());
+        sort($expected);
+
+        self::assertSame($expected, $declared, '_tokens.css declares a swatch PHP does not have.');
+
+        // The TypeScript list, read as text: the picker and the row are the
+        // only things that consume it, and neither is in this suite.
+        $ts = (string) file_get_contents(dirname(__DIR__, 3) . '/assets/src/lib/swatches.ts');
+
+        preg_match('/export const SWATCHES = \[(.*?)\]/s', $ts, $match);
+        self::assertNotEmpty($match, 'SWATCHES is not declared in lib/swatches.ts.');
+
+        preg_match_all("/'([a-z]+)'/", $match[1], $names);
+
+        self::assertSame(
+            Swatches::keys(),
+            $names[1],
+            'lib/swatches.ts and Swatches::keys() disagree, including in order — the picker '
+            . 'draws them in the order that array gives.'
+        );
     }
 }

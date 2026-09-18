@@ -10,6 +10,7 @@ import { FolderIcon } from './icons';
 import type { FolderNode } from './queries';
 import { useRail } from './store';
 import { t } from '../../core/api';
+import { swatchStyle } from '../../lib/swatches';
 
 interface Hit {
     node: FolderNode;
@@ -57,7 +58,7 @@ export function Results({ nodes }: { nodes: FolderNode[] }) {
                         role="option"
                         aria-selected={selectedId === node.id}
                         onClick={() => select(node.id)}
-                        style={node.color ? ({ '--ff-folder': node.color } as React.CSSProperties) : undefined}
+                        style={swatchStyle(node.color)}
                     >
                         <span className="folderfolio-row__icon">
                             <FolderIcon />

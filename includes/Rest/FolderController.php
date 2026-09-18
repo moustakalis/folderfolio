@@ -543,9 +543,15 @@ class FolderController
                 'required' => false,
                 'sanitize_callback' => [$this, 'nullableInteger'],
             ],
-            // No sanitize_callback: sanitize_hex_color() returns null for an
-            // invalid value, which would silently discard a field the caller
-            // set. FolderService validates it and returns a 400 instead.
+            // A swatch name — 'steel', 'plum' — and not a hex. A hex is
+            // still accepted and snapped to the nearest swatch, because 0.2.0
+            // took one and anything written against it must keep working.
+            //
+            // No enum and no sanitize_callback, deliberately. An enum would
+            // reject that legacy hex before FolderService ever sees it, and a
+            // sanitize_callback that returned null for an unreadable value
+            // would silently discard a field the caller set. FolderService
+            // normalises, then validates, and returns a 400 naming the ten.
             'color' => [
                 'type' => 'string',
                 'required' => false,

@@ -13,6 +13,7 @@ import type { FolderNode } from './queries';
 import { useDropTarget } from './useDropTarget';
 import { useRail } from './store';
 import { t } from '../../core/api';
+import { swatchStyle } from '../../lib/swatches';
 
 export interface RowProps {
     node: FolderNode;
@@ -104,7 +105,7 @@ export function Row({
                 style={
                     {
                         '--ff-depth': depth,
-                        ...(node.color ? { '--ff-folder': node.color } : {}),
+                        ...swatchStyle(node.color),
                     } as React.CSSProperties
                 }
                 onClick={renaming ? undefined : onSelect}
