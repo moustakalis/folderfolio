@@ -59,89 +59,242 @@ test.describe('the library toolbar', () => {
     });
 
     /**
-     * Two rows, and always the same two.
+     * The whole toolbar, in both modes, compared line by line.
      *
-     * `.media-toolbar-secondary` is a wrap container with 628px beside a
-     * 310px rail. Core's own five controls need 451px and ours add 395, so it
-     * wraps — and without a declared break, *where* it wraps moves with the
-     * window: the folder select on the first line at one width and the second
-     * at another. A row whose composition changes as you resize is worse than
-     * a row that is always two lines, so the break is declared.
+     * The two library modes do not share a toolbar: grid has one Backbone
+     * `.media-toolbar`; list has a `.wp-filter` **and** a separate
+     * `.tablenav.top`, with Filter and Search Media buttons because
+     * `#posts-filter` is a GET form, `Bulk actions` + Apply instead of
+     * `Bulk select`, and pagination the grid does not have. None of that is
+     * ours to change.
      *
-     * Asserted by line, not by pixel: what matters is that core's filters and
-     * ours are never on the same one, at any width, and that select mode
-     * collapses back to a single line rather than leaving an empty one where
-     * the filters were.
+     * What *is* ours is where our three controls sit inside it, and the answer
+     * has to be the same in both modes or the same control is in two places
+     * depending on a view toggle. So this does not check one control's
+     * position — it surveys **every** control in the library chrome, groups
+     * them into lines by their top edge, classifies each one, and compares the
+     * shapes:
+     *
+     *     filter line   view · view · filter · filter · FOLDER  [· commit]
+     *     bulk line     [· bulk] · ADD · MOVE · commit
+     *
+     * An earlier version of the grid's line break put our select on its own
+     * row, which left it fifth on core's filter line in list and first on a
+     * second row in grid. Measuring only the select would not have caught
+     * that; measuring only grid would not have either.
      */
-    test('gives our controls the second line, at every width', async ({ page }) => {
-        const lines = () =>
-            page.evaluate(() => {
-                const top = (selector: string) => {
-                    const el = document.querySelector(selector);
+    async function toolbar(page: import('@playwright/test').Page) {
+        return page.evaluate(() => {
+            const seen = new Set<Element>();
+            const found: Array<{ kind: string; top: number; left: number }> = [];
 
-                    return el ? Math.round(el.getBoundingClientRect().top) : null;
-                };
+            for (const root of document.querySelectorAll(
+                '.media-toolbar, .wp-filter, .tablenav.top'
+            )) {
+                for (const el of root.querySelectorAll(
+                    'select, input:not([type=hidden]), button, a.button, .view-switch a, .tablenav-pages'
+                )) {
+                    if (seen.has(el)) {
+                        continue;
+                    }
 
-                return {
-                    dateFilter: top('#media-attachment-date-filters'),
-                    folderSelect: top('#folderfolio-folder-filter'),
-                    addToFolder: top('.folderfolio-slot--bulk button'),
-                    // The top of the toolbar's first line of controls.
-                    // Counting rows means guessing a bucket size, and a
-                    // spread cannot tell a second line from two controls of
-                    // different heights; "is this thing on the first line"
-                    // is the question actually being asked.
-                    firstLine: (() => {
-                        const tops = [
-                            ...document.querySelectorAll(
-                                '.media-toolbar-secondary > *, .media-toolbar-secondary > .folderfolio-slot > *'
-                            ),
-                        ]
-                            .filter((el) => el.getBoundingClientRect().width > 2)
-                            .map((el) => el.getBoundingClientRect().top);
+                    const box = el.getBoundingClientRect();
 
-                        return tops.length ? Math.round(Math.min(...tops)) : 0;
-                    })(),
-                };
-            });
+                    if (box.width <= 2 || (el as HTMLElement).offsetParent === null) {
+                        continue;
+                    }
 
-        for (const width of [1600, 1280, 1024]) {
-            await page.setViewportSize({ width, height: 900 });
-            await page.waitForTimeout(300);
+                    seen.add(el);
 
-            const at = await lines();
+                    // Classified, not read: core's ids differ between the two
+                    // modes and every label is translatable.
+                    const ours = el.closest('.folderfolio-slot') !== null;
+                    const text = (el.textContent ?? '').toLowerCase();
+
+                    const kind = el.id === 'folderfolio-folder-filter'
+                        ? 'FOLDER'
+                        : ours && text.includes('add')
+                          ? 'ADD'
+                          : ours && text.includes('move')
+                            ? 'MOVE'
+                            : el.closest('.view-switch')
+                              ? 'view'
+                              : el.classList.contains('tablenav-pages')
+                                ? 'pages'
+                                : el.tagName === 'SELECT'
+                                  ? 'filter'
+                                  : el.tagName === 'INPUT' && el.getAttribute('type') === 'search'
+                                    ? 'search'
+                                    : 'commit';
+
+                    found.push({ kind, top: Math.round(box.top), left: Math.round(box.left) });
+                }
+            }
+
+            found.sort((a, b) => a.top - b.top || a.left - b.left);
+
+            const lines: Array<{ top: number; items: typeof found }> = [];
+
+            for (const item of found) {
+                const last = lines[lines.length - 1];
+
+                if (last && item.top - last.top < 20) {
+                    last.items.push(item);
+                } else {
+                    lines.push({ top: item.top, items: [item] });
+                }
+            }
+
+            // Each line back into reading order. Controls of different heights
+            // sit a few pixels apart on the same line, so the global sort that
+            // built the clusters ordered them by top *within* a line too —
+            // which put a 40px select before a 28px icon beside it and made
+            // "comes before" mean nothing.
+            return lines.map((line) =>
+                line.items.sort((a, b) => a.left - b.left).map((item) => item.kind)
+            );
+        });
+    }
+
+    test('lays the toolbar out the same way in both library modes', async ({ page }) => {
+        await page.setViewportSize({ width: 1440, height: 900 });
+
+        const shapeOf = (lines: string[][]) => ({
+            // Where the folder select sits among the controls on its line, and
+            // what precedes it.
+            filterLine: lines.find((l) => l.includes('FOLDER')) ?? [],
+            bulkLine: lines.find((l) => l.includes('ADD')) ?? [],
+        });
+
+        /*
+         * Waiting for the control itself, not for a timeout. The bulk slot is
+         * moved into core's markup by an effect that cannot run until core has
+         * printed the row it belongs in — `.media-toolbar-secondary` in grid,
+         * `.tablenav .bulkactions` in list — and on php-wasm that is well past
+         * any number worth hard-coding. A survey taken a moment early reports
+         * the control as missing, which reads exactly like the defect this
+         * test is for.
+         */
+        const settled = async () => {
+            await page.locator('#folderfolio-rail').waitFor();
+            await page.locator('#folderfolio-folder-filter').waitFor();
+            await page.waitForTimeout(400);
+        };
+
+        await page.goto('/wp-admin/upload.php?mode=grid');
+        await settled();
+        const grid = shapeOf(await toolbar(page));
+
+        await page.goto('/wp-admin/upload.php?mode=list');
+        await settled();
+        const list = shapeOf(await toolbar(page));
+
+        /*
+         * The folder select is the **last** filter on core's filter line, in
+         * both modes.
+         *
+         * Last, rather than "third of three": core drops the date filter when
+         * every attachment is from one month, which a fresh Playground always
+         * is — so counting core's filters asserts the fixture, not the layout.
+         */
+        for (const [mode, shape] of [['grid', grid], ['list', list]] as const) {
+            const filters = shape.filterLine.filter((k) => k === 'filter' || k === 'FOLDER');
 
             expect(
-                at.folderSelect,
-                `the folder select shares core's line at ${width}px`
-            ).toBeGreaterThan(at.dateFilter!);
+                filters.length,
+                `${mode}: no core filter on the folder select's line`
+            ).toBeGreaterThan(1);
             expect(
-                at.addToFolder,
-                `the bulk triggers left the folder select's line at ${width}px`
-            ).toBe(at.folderSelect);
+                filters[filters.length - 1],
+                `${mode}: the folder select is not the last filter on core's filter line`
+            ).toBe('FOLDER');
+
+            if (shape.bulkLine.length > 0) {
+                expect(
+                    shape.bulkLine.filter((k) => k === 'ADD' || k === 'MOVE'),
+                    `${mode}: the bulk pair is not together on one line`
+                ).toEqual(['ADD', 'MOVE']);
+
+                expect(
+                    shape.bulkLine.includes('FOLDER'),
+                    `${mode}: the bulk pair shares a line with the folder select`
+                ).toBe(false);
+            }
         }
 
         /*
-         * Select mode hides the filter slot, and a hidden element generates no
-         * pseudo-element — so the declared break goes with it and the bulk
-         * actions come back up to the first line. If the break were a real
-         * element instead, this is where it would show: an empty line above
-         * "Delete permanently" where the filters used to be.
+         * Grid always has the pair. List only has it when core has a bulk row
+         * to put it in — and on an empty library core prints none at all,
+         * because there is nothing to act on. Our slot has nowhere to go then,
+         * and the right behaviour is to go nowhere: a bulk action conjured
+         * into some other row, with no files and no Apply beside it, would be
+         * a control that cannot do anything and does not look like it.
          *
-         * Asserted as "Add to folder is on the first line" rather than as a
-         * row count, because core's four buttons may themselves wrap on a
-         * narrow window and that is core's business, not ours.
+         * Asserted rather than tolerated, so that the day core changes this,
+         * the test says which of the two happened.
          */
-        await page.setViewportSize({ width: 1280, height: 900 });
-        await page.getByRole('button', { name: /bulk select/i }).click();
-        await page.waitForTimeout(300);
+        expect(grid.bulkLine, 'grid lost the bulk pair').not.toEqual([]);
 
-        const selecting = await lines();
+        // Visible, not merely present: on an empty library core still prints
+        // the bulk row and then hides it, and the survey above only counts
+        // what is on screen. Comparing a DOM-presence check against a
+        // visibility survey reports a defect that is not there — which it did.
+        const listHasCoreBulkRow = await page
+            .locator('.tablenav.top .bulkactions select')
+            .first()
+            .isVisible()
+            .catch(() => false);
 
         expect(
-            selecting.addToFolder! - selecting.firstLine,
-            'select mode left an empty line where the filters were'
-        ).toBeLessThan(20);
+            list.bulkLine.length > 0,
+            listHasCoreBulkRow
+                ? 'list has core bulk row but not ours'
+                : 'list has no core bulk row, so ours should not be anywhere either'
+        ).toBe(listHasCoreBulkRow);
+
+        /*
+         * And the two modes agree about *our* place in the line — not about
+         * the line itself.
+         *
+         * Comparing the two shapes for equality was the obvious assertion and
+         * the wrong one: core drops the date dropdown when every attachment is
+         * from one month, and it drops it in list mode only, so an empty
+         * library gives grid two core filters and list one. That is core's
+         * business. What has to hold in both is where ours sits — after the
+         * view switch, after every filter core printed, and last.
+         */
+        for (const [mode, shape] of [['grid', grid], ['list', list]] as const) {
+            const line = shape.filterLine;
+
+            expect(
+                line.indexOf('view'),
+                `${mode}: the folder select comes before the view switch`
+            ).toBeLessThan(line.indexOf('FOLDER'));
+
+            expect(
+                line.lastIndexOf('filter'),
+                `${mode}: a core filter comes after the folder select`
+            ).toBeLessThan(line.indexOf('FOLDER'));
+        }
+    });
+
+    /**
+     * Select mode hides the filter row, and with it the declared break.
+     *
+     * A hidden element generates no pseudo-element, so the bulk actions come
+     * back up to one line. If the break were a real element instead, this is
+     * where it would show: an empty line where the filters used to be.
+     */
+    test('collapses to a single line in select mode', async ({ page }) => {
+        await page.setViewportSize({ width: 1440, height: 900 });
+        await page.getByRole('button', { name: /bulk select/i }).click();
+        await page.waitForTimeout(400);
+
+        const lines = await toolbar(page);
+        const bulk = lines.findIndex((l) => l.includes('ADD'));
+
+        expect(bulk, 'select mode left a line above the bulk actions').toBe(0);
+        await expect(page.locator('#folderfolio-folder-filter')).toBeHidden();
     });
 });
 
