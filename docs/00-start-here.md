@@ -30,6 +30,8 @@ the current diff. The domain layer, the REST surface and the importers are
 | Settings screen — three tabs, and the roles matrix | done |
 | Migration wizard — four steps, nine sources, undo | done |
 | Gallery block | done — block, shortcode, lightbox, inspector, and a theme-compat spec |
+| More, and the colour picker behind it | done — and a folder stores a swatch name now, not a hex |
+| The rail footer's folder total | done — it had been an empty span since step 3 |
 
 `DESIGN-TO-CODE.md`'s "Suggested order" is the sequence being followed, and its
 screen numbers are referenced throughout the code comments.
@@ -116,7 +118,7 @@ The properties worth knowing:
   tell a row the import wrote from one written by the person the run invited
   to carry on working while it ran.
 
-**Phase 8, in progress.** The block is in: `folderfolio/gallery`, a folder as
+**Phase 8, done.** The block is in: `folderfolio/gallery`, a folder as
 a content source, server-rendered from `blocks/gallery/render.php`. Grid and
 masonry, columns, gap, order, link-to, include-subfolders.
 
@@ -168,7 +170,40 @@ document is not pushed sideways**. Then it puts the theme back. A page builder
 is not in the suite: Elementor is 10MB and belongs on the development site,
 where the shortcode path was verified by hand.
 
-**Phase 8 is done.** Next is phase 9, the release candidate.
+**Phase 8 is done.** Phase 9, the release candidate, is current — and the
+first work inside it was the four design leftovers rather than the release
+items.
+
+**Folder colour is a swatch name, not a hex.** The `color` column held a free
+`#rrggbb` and the folder row wrote it straight into `--ff-folder`, which meant
+the ten `--ff-folder-*` tokens and their Midnight pairs — in `_tokens.css`
+since step 1 — could never fire. A colour chosen while looking at Fresh stayed
+that exact hex on Midnight, where it was never going to be legible.
+
+`Support\Swatches` is the list of ten plus a nearest-swatch mapper, DB_VERSION
+5 converts what is already stored, and the REST field still accepts a
+0.2.0-era hex and snaps it, because 0.2.0's API took one. Anything that is
+neither a name nor a hex is a 400 naming the ten.
+
+The same ten names are now written in three places — that PHP map,
+`_tokens.css`, and `assets/src/lib/swatches.ts`. Drift between them fails
+nothing at runtime: the custom property resolves to nothing and the icon
+renders as though the folder had no colour. `TokensTest` asserts all three
+agree, including order.
+
+**More is the fourth toolbar button**, and the colour picker (screen 11, §9.8)
+is all of it — the board draws nothing else inside it, and every other folder
+action already has a home. Setting a colour checks the `rename` ability,
+because it is the same route.
+
+**`upload-integration.ts` is deleted.** Every path through it was unreachable:
+its modal ran only from an event nothing dispatches, and its MutationObserver
+returned on its first line because `.attachments` is Backbone-rendered after
+`wp.media` boots and `init()` runs at `DOMContentLoaded`. So **"Uploads go to
+the selected folder" — the line screen 10 draws in the media modal's footer —
+has never been true on any screen.** It is an unimplemented feature, and the
+open question is the mechanism: the filter `Support\UploadRouter` already
+exposes covers every upload path at once, which a DOM watcher never did.
 
 ### The three debts, and what they became
 
@@ -292,8 +327,8 @@ its container being replaced, whether focus came back, whether exactly one row
 is tabbable — all fail silently and look fine in a screenshot. Each has
 negative controls that were run: break the mechanism and the harness fails.
 
-`test:e2e` is 27 tests, five on the settings screen, four on the import wizard
-and one that renders the gallery in three themes. Two of those five
+The unit suite is 89 tests. `test:e2e` is 27, five on the settings screen,
+four on the import wizard and one that renders the gallery in three themes. Two of those five
 cross the line that matters for a settings screen: a value saved on it changing
 what the media library does on the next page load.
 
@@ -482,6 +517,39 @@ yourself reaching for either in `Tree`, read the comment there first — and
 checkbox handlers by delegation. That was read from the shipped `common.min.js`,
 not assumed. If a future WordPress moves either binding back onto the elements,
 shift-click range selection is what quietly breaks.
+
+**By the time a passive effect's cleanup runs, React has already removed the
+node.** So a cleanup cannot ask "was focus still inside this component" —
+`document.activeElement` is `<body>` by then, whatever happened. The menus'
+focus restore records the reason for closing at the moment of closing instead.
+The first version read `activeElement` in the cleanup, looked right, and
+restored focus never.
+
+**A colour is not a colour.** A folder stores one of ten swatch *names*;
+`--ff-folder-<name>` is what resolves it, and it resolves differently on
+Midnight. The list is written in three places — `Support\Swatches::HEX`,
+the `--ff-folder-*` block in `_tokens.css`, and `assets/src/lib/swatches.ts`
+— and a name in one but not another fails nothing: the custom property
+resolves to nothing and the icon renders in the default colour, exactly as
+though the folder had never been given one. `TokensTest` is what catches it.
+Never interpolate an unchecked value into `var(--ff-folder-…)` either; that
+is caller-controlled text inside a declaration.
+
+**A module can ship, enqueue and do nothing.** `upload-integration.ts` did,
+for the whole life of 0.2.0 and the rebuild: an event listener for an event
+nobody dispatches, and a `querySelector` at `DOMContentLoaded` for a container
+Backbone had not rendered yet. Neither fails, logs, or shows up in a
+screenshot. If a feature is wired to the DOM by timing or to a custom event by
+name, prove it fires — grep for the dispatcher, and exercise the seam — before
+believing the feature exists.
+
+**PHPStan in a container needs `assets/build/` to be absent.** CI's PHP job is
+a separate job from the Node one: it checks out fresh, never runs
+`yarn build`, and so the four `*.asset.php` files are missing when PHPStan
+runs there — which is what the `require.fileNotFound` entry in
+`phpstan.neon`'s `ignoreErrors` exists for. Copy a built `assets/build/` into
+a checkout and that pattern stops matching, and `reportUnmatchedIgnoredErrors`
+reports a failure that CI does not have.
 
 ## Which document is which
 
