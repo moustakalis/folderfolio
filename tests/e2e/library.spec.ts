@@ -38,14 +38,48 @@ test.describe('the library toolbar', () => {
 
     test('spends one toolbar control on folders, not two', async ({ page }) => {
         // The row has no width to spare, and a second trigger spent about
-        // 250px of it to sit there disabled — which is what both buttons were
-        // whenever nothing was selected, which is most of the time.
-        await expect(page.getByRole('button', { name: /add to folder/i })).toHaveCount(1);
+        // 250px of it to sit there disabled.
+        await expect(page.locator('.folderfolio-bulk')).toHaveCount(1);
         await expect(page.getByRole('button', { name: /^move to folder$/i })).toHaveCount(0);
+    });
 
-        // Disabled until there is a selection, and that is now its only reason
-        // to be — which is visible on the screen behind it and needs no title.
-        await expect(page.getByRole('button', { name: /add to folder/i })).toBeDisabled();
+    /**
+     * Grid shows the trigger only in select mode, which is core's own rule.
+     *
+     * Grid's normal state cannot produce a selection — clicking a tile opens
+     * the details modal rather than ticking it — so the trigger was disabled
+     * there one hundred percent of the time. Core shows no bulk action in that
+     * state either: `Delete permanently` lives in select mode, and `Bulk
+     * select` on the filter row is a mode switch, not an action.
+     */
+    test('the folder action appears in grid only once a selection is possible', async ({ page }) => {
+        const trigger = page.locator('.media-toolbar-secondary .folderfolio-bulk');
+
+        // Present in the markup — the slot is still mounted — but not on screen.
+        await expect(trigger).toHaveCount(1);
+        await expect(trigger).toBeHidden();
+
+        await page.getByRole('button', { name: /^bulk select$/i }).click();
+
+        await expect(trigger).toBeVisible();
+
+        // And it lands between core's two, where the board and the old source
+        // order both put it: Delete permanently | Add to folder… | Cancel.
+        const painted = await page.evaluate(() => {
+            const sec = document.querySelector('.media-toolbar-secondary');
+
+            if (!sec) {
+                return null;
+            }
+
+            return [...sec.querySelectorAll('button')]
+                .filter((b) => (b as HTMLElement).offsetParent !== null)
+                .sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left)
+                .map((b) => (b.textContent ?? '').trim().toLowerCase());
+        });
+
+        expect(painted?.length).toBe(3);
+        expect(painted?.[1]).toMatch(/add to folder/);
     });
 
     /*
@@ -101,24 +135,6 @@ test.describe('the library toolbar', () => {
                 `at ${width}px the folder select left the filter group`
             ).toBe(true);
         }
-    });
-
-    /**
-     * Core's bulk control first, ours second — the same order in both modes.
-     */
-    test('the folder action follows core bulk control, not precedes it', async ({ page }) => {
-        const order = await page.evaluate(() => {
-            const toggle = document.querySelector('.select-mode-toggle-button');
-            const ours = document.querySelector('.media-toolbar-secondary .folderfolio-bulk');
-
-            if (!toggle || !ours) {
-                return null;
-            }
-
-            return toggle.getBoundingClientRect().left < ours.getBoundingClientRect().left;
-        });
-
-        expect(order, 'grid paints the folder action before core’s bulk control').toBe(true);
     });
 
     test('keeps the bulk controls when core rebuilds the toolbar', async ({ page }) => {
@@ -298,17 +314,21 @@ test.describe('the library toolbar', () => {
         }
 
         /*
-         * Grid always has the pair. List only has it when core has a bulk row
-         * to put it in — and on an empty library core prints none at all,
-         * because there is nothing to act on. Our slot has nowhere to go then,
-         * and the right behaviour is to go nowhere: a bulk action conjured
-         * into some other row, with no files and no Apply beside it, would be
-         * a control that cannot do anything and does not look like it.
+         * Neither mode shows a folder action on this survey, and for the same
+         * reason in both: nothing is selected.
          *
-         * Asserted rather than tolerated, so that the day core changes this,
-         * the test says which of the two happened.
+         * Grid hides it outright in the normal state, because grid's normal
+         * state cannot produce a selection at all — core does the same with
+         * `Delete permanently`. List keeps it, because its rows are always
+         * tickable, but only when core has printed a bulk row to put it in:
+         * on an empty library core prints none, our slot has nowhere to go,
+         * and the right behaviour is to go nowhere rather than conjure a bulk
+         * action into some other row with no Apply beside it.
+         *
+         * Asserted rather than tolerated, so the day core changes either of
+         * those, the test says which.
          */
-        expect(grid.bulkLine, 'grid lost the bulk pair').not.toEqual([]);
+        expect(grid.bulkLine, 'grid showed a folder action with nothing selected').toEqual([]);
 
         // Visible, not merely present: on an empty library core still prints
         // the bulk row and then hides it, and the survey above only counts

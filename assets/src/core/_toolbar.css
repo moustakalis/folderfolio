@@ -458,41 +458,87 @@
 }
 
 /**
- * The grid toolbar's second row, chosen rather than fallen into — and the
- * break goes **before the bulk pair**, not before the folder select.
+ * In grid, the trigger exists only in select mode — the rule core itself keeps.
  *
- * `.media-toolbar-secondary` is `display: flex; flex-wrap: wrap`. Core's own
- * five controls measure 451px; ours add 395 more, and the toolbar has 628px
- * beside a 310px rail on a 1440 laptop — so it wraps, and *where* it wraps
- * depends on the window. A row whose composition changes as you resize is
- * worse than a row that is always two lines, so the break is declared.
+ * Grid's normal state cannot produce a selection: clicking a tile opens the
+ * details modal, it does not tick anything, so the only way to select is
+ * `Bulk select`. Which means the trigger sat on the filter row **disabled one
+ * hundred percent of the time** — not "most of the time", all of it — until
+ * somebody pressed a different button.
  *
- * Which line the folder select lands on is the whole point, and the first
- * version of this rule got it wrong. The two library modes have different
- * toolbars — grid has one Backbone `.media-toolbar`, list has a `.wp-filter`
- * and a separate `.tablenav.top` — and the one thing they *did* have in common
- * was the filter line: view switch, media type, date, folder. Breaking before
- * the select pushed ours off that line in grid and nowhere in list, so the
- * same control sat fourth in one mode and first-on-a-new-row in the other.
+ * Core does not do that. In grid's normal state core shows no bulk action at
+ * all: `Delete permanently` appears in select mode beside `Cancel`, and what
+ * sits on the filter row is `Bulk select`, which is a mode switch and not a
+ * bulk action. Ours now follows the same rule — it appears where and when it
+ * can act, next to core's own.
  *
- * Breaking before the bulk slot instead gives both modes the same two groups:
+ * List is not an exception to that rule, it is the same rule with a different
+ * answer: its rows carry checkboxes permanently, core's `Bulk actions` and
+ * `Apply` are permanently visible, and ours sits among them. **Present
+ * wherever a selection is possible** holds in both modes, which is what "the
+ * same control must not move depending on the view toggle" actually asks for.
  *
- *     filter line   view switch · All media items · All dates · folder
- *     bulk group    [core's bulk control] · Add to folder · Move to folder
+ * Scoped to `.media-toolbar-secondary`, so list's instance — which lives in
+ * `.tablenav .bulkactions` — is untouched.
+ *
+ * Three rules went away with this and are worth not resurrecting. The declared
+ * line break (a `::before` on this slot at `flex: 0 0 100%`) existed to give
+ * grid a second row for the bulk pair; with nothing of ours on that row in
+ * normal state, the break reserved a line for `Bulk select` alone. The `order`
+ * rule that painted our trigger after `Bulk select` is unreachable — hidden in
+ * the one state it applied to. And the `order` on core's spinner only existed
+ * to stop it landing inside that pair.
+ */
+.media-toolbar-secondary .folderfolio-bulk {
+  display: none;
+}
+
+.media-frame.mode-select .media-toolbar-secondary .folderfolio-bulk {
+  display: inline-flex;
+}
+
+/**
+ * The grid toolbar's second row, chosen rather than fallen into.
+ *
+ * `.media-toolbar-secondary` is `display: flex; flex-wrap: wrap`, and without a
+ * declared break `Bulk select` lands wherever the window leaves room for it —
+ * measured at a 310px rail:
+ *
+ *     985px  view · type · date · FOLDER · search  /  Bulk select
+ *     760px  view · type · date · FOLDER · Bulk select  /  search
+ *     620px  view · type · date · FOLDER  /  Bulk select  /  search
+ *
+ * The same control on the filter line at one width and a row below it at the
+ * next. A row whose composition changes as you resize is worse than a row that
+ * is always two rows, so the break is declared.
+ *
+ * This survived the removal of everything around it, and nearly did not: it was
+ * written when *our* pair sat on that second row, so with the pair gone it
+ * looked like dead scaffolding. It is not — it is what keeps core's own mode
+ * toggle in one place. The ladder above is what taking it out produced.
  *
  * A zero-height flex item at 100% basis is what forces a line break in a wrap
- * container; there is no `break-before` for flex. It is a pseudo-element
- * rather than an element of its own so that nothing has to keep it positioned
- * — and so that it disappears exactly when it should: pressing `Bulk select`
- * makes core hide our slots inline, which removes their pseudo-elements too,
- * and select mode collapses back to one row with no empty line above it. A
- * real element would have needed its own rule for that, and would have been
- * wrong the day core changed what it hides.
+ * container; there is no `break-before` for flex. A pseudo-element rather than
+ * a real one so nothing has to keep it positioned — and it works at all only
+ * because the slot is `display: contents`, which makes its `::before` a flex
+ * item of core's toolbar rather than a box inside a span of ours.
  */
 .media-toolbar-secondary > .folderfolio-slot--bulk::before {
   content: '';
   flex: 0 0 100%;
   height: 0;
+}
+
+/**
+ * …except in select mode, where there is nothing above it to break from.
+ *
+ * Pressing `Bulk select` makes core hide every child of this toolbar but three,
+ * and our slot survives it deliberately (above) — so its pseudo-element
+ * survives too, and would force a break with an **empty line above it** where
+ * the filters had been.
+ */
+.media-frame.mode-select .folderfolio-slot--bulk::before {
+  content: none;
 }
 
 /**
@@ -565,80 +611,6 @@
     flex: 0 0 auto;
     margin-left: 0;
   }
-}
-
-/**
- * …except in select mode, where there is nothing above it to break from.
- *
- * Pressing `Bulk select` makes core hide every child of this toolbar but
- * three, and the rule above keeps our bulk slot through it — so its
- * pseudo-element survives too, and forced a line break with an **empty line
- * above it** where the filters had been.
- *
- * When the break sat on the *filter* slot this came free: core hid that slot,
- * a hidden element generates no pseudo-element, and the break went with it.
- * Moving the break to the slot that deliberately survives means the break has
- * to be switched off by hand. That is the cost of putting it here, and it is
- * worth paying — see above for why the select belongs on core's filter line.
- */
-.media-frame.mode-select .folderfolio-slot--bulk::before {
-  content: none;
-}
-
-/**
- * Core's bulk control first, ours second — in grid as in list.
- *
- * List already reads `Bulk actions · Add to folder… · Apply`, because our slot
- * has to sit inside the form before Apply. Grid read `Add to folder… · Bulk
- * select`: the same control on the other side of core's, which is exactly the
- * "a control must not move depending on the view toggle" complaint.
- *
- * Done with `order` rather than by inserting the element after the toggle,
- * because its DOM position is load-bearing in the *other* state. Pressing
- * `Bulk select` makes core hide every child of this toolbar but three, and what
- * survives, in source order, is
- *
- *     Delete permanently | Add to folder | Cancel
- *
- * Move the element after the toggle and select mode becomes
- * `Delete permanently | Cancel | Add to folder` — the destructive action, the
- * way out, and then the thing you actually came to do. So the element stays
- * where it is and only its painted position changes.
- *
- * The usual objection to `order` is that it desynchronises the visual and the
- * tab order. It does not bite here: in grid's normal state this button is
- * disabled unless something is selected, and in grid nothing *can* be selected
- * without first entering select mode — where the order is reset below and DOM
- * and paint agree again. The one state where the two disagree is the one state
- * where the control is not in the tab order at all.
- */
-.media-toolbar-secondary > .folderfolio-slot--bulk .folderfolio-bulk {
-  order: 1;
-}
-
-.media-frame.mode-select .folderfolio-slot--bulk .folderfolio-bulk {
-  order: 0;
-}
-
-/**
- * And the spinner goes with it, or it lands in the middle of the pair.
- *
- * Core's spinner sits after `Bulk select` in source order and is
- * `visibility: hidden` rather than `display: none`, so it holds its 20px
- * whether or not anything is loading. Reordering our trigger past the toggle
- * without it left 44px between two buttons that should be 6 apart — a gap made
- * of an invisible element, which is the kind of thing that gets measured three
- * times before anyone thinks to ask what is standing there.
- *
- * `order: 2` rather than hiding it: it is core's, it means something while the
- * grid is fetching, and trailing the row is where it belongs anyway.
- */
-.media-toolbar-secondary > .spinner {
-  order: 2;
-}
-
-.media-frame.mode-select .media-toolbar-secondary > .spinner {
-  order: 0;
 }
 
 /**
