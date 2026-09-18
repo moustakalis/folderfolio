@@ -33,6 +33,7 @@ the current diff. The domain layer, the REST surface and the importers are
 | More, and the colour picker behind it | done — and a folder stores a swatch name now, not a hex |
 | Uploads into the selected folder | done — a request parameter, not a DOM watcher |
 | The rail footer's folder total | done — it had been an empty span since step 3 |
+| Design audit of the library screen | 14 findings, 4 closed — see below |
 
 `DESIGN-TO-CODE.md`'s "Suggested order" is the sequence being followed, and its
 screen numbers are referenced throughout the code comments.
@@ -230,6 +231,52 @@ Four properties worth knowing before touching it:
 Screen 10's footer line renders left of Select, and only while a folder is
 selected: a sentence that is false half the time teaches people to stop
 reading it.
+
+### The 18 Sep design audit — fourteen findings, four closed
+
+The library screen was read against the board area by area, at seven viewport
+widths, collapsed and expanded, in every admin colour scheme. Fourteen gaps
+came out of it, and the method is the finding: nine of them were spotted from
+screenshots, not from measurements. See the note under "Things that will bite
+you" about a green suite not being a verification.
+
+Closed:
+
+1. **The collapsed rail.** `.is-collapsed` hid `__body` and `__footer` only,
+   so the header, toolbar, fixed rows and search box went on rendering inside
+   a 28px column and drew across the media library. It hides
+   `.folderfolio-rail__app` now — one element, everything but the tab — with
+   `overflow: hidden` as a backstop.
+2. **Core's footer lay across the rail's.** `#wpfooter` is
+   `position: absolute; bottom: 0` across the whole content area, so at the
+   foot of a scrolled page its transparent box took every click aimed at
+   Collapse: `elementFromPoint` over that button returned core's "WordPress"
+   link. `--ff-rail-gutter` — the width the rail occupies *now*, printed by
+   `Rail.php` and kept true by `rail.ts` — indents the footer past it. It is a
+   second property because `--ff-rail-w` deliberately keeps the *stored* width
+   while collapsed, which is what reopening restores.
+3. **All media and Unassigned** carried a picture frame and an inbox. They
+   take the board's open and closed folder glyphs, which is what makes them
+   read as the two ends of the same list rather than as a different control.
+4. **The folders sat above core's filter row.** The board stacks the column
+   crumbs → rule → filter row → folders → files. Everything we add went into
+   one block after `.wp-header-end`. It is two portals now: the crumbs stay,
+   the cards mount after the filter row — `.media-toolbar` in grid mode, the
+   bulk-action `.tablenav` in list — which is a Backbone view built after this
+   bundle runs, so `useLateMount` waits for it and puts the node back if the
+   view is ever torn down. The query is scoped to `#wpbody-content` so a media
+   modal's own toolbar is never mistaken for the library's.
+
+Still open, in the order they were ranked: the 20px seam between the admin
+menu and the rail; "Rename" clipped at a 240px rail (the one `test.fail()`
+left in `responsive.spec.ts`); a folder name collapsing at depth 5; the static
+"Folders here" eyebrow, which the board computes; the drag-over fill; the
+breadcrumb's leading "/"; the missing rule under search; the faint pencil
+icon; the 8px misalignment between the page heading and the rail's own header
+— **8px, not the 60 first reported**, which came from CSS injected to simulate
+a wide desktop; and the narrow layout below 782px, which does not break so
+much as stretch a 300px design across the viewport, and has no design to be
+built against yet.
 
 ### The three debts, and what they became
 
