@@ -23,6 +23,16 @@ class Schema
 
         $charset_collate = $wpdb->get_charset_collate();
 
+        // Every CREATE TABLE below pins InnoDB, and it is load-bearing rather
+        // than a default worth restating. MyISAM accepts START TRANSACTION and
+        // ROLLBACK and ignores both, so on a MyISAM site Database\Transaction
+        // would appear to work and would protect nothing — the delete paths
+        // would go back to being able to destroy a subtree's membership and
+        // leave the folders standing. dbDelta does not compare the engine
+        // clause, so this only affects tables it creates; ensureInnoDb() below
+        // carries an existing install across.
+        $engine = 'ENGINE=InnoDB';
+
         // Folders table.
         //
         // parent_id is the source of truth for hierarchy. `path` and `depth`
@@ -53,7 +63,7 @@ class Schema
             KEY path (path),
             KEY object_type_parent (object_type, parent_id),
             KEY slug (slug)
-        ) {$charset_collate};";
+        ) {$engine} {$charset_collate};";
 
         \dbDelta($sql_folders);
 
@@ -98,7 +108,7 @@ class Schema
             PRIMARY KEY  (folder_id, attachment_id),
             KEY attachment_id (attachment_id),
             KEY import_run (import_run)
-        ) {$charset_collate};";
+        ) {$engine} {$charset_collate};";
 
         \dbDelta($sql_assignments);
 
@@ -117,7 +127,7 @@ class Schema
             meta_value LONGTEXT NULL,
             PRIMARY KEY  (folder_id, meta_key),
             KEY meta_key (meta_key)
-        ) {$charset_collate};";
+        ) {$engine} {$charset_collate};";
 
         \dbDelta($sql_meta);
 
@@ -127,13 +137,87 @@ class Schema
             user_id BIGINT UNSIGNED NOT NULL,
             preferences LONGTEXT NULL,
             PRIMARY KEY  (user_id)
-        ) {$charset_collate};";
+        ) {$engine} {$charset_collate};";
 
         \dbDelta($sql_preferences);
+
+        // Carry an install created before the engine was pinned. Only the two
+        // tables the transactional write paths touch — the meta and preference
+        // tables are single-row-per-key and never take part in a multi-statement
+        // sequence, so rewriting them would be a table rebuild for nothing.
+        $this->ensureInnoDb([$table_folders, $table_assignments]);
 
         // Fill in path/depth for any row that predates those columns. Safe to
         // run every time: it only touches rows whose path is still empty.
         $this->backfillPaths();
+    }
+
+    /**
+     * Convert tables that are not already InnoDB.
+     *
+     * Only reachable on an install that predates the pinned engine, which
+     * before 1.0 means a development site. It is written to be safe anyway,
+     * because the alternative to converting is a transaction that silently
+     * protects nothing.
+     *
+     * Skipped entirely when the server cannot offer InnoDB. That is the case
+     * this cannot fix, and is also why `Doctor` reports the engine rather than
+     * this method assuming it succeeded: MySQL does not fail a
+     * `CREATE TABLE … ENGINE=InnoDB` when InnoDB is unavailable, it quietly
+     * substitutes the default engine and carries on.
+     *
+     * @param list<string> $tables
+     */
+    private function ensureInnoDb(array $tables): void
+    {
+        global $wpdb;
+
+        if (!self::innoDbAvailable()) {
+            return;
+        }
+
+        foreach ($tables as $table) {
+            if (self::engineOf($table) === 'innodb') {
+                continue;
+            }
+
+            // Identifiers cannot be bound, and $table is built from
+            // $wpdb->prefix — no caller-supplied value reaches this.
+            $wpdb->query("ALTER TABLE {$table} ENGINE=InnoDB");
+        }
+    }
+
+    /**
+     * The storage engine of a table, lower-cased, or null when unknown.
+     *
+     * `SHOW TABLE STATUS` rather than information_schema: it needs no extra
+     * privilege, which matters on shared hosting where the database user often
+     * cannot read information_schema.TABLES for anything but its own schema.
+     */
+    public static function engineOf(string $table): ?string
+    {
+        global $wpdb;
+
+        $engine = $wpdb->get_var(
+            $wpdb->prepare('SHOW TABLE STATUS LIKE %s', $table),
+            1 // The Engine column.
+        );
+
+        return $engine === null ? null : strtolower((string) $engine);
+    }
+
+    /**
+     * Whether this server can create InnoDB tables at all.
+     */
+    public static function innoDbAvailable(): bool
+    {
+        global $wpdb;
+
+        $support = $wpdb->get_var(
+            "SELECT SUPPORT FROM information_schema.ENGINES WHERE ENGINE = 'InnoDB'"
+        );
+
+        return in_array(strtoupper((string) $support), ['YES', 'DEFAULT'], true);
     }
 
     /**

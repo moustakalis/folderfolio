@@ -8,6 +8,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+use FolderFolio\Database\Transaction;
 use FolderFolio\Support\Capabilities;
 use FolderFolio\Support\Settings;
 use FolderFolio\Support\Swatches;
@@ -349,27 +350,36 @@ class FolderService
 
         $newPath = FolderPath::build($parentPath, $id);
 
-        $rewritten = $this->folders->rewriteSubtreePaths(
-            $folder->path,
-            $newPath,
-            $newDepth - $folder->depth
-        );
+        // Two statements, and the pair is the invariant: `path`/`depth` on the
+        // whole subtree, then `parent_id` on this folder. Apply one without the
+        // other and the derived columns disagree with the source of truth —
+        // which every subtree read then trusts, because they are all
+        // `WHERE path LIKE '<path>%'`.
+        return Transaction::run(function () use ($id, $parentId, $folder, $newPath, $newDepth): Folder|WP_Error {
+            $rewritten = $this->folders->rewriteSubtreePaths(
+                $folder->path,
+                $newPath,
+                $newDepth - $folder->depth
+            );
 
-        if (is_wp_error($rewritten)) {
-            return $rewritten;
-        }
+            if (is_wp_error($rewritten)) {
+                return $rewritten;
+            }
 
-        $updated = $this->folders->update($id, ['parent_id' => $parentId]);
+            $updated = $this->folders->update($id, ['parent_id' => $parentId]);
 
-        if (is_wp_error($updated)) {
-            return $updated;
-        }
+            if (is_wp_error($updated)) {
+                return $updated;
+            }
 
-        $moved = $this->get($id) ?? $folder;
+            $moved = $this->get($id) ?? $folder;
 
-        do_action('folderfolio_folder_moved', $moved, $folder->parentId);
+            Transaction::after(static function () use ($moved, $folder): void {
+                do_action('folderfolio_folder_moved', $moved, $folder->parentId);
+            });
 
-        return $moved;
+            return $moved;
+        });
     }
 
     /**
@@ -402,69 +412,98 @@ class FolderService
             );
         }
 
-        if ($reassignAttachmentsTo !== null) {
-            if ($reassignAttachmentsTo === $id || $this->folders->find($reassignAttachmentsTo) === null) {
-                return new WP_Error(
-                    'folderfolio_invalid_reassignment',
-                    __('Choose a valid destination folder.', 'folderfolio')
-                );
-            }
-
-            $source = $children === self::CHILDREN_CASCADE
-                ? $this->assignments->subtreeAttachmentIds($folder->path)
-                : $this->assignments->attachmentIdsForFolder($id);
-
-            $reassigned = $this->assignAttachments($reassignAttachmentsTo, $source, self::MODE_ADD);
-
-            if (is_wp_error($reassigned)) {
-                return $reassigned;
-            }
+        // Validated before the transaction opens: nothing here writes, and a
+        // request that is going to be refused should not cost a transaction.
+        if (
+            $reassignAttachmentsTo !== null
+            && ($reassignAttachmentsTo === $id || $this->folders->find($reassignAttachmentsTo) === null)
+        ) {
+            return new WP_Error(
+                'folderfolio_invalid_reassignment',
+                __('Choose a valid destination folder.', 'folderfolio')
+            );
         }
 
-        if ($children === self::CHILDREN_CASCADE) {
-            $ids = $this->folders->subtreeIds($folder->path);
+        /*
+         * The whole delete is one unit, reassignment included. Both branches
+         * below remove the assignment rows before the folders, and the rows are
+         * the only record of what was in them — so a failure between the two
+         * statements used to leave folders standing and empty, with nothing
+         * anywhere able to say what they had held. Reassignment is inside the
+         * same unit rather than before it: a delete that fails after moving
+         * someone's files out of the folder they were looking at is not a
+         * delete that failed, it is a move they did not ask for.
+         */
+        return Transaction::run(function () use (
+            $id,
+            $children,
+            $reassignAttachmentsTo,
+            $folder
+        ): int|WP_Error {
+            if ($reassignAttachmentsTo !== null) {
+                $source = $children === self::CHILDREN_CASCADE
+                    ? $this->assignments->subtreeAttachmentIds($folder->path)
+                    : $this->assignments->attachmentIdsForFolder($id);
 
-            $cleaned = $this->assignments->deleteForFolders($ids);
+                $reassigned = $this->assignAttachments($reassignAttachmentsTo, $source, self::MODE_ADD);
+
+                if (is_wp_error($reassigned)) {
+                    return $reassigned;
+                }
+            }
+
+            if ($children === self::CHILDREN_CASCADE) {
+                $ids = $this->folders->subtreeIds($folder->path);
+
+                $cleaned = $this->assignments->deleteForFolders($ids);
+
+                if (is_wp_error($cleaned)) {
+                    return $cleaned;
+                }
+
+                $deleted = $this->folders->deleteSubtree($folder->path);
+
+                if (is_wp_error($deleted)) {
+                    return $deleted;
+                }
+
+                Transaction::after(static function () use ($id, $children, $ids): void {
+                    do_action('folderfolio_folder_deleted', $id, $children, $ids);
+                });
+
+                return $deleted;
+            }
+
+            // Reparent: each child takes this folder's place in the hierarchy.
+            // Each move() opens a savepoint inside this transaction, so a
+            // failure at the fourth child undoes the first three as well —
+            // before, they stayed moved and the folder stayed put.
+            foreach ($this->folders->children($id) as $child) {
+                $moved = $this->move((int) $child['id'], $folder->parentId);
+
+                if (is_wp_error($moved)) {
+                    return $moved;
+                }
+            }
+
+            $cleaned = $this->assignments->deleteForFolder($id);
 
             if (is_wp_error($cleaned)) {
                 return $cleaned;
             }
 
-            $deleted = $this->folders->deleteSubtree($folder->path);
+            $removed = $this->folders->delete($id);
 
-            if (is_wp_error($deleted)) {
-                return $deleted;
+            if (is_wp_error($removed)) {
+                return $removed;
             }
 
-            do_action('folderfolio_folder_deleted', $id, $children, $ids);
+            Transaction::after(static function () use ($id, $children): void {
+                do_action('folderfolio_folder_deleted', $id, $children, [$id]);
+            });
 
-            return $deleted;
-        }
-
-        // Reparent: each child takes this folder's place in the hierarchy.
-        foreach ($this->folders->children($id) as $child) {
-            $moved = $this->move((int) $child['id'], $folder->parentId);
-
-            if (is_wp_error($moved)) {
-                return $moved;
-            }
-        }
-
-        $cleaned = $this->assignments->deleteForFolder($id);
-
-        if (is_wp_error($cleaned)) {
-            return $cleaned;
-        }
-
-        $removed = $this->folders->delete($id);
-
-        if (is_wp_error($removed)) {
-            return $removed;
-        }
-
-        do_action('folderfolio_folder_deleted', $id, $children, [$id]);
-
-        return 1;
+            return 1;
+        });
     }
 
     /**
@@ -514,31 +553,51 @@ class FolderService
             return $permitted;
         }
 
-        $assigned = 0;
+        if ($ids === []) {
+            return 0;
+        }
 
-        foreach ($ids as $position => $attachmentId) {
-            if ($mode === self::MODE_MOVE) {
-                $cleared = $this->assignments->deleteForAttachment($attachmentId);
+        /*
+         * All or nothing, for two reasons.
+         *
+         * MODE_MOVE is the sharp one: it deletes an attachment's existing rows
+         * and then writes the new one, so a failure between those two left the
+         * file in no folder at all — its previous filing gone and the new one
+         * never written. That is the drag gesture, and it failed silently.
+         *
+         * The batch as a whole matters too. A bulk action that failed at item
+         * seven of twenty used to leave six filed and report an error, so the
+         * undo toast offered to undo work that had only partly happened. Now
+         * the error means nothing was done, which is a sentence the UI can tell
+         * the truth with.
+         */
+        return Transaction::run(function () use ($ids, $folderId, $mode, $importRun): int|WP_Error {
+            $assigned = 0;
 
-                if (is_wp_error($cleared)) {
-                    return $cleared;
+            foreach ($ids as $position => $attachmentId) {
+                if ($mode === self::MODE_MOVE) {
+                    $cleared = $this->assignments->deleteForAttachment($attachmentId);
+
+                    if (is_wp_error($cleared)) {
+                        return $cleared;
+                    }
                 }
+
+                $result = $this->assignments->assign($folderId, $attachmentId, $position, $importRun);
+
+                if (is_wp_error($result)) {
+                    return $result;
+                }
+
+                $assigned++;
             }
 
-            $result = $this->assignments->assign($folderId, $attachmentId, $position, $importRun);
+            Transaction::after(static function () use ($ids, $folderId, $mode): void {
+                do_action('folderfolio_attachments_assigned', $ids, $folderId, $mode);
+            });
 
-            if (is_wp_error($result)) {
-                return $result;
-            }
-
-            $assigned++;
-        }
-
-        if ($ids !== []) {
-            do_action('folderfolio_attachments_assigned', $ids, $folderId, $mode);
-        }
-
-        return $assigned;
+            return $assigned;
+        });
     }
 
     /**
@@ -557,25 +616,31 @@ class FolderService
             return $permitted;
         }
 
-        $removed = 0;
+        if ($ids === []) {
+            return 0;
+        }
 
-        foreach ($ids as $attachmentId) {
-            $result = $folderId === null
-                ? $this->assignments->deleteForAttachment($attachmentId)
-                : $this->assignments->unassign($folderId, $attachmentId);
+        return Transaction::run(function () use ($ids, $folderId): int|WP_Error {
+            $removed = 0;
 
-            if (is_wp_error($result)) {
-                return $result;
+            foreach ($ids as $attachmentId) {
+                $result = $folderId === null
+                    ? $this->assignments->deleteForAttachment($attachmentId)
+                    : $this->assignments->unassign($folderId, $attachmentId);
+
+                if (is_wp_error($result)) {
+                    return $result;
+                }
+
+                $removed++;
             }
 
-            $removed++;
-        }
+            Transaction::after(static function () use ($ids, $folderId): void {
+                do_action('folderfolio_attachments_unassigned', $ids, $folderId);
+            });
 
-        if ($ids !== []) {
-            do_action('folderfolio_attachments_unassigned', $ids, $folderId);
-        }
-
-        return $removed;
+            return $removed;
+        });
     }
 
     /**
@@ -596,19 +661,29 @@ class FolderService
             );
         }
 
-        $assigned = $this->assignAttachments($destinationFolderId, $attachmentIds, self::MODE_ADD);
+        // Add first, then remove — so the failure this used to have left a file
+        // in both folders rather than neither, which is the recoverable
+        // direction. It is still wrong: the return value counted the additions
+        // and said nothing about a removal that had not happened.
+        return Transaction::run(function () use (
+            $sourceFolderId,
+            $destinationFolderId,
+            $attachmentIds
+        ): int|WP_Error {
+            $assigned = $this->assignAttachments($destinationFolderId, $attachmentIds, self::MODE_ADD);
 
-        if (is_wp_error($assigned)) {
+            if (is_wp_error($assigned)) {
+                return $assigned;
+            }
+
+            $removed = $this->unassignAttachments($sourceFolderId, $attachmentIds);
+
+            if (is_wp_error($removed)) {
+                return $removed;
+            }
+
             return $assigned;
-        }
-
-        $removed = $this->unassignAttachments($sourceFolderId, $attachmentIds);
-
-        if (is_wp_error($removed)) {
-            return $removed;
-        }
-
-        return $assigned;
+        });
     }
 
     /**

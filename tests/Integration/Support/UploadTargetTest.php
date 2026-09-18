@@ -2,6 +2,7 @@
 
 namespace FolderFolio\Tests\Integration\Support;
 
+use FolderFolio\Database\Schema;
 use FolderFolio\Domain\FolderService;
 use FolderFolio\Support\UploadRouter;
 use FolderFolio\Support\UploadTarget;
@@ -30,6 +31,13 @@ class UploadTargetTest extends WP_UnitTestCase
     public function setUp(): void
     {
         parent::setUp();
+
+        // The plugin's tables are not created by the test bootstrap, and
+        // WP_UnitTestCase rolls its transaction back after every test. Without
+        // this the folder table does not exist, create() fails, and — worse —
+        // the "files nothing" cases pass for the wrong reason, because nothing
+        // is written when there is nowhere to write it.
+        (new Schema())->migrate();
 
         $this->folders = new FolderService();
 

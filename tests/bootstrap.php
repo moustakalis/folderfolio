@@ -13,6 +13,10 @@ if ( ! file_exists( $_tests_dir . '/includes/functions.php' ) ) {
 
 require_once $_tests_dir . '/includes/functions.php';
 
+// Loaded here because nothing autoloads the test namespace, and PHPUnit builds
+// its extensions after the bootstrap has run.
+require_once __DIR__ . '/TransactionHarness.php';
+
 tests_add_filter(
     'muplugins_loaded',
     static function (): void {

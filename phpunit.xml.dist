@@ -21,6 +21,13 @@
     stopOnError="false"
     stopOnFailure="false"
 >
+    <extensions>
+        <!-- See tests/TransactionHarness.php: WP_UnitTestCase's own transaction
+             is what isolates one test from the next, and our write paths must
+             not commit it out from under the suite. -->
+        <extension class="FolderFolio\Tests\TransactionHarness"/>
+    </extensions>
+
     <testsuites>
         <testsuite name="integration">
             <directory suffix="Test.php">./tests/Integration</directory>

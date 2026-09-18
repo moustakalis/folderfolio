@@ -47,7 +47,57 @@ final class Doctor
             $this->cycles(),
             $this->orphanedAssignments(),
             $this->assignmentsWithoutMedia(),
+            $this->storageEngine(),
         ]));
+    }
+
+    /**
+     * Tables that are not InnoDB, and therefore not transactional.
+     *
+     * `Schema` pins `ENGINE=InnoDB` and converts an older install, so reaching
+     * this finding takes a server that could not honour either. MySQL does not
+     * fail a `CREATE TABLE … ENGINE=InnoDB` when InnoDB is unavailable — it
+     * substitutes the default engine and returns success — so the only way to
+     * know is to ask afterwards.
+     *
+     * It matters because MyISAM accepts `START TRANSACTION` and `ROLLBACK` and
+     * ignores both. Every atomic write path in `Database\Transaction` would run
+     * without error and protect nothing, which is the failure mode this whole
+     * area exists to remove. Reported rather than repaired, in keeping with the
+     * rest of this class.
+     *
+     * @return Finding|null
+     */
+    private function storageEngine(): ?array
+    {
+        $wrong = [];
+
+        foreach ([$this->folders(), $this->assignments()] as $table) {
+            $engine = Schema::engineOf($table);
+
+            if ($engine !== null && $engine !== 'innodb') {
+                $wrong[] = "{$table} ({$engine})";
+            }
+        }
+
+        if ($wrong === []) {
+            return null;
+        }
+
+        return [
+            'code' => 'storage_engine',
+            'severity' => 'error',
+            'message' => sprintf(
+                /* translators: %s: comma-separated list of table names with their storage engine. */
+                __(
+                    'These tables are not InnoDB, so folder changes cannot be undone if one fails part-way: %s.',
+                    'folderfolio'
+                ),
+                implode(', ', $wrong)
+            ),
+            'count' => count($wrong),
+            'ids' => [],
+        ];
     }
 
     private function folders(): string
