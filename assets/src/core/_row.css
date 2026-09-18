@@ -314,10 +314,18 @@
   outline-offset: -2px;
 }
 
-/* Drag over — a frame, not a fill, so the row reads as a container you are
-   about to drop into. The tag previews the delta (+3). */
+/**
+ * Drag over — a frame, not a fill, so the row reads as a container you are
+ * about to drop into. The tag previews the delta (+3).
+ *
+ * The rule said that and painted a fill anyway, and the fill was
+ * `--ff-wash` — which is the selected row's own background. So a row you were
+ * about to drop into was indistinguishable from the row you were looking at,
+ * which is the confusion the board forbids this for. No background of its
+ * own: hover's wash stays underneath while the pointer is there, and the
+ * frame is what says "aimed at".
+ */
 .folderfolio-row.is-dragover {
-  background: var(--ff-wash);
   box-shadow: inset 0 0 0 2px var(--ff-sel);
 }
 
