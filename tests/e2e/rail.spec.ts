@@ -74,6 +74,21 @@ test.describe('the folder rail', () => {
         await expect(page).toHaveURL(new RegExp(`folderfolio_folder=${folder.id}`));
         await expect(page.locator('.folderfolio-crumbs')).toContainText('Campaigns');
 
+        /*
+         * And it does not open with a separator.
+         *
+         * Every crumb carries the slash that precedes it, so the first one's
+         * is hidden — by one CSS rule and one comment, which is the kind of
+         * thing that disappears in a refactor without any assertion noticing.
+         * The 18 Sep audit filed a leading "/" as a defect; it does not
+         * reproduce, because the rule is there. This is what makes that answer
+         * stay true.
+         */
+        expect(
+            (await page.locator('.folderfolio-crumbs').innerText()).trimStart().startsWith('/'),
+            'the breadcrumb must not open with a separator'
+        ).toBe(false);
+
         expect(
             await page.evaluate(() => (window as unknown as { __ff?: string }).__ff)
         ).toBe('alive');
