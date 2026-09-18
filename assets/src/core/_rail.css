@@ -158,9 +158,24 @@ body.folderfolio-has-rail #wpbody > .clear {
 .folderfolio-rail.is-collapsed {
   flex-basis: 28px;
   width: 28px;
+
+  /* A backstop. Everything inside is hidden below, but the rail is 28px wide
+     and its children were laid out for 300px, so anything that slips through
+     — a third-party stylesheet, a future child added without a rule here —
+     spills over the library column rather than being clipped. */
+  overflow: hidden;
 }
 
-.folderfolio-rail.is-collapsed .folderfolio-rail__body,
+/**
+ * The whole app, not a couple of its children.
+ *
+ * This hid `__body` and `__footer` only, which left the header, the toolbar,
+ * the two fixed rows and the search box rendering inside a 28px column: four
+ * blocks of 300px-wide furniture crushed into a strip beside the tab. The app
+ * is one element with everything but the tab inside it, so hiding it is both
+ * the smaller rule and the one that cannot go stale when a sibling is added.
+ */
+.folderfolio-rail.is-collapsed .folderfolio-rail__app,
 .folderfolio-rail.is-collapsed .folderfolio-rail__footer {
   display: none;
 }
