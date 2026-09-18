@@ -27,6 +27,16 @@ body.folderfolio-has-rail #wpbody > #wpbody-content {
   width: auto;
   flex: 1 1 auto;
 
+  /**
+   * The channel between the two columns.
+   *
+   * Core leaves 5px here, which is the distance between two things that
+   * happen to be adjacent rather than a gutter anyone chose. --ff-rail-gap is
+   * on :root in _tokens.css because #wpfooter, below, has to use the same
+   * number and is not inside .folderfolio.
+   */
+  padding-left: var(--ff-rail-gap, 20px);
+
   /* Without this a wide table or a long filename stretches the flex item and
      pushes the rail off the screen, because a flex item's default min-width is
      its content. The media grid has both. */
@@ -54,7 +64,7 @@ body.folderfolio-has-rail #wpbody > .clear {
  * collapses. The 20px is core's own padding, which this replaces.
  */
 body.folderfolio-has-rail #wpfooter {
-  padding-left: calc(var(--ff-rail-gutter, 0px) + 20px);
+  padding-left: calc(var(--ff-rail-gutter, 0px) + var(--ff-rail-gap, 20px) + 20px);
 }
 
 /* And the rail paints over the footer rather than under it, so that the
@@ -311,10 +321,14 @@ body.folderfolio-resizing * {
  * desktop.
  */
 @media screen and (max-width: 782px) {
-  /* The rail is a static, full-width band above the library here, so nothing
-     is beside the footer to indent it past. */
+  /* The rail is a static, full-width band above the library here, so there is
+     nothing beside either of these to hold a gutter open. */
   body.folderfolio-has-rail #wpfooter {
     padding-left: 20px;
+  }
+
+  body.folderfolio-has-rail #wpbody > #wpbody-content {
+    padding-left: 0;
   }
 
   body.folderfolio-has-rail #wpbody {

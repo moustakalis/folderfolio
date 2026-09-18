@@ -9,6 +9,23 @@
  * below are the only place a colour is chosen.
  */
 
+/**
+ * The one token that is not scoped to .folderfolio.
+ *
+ * The channel between the rail and the library column. Core leaves 5px there,
+ * which reads as two panels that failed to meet rather than as a gutter
+ * anyone chose — and at the foot of the page it left the Collapse button a
+ * few pixels from core's "Thank you for creating with WordPress".
+ *
+ * It is on :root because the two elements that have to agree about it —
+ * #wpbody-content and #wpfooter — are core's and are outside .folderfolio, so
+ * a declaration in the block below would not reach either of them. It carries
+ * no colour, so it is not a scheme decision and nothing here is duplicated.
+ */
+:root {
+  --ff-rail-gap: 20px;
+}
+
 .folderfolio {
   /* Fresh — core's default, and the fallback for any scheme not listed. */
   --ff-sel: #2271b1;          /* selection, primary action */
