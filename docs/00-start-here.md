@@ -562,6 +562,12 @@ though the folder had never been given one. `TokensTest` is what catches it.
 Never interpolate an unchecked value into `var(--ff-folder-…)` either; that
 is caller-controlled text inside a declaration.
 
+**plupload will not upload twice from one page without a reload.** A second
+`addFile()` + `start()` in the same page session quietly does nothing — no
+error, no event — which looks exactly like the upload feature being broken.
+Reload between uploads when checking by hand; `tests/e2e/upload.spec.ts`
+uploads once per test for the same reason.
+
 **An upload's folder travels on the request, not in the DOM.** `UploadTarget`
 reads `folderfolio_folder` from `$_REQUEST` on `add_attachment`, and
 `core/upload-target.ts` is what puts it there. Two seams are needed on the
