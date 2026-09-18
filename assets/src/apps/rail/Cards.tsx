@@ -20,7 +20,15 @@ import { useRail } from './store';
 import { t } from '../../core/api';
 import { swatchStyle } from '../../lib/swatches';
 
-export function Cards({ children, list }: { children: FolderNode[]; list: boolean }) {
+export function Cards({
+    children,
+    list,
+    label,
+}: {
+    children: FolderNode[];
+    list: boolean;
+    label: string;
+}) {
     if (children.length === 0) {
         return null;
     }
@@ -28,7 +36,7 @@ export function Cards({ children, list }: { children: FolderNode[]; list: boolea
     if (list) {
         return (
             <div className="folderfolio-chips">
-                <span className="folderfolio-eyebrow">{t('foldersHere', 'Folders here')}</span>
+                <span className="folderfolio-eyebrow">{label}</span>
 
                 {children.map((node) => (
                     <Chip key={node.id} node={node} />
@@ -39,7 +47,7 @@ export function Cards({ children, list }: { children: FolderNode[]; list: boolea
 
     return (
         <>
-            <span className="folderfolio-eyebrow">{t('foldersHere', 'Folders here')}</span>
+            <span className="folderfolio-eyebrow">{label}</span>
 
             <div className="folderfolio-cards">
                 {children.map((node) => (
