@@ -127,6 +127,19 @@ body.folderfolio-has-rail .folderfolio-rail {
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 6px 0 12px;
+
+  /**
+   * The hairline that closes the search band.
+   *
+   * Every other band in the rail ends in one — header, toolbar, fixed rows —
+   * and the search did not, so the field appeared to float above the tree
+   * rather than to sit in a band of its own. It goes on the tree's top edge
+   * rather than the field's bottom because the field is inset by 12px each
+   * side and the rule is full bleed, like the other three; and because a
+   * border on a scrolling box stays at its edge instead of scrolling away
+   * with the first row.
+   */
+  border-top: 1px solid var(--ff-line);
 }
 
 /* ----------------------------------------------------------- the footer */
