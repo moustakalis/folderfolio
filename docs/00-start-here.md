@@ -40,11 +40,17 @@ audit is closed and verified in the browser; what remains before 1.0 is the
 release track — `readme.txt`, Plugin Check in CI, the version bump and an RC
 tag, and five review items.
 
-Checks at the end of 18 Sep: **PHPStan clean, 107 unit, 34 e2e, `tsc` clean**,
-and **no `test.fail()` left anywhere in the suite** — both annotations came off
-the moment their fixes landed, which is what they are for. The 40 integration
-tests could not run that day: `github.com` is 403 at the session's egress
-proxy, which is where the WordPress test library comes from.
+Checks at the end of 18 Sep: **PHPStan clean, 107 unit, 47 integration, 40
+e2e, `tsc` clean**, and **no `test.fail()` left anywhere in the suite** — both
+annotations came off the moment their fixes landed, which is what they are for.
+
+The integration suite runs again. `github.com` is 403 at the session's egress
+proxy, which is where the WordPress test library normally comes from;
+`wp-phpunit/wp-phpunit` from packagist, `mariadb-server` from apt and core from
+`wordpress.org` is the route around it. Its first real run found that
+`UploadTargetTest` **had never created the plugin's tables**: five of its seven
+tests failed the moment they could run, and two had been passing *because* the
+table was missing.
 
 `DESIGN-TO-CODE.md`'s "Suggested order" is the sequence being followed, and its
 screen numbers are referenced throughout the code comments.
@@ -379,11 +385,40 @@ reading — none of them had an answer in the board:
     not built: `Cards` renders nothing there, which is the answer the *Still
     open* list in `DESIGN-TO-CODE.md` was waiting for.
 17. **Stacking makes the band full width, not the design.** Below 782px the
-    rail's contents cap at its own width, so every stacked width now measures
-    what 783px measures — 83.5/83.5/66.5/66.5 against 83/83/66/66, and a 276px
+    rail's contents cap at its own width, so every stacked width measures what
+    783px measures — 83.5/83.5/66.5/66.5 against 83/83/66/66, and a 276px
     search against 274, where 782px used to give 201px buttons and a 748px
-    search. It is not an answer to what a phone should get; it stops the
-    stretch until there is one.
+    search.
+18. **And below 782px the rail is closed by default.** Even unstretched, the
+    stacked band was 375px of furniture above the library, which put the first
+    thumbnail 960px down a 528px screen — 1.34 screens of scrolling before a
+    single file. It is a 44px bar now, which opens on a tap: 631px to the first
+    thumbnail, and nothing lost. The market at the same viewport: Real Media
+    Library stacks too, at 953px; FileBird and CatFolders keep two columns and
+    leave the grid 205px and 225px of the 528; Folders (Premio) drops its tree
+    at 640px and reaches the first file in 344px — but the same breakpoint
+    hides its reopen button, so at that width the tree cannot be brought back
+    at all.
+
+    **Navigation never needed the rail here.** The folder select on the
+    toolbar's filter line carries the whole tree, indented, with counts. The
+    bar is what you open in order to *manage* folders — new, rename, delete,
+    sort, search — which is the one thing the select cannot do.
+
+    Two properties are worth carrying. The state is a **body class**
+    (`folderfolio-rail-peek`) and **not the stored collapse preference**: a
+    preference set by turning a phone sideways would follow the user back to
+    their desktop, so nothing in the narrow path calls `persist()` or assigns
+    to `open`. And the closed state is written as
+    `:not(.folderfolio-rail-peek)` rather than as a class a script adds, so the
+    bar is what the page paints **before any script runs** — there is no frame
+    in which a phone shows the 375px band.
+
+    The ARIA is the part that went wrong twice. `applyOpen` writes both
+    `aria-expanded` attributes from the preference, so on a phone `peek` has to
+    have the last word on them — in the startup sequence *and* in the
+    breakpoint's `change` handler. Written the other way round, a window
+    dragged narrow ended up with a closed bar announcing itself as expanded.
 
 **The conformance backlog is empty.** What remains is the release track.
 
@@ -402,7 +437,7 @@ beside a 310px rail — so it wrapped wherever the window happened to put the
 break. It is declared now, **before the bulk pair**, so that both modes read:
 
     filter line   view switch · media type · date · folder
-    bulk group    [core's bulk control] · Add to folder · Move to folder
+    bulk group    [core's bulk control] · Add to folder…
 
 The first version broke before the *folder select*, which pushed it off the
 filter line in grid while leaving it on that line in list — the same control in
@@ -428,6 +463,24 @@ worth not repeating:
 - **Clustering by top and reading in that order is not reading order.** A 40px
   select and a 28px icon on the same line have different tops; each line has to
   be sorted by `left` before it means anything.
+
+**And one control, not two.** The bulk group used to hold *Add to folder* and
+*Move to folder* side by side, which spent about 250px of a row that has none
+to spare on a second trigger that was disabled whenever nothing was selected —
+which in grid was always. They are one trigger now: the flyout opens on Add and
+carries a `role="radiogroup"` segmented Add/Move pair, with Move disabled and
+titled when there is no source folder to move out of. Three smaller things came
+with it:
+
+- **The caret came off.** A `…` says the button opens something; a caret said
+  it twice. Worth 3px, not the ~21px first claimed — measured 120px to 117px,
+  and the code comment was corrected rather than left holding the estimate.
+- **`margin: 0 6px 0 0` on the trigger had never applied.** `.wp-core-ui
+  .button` is (0,2,0) and a bare class is (0,1,0), so the trigger sat flush
+  against `Apply`. `.wp-core-ui .folderfolio-bulk` fixes it.
+- **Grid shows the trigger only in select mode**, which is core's own rule:
+  grid's normal state cannot produce a selection, so the trigger was disabled
+  there one hundred percent of the time.
 
 > **A container cannot query itself.** `@container` resolves against the
 > nearest *ancestor* container, so a rule naming `.folderfolio-rail` inside the
@@ -600,9 +653,60 @@ by construction.
    it — including that Midnight overrides every colour it does not deliberately
    share, and that the media modal's block restates Fresh exactly.
 
+## The write paths are atomic (review item #15)
+
+Every multi-statement write in `FolderService` — `move`, `delete` (both
+branches), `assignAttachments`, `unassignAttachments`, `moveAttachments` — runs
+inside `Database\Transaction::run()`. Before this, a `delete` that reparented
+children and then failed on its own row left the children reparented.
+
+- **The callback API is the whole design.** `run()` takes a closure; a
+  **`WP_Error` return rolls back** and is handed straight to the caller, and a
+  thrown `Throwable` rolls back and rethrows. This matters because the domain
+  layer signals failure with `WP_Error` and not with exceptions, so a plain
+  try/catch wrapper would have committed every failure it was written to
+  prevent.
+- **Transactions do not nest in MySQL.** A second `START TRANSACTION` commits
+  the first silently. `run()` keeps a depth counter and uses **savepoints**
+  below the outermost level, and an outermost call that finds a transaction
+  already open (someone else's, or `WP_UnitTestCase`'s) takes a savepoint
+  rather than committing what it did not start.
+- **`Transaction::after()` defers `do_action` until after the commit.** A
+  listener that reads the database mid-transaction would see rows that are
+  about to vanish, and one that enqueues external work would fire for a write
+  that never landed. Queued callbacks are discarded on rollback.
+- **The tables are `ENGINE=InnoDB` explicitly.** MyISAM *accepts* `START
+  TRANSACTION` and ignores it, so a site whose default engine is MyISAM would
+  have run every one of these paths with no atomicity and no error.
+  `Schema::ensureInnoDb()` and a `Doctor` finding report any table that is not.
+  `SHOW TABLE STATUS`, not `information_schema`, which is not reliably readable
+  on shared hosts.
+- **Batches are all-or-nothing** — Nick's call, taken while the plugin has no
+  installed base to be compatible with.
+- **`assumeOpen()`** is how the PHPUnit harness tells `Transaction` that
+  `WP_UnitTestCase` already opened one. Its first version set `depth = 1`,
+  which would have meant `after()` callbacks never fired in any test.
+
 ## Things that will bite you
 
 Every one of these cost real time and is now load-bearing somewhere.
+
+**A stylesheet or script change may not reach the browser.** `admin.css` and
+`core/rail.js` are enqueued with `ver=0.2.0`, so a plain reload serves the
+cached copy, `location.reload(true)` is ignored by modern Chrome, and
+`cmd+shift+r` works but drops the query string — which loses a deep-URL state.
+From an automation tool the reliable move is to warm the cache first and then
+reload:
+
+```js
+await fetch('/wp-content/plugins/folderfolio/assets/build/core/admin.css?ver=0.2.0', { cache: 'reload' });
+await fetch('/wp-content/plugins/folderfolio/assets/build/core/rail.js?ver=0.2.0',  { cache: 'reload' });
+location.reload();
+```
+
+Each asset needs its own bust. A session went a full round of measurements with
+fresh CSS and a **stale bundle**, which read as "the JavaScript half of the
+change does not work".
 
 **A container cannot query itself.** `@container` resolves against the nearest
 *ancestor* container, so a rule naming `.folderfolio-rail` inside the rail's own
@@ -674,6 +778,12 @@ start of the flex row — underneath the *first* label. Clicking the input
 directly hits whichever label is on top, which made a Playwright `check()` on
 "Direct only" silently target "Inherited" until it started failing outright.
 Click the label; it is what a user clicks.
+
+**`.folderfolio-rail__app` matches two nested elements.** `Rail.php` prints
+the shell with that class and `Rail.tsx` renders a second one with the same
+class inside it, so a Playwright locator on the class is a strict-mode
+violation. Use `#folderfolio-rail-app`. (Worth tidying; nothing depends on the
+duplication.)
 
 **`rows` is a reserved word in MySQL 8.** `SELECT COUNT(*) AS rows` is a syntax
 error there and runs fine on 5.7 — the kind of difference that ships. See
@@ -858,7 +968,7 @@ reports a failure that CI does not have.
 | `architecture-plan.md` | Decisions, data model, REST surface, importers, developer API, gallery block, the ten phases to 1.0 | **Yes — the roadmap** |
 | `m2-importer-matrix.md` | Verified schemas and detection keys per migration source | Yes, when the importers are rewritten |
 | `research/01..04-*.md` | FileBird, Real Media Library, Folders, CatFolders — measured live and read from source | Background, and the reason for several decisions |
-| `deep-review-2026-09-16.md` | 29 numbered findings against 0.2.0 | Partly — #15, #24, #26, #27, #28 and #29 are still open |
+| `deep-review-2026-09-16.md` | 29 numbered findings against 0.2.0 | Partly — #15 is closed; #24, #26, #27, #28 and #29 are still open |
 | `design-handoff.md` | The brief that produced the design | History |
 | `m1-research-and-design-plan.md` | The plan that produced the research | History |
 | `code-analysis-2026-09-16.md`, `merge-status-2026-09-16.md` | The codebase and the `src/` → `includes/` merge, before the rebuild | History |
