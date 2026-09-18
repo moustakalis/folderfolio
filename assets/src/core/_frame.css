@@ -198,3 +198,18 @@
   outline: none;
   box-shadow: none;
 }
+
+/**
+ * Screen 10's footer line — "Uploads go to the selected folder."
+ *
+ * First child of the frame's toolbar, which puts it on the left because core
+ * floats the primary region right. It carries the bare `.folderfolio` class
+ * as well as its own: it is printed into core's markup, outside the column,
+ * and tokens resolve only inside that class.
+ */
+.folderfolio-frame__uploads {
+  margin: 0;
+  align-self: center;
+  font-size: 12px;
+  color: var(--ff-muted);
+}

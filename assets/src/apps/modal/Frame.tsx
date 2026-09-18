@@ -34,7 +34,7 @@ import {
     type FolderNode,
 } from '../rail/queries';
 import { useRail } from '../rail/store';
-import { filterFrame, frameColumnPlace } from '../../lib/media-frame';
+import { filterFrame, frameColumnPlace, frameFooterPlace } from '../../lib/media-frame';
 import { useToolbarSlot } from '../../lib/toolbar-slot';
 import { t } from '../../core/api';
 
@@ -60,6 +60,8 @@ export function Frame() {
 function FrameBody({ column }: { column: HTMLElement }) {
     const { data, isPending, isError, refetch } = useTree();
     const nodes = data ?? [];
+
+    const footer = useToolbarSlot(frameFooterPlace, 'frame-footer');
 
     const query = useRail((s) => s.query);
     const selectedId = useRail((s) => s.selectedId);
@@ -211,6 +213,23 @@ function FrameBody({ column }: { column: HTMLElement }) {
 
     return (
         <>
+            {/*
+              Screen 10's footer line, and only while it is true.
+              A folder is selected, so an upload made from this frame will be
+              filed into it — core/upload-target.ts puts the id on the request
+              and Support\UploadTarget reads it back. With All media or
+              Unassigned showing there is no folder to go to, and a sentence
+              that is false half the time teaches people to stop reading it.
+            */}
+            {footer && selectedNode
+                ? createPortal(
+                      <p className="folderfolio folderfolio-frame__uploads">
+                          {t('uploadsGoToFolder', 'Uploads go to the selected folder.')}
+                      </p>,
+                      footer
+                  )
+                : null}
+
             {createPortal(
                 <div className="folderfolio folderfolio-frame">
                     <FrameHeader

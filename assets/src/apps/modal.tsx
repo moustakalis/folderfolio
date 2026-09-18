@@ -16,7 +16,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createRoot } from 'react-dom/client';
 
 import { Frame } from './modal/Frame';
+import { useRail } from './rail/store';
 import { publishBrowsers } from '../lib/media-frame';
+import { watchUploadTarget } from '../core/upload-target';
 
 /**
  * Make the frame's collection reachable before any frame is built.
@@ -32,6 +34,18 @@ if (!publishBrowsers()) {
         }
     }, 250);
 }
+
+/**
+ * Uploads follow the folder — screen 10's footer line, made true.
+ *
+ * Here rather than inside a component: it is not rendering anything, it has
+ * to be running before a frame is opened, and it is the same two lines in
+ * both entries. See core/upload-target.ts.
+ */
+watchUploadTarget(
+    (listener) => useRail.subscribe((state) => listener(state.selectedId)),
+    useRail.getState().selectedId
+);
 
 const host = document.createElement('div');
 host.className = 'folderfolio-frame-host';

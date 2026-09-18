@@ -165,6 +165,26 @@ interface WpGlobal {
    * substitution happens in the bundler, not in the type system.
    */
   element?: unknown;
+
+  /**
+   * `wp-plupload`'s uploader wrapper — how a folder gets onto an upload.
+   *
+   * `defaults.multipart_params` is what a *new* uploader copies its
+   * parameters from. `prototype.param(key, value)` sets one on a single live
+   * uploader. Both are needed and neither replaces the other: the copy is
+   * shallow but produces a fresh object, so mutating the defaults after an
+   * uploader exists does not reach it. Measured on WP 7.1, not assumed.
+   */
+  Uploader?: {
+    defaults?: { multipart_params?: Record<string, string> };
+    prototype: WpUploader;
+  };
+}
+
+interface WpUploader {
+  /** Sets one multipart parameter on this uploader. */
+  param(key: string, value: string): void;
+  init(): void;
 }
 
 /**
@@ -174,7 +194,6 @@ interface FolderFolioConfig {
   restUrl: string;
   nonce: string;
   pluginUrl: string;
-  mediaNewUrl: string;
   /** admin_url('upload.php'), for the import report's way back. */
   uploadUrl?: string;
   version: string;

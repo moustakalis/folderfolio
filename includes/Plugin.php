@@ -25,6 +25,7 @@ use FolderFolio\Cli\RootCommand;
 use FolderFolio\Rest\FolderController;
 use FolderFolio\Rest\PreferenceController;
 use FolderFolio\Support\UploadRouter;
+use FolderFolio\Support\UploadTarget;
 use FolderFolio\Rest\ImportController;
 
 /**
@@ -86,6 +87,10 @@ final class Plugin
         // Does nothing until something uses the
         // folderfolio_default_folder_for_upload filter.
         (new UploadRouter())->register();
+
+        // Answers UploadRouter's filter with the folder the request named, so
+        // the two are registered together and neither is useful alone.
+        (new UploadTarget())->register();
 
         // Not admin-only, and it matters: a block registered only in the
         // admin renders on the front end as "this block contains unexpected

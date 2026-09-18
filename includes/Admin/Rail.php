@@ -117,7 +117,12 @@ final class Rail
         wp_enqueue_script(
             'folderfolio-rail-app',
             FOLDERFOLIO_PLUGIN_URL . 'assets/build/apps/rail.js',
-            array_merge($asset['dependencies'], ['wp-api-fetch', 'wp-a11y']),
+            // wp-plupload is what puts wp.Uploader on the page, and
+            // core/upload-target.ts needs it to exist before it can follow the
+            // folder selection onto an upload. Core loads it on this screen
+            // anyway; declaring it is what makes the order a fact rather than
+            // a coincidence.
+            array_merge($asset['dependencies'], ['wp-api-fetch', 'wp-a11y', 'wp-plupload']),
             $asset['version'],
             ['in_footer' => true, 'strategy' => 'defer']
         );

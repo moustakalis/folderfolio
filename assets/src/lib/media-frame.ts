@@ -101,6 +101,27 @@ export function frameColumnPlace(): Place | null {
 }
 
 /**
+ * Where screen 10's "Uploads go to the selected folder." goes: the frame's
+ * own footer, left of the Select button.
+ *
+ * Prepended into `.media-toolbar` rather than placed in a named region,
+ * because the footer's regions are not the same on every frame — a select
+ * frame has `.media-toolbar-primary` holding its button, and a frame in a
+ * different mode may have no secondary region at all. First child of the
+ * toolbar is left of everything in every one of them, since core floats the
+ * primary region right.
+ */
+export function frameFooterPlace(): Place | null {
+    const toolbar = document.querySelector('.media-modal .media-frame-toolbar .media-toolbar');
+
+    if (!toolbar) {
+        return null;
+    }
+
+    return { parent: toolbar, before: toolbar.firstElementChild };
+}
+
+/**
  * Filter the open frame to a folder.
  *
  * The collection re-queries itself; `ajax_query_attachments_args` reads the

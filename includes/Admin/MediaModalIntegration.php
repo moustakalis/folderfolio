@@ -103,7 +103,7 @@ final class MediaModalIntegration
         wp_enqueue_script(
             'folderfolio-frame',
             FOLDERFOLIO_PLUGIN_URL . 'assets/build/apps/modal.js',
-            array_merge($asset['dependencies'], ['wp-api-fetch', 'media-views']),
+            array_merge($asset['dependencies'], ['wp-api-fetch', 'media-views', 'wp-plupload']),
             $asset['version'],
             ['in_footer' => true, 'strategy' => 'defer']
         );
@@ -151,6 +151,9 @@ final class MediaModalIntegration
             'i18n' => [
                 'folders' => __('Folders', 'folderfolio'),
                 'folderActions' => __('Folder actions', 'folderfolio'),
+                // Screen 10's footer line. Only this screen renders it: the
+                // rail has no Select button to sit beside.
+                'uploadsGoToFolder' => __('Uploads go to the selected folder.', 'folderfolio'),
                 'newFolder' => __('New folder', 'folderfolio'),
                 'rename' => __('Rename', 'folderfolio'),
                 'renameFolder' => __('Rename folder', 'folderfolio'),

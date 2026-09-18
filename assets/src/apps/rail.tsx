@@ -11,6 +11,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createRoot } from 'react-dom/client';
 
 import { Rail } from './rail/Rail';
+import { useRail } from './rail/store';
+import { watchUploadTarget } from '../core/upload-target';
 
 /**
  * Where the breadcrumb and the drill-down cards go.
@@ -47,6 +49,18 @@ function contentMount(): HTMLElement | null {
 
     return el;
 }
+
+/**
+ * Uploads follow the folder — screen 10's footer line, made true.
+ *
+ * Here rather than inside a component: it is not rendering anything, it has
+ * to be running before a frame is opened, and it is the same two lines in
+ * both entries. See core/upload-target.ts.
+ */
+watchUploadTarget(
+    (listener) => useRail.subscribe((state) => listener(state.selectedId)),
+    useRail.getState().selectedId
+);
 
 const mount = document.getElementById('folderfolio-rail-app');
 
