@@ -201,9 +201,18 @@ its modal ran only from an event nothing dispatches, and its MutationObserver
 returned on its first line because `.attachments` is Backbone-rendered after
 `wp.media` boots and `init()` runs at `DOMContentLoaded`. So **"Uploads go to
 the selected folder" — the line screen 10 draws in the media modal's footer —
-has never been true on any screen.** It is an unimplemented feature, and the
-open question is the mechanism: the filter `Support\UploadRouter` already
-exposes covers every upload path at once, which a DOM watcher never did.
+has never been true on any screen.** It is an unimplemented feature.
+
+**And it is table stakes.** FileBird, CatFolders, Real Media Library and
+Folders all do it, all in their free tiers, and all by the same two-part
+mechanism: a parameter on the upload request (`fbv`, `catf`, `rmlFolder`,
+`folder_for_media`, each set on plupload's `multipart_params`) read back on
+`add_attachment`. None of them watches the DOM. `Support\UploadRouter` already
+hooks `add_attachment` and asks `folderfolio_default_folder_for_upload`, so the
+server side is one callback on a filter that ships. Two of them accept a
+`/`-path and **create** the missing folders from it, which is a write triggered
+by an upload parameter — take the id, not the path, for the same reason the
+gallery shortcode resolves with `findByPath()`.
 
 ### The three debts, and what they became
 
@@ -542,6 +551,15 @@ Backbone had not rendered yet. Neither fails, logs, or shows up in a
 screenshot. If a feature is wired to the DOM by timing or to a custom event by
 name, prove it fires — grep for the dispatcher, and exercise the seam — before
 believing the feature exists.
+
+**The development database is MAMP PRO's**, and phpMyAdmin serves it at
+`http://localhost:8888/phpMyAdmin5/` — from a browser on that Mac. A shell in
+an isolated VM cannot see that localhost, so anything that needs the database
+from outside the browser has to go through WordPress itself. A backup of the
+four competitor plugins' folder tables, taken that way on 18 Sep, is at
+`var/fixtures/competitor-fixtures-2026-09-18.sql` (gitignored); its row counts
+match the import wizard's verified plan, so it is a usable restore point for
+that fixture.
 
 **PHPStan in a container needs `assets/build/` to be absent.** CI's PHP job is
 a separate job from the Node one: it checks out fresh, never runs
