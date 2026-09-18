@@ -1,118 +1,151 @@
 # FolderFolio
 
-**Organize your WordPress Media Library with unlimited virtual folders. No tiers. No upsells.**
+**Organize your WordPress Media Library with unlimited virtual folders. Every feature free — no tiers, no upsells, no telemetry.**
 
 ## Version
 
-0.2.0 - Pre-release
+1.0.0
 
-## Features
+## What ships
 
-- ✅ Unlimited nested folders
-- ✅ Drag-and-drop organization
-- ✅ Multi-folder membership
-- ✅ Folder colors and icons
-- ✅ Bulk operations (assign, move, unassign)
-- ✅ Upload directly to folder
-- ✅ Auto-assign uploads to active folder
-- ✅ Media Library filtering
-- ✅ Media Modal integration (Gutenberg, Classic Editor, ACF, Customizer)
-- ✅ Import from FileBird (free & Pro)
-- ✅ Safe deactivation (no data loss)
-- ✅ REST API for extensibility
+Folders are virtual: nothing on disk moves, no attachment URL changes, and
+deactivating the plugin cannot break a published link.
+
+### In the Media Library
+
+- Unlimited nested folders, in both grid and list mode
+- Drag files onto a folder to file them
+- Multi-folder membership — one file, several folders, no duplicate on disk
+- Bulk assign, move and unassign, with an undo window
+- Uploads go to the folder currently selected
+- Ten folder colours
+- A folder filter on the library toolbar, in both modes
+- A folder column inside the media picker (block editor, Classic Editor, ACF,
+  Customizer)
+- A keyboard-navigable folder tree
+
+### On the front end
+
+- A **Folder gallery** block — a folder as its source, so adding a file to the
+  folder updates the page
+- `[folderfolio_gallery folder="Brand/Logos"]` for classic themes
+- Server-rendered: no JavaScript of ours reaches a visitor, and the lightbox is
+  core's. Private, draft and trashed media are filtered out of every gallery.
+
+### Migration
+
+The import wizard reads folders and assignments from nine plugins — FileBird
+(free and Pro), Real Media Library, CatFolders, Folders (Premio), Wicked
+Folders, Enhanced Media Library, Media Library Assistant, WP Media Folder and
+HappyFiles.
+
+It previews the whole plan before writing anything, **adds and never moves**,
+and stamps every folder and row with the run that created it, so one click
+undoes that run exactly.
+
+### Administration
+
+- A settings screen: count mode, default sort, undo window, and a per-role
+  capability matrix
+- A **Status** tab reporting the schema, the storage engine and the health check
+- WP-CLI: `wp folderfolio folder list|create|move|delete`, plus `assign`,
+  `rebuild-paths` and `doctor`
+- A REST API, a PHP facade, and filters on the capability checks, the import
+  sources and the default upload folder
+- `uninstall.php` removes every table, option and transient the plugin created
+
+### Not in 1.0.0
+
+- Folder icons. The column, the sanitizer and the REST field exist; no UI sets
+  one, so the feature does not ship.
+- Reordering folders by hand inside the tree.
 
 ## Requirements
 
 - WordPress 6.4+
 - PHP 8.1+
-- Node.js 20+ (Yarn 4 via Corepack)
+- Node.js 22 and Yarn 4 (via Corepack) to build the assets
 
-## Quick Start
-
-### 1. Install mise (one-time)
+## Quick start
 
 ```bash
-curl https://mise.run | sh
-source ~/.local/bin/env  # or restart your shell
+corepack enable
+composer install
+yarn install --immutable
+yarn build
 ```
 
-### 2. Setup project
+Or through mise, which wraps the same commands:
 
 ```bash
-# Install PHP 8.2, Node.js 20, and tools
-mise install
-
-# Install project dependencies
-mise run deps:install
-
-# Build assets
-mise run assets:build
+mise run deps:install   # Composer + Yarn
+mise run assets:build   # tsc --noEmit, then esbuild
 ```
 
-### 3. Link to WordPress (optional)
+### Link to a WordPress install
 
 ```bash
-# Create symlink to your WordPress plugins directory
 make wp-link WP_ROOT=/path/to/wordpress
-
-# Build and activate
-make assets:build
-# Visit WordPress admin → Plugins → Activate FolderFolio
+yarn build
 ```
 
-### 4. Create installable ZIP
+Then activate FolderFolio on the **Plugins** screen.
+
+### Build an installable ZIP
 
 ```bash
-make dev:zip
-# Upload build/folderfolio-latest.zip to WordPress
+mise run dev:zip     # → dist/folderfolio.zip
 ```
 
-## Development Commands
+`bin/stage-plugin.sh` holds the one packaging allowlist; `bin/build-zip.sh`
+zips what it stages, and the end-to-end suite mounts the same staged directory
+— so the files the tests run against and the files that ship are the same files
+by construction.
 
-```bash
-mise install           # Install PHP 8.2, Node 20, Composer, Corepack/Yarn
-mise run deps:install  # Install Composer + Yarn packages
-mise run assets:build  # Build assets (development)
-mise run assets:build-prod  # Build assets (production)
-mise run test:unit     # Run PHPUnit tests
-mise run test:e2e      # Run Playwright E2E tests
-mise run dev:clean     # Remove build artifacts
-mise run dev:zip       # Create installable plugin ZIP
-make wp-link           # Symlink to WordPress for development
-make wp-unlink         # Remove symlink
-```
+## Commands
+
+| | |
+|---|---|
+| `yarn build` | Type-check, then build production assets |
+| `yarn dev` | Rebuild on change |
+| `yarn typecheck` | `tsc --noEmit` |
+| `composer run phpstan` | PHPStan, level 6, pinned to PHP 8.1–8.4 |
+| `composer run test:unit` | The unit suite — no WordPress, no database |
+| `composer run test:integration` | Against the WordPress test library |
+| `composer run test:integration:setup` | Fetch WordPress and the test library first |
+| `yarn test:e2e` | Playwright, against a WordPress booted by the run itself |
+| `yarn test:pipeline` / `test:slot` / `test:tree` | The three browser harnesses for failures that are silent — the wp-element aliasing, the toolbar portal, the tree's roving tabindex |
+| `mise run dev:zip` | Build and package |
 
 ## REST API
 
-FolderFolio exposes a REST API at `/wp-json/folderfolio/v1/`:
+`/wp-json/folderfolio/v1/`
 
-- `GET /tree` - Get folder tree
-- `POST /folders` - Create folder
-- `PATCH /folders/{id}` - Update folder
-- `DELETE /folders/{id}` - Delete folder
-- `POST /folders/{id}/move` - Move folder
-- `GET /folders/{id}/attachments` - Get folder attachments
-- `POST /attachments/assign` - Assign attachments to folder
-- `POST /attachments/unassign` - Unassign attachments
-- `POST /attachments/bulk-move` - Move attachments between folders
-- `GET /import/detect` - Detect importable plugins
-- `POST /import/{importer}` - Run importer
+| | |
+|---|---|
+| `GET /tree` | The folder tree |
+| `POST /folders` | Create |
+| `PATCH /folders/{id}` | Update |
+| `DELETE /folders/{id}` | Delete — `children` is required, `reparent` or `cascade` |
+| `POST /folders/{id}/move` | Move |
+| `GET /folders/{id}/attachments` | A folder's attachments |
+| `POST /attachments/assign` | File attachments into a folder |
+| `POST /attachments/unassign` | Remove them from one |
+| `POST /attachments/bulk-move` | Move between folders |
+| `GET /import/detect` | Which sources hold data |
+| `POST /import/{importer}` | Run an import |
 
-## Testing
+Every response is enveloped as `{success, data}`.
 
-```bash
-# PHPUnit tests
-mise run test:unit
+## Documentation
 
-# Playwright E2E tests
-mise run test:e2e
-```
+`docs/00-start-here.md` is the cold-start page: what the plugin is, where it
+stands, and the traps worth knowing before touching anything.
 
 ## License
 
-GPL-2.0-or-later. See [LICENSE](LICENSE) for details.
+GPL-2.0-or-later. See [LICENSE](LICENSE).
 
 ## Support
 
-- GitHub Issues: https://github.com/moustakalis/folderfolio/issues
-- Documentation: https://github.com/moustakalis/folderfolio/wiki
+- Issues: https://github.com/moustakalis/folderfolio/issues

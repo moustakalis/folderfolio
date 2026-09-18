@@ -4,7 +4,7 @@
  * Plugin Name: FolderFolio
  * Plugin URI: https://github.com/moustakalis/folderfolio
  * Description: Organize the WordPress Media Library with unlimited virtual folders.
- * Version: 0.2.0
+ * Version: 1.0.0
  * Requires at least: 6.4
  * Requires PHP: 8.1
  * Author: Nickos Moustakas
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('FOLDERFOLIO_VERSION', '0.2.0');
+define('FOLDERFOLIO_VERSION', '1.0.0');
 define('FOLDERFOLIO_PLUGIN_FILE', __FILE__);
 define('FOLDERFOLIO_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('FOLDERFOLIO_PLUGIN_URL', plugin_dir_url(__FILE__));
