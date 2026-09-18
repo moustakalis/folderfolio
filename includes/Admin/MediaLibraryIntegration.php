@@ -33,11 +33,16 @@ final class MediaLibraryIntegration
         // the bulk-actions row that reloaded the page on success and reported
         // failure through window.alert(). The Add-to-folder flyout replaces
         // it, inside WordPress's own filter row, with no reload and no dialog.
-        // What is left here is the two bundles that work on the library rather
-        // than on the rail, and they still listen for
+        //
+        // 'upload-integration' is gone as well, and unlike those two it was
+        // not replaced by anything: every path through it was unreachable.
+        // See the commit that removed it. "Uploads go to the selected folder"
+        // is an unimplemented feature, not a regression.
+        //
+        // What is left is the one bundle that works on the library rather
+        // than on the rail, and it still listens for
         // folderfolio:folder-selected exactly as before.
         'media-library-integration' => ['wp-api-fetch'],
-        'upload-integration' => ['wp-api-fetch', 'media-views'],
     ];
 
     public function register(): void
@@ -159,17 +164,11 @@ final class MediaLibraryIntegration
             'countMode' => $settings['count_mode'],
             'defaultSort' => $settings['default_sort'],
             'undoWindow' => $settings['undo_window'],
-            // Every key here is read by upload-integration.ts or
-            // media-library-integration.ts; the ones the deleted bulk bar
-            // owned went with it. %s placeholders are filled positionally
-            // on the client.
-            'i18n' => [
-                'upload' => __('Upload', 'folderfolio'),
-                'assignFailed' => __('Could not assign the selected files.', 'folderfolio'),
-                /* translators: %s is the number of media items assigned. */
-                'assignSuccess' => __('Assigned %s file(s) to the folder.', 'folderfolio'),
-                'uploadModalTitle' => __('Upload to Folder', 'folderfolio'),
-            ],
+            // No 'i18n' here any more. All four labels belonged to
+            // upload-integration.ts, and media-library-integration.ts — the
+            // only bundle left on this screen — renders no text of its own.
+            // The rail localises its own set from Rail.php, on the same
+            // screen and under the same key.
         ];
     }
 }

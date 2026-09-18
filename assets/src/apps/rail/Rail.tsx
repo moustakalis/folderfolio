@@ -207,10 +207,12 @@ export function Rail({ contentMount }: { contentMount: HTMLElement | null }) {
 
         /*
          * The same event v0.2.0's tree dispatched. media-library-integration
-         * and upload-integration both listen for it — the filter bar above the
-         * grid and the default folder for a drop. They are not being rewritten
-         * in this step, and there is no reason for them to know the rail is a
-         * React app now.
+         * listens for it, and keeps the grid's own frame in step with the
+         * selection. There is no reason for it to know the rail is a React
+         * app now.
+         *
+         * upload-integration listened for it too, and is gone: it kept the
+         * selected folder in a field nothing ever read.
          */
         window.dispatchEvent(
             new CustomEvent('folderfolio:folder-selected', {
