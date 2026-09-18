@@ -33,7 +33,7 @@ the current diff. The domain layer, the REST surface and the importers are
 | More, and the colour picker behind it | done — and a folder stores a swatch name now, not a hex |
 | Uploads into the selected folder | done — a request parameter, not a DOM watcher |
 | The rail footer's folder total | done — it had been an empty span since step 3 |
-| Design audit of the library screen | 14 findings, 4 closed — see below |
+| Design audit of the library screen | 14 findings, 4 closed; 4 more found and closed on a second pass — see below |
 
 `DESIGN-TO-CODE.md`'s "Suggested order" is the sequence being followed, and its
 screen numbers are referenced throughout the code comments.
@@ -232,7 +232,7 @@ Screen 10's footer line renders left of Select, and only while a folder is
 selected: a sentence that is false half the time teaches people to stop
 reading it.
 
-### The 18 Sep design audit — fourteen findings, four closed
+### The 18 Sep design audit — fourteen findings, four closed, plus four from a second pass
 
 The library screen was read against the board area by area, at seven viewport
 widths, collapsed and expanded, in every admin colour scheme. Fourteen gaps
@@ -266,6 +266,35 @@ Closed:
    bundle runs, so `useLateMount` waits for it and puts the node back if the
    view is ever torn down. The query is scoped to `#wpbody-content` so a media
    modal's own toolbar is never mistaken for the library's.
+
+Three more came from a second look at the same screen, and are closed too:
+
+5. **The two headers did not share a line.** The rail starts at the top of
+   `#wpbody`; core's `.wrap` starts 10px lower and its `Add Media File` sits
+   another 8px down inside the heading's line box. The rail header's top
+   padding is 20px rather than the board's 12, which puts `New folder`'s
+   centre on core's button and the eyebrow's on the page title. The number is
+   only correct relative to core's — measure it again after touching that
+   file.
+6. **The eyebrow reads FolderFolio**, not "Folders". It is the one place in
+   wp-admin the plugin says what it is; the collapsed tab already carries the
+   generic word, and the rail has an accessible name from its landmark. Not
+   run through `t()` — a brand is not translated. The media modal's folder
+   column says the same.
+7. **The folder filter dropped its indent while shut.** An `<option>` has one
+   label for both states, so a folder three levels down showed nine
+   non-breaking spaces before its name in the closed control. The indent means
+   "inside that one" and needs the other rows on screen to mean anything, so
+   it comes off the selected row while the list is shut and goes back on
+   `mousedown`/`keydown` — both of which fire before the popup paints. The
+   list-mode select is printed by PHP, which now prints the selected row
+   un-indented and carries the indented label in `data-folderfolio-indented`,
+   so a select that has just come back from a list refresh is already correct
+   with no script involved.
+8. **A real channel between the columns.** `--ff-rail-gap`, 20px, on `:root`
+   rather than in `.folderfolio` — `#wpbody-content` and `#wpfooter` both have
+   to read it and neither is inside that class. It carries no colour, so
+   `TokensTest`'s sweep does not see it.
 
 Still open, in the order they were ranked: the 20px seam between the admin
 menu and the rail; "Rename" clipped at a 240px rail (the one `test.fail()`
