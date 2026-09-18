@@ -33,7 +33,14 @@ export function Header() {
 
     return (
         <div className="folderfolio-rail__header">
-            <span className="folderfolio-rail__eyebrow">{t('folders', 'Folders')}</span>
+            {/*
+              The product's name, not "Folders" as the board draws it: this is
+              the one place in wp-admin the plugin is identified, and a generic
+              word there names the region twice — the collapsed tab already
+              says FOLDERS, and the region has an accessible name from the
+              rail's landmark. Not run through t(): a brand is not translated.
+            */}
+            <span className="folderfolio-rail__eyebrow">FolderFolio</span>
 
             {/* Hidden rather than disabled: an always-grey primary action in
                 the corner of every media screen is a permanent reminder of

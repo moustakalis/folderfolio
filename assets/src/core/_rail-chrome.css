@@ -22,7 +22,22 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 12px 10px;
+
+  /**
+   * 20px on top, not the board's 12.
+   *
+   * The rail starts at the top of #wpbody; core's .wrap starts 10px lower,
+   * because of its own margin, and its `Add Media File` button sits another
+   * 8px down inside the heading's line box. Against a board where the rail is
+   * the only thing on the page, 12px is right; against wp-admin it left our
+   * primary button 8px above core's and the eyebrow above the page title.
+   *
+   * 20px puts `New folder`'s centre on `Add Media File`'s (both at y=66 at
+   * the default admin bar) and the eyebrow's on the page title's. Measured,
+   * not guessed — and measured again after every change to this file, because
+   * the number is only correct relative to core's.
+   */
+  padding: 20px 12px 10px;
   border-bottom: 1px solid var(--ff-line);
 }
 

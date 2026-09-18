@@ -55,7 +55,10 @@ export function FrameHeader({
 
     return (
         <div className="folderfolio-frame__header">
-            <span className="folderfolio-rail__eyebrow">{t('folders', 'Folders')}</span>
+            {/* The product's name, as in the library rail's header — same
+                eyebrow, same role, and the two would look like different
+                plugins if only one of them carried it. */}
+            <span className="folderfolio-rail__eyebrow">FolderFolio</span>
 
             <div className="folderfolio-frame__actions">
                 <button
