@@ -571,6 +571,29 @@
   font-size: 12.5px;
 }
 
+/**
+ * The margin again, with enough specificity to survive.
+ *
+ * `.wp-core-ui .button` is **0,2,0** and sets `margin: 0` on every button in
+ * wp-admin. A bare `.folderfolio-bulk` is 0,1,0, so the declaration above
+ * loses however late this stylesheet loads — order only decides ties. The
+ * visible result was our trigger sitting **flush** against `Apply` in list
+ * mode: 0px between two adjacent buttons, one of which opens a picker and the
+ * other of which submits the form.
+ *
+ * 6px, because that is what core's own `.post-type-attachment .wp-filter
+ * select` uses and what the bulk select to our left already has. Matching the
+ * neighbours is the point — a row where one gap is different reads as broken
+ * before it reads as ours.
+ *
+ * Third time this trap has been paid for here: the flyout's search input needs
+ * a doubled class for the same reason, and _rail-chrome.css carries the same
+ * note about `input[type="search"]`.
+ */
+.wp-core-ui .folderfolio-bulk {
+  margin: 0 6px 0 0;
+}
+
 /* Open is a state of the trigger, not only of the panel: with the flyout
    positioned against it, the two can be some way apart on a narrow window. */
 .folderfolio-bulk.is-open {
