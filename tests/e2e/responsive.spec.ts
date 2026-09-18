@@ -30,9 +30,10 @@ import { createFolder, resetFolders, waitForTree } from './helpers/folders';
  * One page load, then the viewport changes: media queries and flex respond
  * live, and a reload per width would cost seven wp-admin boots on php-wasm.
  *
- * Two of the three tests carry `test.fail()`: they describe defects the audit
- * found and nobody has fixed yet. Playwright reports a `test.fail()` that
- * passes as a failure, so the annotation cannot survive the fix by accident.
+ * One test still carries `test.fail()`: the 240px clipping, which nobody has
+ * fixed yet. Playwright reports a `test.fail()` that passes as a failure, so
+ * the annotation cannot survive the fix by accident — which is how the
+ * collapsed rail's annotation came off the moment that was fixed.
  */
 
 /** 783 and 782 bracket the one breakpoint the rail declares. */
@@ -223,14 +224,13 @@ test.describe('the rail across viewport widths', () => {
      * `overflow: visible` — so they drew across the page, and the reopen tab
      * was pushed 443px down by the siblings still above it. It survived a
      * reload, because collapsed is a stored preference.
+     *
+     * Two fixes made this pass: .is-collapsed hides the whole `__app`, and
+     * core's #wpfooter is indented past the rail — before that it lay over the
+     * Collapse button and Playwright would not click it, so the test could not
+     * even reach the thing it was testing.
      */
     test('collapsed, nothing renders outside the 28px tab', async ({ page }) => {
-        // Known-failing, and it fails before it can even collapse: #wpfooter
-        // is absolutely positioned over the rail's own footer, so the Collapse
-        // button is obscured and Playwright refuses to click it. Fixing the
-        // collision unblocks this; fixing .is-collapsed makes it pass.
-        test.fail();
-
         await page.setViewportSize({ width: 1280, height: 900 });
         await page.goto('/wp-admin/upload.php?mode=grid');
         await page.locator('#folderfolio-rail').waitFor();
