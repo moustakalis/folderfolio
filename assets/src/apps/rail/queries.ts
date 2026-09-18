@@ -10,11 +10,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiFetch, ApiEnvelope } from '../../core/api';
+import type { Swatch } from '../../lib/swatches';
 
 export interface FolderNode {
     id: number;
     parent_id: number | null;
     name: string;
+    /**
+     * A swatch name — 'steel', 'plum' — or null. Never a hex: the hex a
+     * swatch resolves to belongs to the admin colour scheme. See
+     * lib/swatches.ts. Typed as a plain string rather than Swatch because
+     * this is what came off the wire, and swatchStyle() is what decides
+     * whether it is one of the ten.
+     */
     color: string | null;
     depth: number;
     path: string;
@@ -96,6 +104,60 @@ export function useRenameFolder() {
             client.setQueryData<FolderNode[]>(treeKey, (nodes) =>
                 mapTree(nodes ?? [], (node) =>
                     node.id === input.id ? { ...node, name: input.name } : node
+                )
+            );
+
+            return { previous };
+        },
+
+        onError: (_error, _input, context) => {
+            if (context?.previous) {
+                client.setQueryData(treeKey, context.previous);
+            }
+        },
+
+        onSettled: () => {
+            void client.invalidateQueries({ queryKey: treeKey });
+        },
+    });
+}
+
+/**
+ * Setting a folder's colour, from the More menu's swatch picker.
+ *
+ * Optimistic, for the same reason renaming is: the id exists, one field
+ * changes, and the client already knows the answer. It matters more here than
+ * it does for a rename — the picker is a grid of ten dots and the thing it
+ * changes is a 16px icon three inches away, so a round trip between the click
+ * and the colour would read as the click not having registered.
+ *
+ * `color` is a swatch name and never a hex. See lib/swatches.ts.
+ */
+export function useSetFolderColor() {
+    const client = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (input: { id: number; color: Swatch | null }) => {
+            const response = await apiFetch<ApiEnvelope<FolderNode>>(`/folders/${input.id}`, {
+                method: 'POST',
+                // '' and not null: the REST field is typed string, and a null
+                // would be rejected by the schema before FolderService could
+                // read it as "clear this". The server maps an empty string to
+                // NULL in the column.
+                data: { color: input.color ?? '' },
+            });
+
+            return response.data;
+        },
+
+        onMutate: async (input) => {
+            await client.cancelQueries({ queryKey: treeKey });
+
+            const previous = client.getQueryData<FolderNode[]>(treeKey);
+
+            client.setQueryData<FolderNode[]>(treeKey, (nodes) =>
+                mapTree(nodes ?? [], (node) =>
+                    node.id === input.id ? { ...node, color: input.color } : node
                 )
             );
 

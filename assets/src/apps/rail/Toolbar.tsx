@@ -1,11 +1,9 @@
 /**
  * The rail toolbar — screen 03.
  *
- * Four 34px labelled buttons in the design. Three of them are here: Rename,
- * Delete and Sort. The fourth, More, is the colour picker and whatever else
- * ends up in an overflow menu — both drawn on screen 11, and both arriving
- * with that screen. A button that enables on selection and then does nothing
- * is worse than one that is not there yet.
+ * Four 34px labelled buttons: Rename, Delete, Sort and More. More is the
+ * colour picker from screen 11 — see ColorPicker, which is all of it, and why
+ * nothing else was invented to keep it company.
  *
  * Labelled, not icon-only. "Delete" next to a bin is redundant; a bin on its
  * own next to a pencil is a guess, and this toolbar acts on whatever folder is
@@ -14,6 +12,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { ColorPicker } from './ColorPicker';
 import { ArrowUpDownIcon, EllipsisIcon, PencilIcon, TrashIcon } from './icons';
 import type { FolderNode } from './queries';
 import { useRail, type SortOrder } from './store';
@@ -32,6 +31,7 @@ export function Toolbar({ selected, onDelete }: { selected: FolderNode | null; o
     const sort = useRail((s) => s.sort);
     const setSort = useRail((s) => s.setSort);
     const [sortOpen, setSortOpen] = useState(false);
+    const [moreOpen, setMoreOpen] = useState(false);
 
     // Only a real folder can be renamed or deleted. All media and Unassigned
     // are selections but not folders, which is exactly the case a disabled
@@ -103,6 +103,32 @@ export function Toolbar({ selected, onDelete }: { selected: FolderNode | null; o
                     </Menu>
                 ) : null}
             </div>
+
+            {/*
+              More acts on the selection, so it is disabled with Rename and
+              Delete rather than always live like Sort. The ability is
+              `rename` and not one of its own: setting a colour is a POST to
+              /folders/{id}, the same route and the same permission check a
+              rename goes through, and a second name for it in the matrix
+              would be a second name for one answer.
+            */}
+            <div className="folderfolio-rail__tool-wrap">
+                <button
+                    type="button"
+                    className="folderfolio-rail__tool"
+                    disabled={!actable || !can('rename')}
+                    aria-haspopup="menu"
+                    aria-expanded={moreOpen}
+                    onClick={() => setMoreOpen((open) => !open)}
+                >
+                    <EllipsisIcon size={14} />
+                    {t('more', 'More')}
+                </button>
+
+                {moreOpen && selected ? (
+                    <ColorPicker folder={selected} onClose={() => setMoreOpen(false)} />
+                ) : null}
+            </div>
         </div>
     );
 }
@@ -111,16 +137,44 @@ export function Toolbar({ selected, onDelete }: { selected: FolderNode | null; o
  * A small popup menu: closes on Escape, on a click outside, and when focus
  * leaves it. All three, because each covers a case the others do not — Escape
  * for the keyboard, the outside click for the mouse, and focus leaving for Tab.
+ *
+ * Focus goes into the menu when it opens, and Escape puts it back on the
+ * button that opened it. The second half was missing until the colour picker
+ * was built: Escape closed the Sort menu and left focus on <body>, so the
+ * next Tab started again from the top of wp-admin — a keyboard user who
+ * glanced at a menu and changed their mind lost their place on the page. It
+ * is fixed here rather than in the picker because both menus are this
+ * component.
+ *
+ * Escape only, and decided at the moment of closing rather than read from
+ * document.activeElement in the cleanup: by the time a passive effect's
+ * cleanup runs React has already removed the menu, so focus is on <body> and
+ * "was it still in the menu" can no longer be asked. The other two closes
+ * must not restore anyway — a click outside and a Tab away are both the user
+ * putting focus somewhere deliberately, and pulling it back to the button
+ * would be the menu arguing with them.
  */
-export function Menu({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+export function Menu({
+    children,
+    onClose,
+    className,
+}: {
+    children: React.ReactNode;
+    onClose: () => void;
+    className?: string;
+}) {
     const ref = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        const opener = document.activeElement as HTMLElement | null;
+        let dismissed = false;
+
         ref.current?.querySelector<HTMLElement>('button')?.focus();
 
         const onKey = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
                 event.stopPropagation();
+                dismissed = true;
                 onClose();
             }
         };
@@ -137,13 +191,17 @@ export function Menu({ children, onClose }: { children: React.ReactNode; onClose
         return () => {
             document.removeEventListener('keydown', onKey, true);
             document.removeEventListener('pointerdown', onPointer, true);
+
+            if (dismissed && opener?.isConnected) {
+                opener.focus();
+            }
         };
     }, [onClose]);
 
     return (
         <div
             ref={ref}
-            className="folderfolio-menu"
+            className={`folderfolio-menu${className ? ` ${className}` : ''}`}
             role="menu"
             onBlur={(event) => {
                 if (!event.currentTarget.contains(event.relatedTarget)) {

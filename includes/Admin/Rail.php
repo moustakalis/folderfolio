@@ -388,6 +388,26 @@ final class Rail
                 ),
                 'emptyTree' => __('No folders yet', 'folderfolio'),
 
+                // The colour picker behind More — screen 11, §9.8. The ten
+                // names are labels for a swatch, not colour codes: they are
+                // what a screen reader announces and what the tooltip shows,
+                // so they are translated like any other visible word.
+                'more' => __('More', 'folderfolio'),
+                'folderColor' => __('Folder colour', 'folderfolio'),
+                /* translators: %s is the folder name. */
+                'colorFor' => __('Colour for %s', 'folderfolio'),
+                'noColor' => __('No colour', 'folderfolio'),
+                'swatchSlate' => __('Slate', 'folderfolio'),
+                'swatchRed' => __('Red', 'folderfolio'),
+                'swatchClay' => __('Clay', 'folderfolio'),
+                'swatchOchre' => __('Ochre', 'folderfolio'),
+                'swatchMoss' => __('Moss', 'folderfolio'),
+                'swatchTeal' => __('Teal', 'folderfolio'),
+                'swatchSteel' => __('Steel', 'folderfolio'),
+                'swatchIndigo' => __('Indigo', 'folderfolio'),
+                'swatchPlum' => __('Plum', 'folderfolio'),
+                'swatchInk' => __('Ink', 'folderfolio'),
+
                 // The filter-row controls — screens 03, 06 and 11.
                 'filterByFolder' => __('Filter by folder', 'folderfolio'),
                 'addToFolder' => __('Add to folder', 'folderfolio'),
