@@ -50,6 +50,31 @@ body.folderfolio-has-rail #wpbody > .clear {
 }
 
 /**
+ * The rail sits against the admin menu, with nothing between them.
+ *
+ * `#wpcontent` carries a 20px left padding that every admin screen inherits,
+ * and on this one it put a 20px band of page background between the dark menu
+ * and the white rail — two panels that do not meet. The board draws them
+ * flush, and the menu's own current-item pointer is drawn to land on whatever
+ * is beside it.
+ *
+ * Safe to zero here because `#wpcontent`'s only child that the padding reaches
+ * is `#wpbody`: the admin bar inside it is fixed, and the notices are further
+ * down inside `#wpbody-content`, which carries its own `--ff-rail-gap`. The
+ * library column therefore keeps its gutter and simply gains the 20px of
+ * width.
+ *
+ * Above the breakpoint only. Below it the menu is off-canvas, `#wpcontent`
+ * has no left margin either, and zeroing this would put the page against the
+ * viewport edge.
+ */
+@media screen and (min-width: 783px) {
+  body.folderfolio-has-rail #wpcontent {
+    padding-left: 0;
+  }
+}
+
+/**
  * Core's footer, moved out from under the rail.
  *
  * #wpfooter is `position: absolute; bottom: 0` across the whole content area
@@ -64,7 +89,7 @@ body.folderfolio-has-rail #wpbody > .clear {
  * collapses. The 20px is core's own padding, which this replaces.
  */
 body.folderfolio-has-rail #wpfooter {
-  padding-left: calc(var(--ff-rail-gutter, 0px) + var(--ff-rail-gap, 20px) + 20px);
+  padding-left: calc(var(--ff-rail-gutter, 0px) + var(--ff-rail-gap, 20px));
 }
 
 /* And the rail paints over the footer rather than under it, so that the
