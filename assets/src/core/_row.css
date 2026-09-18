@@ -55,6 +55,39 @@
   --ff-switcher: 16px;
 }
 
+/**
+ * A third cramped case: the rail dragged below the width it was drawn at.
+ *
+ * `DESIGN-TO-CODE.md` measures a depth-5 name at **110px** in a 300px rail and
+ * accepts it — longer names ellipsize, which is what a tree at depth does, and
+ * it notes that a smaller indent "buys 22px of name at the cost of the
+ * structure the guide lines carry". That trade is the wrong way round at 300px
+ * and the right way round at 240, where the same name gets **50px**: at that
+ * point the structure is carrying nothing, because there is no name left to
+ * structure.
+ *
+ * 16px below the width the board drew, 24px at it and above — so the accepted
+ * figure and the `x = 22 + 24n` guide grid are untouched wherever they were
+ * specified. Depth 5 at a 240px rail goes from 50px of name to 82px.
+ *
+ * One declaration moves both: the row's padding and the guide line's `left`
+ * are both expressed in `--ff-indent`. 298px rather than 300 for the same
+ * reason as the toolbar — see _toolbar.css.
+ *
+ * On `__body` and not on the rail, because **a container cannot query
+ * itself**: `@container` resolves against the nearest *ancestor* container, so
+ * a rule naming `.folderfolio-rail` inside the rail's own container query
+ * matches nothing. It failed silently — the indent simply stayed 24px, which
+ * is what it was before. The toolbar's rule works because a tool button is a
+ * descendant. `__body` is the tree's own scroller, inside the container and
+ * above every row.
+ */
+@container folderfolio-rail (width < 298px) {
+  .folderfolio-rail__body {
+    --ff-indent: 16px;
+  }
+}
+
 /* 12px of name is what a 16px slot leaves room for. */
 .folderfolio-tree--modal .folderfolio-row__switcher svg,
 .folderfolio-tree--inspector .folderfolio-row__switcher svg,
