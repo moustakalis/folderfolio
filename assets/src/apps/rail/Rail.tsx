@@ -297,6 +297,15 @@ export function Rail({ contentMount }: { contentMount: HTMLElement | null }) {
             </div>
 
             {/*
+              The footer's folder total. The footer is server-rendered by
+              Rail.php so that Collapse works before this bundle loads and if
+              it never does, which leaves an empty span for the one part of it
+              that is data — filled from here, through the same query the tree
+              reads, so the two can never disagree.
+            */}
+            {isError ? null : <FooterTotal nodes={nodes} pending={isPending} />}
+
+            {/*
               Bottom-left of the content area, per screen 05 — portaled next to
               the breadcrumb rather than rendered inside the rail, which is a
               300px column with its own overflow and stacking context.
@@ -306,6 +315,54 @@ export function Rail({ contentMount }: { contentMount: HTMLElement | null }) {
                 : null}
         </>
     );
+}
+
+/**
+ * "12 folders", bottom left — screen 03's footer.
+ *
+ * Every folder at every depth, not the top level and not what the search is
+ * showing: it answers "how big is this tree", which is a property of the tree
+ * and not of the view. It is also why it is not the count the badges show —
+ * those count files.
+ *
+ * Read from the same cache the tree renders from, so a create, a delete and
+ * an undo all move it without anything here subscribing to them. A delete is
+ * optimistic — the row leaves the cache before the server is told — so the
+ * total drops the moment the row does and comes back if the toast is undone,
+ * which is the behaviour a number next to a disappearing row has to have.
+ *
+ * Nothing at all while the query is in flight. The tree shows three ghost
+ * rows there, and "0 folders" underneath them would be a statement about the
+ * site rather than about the request.
+ */
+function FooterTotal({ nodes, pending }: { nodes: FolderNode[]; pending: boolean }) {
+    const slot = document.querySelector('[data-folderfolio-total]');
+
+    if (!slot) {
+        return null;
+    }
+
+    const total = countTree(nodes);
+
+    /*
+     * Two strings rather than a plural function: the label set is handed over
+     * in window.folderFolio.i18n, not registered with wp.i18n, so there is no
+     * plural resolver on this side. Languages with more than two forms get
+     * the general one — the same trade every other counted string in this
+     * bundle makes, and the reason to revisit it is all of them at once.
+     */
+    const label = pending
+        ? ''
+        : total === 1
+          ? t('folderTotalOne', '1 folder')
+          : t('folderTotal', '%s folders', String(total));
+
+    return createPortal(label, slot);
+}
+
+/** Every folder in the tree, at every depth. */
+function countTree(nodes: FolderNode[]): number {
+    return nodes.reduce((sum, node) => sum + 1 + countTree(node.children), 0);
 }
 
 /**

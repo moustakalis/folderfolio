@@ -387,6 +387,9 @@ final class Rail
                     'folderfolio'
                 ),
                 'emptyTree' => __('No folders yet', 'folderfolio'),
+                /* translators: %s is the number of folders. */
+                'folderTotal' => __('%s folders', 'folderfolio'),
+                'folderTotalOne' => __('1 folder', 'folderfolio'),
 
                 // The colour picker behind More — screen 11, §9.8. The ten
                 // names are labels for a swatch, not colour codes: they are
