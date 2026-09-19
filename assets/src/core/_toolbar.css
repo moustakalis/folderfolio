@@ -643,8 +643,36 @@
   border: 0;
 }
 
-.folderfolio-folder-select {
-  max-width: 14rem;
+/**
+ * The cap, with enough specificity to survive — and it never had it.
+ *
+ * `.wp-core-ui select` is **0,1,1** and sets `max-width: 25rem`; a bare
+ * `.folderfolio-folder-select` is 0,1,0, so the 14rem below had never once
+ * applied. With a handful of folders nothing showed it: a native select is as
+ * wide as its longest option, and short names are narrower than either cap.
+ *
+ * The 1,050-folder fixture is what made it visible, and at a *wide* viewport
+ * rather than a narrow one. The longest option is 36 characters of indented
+ * name plus its count, so the select measured **257px** and pushed the grid
+ * toolbar from two lines to **three** — 168px at a 1440px viewport where the
+ * design says 128, with the first thumbnail 144px further down the page. This
+ * is the sixth time this stylesheet has paid for a wp-admin selector with an
+ * element in it.
+ *
+ * 11rem, and the number is measured rather than chosen. At a 1440px viewport
+ * with Nick's 310px rail the library column is 923px and core gives
+ * `.media-toolbar-secondary` 587px of it; the view switch, media type and date
+ * take 337 plus gaps, so the folder control has about 190px before it is
+ * pushed off the filter line — and 192px is the width at which it goes.
+ * Measured: 224 and 208 and 192 all strand it beside the search field on a
+ * line of its own and cost 40px of toolbar; 176 keeps it in the filter group.
+ *
+ * Doubled rather than made `!important`: the open narrow-width panel sets
+ * `max-width: none` deliberately, and that rule has to keep winning.
+ */
+.folderfolio-folder-select,
+.wp-core-ui .folderfolio-folder-select {
+  max-width: 11rem;
   margin: 0 6px 0 0;
   vertical-align: top;
   font-size: 12.5px;
@@ -1516,16 +1544,25 @@
    * Declared on both children rather than on the group alone, because a
    * full-width filter group beside a shrink-wrapped search field would just
    * move the raggedness one row down.
+   *
+   * **Only while the panel is open**, and that qualifier was missing at first.
+   * Closed, the filter group is a view switch and one `Filter` button — about
+   * 168px — and the search sits beside it on the same line. Forcing both to
+   * full width there stacked them for no reason: measured at a 683px column,
+   * `.wp-filter` went from **112px to 166px**, a 54px tax on the state the
+   * screen is in almost all the time, and at viewports as wide as 1200px. The
+   * raggedness this fixes only exists when there are three stacked selects to
+   * be ragged against.
    */
-  #wpbody-content .wp-filter > .filter-items,
-  #wpbody-content .wp-filter > .search-form {
+  body.folderfolio-filters-open #wpbody-content .wp-filter > .filter-items,
+  body.folderfolio-filters-open #wpbody-content .wp-filter > .search-form {
     flex: 1 1 100%;
     min-width: 0;
   }
 
   /* …and the field inside the search form, for the same reason: the form is
      now full width, so 100% finally means the row. */
-  #wpbody-content .wp-filter > .search-form #media-search-input {
+  body.folderfolio-filters-open #wpbody-content .wp-filter > .search-form #media-search-input {
     width: 100%;
   }
 

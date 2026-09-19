@@ -197,6 +197,36 @@ test.describe('the library toolbar', () => {
         }
     });
 
+    /**
+     * The folder select's width cap actually applies.
+     *
+     * Asserted as a computed style rather than as a measured width, and that
+     * is the point: this suite's fixture has a handful of folders, so the
+     * select is narrower than either cap and the defect cannot reproduce here
+     * at all. It took a 1,050-folder library to show it — `.wp-core-ui select`
+     * is **0,1,1** with `max-width: 25rem`, our `.folderfolio-folder-select`
+     * was 0,1,0, and the cap had therefore never once applied. The longest
+     * option grew the control to 257px, which pushed it off the filter line
+     * and cost 40px of grid toolbar at a 1440px viewport.
+     *
+     * Reading the computed value catches the specificity regression whatever
+     * the fixture contains.
+     */
+    test('caps the folder select, at a specificity that survives core', async ({ page }) => {
+        await page.setViewportSize({ width: 1440, height: 900 });
+        await page.locator('#folderfolio-folder-filter').waitFor();
+
+        const cap = await page.evaluate(() => {
+            const el = document.querySelector('#folderfolio-folder-filter');
+
+            return el ? getComputedStyle(el).maxWidth : null;
+        });
+
+        // 11rem against wp-admin's 16px root. Compared as a number so a
+        // different root size reads as a different number, not as a failure.
+        expect(Number.parseFloat(cap ?? '')).toBeLessThanOrEqual(176);
+    });
+
     test('keeps the bulk controls when core rebuilds the toolbar', async ({ page }) => {
         // Entering Bulk select re-renders the media frame's toolbar and hides
         // every child of it but three. The slot has to survive that, and the
