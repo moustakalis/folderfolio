@@ -129,7 +129,7 @@ it or not; and the narrow sheet spends about 369px of chrome — header, action
 row, the two fixed rows, search, the level header, footer — to show 222px of
 list. Both are worth measuring before they are changed.
 
-Checks after this step: **PHPStan clean, 107 unit, 42 e2e** (library 12,
+Checks at the end of the day: **PHPStan clean, 107 unit, 42 e2e** (library 12,
 responsive 5, rail 10, upload 2, settings 5, search-submit 3, import 4, gallery
 1), **`tsc` clean**. The integration suite was *not* re-run — see below.
 
@@ -161,18 +161,53 @@ same 28 matches the picker does, which is the point of their sharing
 one it is better — clamped to the room it has, with its Apply button on screen
 rather than 103px past the bottom edge.
 
-**And the sweep found a third thing, which is open.** Between **700 and 1040px
-of library column** both toolbars grow — grid 128 → **182**, list 80 → **134**
-— and then *shrink* below 700 where they collapse behind the `Filter` button.
-The toolbar is at its tallest on a middling laptop. That band was never
-measured, because the collapse was designed from the narrow end. The candidate
-is moving the collapse from 700 to **880**, which flattens grid entirely and
-halves list's band; the cost is the media-type and date filters going behind a
-button at a 1260–1380px window. Nick's call, and he has the drawing.
+**And the sweep found a third thing — now fixed, and the way it was fixed is
+the lesson.** Between **700 and 860px of library column** the grid toolbar was
+**182px**, against 128 above it and 96 below: taller on a middling laptop than
+on a phone. I put it to Nick as a design question — hide two filters behind a
+button? — and his answer was that at those widths there is obviously room, and
+that it was a thing to measure rather than ask about. He was right, and I had
+already taken the measurement and stopped one step short of it.
 
-A third candidate was measured and rejected: dropping the declared line break
-in that band gives 134px at 863 but strands the spinner on its own line at
-743, which is finding 19 coming back.
+Dropping finding 19's declared line break **inside the existing `< 860px`
+block** gives **134px** across the band: once the search has taken its own
+line the filters have the full column and `Bulk select` fits beside them. It
+failed at the narrow end by about ten pixels, which is what made me give up on
+it — core's `.view-switch` carries `margin-right: 12px` on top of the
+toolbar's own 8px gap, and zeroing it there is exactly the difference between
+fitting and not. Measured at a 711px column.
+
+The grid curve is now **128 / 134 / 96**, with no bump at any width.
+
+### 19 Sep, last pass — three answers from Nick, and one leak
+
+**`Filter` → `Filters`.** It opens three of them, and the singular collided
+with core's own `Filter` submit in list mode: two adjacent controls inside one
+form carrying the same word, one disclosing and one submitting. Note for test
+authors — once a folder is filtered the button's accessible name is
+"Filters 1 filter active", so an exact-match locator stops finding it.
+
+**The folder cards are a desktop affordance.** Below 782px they are no longer
+rendered: on a phone they are a second full-width list of the folders the
+sheet already shows, sitting between the toolbar and the files. Measured at
+528px against the stress fixture, the block is **1,238px tall** and the first
+thumbnail sat at **1,731px**; without it the first thumbnail is at **447px**.
+The breadcrumb stays — one line saying where you are does not duplicate the
+sheet.
+
+**wp-admin's `dd, li { margin-bottom: 6px }` was in two of our lists.** It is
+(0,0,1), and a `<ul>` zeroing its own margin does nothing for its children.
+
+- The **breadcrumb**'s items are `<li>`s, so the row sat off centre in its own
+  band. Its padding was `8px 0 10px`, and the undocumented asymmetry was
+  almost certainly compensation for exactly this. Now `9px 0`, same box, text
+  centred at every width.
+- The **tree**'s rows are `<li>`s too, and nobody had noticed: the fixed rows
+  above them are buttons in a `<div>` and sit on a **36px** pitch, while the
+  folder rows below sat on **42**. Two halves of one column in two rhythms.
+  The tree measured 1,968px where its rows account for 1,692.
+
+Both are one pitch now — 36px on the desktop, 44 in the phone sheet.
 
 ### Three recorded deviations from the board
 
@@ -994,6 +1029,14 @@ row.
 **Core sizes its toolbar controls against a 60px row.** `.view-switch` is 38px
 with `padding: 12px 0`, and the grid-mode toggle computes to 62px to match it.
 Invisible inside core's flex row; as grid items they *become* the row.
+
+**wp-admin styles bare elements, and those rules reach inside our components.**
+`dd, li { margin-bottom: 6px }` is (0,0,1) and applied to every `<li>` we
+render — the breadcrumb's items and, unnoticed for weeks, every row of the
+tree, which sat on a 42px pitch beside 36px fixed rows in the same column. A
+`<ul>` zeroing its own margin does nothing for its children. When a component
+of ours uses a semantic element, check what wp-admin already says about that
+element.
 
 **wp-admin's own selectors carry an element; ours usually do not.**
 `.wp-core-ui .button` is (0,2,0) and sets `display`; `.wp-core-ui select` is
