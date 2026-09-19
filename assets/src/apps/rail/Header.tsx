@@ -7,7 +7,7 @@
  * differently and silently. Screen 05 draws it exactly there.
  */
 
-import { PlusIcon } from './icons';
+import { BrandMark, PlusIcon } from './icons';
 import { can } from '../../lib/can';
 import { useRail } from './store';
 import { t } from '../../core/api';
@@ -39,8 +39,15 @@ export function Header() {
               word there names the region twice — the collapsed tab already
               says FOLDERS, and the region has an accessible name from the
               rail's landmark. Not run through t(): a brand is not translated.
+
+              The mark sits in front of it, which is what makes the pair read
+              as a lockup rather than as a word in small caps — and it is the
+              same shape as the block icon and the wordpress.org listing.
             */}
-            <span className="folderfolio-rail__eyebrow">FolderFolio</span>
+            <span className="folderfolio-rail__brand">
+                <BrandMark />
+                <span className="folderfolio-rail__eyebrow">FolderFolio</span>
+            </span>
 
             {/* Hidden rather than disabled: an always-grey primary action in
                 the corner of every media screen is a permanent reminder of

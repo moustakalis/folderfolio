@@ -778,8 +778,34 @@ body.folderfolio-resizing * {
     grid-template-columns: minmax(0, auto) minmax(0, 1fr);
     align-items: center;
     position: sticky;
-    top: 0;
-    z-index: 1;
+
+    /**
+     * Minus six, because a sticky offset is measured from the scrollport's
+     * **padding** box.
+     *
+     * `.folderfolio-rail__body` is the scroller and carries `padding: 6px 0
+     * 12px` over a 1px top border, so `top: 0` pinned the header seven pixels
+     * down from its own top edge — and scrolled rows kept drawing in the strip
+     * above it. Measured: body top 353.4, header stuck at 360.4.
+     *
+     * Tied to that padding, and the only thing tying them is this note: if the
+     * body's `padding-top` changes, this changes with it.
+     */
+    top: -6px;
+
+    /**
+     * Two, not one, and the one is why the rows showed through it.
+     *
+     * `.folderfolio-row__icon`, `__name` and `__count` are each
+     * `position: relative; z-index: 1` — they sit above the row's own guides.
+     * A sticky header at `z-index: 1` therefore *ties* with them, and a tie is
+     * broken by document order, which the rows win because they come after it.
+     * The header painted its white background and the row's text painted over
+     * the top, so the bar looked transparent: measured with
+     * `elementFromPoint`, which returned `.folderfolio-row__name` inside the
+     * header's own box.
+     */
+    z-index: 2;
     gap: 2px;
     background: var(--ff-panel);
     border-bottom: 1px solid var(--ff-line);

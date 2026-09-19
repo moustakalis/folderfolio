@@ -1249,6 +1249,18 @@
     color: var(--ff-panel);
     font-size: 11px;
     font-weight: 600;
+
+    /**
+     * Its own line height, or the digit sits on the floor of the pill.
+     *
+     * `line-height` inherits as a *computed length* from the button — 32.3px,
+     * sized for 14px button text — so an 11px digit was laid out in a 25.4px
+     * line box inside a 17px pill. `place-items: center` centres the box it is
+     * given, and that box was 8px taller than the pill, so the glyph sat low
+     * and the pill read as a tall blue block with a number at the bottom.
+     * Measured: line-height 25.38px in a 17px box.
+     */
+    line-height: 1;
   }
 
   #wpbody-content .folderfolio-filter-toggle[aria-expanded='true'] {

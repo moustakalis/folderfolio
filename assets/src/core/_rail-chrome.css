@@ -44,6 +44,29 @@
 /* 10px uppercase at 0.12em — the design's eyebrow, used for every label of
    this kind. Not an <h2>: it names a region, and the region already has an
    accessible name from the rail's own landmark. */
+/**
+ * Mark and wordmark, as one thing.
+ *
+ * Their own 6px rather than the header's 8px gap: the header's gap separates
+ * two different controls, this one holds a lockup together, and a lockup with
+ * the same space inside it as around it stops being one.
+ */
+.folderfolio-rail__brand {
+  display: grid;
+  grid-auto-flow: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* Optically centred: the mark's shapes sit on a 20-unit grid whose lower edge
+   is heavier, and the eyebrow is 10px uppercase with no descenders, so a plain
+   centre line leaves the word riding high against it. */
+.folderfolio-rail__brand svg {
+  flex: 0 0 auto;
+  margin-top: -1px;
+}
+
 .folderfolio-rail__eyebrow {
   font-size: 10px;
   font-weight: 700;

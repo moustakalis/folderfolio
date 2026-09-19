@@ -45,6 +45,42 @@ function Svg({
     );
 }
 
+/**
+ * The product's mark, beside the eyebrow in the rail header.
+ *
+ * The one icon here that is **not** Lucide and not stroked: it is the plugin's
+ * own mark, kept byte-for-byte identical to `assets/brand/mark.svg` — two
+ * nested folder silhouettes on a 20-unit grid — so the wordmark in wp-admin,
+ * the block icon and the wordpress.org listing are drawing the same shape.
+ * Filled rather than stroked for the same reason; it is a logo, not an icon in
+ * the set.
+ *
+ * Inlined rather than referenced as a file so it needs no request, no
+ * `plugins_url()`, and takes its colour from the header like everything else
+ * in this file.
+ */
+export function BrandMark({ size = 14, className }: { size?: number; className?: string }) {
+    return (
+        <svg
+            width={size}
+            height={size}
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            aria-hidden="true"
+            focusable="false"
+            className={className}
+        >
+            <path d="M2 2H6L8 4H2Z" />
+            <rect x="2" y="4" width="12" height="2" />
+            <rect x="2" y="4" width="2" height="11" />
+            <rect x="4" y="8" width="7" height="2" />
+            <rect x="6" y="16" width="12" height="2" />
+            <rect x="16" y="7" width="2" height="11" />
+            <rect x="9" y="12" width="7" height="2" />
+        </svg>
+    );
+}
+
 export function FolderIcon(props: IconProps) {
     return (
         <Svg {...props}>
