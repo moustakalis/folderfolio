@@ -433,6 +433,37 @@ body.folderfolio-resizing * {
     max-width: min(var(--ff-rail-w), 100%);
   }
 
+  /**
+   * …except once it is open, when it takes the whole band.
+   *
+   * The cap above was written for the *stacked* rail, where the band was
+   * always on screen and a 300px design stretched across a phone looked
+   * wrong. Opened deliberately by a tap, the sheet is the only thing the
+   * person is looking at, and a 310px column of folders inside a 522px panel
+   * reads as a rendering fault rather than as a decision — which is exactly
+   * how Nick reported it.
+   *
+   * So the cap holds for the closed bar and comes off for the sheet.
+   */
+  body.folderfolio-has-rail.folderfolio-rail-peek .folderfolio-rail__app,
+  body.folderfolio-has-rail.folderfolio-rail-peek .folderfolio-rail__footer {
+    max-width: none;
+  }
+
+  /**
+   * The action row sizes to its words, rather than into quarters.
+   *
+   * `Rename · Delete · Sort · More` are equal quarters of a 300px rail by
+   * design — 75px each, which is what the board draws. Quartering a 522px
+   * band instead gives each of them 130px and the row stops reading as four
+   * buttons and starts reading as four panels. They size to content here and
+   * sit against the left edge, where the eye already is.
+   */
+  body.folderfolio-rail-peek .folderfolio-rail__tool-wrap,
+  body.folderfolio-rail-peek .folderfolio-rail__tool {
+    flex: 0 0 auto;
+  }
+
   /* --------------------------------------- the rail as a disclosure */
 
   /**

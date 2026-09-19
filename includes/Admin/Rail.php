@@ -282,11 +282,81 @@ final class Rail
                     return;
                 }
 
+                var narrow = window.matchMedia('(max-width: 782px)');
+
+                /*
+                 * Two homes, because the rail is two different things.
+                 *
+                 * Wide, it is a column beside the library, so it belongs in
+                 * #wpbody as a sibling of #wpbody-content — which is the only
+                 * way to get a node between <div id="wpbody"> and
+                 * <div id="wpbody-content">, since WordPress offers no hook
+                 * there.
+                 *
+                 * Narrow, it is a band *of* the library, and printing it as
+                 * the first thing in #wpbody put it above WordPress's own
+                 * screen-meta row: measured, the band pushed Help to 421px and
+                 * the "Media Library" heading to 481px down the page. It read
+                 * as sitting on top of the admin's own furniture, because it
+                 * was. So it moves inside .wrap, immediately after the page
+                 * heading, where it reads as the library's own control
+                 * surface and leaves the admin header alone.
+                 */
+                function place() {
+                    if (narrow.matches) {
+                        var wrap = content.querySelector('.wrap'),
+                            anchor = wrap
+                                && (wrap.querySelector('.wp-header-end') || wrap.querySelector('h1'));
+
+                        if (anchor) {
+                            var after = anchor.nextSibling;
+
+                            /*
+                             * `insertBefore(rail, rail)` is legal, does
+                             * nothing visible, and still fires a removal and
+                             * an insertion — which is enough to swallow any
+                             * click whose mousedown and mouseup straddle it.
+                             * This project has paid for that once already.
+                             */
+                            if (rail !== after) {
+                                anchor.parentNode.insertBefore(rail, after);
+                            }
+
+                            handle.hidden = true;
+
+                            return;
+                        }
+                    }
+
+                    if (rail.parentNode !== body || rail.nextSibling !== content) {
+                        body.insertBefore(rail, content);
+                        body.insertBefore(handle, content);
+                    }
+
+                    handle.hidden = rail.classList.contains('is-collapsed');
+                }
+
+                /*
+                 * The wide home is taken at once, because this script is
+                 * printed at the top of #wpbody-content and .wrap has not been
+                 * parsed yet — there is nothing to anchor to. The narrow home
+                 * is taken as soon as there is, which is still before any
+                 * bundle of ours runs.
+                 */
                 body.insertBefore(rail, content);
                 body.insertBefore(handle, content);
 
                 rail.hidden = false;
                 handle.hidden = rail.classList.contains('is-collapsed');
+
+                if ('loading' === document.readyState) {
+                    document.addEventListener('DOMContentLoaded', place);
+                } else {
+                    place();
+                }
+
+                // Crossing the breakpoint sends it to the other home.
+                narrow.addEventListener('change', place);
             })();
         </script>
         <?php
