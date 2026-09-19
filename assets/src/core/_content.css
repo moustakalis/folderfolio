@@ -110,6 +110,55 @@
   color: var(--ff-ink);
 }
 
+/**
+ * The way out of the filter, at the end of the line that states it.
+ *
+ * The rejected alternative was making the selected rail row a toggle. Written
+ * up in the component; the short version is that the narrow sheet's header is
+ * already a press-to-filter control on the folder you are in, `Enter` on a
+ * focused tree row is the key that filters, and a folder row invites a Finder
+ * double-click — so the same gesture would have meant three different things.
+ *
+ * **18 × 18 drawn, and the eighteen is measured, not chosen.** The crumb's own
+ * line box is 18.2px at 12px/1.52, and the item is an inline-flex row whose
+ * height is its tallest child — so a 20px button grew the band from 36 to 38
+ * and pushed the path two pixels off the centre line it was put on. Anything
+ * added to this row has to be no taller than the text in it.
+ *
+ * **28 × 34 to a pointer**, through a pseudo-element — the same trick the
+ * tree's expand chevron uses, and for the same reason: the target may grow
+ * where the box may not. `position: relative` here rather than on the item,
+ * which is already the containing block for the overflow menu.
+ *
+ * Grid rather than flex for the centring, per the standing rule — the two
+ * older controls in this row predate it.
+ */
+.folderfolio-crumbs__clear {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--ff-dim);
+  cursor: pointer;
+}
+
+.folderfolio-crumbs__clear::before {
+  content: '';
+  position: absolute;
+  inset: -8px -5px;
+}
+
+.folderfolio-crumbs__clear:hover {
+  background: var(--ff-hover);
+  color: var(--ff-ink);
+}
+
 /* 26 × 22, as drawn. A button rather than an ellipsis glyph, because the
    levels it stands for have to be reachable. */
 .folderfolio-crumbs__more {
@@ -135,6 +184,7 @@
 }
 
 .folderfolio-crumbs__link:focus-visible,
+.folderfolio-crumbs__clear:focus-visible,
 .folderfolio-crumbs__more:focus-visible,
 .folderfolio-crumbs__menu-item:focus-visible,
 .folderfolio-card:focus-visible,

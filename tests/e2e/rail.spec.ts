@@ -121,6 +121,55 @@ test.describe('the folder rail', () => {
     });
 });
 
+test.describe('the breadcrumb', () => {
+    /**
+     * The way out of a filter, on the crumb that states it.
+     *
+     * The alternative — clicking the selected rail row to toggle it off — was
+     * weighed and rejected: the narrow sheet's own header is already a
+     * press-to-filter control on the folder you are in, `Enter` on a focused
+     * tree row is the key that filters, and a folder row invites a Finder
+     * double-click. All three would have meant something different under a
+     * toggle. A control of its own has none of those collisions, so that is
+     * what this asserts — including the rule that decides where it appears.
+     */
+    test('the last crumb carries a clear, and only when there is a filter to clear', async ({
+        page,
+    }) => {
+        await page.goto('/wp-admin/upload.php?mode=grid');
+        await page.locator('#folderfolio-rail').waitFor();
+        await resetFolders(page);
+        await createFolder(page, 'Brand');
+        await page.reload();
+        await waitForTree(page, 'Brand');
+
+        const clear = page.locator('.folderfolio-crumbs__clear');
+
+        // All media is not a state there is anything to clear.
+        await expect(clear).toHaveCount(0);
+
+        await page.locator('.folderfolio-row__name', { hasText: /^Brand$/ }).click();
+        await expect(page).toHaveURL(/folderfolio_folder=\d+/);
+        await expect(clear).toHaveCount(1);
+
+        // The hard rule holds through it: no reload, in either direction.
+        await page.evaluate(() => {
+            (window as unknown as { __ffMark?: string }).__ffMark = 'kept';
+        });
+
+        await clear.click();
+
+        await expect(page).not.toHaveURL(/folderfolio_folder=/);
+        await expect(clear).toHaveCount(0);
+        await expect(page.locator('.folderfolio-crumbs')).toHaveText(/All media/);
+        expect(
+            await page.evaluate(
+                () => (window as unknown as { __ffMark?: string }).__ffMark === 'kept'
+            )
+        ).toBe(true);
+    });
+});
+
 test.describe('the tree keyboard', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/wp-admin/upload.php');

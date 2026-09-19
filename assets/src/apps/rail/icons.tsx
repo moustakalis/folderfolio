@@ -172,6 +172,14 @@ export function EllipsisIcon(props: IconProps) {
     );
 }
 
+export function CloseIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <path d="M18 6 6 18M6 6l12 12" />
+        </Svg>
+    );
+}
+
 export function UndoIcon(props: IconProps) {
     return (
         <Svg {...props}>

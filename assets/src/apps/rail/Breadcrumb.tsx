@@ -14,6 +14,7 @@
 
 import { useLayoutEffect, useRef, useState } from 'react';
 
+import { CloseIcon } from './icons';
 import { useRail } from './store';
 import { t } from '../../core/api';
 
@@ -215,6 +216,43 @@ function Item({
                     {crumb.label}
                 </button>
             )}
+
+            {/*
+              The way out of the filter, put where the filter is stated.
+
+              The alternative that was weighed and rejected was making the
+              selected rail row a toggle — click the folder you are in and go
+              back to All media. It reads well in the abstract, because a
+              folder here is a filter and not a place, but it collides with
+              three things this build already does: the narrow sheet's own
+              header *is* a press-to-filter control on the folder you are in,
+              so the same gesture would mean two opposite things depending on
+              the view; `Enter` on a focused tree row is the key that filters,
+              so confirming where you are would throw you out; and a folder row
+              invites the double-click everyone learned from Finder, whose
+              second click would silently clear.
+
+              None of that applies to a control of its own with a label on it.
+              It is separately focusable, it cannot misfire, and it sits in the
+              one line on the screen whose whole job is to say what the library
+              is filtered to.
+
+              Only on the current crumb, and only when that crumb is a filter:
+              All media as the sole crumb is not a state there is anything to
+              clear. Unassigned *is* one — it is the absence of a folder, which
+              is still a filter over the library — so it gets the control too.
+            */}
+            {current && crumb.id !== null ? (
+                <button
+                    type="button"
+                    className="folderfolio-crumbs__clear"
+                    title={t('clearFolderFilter', 'Clear the folder filter')}
+                    aria-label={t('clearFolderFilter', 'Clear the folder filter')}
+                    onClick={() => onSelect(null)}
+                >
+                    <CloseIcon size={14} />
+                </button>
+            ) : null}
         </li>
     );
 }

@@ -618,6 +618,71 @@ test.describe('the media picker', () => {
 });
 
 /**
+ * The wide toolbar's shape, which is now one shape.
+ *
+ * Above 860px of container the toolbar used to spend a whole 40px row on
+ * `Bulk select` alone — and in the band 1411-1429px of viewport it went to
+ * four rows and 168px, because a declared line break arrived before there was
+ * room for the filters and the search on one line, pushing the folder select
+ * out of the group it belongs to.
+ *
+ * The break was replaced by a position: `margin-left: auto` on core's own
+ * `.select-mode-toggle-button`. So the assertion is the shape, at the two
+ * widths that used to disagree and one that never did.
+ */
+test.describe('the wide grid toolbar', () => {
+    test('puts Bulk select at the end of the filter line at every width', async ({ page }) => {
+        await page.goto('/wp-admin/upload.php?mode=grid');
+        await page.locator('#folderfolio-rail').waitFor();
+        await resetFolders(page);
+        await createFolder(page, 'Brand');
+        await page.reload();
+        await waitForTree(page, 'Brand');
+
+        for (const width of [1360, 1412, 1456, 1700]) {
+            await page.setViewportSize({ width, height: 900 });
+            await page.waitForTimeout(250);
+
+            const shape = await page.evaluate(() => {
+                const toolbar = document.querySelector('#wpbody-content .media-toolbar');
+                const bulk = toolbar?.querySelector('.select-mode-toggle-button');
+                const folder = document.querySelector('#folderfolio-folder-filter');
+                const search = document.querySelector('#media-search-input');
+
+                if (!(toolbar instanceof HTMLElement) || !(bulk instanceof HTMLElement)) {
+                    return null;
+                }
+                if (!(folder instanceof HTMLElement) || !(search instanceof HTMLElement)) {
+                    return null;
+                }
+
+                const mid = (el: Element) => {
+                    const box = el.getBoundingClientRect();
+                    return box.top + box.height / 2;
+                };
+
+                return {
+                    height: toolbar.getBoundingClientRect().height,
+                    // Same line as the folder select, and to the right of it.
+                    bulkOnFilterLine: Math.abs(mid(bulk) - mid(folder)) < 12,
+                    bulkAfterFolder:
+                        bulk.getBoundingClientRect().left > folder.getBoundingClientRect().right,
+                    // …and the search is on the line below, not beside them.
+                    searchBelow: mid(search) > mid(folder) + 12,
+                };
+            });
+
+            expect(shape, `at ${width}px`).not.toBeNull();
+            expect(shape!.bulkOnFilterLine, `Bulk select on the filter line at ${width}px`).toBe(true);
+            expect(shape!.bulkAfterFolder, `Bulk select after the folder select at ${width}px`).toBe(true);
+            expect(shape!.searchBelow, `search below the filters at ${width}px`).toBe(true);
+            // Two rows. It was 168 in the band and 128 above it.
+            expect(shape!.height, `toolbar height at ${width}px`).toBeLessThan(145);
+        }
+    });
+});
+
+/**
  * The folders block above the files.
  *
  * It draws the children of the folder you are *in*. At All media it used to

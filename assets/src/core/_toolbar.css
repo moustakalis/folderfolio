@@ -498,47 +498,46 @@
 }
 
 /**
- * The grid toolbar's second row, chosen rather than fallen into.
+ * `Bulk select` ends the filter line — a declared *position*, not a declared
+ * break.
  *
- * `.media-toolbar-secondary` is `display: flex; flex-wrap: wrap`, and without a
- * declared break `Bulk select` lands wherever the window leaves room for it —
- * measured at a 310px rail:
+ * `.media-toolbar-secondary` is `display: flex; flex-wrap: wrap`, and left
+ * alone `Bulk select` lands wherever the window leaves room for it — measured
+ * at a 310px rail:
  *
  *     985px  view · type · date · FOLDER · search  /  Bulk select
  *     760px  view · type · date · FOLDER · Bulk select  /  search
  *     620px  view · type · date · FOLDER  /  Bulk select  /  search
  *
  * The same control on the filter line at one width and a row below it at the
- * next. A row whose composition changes as you resize is worse than a row that
- * is always two rows, so the break is declared.
+ * next. That is the thing to prevent, and for a while it was prevented with a
+ * zero-height flex item at `flex: 0 0 100%` on this slot's `::before`, which
+ * forces a line break in a wrap container (there is no `break-before` for
+ * flex). It worked, and it cost a row: above 860 of container the toolbar was
+ * **three rows, 128px**, one of them a 40px line carrying a single 94px button
+ * with 800px of nothing beside it — and in the band **1411–1429px of viewport**
+ * it was four rows and **168px**, because the break arrived before there was
+ * room for the filters and the search on one line, so the folder select was
+ * pushed out of the group it belongs to.
  *
- * This survived the removal of everything around it, and nearly did not: it was
- * written when *our* pair sat on that second row, so with the pair gone it
- * looked like dead scaffolding. It is not — it is what keeps core's own mode
- * toggle in one place. The ladder above is what taking it out produced.
+ * So the break goes and a position takes its place: `margin-left: auto` puts
+ * `Bulk select` at the right end of the filter line and holds it there at every
+ * width, which is both deterministic *and* free. The filters keep the whole
+ * line (see the `flex: 1 0 100%` below, now unconditional) and the search keeps
+ * the next one. **One shape from 700px upward** — and it is the shape the
+ * toolbar already had below 1411, so this removes a change rather than adding
+ * one. Drawn to scale, with the three alternatives that were weighed, at
+ * `claude.ai/artifact/EhzFV1DooXSJNgXJT8wzcp`.
  *
- * A zero-height flex item at 100% basis is what forces a line break in a wrap
- * container; there is no `break-before` for flex. A pseudo-element rather than
- * a real one so nothing has to keep it positioned — and it works at all only
- * because the slot is `display: contents`, which makes its `::before` a flex
- * item of core's toolbar rather than a box inside a span of ours.
+ * `.select-mode-toggle-button` is core's own class for that button. Scoped out
+ * of select mode, where core hides it and puts `Cancel` and
+ * `Delete permanently` on the row instead, beside our `ADD TO FOLDER`.
  */
-.media-toolbar-secondary > .folderfolio-slot--bulk::before {
-  content: '';
-  flex: 0 0 100%;
-  height: 0;
-}
-
-/**
- * …except in select mode, where there is nothing above it to break from.
- *
- * Pressing `Bulk select` makes core hide every child of this toolbar but three,
- * and our slot survives it deliberately (above) — so its pseudo-element
- * survives too, and would force a break with an **empty line above it** where
- * the filters had been.
- */
-.media-frame.mode-select .folderfolio-slot--bulk::before {
-  content: none;
+#wpbody-content
+  .media-frame:not(.mode-select)
+  .media-toolbar-secondary
+  > .select-mode-toggle-button {
+  margin-left: auto;
 }
 
 /**
@@ -601,39 +600,39 @@
   container-name: folderfolio-toolbar;
 }
 
+/**
+ * The filters own their line; the search takes the next one.
+ *
+ * `.media-toolbar` is a wrap container with exactly two children — the filters
+ * and the search — and both were `flex: 0 1 auto`, so the filters *shrank*
+ * rather than pushing the search down, and once they were narrower than their
+ * contents they wrapped internally. The folder select is last among them, so
+ * the folder select is what left, landing on a line with the search.
+ *
+ * This was scoped to `< 860px` while the declared break held the other end of
+ * the range. With the break replaced by a position it applies everywhere: the
+ * filters are one line, the search is the next, and that is true at 700px and
+ * at 2000. List mode has the same shape structurally — its search is a block
+ * below the filter row, not a sibling competing for the same line — which is
+ * what "a control must not move depending on the view toggle" actually asks
+ * for.
+ *
+ * Two things that look like they should work and do not: `flex: 0 0 auto` on
+ * both children changes nothing at all, and `flex-basis: 100%` on the search
+ * alone is clamped to 200px by core's own width on that element. The size has
+ * to be asserted on the *filters*.
+ */
+#wpbody-content .media-toolbar-secondary {
+  flex: 1 0 100%;
+  max-width: none;
+}
+
+#wpbody-content .media-toolbar-primary.search-form {
+  flex: 0 0 auto;
+  margin-left: 0;
+}
+
 @container folderfolio-toolbar (width < 860px) {
-  #wpbody-content .media-toolbar-secondary {
-    flex: 1 0 100%;
-    max-width: none;
-  }
-
-  #wpbody-content .media-toolbar-primary.search-form {
-    flex: 0 0 auto;
-    margin-left: 0;
-  }
-
-  /**
-   * …and once the filters have the whole width, the declared break is what
-   * costs a line.
-   *
-   * Finding 19's spacer is a full-width flex item that forces `Bulk select`
-   * onto a row of its own, so that grid's toolbar breaks in one stated place
-   * rather than wherever the window puts it. Above this breakpoint that is
-   * still exactly right. Inside it, it is a third row that nothing needs: the
-   * search has already taken its own line, so the filters have the full column
-   * and `Bulk select` fits beside them.
-   *
-   * Measured at Nick's 310px rail: **182px** of grid toolbar at every column
-   * between 700 and 860, against 128 above it and 96 below — the toolbar at
-   * its tallest on a middling laptop, taller than the same toolbar on a phone.
-   * With the break dropped it is **134** across that whole band. The question
-   * of whether to collapse the filters earlier instead was put to Nick and
-   * answered: at those widths there is room, so the fix is to use it.
-   */
-  .media-toolbar-secondary > .folderfolio-slot--bulk::before {
-    content: none;
-  }
-
   /**
    * The twelve pixels that decide the bottom of that band.
    *
@@ -1351,13 +1350,6 @@
     margin: 0;
   }
 
-  /* The spacer would be a grid item in here, holding a cell open for nothing.
-     Its job — keeping `Bulk select` in one place — is done by the placement
-     above, which says where the button goes rather than what it must follow. */
-  #wpbody-content .media-toolbar-secondary > .folderfolio-slot--bulk::before {
-    content: none;
-  }
-
   /**
    * Closed: the filters and their labels are not on screen.
    *
@@ -1456,19 +1448,64 @@
    * rather than discovered. The same lesson as the toolbar's first line: when
    * a layout must not move, say where things go.
    */
-  body.folderfolio-filters-open #wpbody-content .media-toolbar-secondary > #media-attachment-filters {
+  body.folderfolio-filters-open #wpbody-content .media-toolbar-secondary > #media-attachment-filters,
+  body.folderfolio-filters-open
+    #wpbody-content
+    .media-toolbar-secondary
+    > #media-attachment-date-filters {
     grid-area: 2 / 1 / 3 / -1;
+  }
+
+  body.folderfolio-filters-open #wpbody-content .media-toolbar-secondary .folderfolio-folder-select {
+    grid-area: 3 / 1 / 4 / -1;
+  }
+
+  /**
+   * Core's two share row two; ours and the search keep a row each.
+   *
+   * "All media items" and "All dates" are the two shortest controls in the
+   * panel and they were spending a 32px row apiece on about 110px of text, so
+   * the panel was four rows deep before the search. Side by side it is three,
+   * and **40px shorter** — one row plus the 8px gap. The folder control and
+   * the search stay full width: the first carries a path that can run to five
+   * levels, the second is the one people type into.
+   *
+   * **Halves, not columns.** The toolbar's tracks are
+   * `auto auto 1fr auto auto`, sized by the *first* line — a view switch, the
+   * `Filters` button and `Bulk select` — so there is no pair of tracks that
+   * splits the row evenly and no way to make one without moving that line,
+   * which the 700-860 band work put where it is deliberately. Both controls
+   * therefore take the whole row as their grid area and divide it themselves:
+   * `calc(50% - 3px)` against a 6px column gap, one to each end. A percentage
+   * on a grid item resolves against its grid area, so the two halves are exact
+   * at every width without anyone declaring a track.
+   *
+   * No floor under it. The narrowest this panel gets is a 390px phone, where
+   * the row measures about 344 and a half is 169 — wider than either select's
+   * longest string, measured. Below that the library column itself has
+   * stopped working.
+   */
+  body.folderfolio-filters-open #wpbody-content .media-toolbar-secondary > #media-attachment-filters,
+  body.folderfolio-filters-open
+    #wpbody-content
+    .media-toolbar-secondary
+    > #media-attachment-date-filters {
+    width: calc(50% - 3px);
+    min-width: 0;
+  }
+
+  body.folderfolio-filters-open
+    #wpbody-content
+    .media-toolbar-secondary
+    > #media-attachment-filters {
+    justify-self: start;
   }
 
   body.folderfolio-filters-open
     #wpbody-content
     .media-toolbar-secondary
     > #media-attachment-date-filters {
-    grid-area: 3 / 1 / 4 / -1;
-  }
-
-  body.folderfolio-filters-open #wpbody-content .media-toolbar-secondary .folderfolio-folder-select {
-    grid-area: 4 / 1 / 5 / -1;
+    justify-self: end;
   }
 
   body.folderfolio-filters-open #wpbody-content .media-toolbar-secondary > #media-attachment-filters,
@@ -1477,9 +1514,44 @@
     .media-toolbar-secondary
     > #media-attachment-date-filters,
   body.folderfolio-filters-open #wpbody-content .media-toolbar-secondary .folderfolio-folder-select {
-    width: 100%;
     max-width: none;
     margin: 0;
+  }
+
+  body.folderfolio-filters-open #wpbody-content .media-toolbar-secondary .folderfolio-folder-select {
+    width: 100%;
+  }
+
+  /**
+   * …and the search, which is the one control that was still shrink-wrapping.
+   *
+   * It is not in this grid at all — grid mode's search is
+   * `.media-toolbar-primary`, a sibling of the whole filter panel — so none of
+   * the rules above reached it, and it took whatever width core's own
+   * `#media-search-input` asked for. Measured in the open panel: **188px in a
+   * 629px row**, under three controls that each filled it. The same panel at a
+   * 449px row had a full-width search, because at that size core's width
+   * happened to be the whole row — which is exactly the kind of coincidence
+   * that reads as a layout and is not one.
+   *
+   * Both halves are needed: the form claims the line, and the input claims the
+   * form. `flex-basis: 100%` on the form alone leaves a 200px input sitting in
+   * a full-width box — and the basis alone does not even claim the line here,
+   * because core floats this element right, and a float is not a flex item.
+   * `float: none` and an explicit width are what actually move it.
+   */
+  body.folderfolio-filters-open #wpbody-content .media-toolbar-primary.search-form {
+    flex: 1 0 100%;
+    float: none;
+    width: 100%;
+    max-width: none;
+  }
+
+  body.folderfolio-filters-open
+    #wpbody-content
+    .media-toolbar-primary.search-form
+    #media-search-input {
+    width: 100%;
   }
 
   /* The folder slot comes back as a grid item rather than as `contents`, so
@@ -1628,7 +1700,19 @@
     grid-area: 1 / 1;
   }
 
-  #wpbody-content .wp-filter .filter-items > .folderfolio-filter-toggle {
+  /**
+   * Descendant, not child — the slot is `display: contents`.
+   *
+   * `.folderfolio-slot--filter` has no box, so the button inside it *is* a
+   * grid item of `.filter-items` while being a grand**child** in selector
+   * terms. Written with `>` this rule matched nothing at all, and the
+   * `Filters` button auto-placed into column 1 of a row of its own: measured
+   * in list mode's open panel at a 629px column, the button sat at y 252 under
+   * a full-width media-type select, two rows below the view switch it is
+   * supposed to sit beside. The same trap as `> *` above, which is why that
+   * one also never reached it.
+   */
+  #wpbody-content .wp-filter .filter-items .folderfolio-filter-toggle {
     grid-area: 1 / 2;
   }
 
@@ -1637,31 +1721,107 @@
     display: none;
   }
 
-  /* Open: the date select, the folder select and core's own Filter submit are
-     one stacked group. `.actions` is core's element and core lays it out with
-     floats, which is why it is restated here as a grid rather than left to
-     collapse to zero height around them. */
+  /**
+   * Open: `.actions` stops being a box and its contents join the panel's grid.
+   *
+   * It was restated as a grid of its own — core lays it out with floats, so
+   * left alone it collapses to zero height around them — and that worked while
+   * every filter had a row to itself. It cannot survive pairing the media-type
+   * and date selects, because those two live in **different parents**: the
+   * type select is a child of `.filter-items` and the date select is inside
+   * this element. Two grids cannot put their children on one row.
+   *
+   * `display: contents` is what puts them in the same grid. The floats go with
+   * the box, because a float is ignored on a grid item, so the reason the
+   * nested grid existed goes away at the same time.
+   */
   body.folderfolio-filters-open #wpbody-content .wp-filter .filter-items > .actions {
-    display: grid;
-    gap: 6px;
-    float: none;
-    margin: 0;
+    display: contents;
   }
 
+  /**
+   * …and then the rows are stated, because the pair has to share one.
+   *
+   * Same arithmetic as grid mode's panel: `calc(50% - 3px)` against a 6px
+   * column gap, one control to each end of a row it owns outright. The folder
+   * picker and core's `Filter` submit keep a row each below them.
+   */
   body.folderfolio-filters-open #wpbody-content .wp-filter .filter-items > #attachment-filter,
-  body.folderfolio-filters-open #wpbody-content .wp-filter .filter-items .actions select,
-  body.folderfolio-filters-open #wpbody-content .wp-filter .filter-items .actions input.button,
-  /* The picker is a <button>, so it is named rather than caught by the two
-     element selectors above — which is also why it is listed last, where a
-     reader looking for "what else is in this group" will find it. */
+  body.folderfolio-filters-open #wpbody-content .wp-filter .filter-items #filter-by-date {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: calc(50% - 3px);
+    min-width: 0;
+  }
+
+  body.folderfolio-filters-open #wpbody-content .wp-filter .filter-items > #attachment-filter {
+    justify-self: start;
+  }
+
+  body.folderfolio-filters-open #wpbody-content .wp-filter .filter-items #filter-by-date {
+    justify-self: end;
+  }
+
   body.folderfolio-filters-open
     #wpbody-content
     .wp-filter
     .filter-items
-    .actions
+    .folderfolio-folder-picker {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+
+  body.folderfolio-filters-open #wpbody-content .wp-filter .filter-items input.button {
+    grid-column: 1 / -1;
+    grid-row: 4;
+    justify-self: start;
+  }
+
+  /**
+   * The picker fills its row; the two selects were handed halves above, and
+   * core's `Filter` submit is a button and keeps a button's width.
+   *
+   * This rule used to name all four and give them `width: 100%`, which is what
+   * a stack of one-per-row controls wants. It has to be the narrower list now,
+   * because it sits *after* the half-width rules and an equally specific later
+   * declaration wins — the media-type select measured 629px in a 629px row
+   * with `calc(50% - 3px)` written two rules above it.
+   */
+  body.folderfolio-filters-open
+    #wpbody-content
+    .wp-filter
+    .filter-items
     .folderfolio-folder-picker {
     width: 100%;
     max-width: none;
     margin: 0;
+  }
+
+  body.folderfolio-filters-open #wpbody-content .wp-filter .filter-items > #attachment-filter,
+  body.folderfolio-filters-open #wpbody-content .wp-filter .filter-items #filter-by-date {
+    max-width: none;
+    margin: 0;
+  }
+
+  body.folderfolio-filters-open #wpbody-content .wp-filter .filter-items input.button {
+    width: auto;
+    margin: 0;
+  }
+
+  /* The search, the same way grid's is: core floats it, and a float is not a
+     flex item, so the basis alone never claims the line. */
+  body.folderfolio-filters-open #wpbody-content .wp-filter .search-form {
+    float: none;
+    width: 100%;
+    max-width: none;
+  }
+
+  /* Three boxes deep, and every one of them shrink-wraps: core nests
+     `.search-form > p.search-box > input`, so widening the form alone moves
+     nothing a reader can see. */
+  body.folderfolio-filters-open #wpbody-content .wp-filter .search-form .search-box,
+  body.folderfolio-filters-open #wpbody-content .wp-filter .search-form input[type='search'] {
+    width: 100%;
+    max-width: none;
   }
 }
