@@ -788,6 +788,27 @@ so the order is Help → title → band → filter row → cards → files. The 
 is taken synchronously; the narrow one on `DOMContentLoaded`, because `.wrap`
 has not been parsed when that script runs.
 
+**44px is this plugin's touch target, and `--ff-row-h` is how rows get there.**
+The closed phone bar was built as a 44px row precisely because a 24px chevron
+was not enough to hit; the *open* sheet then shipped with everything under it —
+New folder 28, the four tools 34, every row 36, the search field 30, the tree
+chevron 20. All of them are 44 at narrow width now. Rows move through the
+`--ff-row-h` token rather than by naming `.folderfolio-row`, so any row added
+later follows without anyone remembering.
+
+**A control whose width sets someone else's indentation cannot just be made
+wider.** The tree chevron is the case: the folder name's indent is derived from
+it. The box keeps its size and a centred `::after` carries a 28 × 44 target —
+full row height where the miss happens, 4px either side horizontally, which
+stays inside the 6px gap before the folder icon. Verify with
+`elementFromPoint` that the enlarged target has not swallowed its neighbours:
+the centre of a folder name must still return `.folderfolio-row__name`.
+
+**Two tappable surfaces need a channel between them.** The `Add Media File`
+button sat 8px above the narrow band. On a phone that is inside the margin of
+error. `--ff-rail-gap` is the token for it — the same 20px that separates rail
+from library on the desktop, turned on its side.
+
 **`insertBefore(node, node)` is the trap to remember.** It is legal, does
 nothing visible, and still fires a removal and an insertion. That wakes any
 MutationObserver watching, which schedules another pass, which does it again —
