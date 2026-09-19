@@ -985,15 +985,37 @@
 }
 
 @container folderfolio-toolbar (width < 700px) {
+  /**
+   * Sized by core, not by us.
+   *
+   * The first version set `height: 32px`, `font-size: 12.5px` and `padding: 0
+   * 9px` — measured against `Bulk select` beside it, which core draws at 34px,
+   * 14px and `0 12px`. Two buttons on one row, a size apart, and the smaller
+   * one sitting 2px high: its centre was at 306.6 where the view switch, the
+   * mode toggle and the spinner were all at 308.6.
+   *
+   * So the only declarations left here are the ones that make it a button with
+   * an icon in it. Height, type and padding come from `.wp-core-ui .button`,
+   * which is what `Bulk select` is, so the two match by construction rather
+   * than by a number copied from a screenshot. `align-self: center` because a
+   * grid item stretches to its row by default and this row is 38px tall.
+   */
   .wp-core-ui #wpbody-content .folderfolio-filter-toggle,
   #wpbody-content .wp-core-ui .folderfolio-filter-toggle {
-    display: grid;
+    display: inline-grid;
     grid-auto-flow: column;
     align-items: center;
-    gap: 5px;
-    height: 32px;
-    padding: 0 9px;
-    font-size: 12.5px;
+    align-self: center;
+    gap: 6px;
+
+    /*
+     * Core gives a media-toolbar button `margin: 0 0 4px`. Centring a 34px box
+     * that carries 4px below it in a 38px row puts the box 2px high — measured,
+     * this button's centre sat at 306.8 while the view switch, `Bulk select`
+     * and the spinner were all at 308.8. `align-self: center` was already
+     * correct and was not the cause; the margin was.
+     */
+    margin: 0;
   }
 
   #wpbody-content .folderfolio-filter-toggle svg {
@@ -1148,8 +1170,43 @@
     margin: 6px 0 0;
   }
 
-  #wpbody-content #media-search-input {
+  /**
+   * The search field takes the row it was given.
+   *
+   * `.media-toolbar-primary` is already full width; the input inside it stayed
+   * at core's 182px, so the row read as a short box adrift in a 476px space.
+   * Named through its own form so this beats core's sizing rather than tying.
+   */
+  /**
+   * The field was never fighting a width — it was in a 182px box.
+   *
+   * `width: 100%` on the input did nothing, and neither did the same
+   * declaration `!important` inline: 100% of a containing block that is itself
+   * 182px is 182px. The form is the thing to widen, so it is declared as a
+   * single full-width column and the input fills it.
+   */
+  #wpbody-content .media-toolbar-primary.search-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #wpbody-content .media-toolbar-primary.search-form #media-search-input {
     width: 100%;
+  }
+
+  /**
+   * No empty row when the panel is shut.
+   *
+   * Closed, every filter is `display: none` and only the first line has
+   * anything in it — yet the toolbar computed `grid-template-rows: 38px 38px`
+   * and spent 46px of the panel on a row holding nothing, which is the gap
+   * that appeared above the search field. Implicit rows size to their content,
+   * and nothing is what an empty one should measure.
+   */
+  #wpbody-content .media-frame:not(.mode-select) .media-toolbar-secondary {
+    grid-template-rows: auto;
+    grid-auto-rows: min-content;
+    align-content: start;
   }
 
   /* Open: one control per row, each the full width of the toolbar. A 164px
@@ -1159,12 +1216,41 @@
     display: none;
   }
 
+  /**
+   * Open: three filters, three declared rows.
+   *
+   * Auto-placement is what put the date select **on top of** the media-type
+   * select — the type select spanned `1 / -1` and the date select, whose
+   * `grid-column` stayed `auto`, was placed into column 2 of the same row.
+   * Measured: type at left 27 width 476, date at left 109 width 161, both at
+   * top 338. Two controls drawn over one another, which is what the first
+   * screenshot of the open panel showed.
+   *
+   * Placed by **id**, each with a full `grid-area`, so the row is stated
+   * rather than discovered. The same lesson as the toolbar's first line: when
+   * a layout must not move, say where things go.
+   */
+  body.folderfolio-filters-open #wpbody-content .media-toolbar-secondary > #media-attachment-filters {
+    grid-area: 2 / 1 / 3 / -1;
+  }
+
   body.folderfolio-filters-open
     #wpbody-content
     .media-toolbar-secondary
-    select.attachment-filters,
+    > #media-attachment-date-filters {
+    grid-area: 3 / 1 / 4 / -1;
+  }
+
   body.folderfolio-filters-open #wpbody-content .media-toolbar-secondary .folderfolio-folder-select {
-    grid-column: 1 / -1;
+    grid-area: 4 / 1 / 5 / -1;
+  }
+
+  body.folderfolio-filters-open #wpbody-content .media-toolbar-secondary > #media-attachment-filters,
+  body.folderfolio-filters-open
+    #wpbody-content
+    .media-toolbar-secondary
+    > #media-attachment-date-filters,
+  body.folderfolio-filters-open #wpbody-content .media-toolbar-secondary .folderfolio-folder-select {
     width: 100%;
     max-width: none;
     margin: 0;
