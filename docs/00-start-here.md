@@ -129,9 +129,50 @@ it or not; and the narrow sheet spends about 369px of chrome — header, action
 row, the two fixed rows, search, the level header, footer — to show 222px of
 list. Both are worth measuring before they are changed.
 
-Checks after this step: **PHPStan clean, 107 unit, 41 e2e** (library 11,
+Checks after this step: **PHPStan clean, 107 unit, 42 e2e** (library 12,
 responsive 5, rail 10, upload 2, settings 5, search-submit 3, import 4, gallery
 1), **`tsc` clean**. The integration suite was *not* re-run — see below.
+
+### 19 Sep, later still — the wide-viewport sweep
+
+Full account: `claude/progress-2026-09-19b-thousand-folders.md`; the curve is
+drawn at `claude.ai/artifact/82rLEX7rdVrzMdGB1nYpaV`.
+
+Asked whether the drill-down work touched bigger viewports, every width was
+measured in both modes. **Two things had, and both are fixed:**
+
+**The folder select's `max-width` had never applied.** `.wp-core-ui select` is
+(0,1,1) with `max-width: 25rem`; `.folderfolio-folder-select` was (0,1,0). A
+native select is as wide as its longest option, so nothing showed it while
+trees were small — but the 1,050-folder fixture's longest option is 36
+characters, the control measured **257px**, and the grid toolbar went from two
+lines to three: **168px at 1440 where the design says 128**. Capped at 11rem
+now, and the number is measured: 192px is where it leaves the filter line.
+
+**The list-mode full-width rule wanted the open panel, not the breakpoint.**
+It applied closed too, where the filter group is a view switch and one button,
+and cost **54px** — a 683px column went from 112px to 166. At viewports as
+wide as 1200px.
+
+Everything else was verified unchanged at desktop: the tree keeps
+`role="tree"`, one tab stop and its 47 twisties; the rail's search returns the
+same 28 matches the picker does, which is the point of their sharing
+`searchTree()`; and the bulk flyout is identical in a tall window. In a short
+one it is better — clamped to the room it has, with its Apply button on screen
+rather than 103px past the bottom edge.
+
+**And the sweep found a third thing, which is open.** Between **700 and 1040px
+of library column** both toolbars grow — grid 128 → **182**, list 80 → **134**
+— and then *shrink* below 700 where they collapse behind the `Filter` button.
+The toolbar is at its tallest on a middling laptop. That band was never
+measured, because the collapse was designed from the narrow end. The candidate
+is moving the collapse from 700 to **880**, which flattens grid entirely and
+halves list's band; the cost is the media-type and date filters going behind a
+button at a 1260–1380px window. Nick's call, and he has the drawing.
+
+A third candidate was measured and rejected: dropping the declared line break
+in that band gives 134px at 863 but strands the spinner on its own line at
+743, which is finding 19 coming back.
 
 ### Three recorded deviations from the board
 
@@ -954,9 +995,14 @@ row.
 with `padding: 12px 0`, and the grid-mode toggle computes to 62px to match it.
 Invisible inside core's flex row; as grid items they *become* the row.
 
-**`.wp-core-ui .button` is (0,2,0) and sets `display`.** A bare class that
-tries to hide one of core's buttons loses. Fourth time this has been paid for
-in `_toolbar.css` alone — the file carries the other three notes.
+**wp-admin's own selectors carry an element; ours usually do not.**
+`.wp-core-ui .button` is (0,2,0) and sets `display`; `.wp-core-ui select` is
+(0,1,1) and sets `max-width: 25rem`. A bare class of ours is (0,1,0) and loses
+to both however late this stylesheet loads — order only decides ties. Six times
+now in `_toolbar.css` alone, and the last is the instructive one: the folder
+select's `max-width: 14rem` had **never applied in any release**, and nothing
+revealed it until a tree large enough to make the select grow. **A cap that has
+never been tested against content wide enough to reach it is not a cap.**
 
 **A container cannot query itself.** `@container` resolves against the nearest
 *ancestor* container, so a rule naming `.folderfolio-rail` inside the rail's own
