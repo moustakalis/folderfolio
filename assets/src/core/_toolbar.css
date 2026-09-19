@@ -611,6 +611,41 @@
     flex: 0 0 auto;
     margin-left: 0;
   }
+
+  /**
+   * …and once the filters have the whole width, the declared break is what
+   * costs a line.
+   *
+   * Finding 19's spacer is a full-width flex item that forces `Bulk select`
+   * onto a row of its own, so that grid's toolbar breaks in one stated place
+   * rather than wherever the window puts it. Above this breakpoint that is
+   * still exactly right. Inside it, it is a third row that nothing needs: the
+   * search has already taken its own line, so the filters have the full column
+   * and `Bulk select` fits beside them.
+   *
+   * Measured at Nick's 310px rail: **182px** of grid toolbar at every column
+   * between 700 and 860, against 128 above it and 96 below — the toolbar at
+   * its tallest on a middling laptop, taller than the same toolbar on a phone.
+   * With the break dropped it is **134** across that whole band. The question
+   * of whether to collapse the filters earlier instead was put to Nick and
+   * answered: at those widths there is room, so the fix is to use it.
+   */
+  .media-toolbar-secondary > .folderfolio-slot--bulk::before {
+    content: none;
+  }
+
+  /**
+   * The twelve pixels that decide the bottom of that band.
+   *
+   * Core gives `.view-switch` `margin-right: 12px` on top of the toolbar's own
+   * 8px gap. At the narrow end of the band the row needs 709px and has 709 —
+   * so without this the spinner alone wraps to a second row and the toolbar is
+   * 162px rather than 134. Measured at a 711px column; it is the difference
+   * between fitting and not.
+   */
+  #wpbody-content .media-toolbar-secondary > .view-switch {
+    margin-right: 0;
+  }
 }
 
 /**

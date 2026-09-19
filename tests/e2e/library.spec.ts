@@ -183,7 +183,7 @@ test.describe('the library toolbar', () => {
              * are rows of the same stacked panel there, so "on the line" means
              * "in the group", which is what the test has always been about.
              */
-            const disclosure = page.getByRole('button', { name: /^filter$/i });
+            const disclosure = page.getByRole('button', { name: /^filters$/i });
 
             await expect(
                 disclosure,

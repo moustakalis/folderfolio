@@ -134,7 +134,7 @@ export function FilterDisclosure() {
             onClick={toggle}
         >
             <FilterIcon size={14} />
-            <span className="folderfolio-filter-toggle__label">{t('filters', 'Filter')}</span>
+            <span className="folderfolio-filter-toggle__label">{t('filters', 'Filters')}</span>
             {active > 0 ? (
                 <span className="folderfolio-filter-toggle__count" aria-hidden="true">
                     {active}

@@ -278,10 +278,25 @@ export function Rail({
               the folders a second time.
             */}
             {contentMount && !isError
-                ? createPortal(<Content nodes={nodes} cards={cardsMount === null} />, contentMount)
+                ? createPortal(
+                      <Content nodes={nodes} cards={!narrow && cardsMount === null} />,
+                      contentMount
+                  )
                 : null}
 
-            {cardsMount && !isError ? createPortal(<ContentCards nodes={nodes} />, cardsMount) : null}
+            {/*
+              The folder cards are a desktop affordance.
+              *
+              * On a phone they are a second full-width list of the same
+              * folders the sheet already shows, and they sit between the
+              * toolbar and the files — 47 cards of them in the stress
+              * fixture, which is most of a screen of folders before the first
+              * thumbnail. The breadcrumb above stays: it says where you are in
+              * one line, which is the part that does not duplicate the sheet.
+            */}
+            {cardsMount && !isError && !narrow
+                ? createPortal(<ContentCards nodes={nodes} />, cardsMount)
+                : null}
 
             {/*
               The folder select and the bulk Add-to-folder flyout, inside

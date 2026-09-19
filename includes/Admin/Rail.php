@@ -545,9 +545,17 @@ final class Rail
                 // Core's own wording for the same field, so the placeholder and
                 // the screen-reader label do not disagree.
                 'searchMedia' => __('Search media', 'folderfolio'),
-                // The narrow-width disclosure that stands for media type,
-                // date and folder once they no longer fit on one line.
-                'filters' => __('Filter', 'folderfolio'),
+                /*
+                 * The narrow-width disclosure that stands for media type,
+                 * date and folder once they no longer fit on one line.
+                 *
+                 * Plural. It opens three of them, and the singular also
+                 * collided with core's own `Filter` submit button in list
+                 * mode, which sits a few pixels away inside the same form —
+                 * two adjacent controls with the same word on them, one
+                 * disclosing and one submitting.
+                 */
+                'filters' => __('Filters', 'folderfolio'),
                 /*
                  * The badge's sentence, which is the only form of it assistive
                  * tech gets — the number beside the button is aria-hidden,

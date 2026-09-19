@@ -458,7 +458,7 @@ test.describe('the rail across viewport widths', () => {
         // The picker lives among the collapsed filters, so the disclosure has
         // to be opened before it is on screen — which is itself the contract:
         // one button stands for the filters at this width.
-        await page.getByRole('button', { name: /^filter$/i }).click();
+        await page.getByRole('button', { name: /^filters$/i }).click();
         await expect(picker).toBeVisible();
         await expect(picker).toHaveText(/all media/i);
 
@@ -476,9 +476,16 @@ test.describe('the rail across viewport widths', () => {
         await expect(picker).toHaveText(/brand/i);
         await expect(page).toHaveURL(/folderfolio_folder=\d+/);
 
-        // Put the filters back the way they were, so what follows is the
-        // sheet's own behaviour rather than this paragraph's leftovers.
-        await page.getByRole('button', { name: /^filter/i }).click();
+        /*
+         * Put the filters back the way they were, so what follows is the
+         * sheet's own behaviour rather than this paragraph's leftovers.
+         *
+         * A prefix match, not an exact one: a folder is filtered now, so the
+         * button carries its count badge and the screen-reader sentence that
+         * spells the badge out — "Filters 1 filter active" — and its
+         * accessible name is no longer just the label.
+         */
+        await page.getByRole('button', { name: /^filters/i }).click();
 
         // 2. A tap on the row opens it.
         await bar.click();
