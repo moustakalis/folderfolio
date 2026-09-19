@@ -81,6 +81,58 @@ table was missing.
 `DESIGN-TO-CODE.md`'s "Suggested order" is the sequence being followed, and its
 screen numbers are referenced throughout the code comments.
 
+### 19 Sep, later — the stress test, and what it changed
+
+Full account: `claude/progress-2026-09-19b-thousand-folders.md` in the project,
+plus the artifact at `claude.ai/artifact/WNVH2iM7BPR9hZVdbTFRFn`.
+
+**1,050 folders were created through the REST API** — 45 roots, then 198, 499
+and 308 across three more levels — in 11.2 seconds with zero errors. The plugin
+is not slow at that size: 333ms to DOMContentLoaded, 106ms for the tree
+endpoint, 290ms for a folder search. The fixture is still on the development
+site; teardown is 45 cascade deletes recorded in `var/stress-root-ids.json`,
+and nothing is assigned to them.
+
+What it broke was the narrow layout, in two places, and the numbers are the
+argument for both fixes:
+
+**The toolbar's folder select held 1,055 options and 24,027 characters.** The
+narrow layout was justified in writing on the premise that navigation never
+needed the rail at this width because that select carried the whole tree. True
+at three folders. Below the breakpoint it is now a button opening the same kind
+of panel the bulk flyout uses — search, a capped list, and a line saying what
+the cap is holding back. The select is never removed: list mode's is the
+no-script path, so the rule that hides it is gated on a body class the picker
+sets.
+
+**The open sheet gave the tree 190px against a 50,976px tree** — 0.37% of the
+content on screen. No cap fixes a ratio like that; raising it from 60vh to
+75dvh moved the window from 82px to 190 and the ratio barely noticed. Below
+782px the sheet now shows one parent's children with the path as the way out.
+On the same fixture a level averages **3.7 rows** and **203 of the 283 possible
+screens fit whole**.
+
+**It does not fix the screen you land on.** The fixture's top level is 47 roots
+— 2,068px against that 190px window — and a realistic library with fifteen is
+still 660px. That is why the rail's search field takes focus as the sheet
+opens. Search is the strongest thing in the build at this size and it was a
+field you had to notice.
+
+**Virtualising the tree is off the table.** It was the most expensive item on
+the list — 2–3 days, and a virtualised `role="tree"` with a roving tabindex is
+the pairing that already has its own CI harness because it fails silently.
+There is nothing to virtualise in a list of four.
+
+Two things still open from the same measurement: the tree endpoint ships
+**310.2KB** for 1,053 folders, every field of every node whether the rail reads
+it or not; and the narrow sheet spends about 369px of chrome — header, action
+row, the two fixed rows, search, the level header, footer — to show 222px of
+list. Both are worth measuring before they are changed.
+
+Checks after this step: **PHPStan clean, 107 unit, 41 e2e** (library 11,
+responsive 5, rail 10, upload 2, settings 5, search-submit 3, import 4, gallery
+1), **`tsc` clean**. The integration suite was *not* re-run — see below.
+
 ### Three recorded deviations from the board
 
 Each was a decision the handoff does not contain, taken deliberately:
@@ -617,7 +669,57 @@ not read out of docblocks, so four of those thirteen could not have been
 reproduced there under any setting. Level, `phpVersion`,
 `treatPhpDocTypesAsCertain` and `ignoreErrors` all come from this file.
 
+### Rebuilding the cloud rigs from nothing (19 Sep)
+
+Neither rig survives a session restart, and both had to be rebuilt to run the
+checks for the drill-down step. Recorded because the workarounds are not
+obvious and the failures look like plugin bugs.
+
+**Composer will not finish.** `phpstan/phpstan` is a **dist-only** package —
+its lock entry has `"source": null` — so `--prefer-source` does not help it,
+and its zipball comes from `api.github.com`, which the egress proxy answers
+403 (rate limit, dressed as *"Could not authenticate against github.com"*).
+Composer rolls the whole install back on one failure, so 31 of 32 packages
+arriving is the same as none. `codeload.github.com` is 403 too. What works:
+`git clone` **does** reach github.com, and phpstan's repository contains a
+built `phpstan.phar`. So the rig is assembled by hand — phpstan's phar and
+PHPUnit's from `phar.phpunit.de`, the phpstan-wordpress extension and the
+WordPress stubs cloned into `vendor/`, and a ten-line `vendor/autoload.php`
+registering the same PSR-4 map `composer.json` declares. PHPStan needs
+`--memory-limit=3G` there; 1G is not enough for the 5.7MB stub file.
+
+**The unit suite needs that autoloader.** Run from `vendor/bin`, PHPUnit loads
+`vendor/autoload.php` itself; run as a PHAR, it does not, and 43 of the 107
+tests fail with *"Class not found"* for classes `tests/bootstrap-unit.php`
+deliberately does not `require`. That is the rig being wrong, not the suite.
+
+**Playwright cannot run on the device VM at all** — `chrome-headless-shell`
+dies with *"error while loading shared libraries: libXdamage.so.1"*, and
+installing system libraries there is not available. It runs in the cloud
+container, which has Chromium pre-installed under `PLAYWRIGHT_BROWSERS_PATH`
+— but at a **different build number** than the pinned `@playwright/test` asks
+for, so the launch fails with *"Executable doesn't exist at
+…/chromium_headless_shell-1243/…"*. Symlinking the installed build's directory
+to the expected name, including the `.pak`/`.so`/`locales` siblings and the
+`INSTALLATION_COMPLETE` marker, is enough; `headless_shell` is the binary and
+`chrome-headless-shell` is the name Playwright looks for. The suite boots its
+own WordPress on php-wasm, so nothing else is needed — and note it stages the
+plugin from the checkout, so **`assets/build/` must be built first** or about
+fifteen tests fail on a rail that never mounts.
+
+**The development site is not reachable from either.** `https://playground:8890`
+resolves only on Nick's Mac. The device VM's shell cannot see it and neither
+can the container — which is why live verification goes through the browser
+extension and the iframe rig, and why the e2e suite brings its own WordPress.
+
 ### Running the integration suite
+
+**It has not been run since 18 Sep.** The 19 Sep drill-down step left it
+unrun: it needs a MySQL as well as the test library, and the session's
+Composer could not complete at all (above). The PHP touched that day is four
+entries added to an i18n label array in `Admin\Rail.php`, which PHPStan reads
+and which the e2e suite exercises end to end — so the gap is known and narrow,
+and it is still a gap.
 
 It needs Composer, the WordPress test library and a MySQL — but not CI, which
 is where it used to run and nowhere else:
@@ -1108,6 +1210,48 @@ runs there — which is what the `require.fileNotFound` entry in
 a checkout and that pattern stops matching, and `reportUnmatchedIgnoredErrors`
 reports a failure that CI does not have.
 
+**Two toolbar slots must never anchor to each other.** The three slots place
+themselves in a chain that ends at a control of core's — bulk before the mode
+toggle, the folder select before bulk, the narrow-width picker before the
+select — and a chain ending at somebody else's node has exactly one stable
+arrangement. Anchoring the picker to `filter.nextElementSibling` instead, to
+put it *after* the select, closes the chain into a cycle: the select's slot
+then wants to be immediately before bulk and is not, so it moves, which makes
+the picker wrong, so it moves. It settled in a different order on two machines,
+which is what a race looks like from the outside. This is the second bug in
+this file's history caused by a slot naming a position relative to a node that
+can be itself; `settle()`'s `insertBefore(node, node)` note is the first.
+
+**A grid never shrinks an auto row below its content to fit a bounded
+container.** Only `fr` rows are shrunk. `.folderfolio-flyout` is clamped to the
+room between its trigger and the edge of the window, and the scrolling list has
+to be the part that gives — so it is a **flex column**, against the standing
+grid-first preference, because flex can say "this child absorbs the deficit"
+without knowing the child's row index, and the two panels that share the file
+have different row counts. Tried with grid first: the panel clamped to 386px
+and the list ran 24px past its own bottom border.
+
+**A panel that flips above its trigger is placed by its bottom edge.** The
+obvious version — `top: trigger.top - panel.offsetHeight` — reads the height
+*before* the clamp that is about to shorten it, so it placed a 386px panel that
+then rendered 186px tall and sat 200px too low, overlapping the trigger it was
+flipping away from. `bottom: innerHeight - trigger.top` needs no height at all.
+
+**A hidden node reports `top: 0`, which is above everything.** wp-admin prints
+`<div class="notice error hide-if-js">` inside `.wrap`, right next to the rail.
+A geometry survey that asks "what is below this element" and takes the next
+sibling gets that node and concludes the page is upside down. Filter by box —
+`width > 0 && height > 0` — before comparing anything.
+
+**The rail's breakpoint is script-readable; the toolbar's is not.** They look
+alike and are opposites. The toolbar collapses on the width of the *library
+column*, which depends on a rail the user drags, so it is a container query and
+`FilterDisclosure` renders unconditionally and lets CSS decide. The rail's own
+782px is a media query that `Rail.php`'s placement script already evaluates to
+choose between the rail's two homes — so `lib/narrow.ts`'s `useIsNarrow()` may
+be read from script, and `Rail.tsx` renders the tree **or** the level view,
+never both.
+
 ## Which document is which
 
 | Document | What it is | Still authoritative? |
@@ -1117,7 +1261,9 @@ reports a failure that CI does not have.
 | `m2-importer-matrix.md` | Verified schemas and detection keys per migration source | Yes, when the importers are rewritten |
 | `research/01..04-*.md` | FileBird, Real Media Library, Folders, CatFolders — measured live and read from source | Background, and the reason for several decisions |
 | `deep-review-2026-09-16.md` | 29 numbered findings against 0.2.0 | Partly — #15 is closed; #24, #26, #27, #28 and #29 are still open |
-| *(Claude project)* `progress-2026-09-18h-transactions-toolbar-phone.md` | #15, the merged bulk trigger, the phone bar — the most recent build log | **Yes — the newest, and outside this repo** |
+| *(Claude project)* `progress-2026-09-19b-thousand-folders.md` | The 1,050-folder stress test, the searchable picker, the drill-down sheet — the most recent build log | **Yes — the newest, and outside this repo** |
+| *(Claude project)* `progress-2026-09-19-responsive-toolbar.md` | `readme.txt`, the narrow toolbar, the phone band | Yes |
+| *(Claude project)* `progress-2026-09-18h-transactions-toolbar-phone.md` | #15, the merged bulk trigger, the phone bar | History |
 | `design-handoff.md` | The brief that produced the design | History |
 | `m1-research-and-design-plan.md` | The plan that produced the research | History |
 | `code-analysis-2026-09-16.md`, `merge-status-2026-09-16.md` | The codebase and the `src/` → `includes/` merge, before the rebuild | History |
