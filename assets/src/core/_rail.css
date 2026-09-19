@@ -451,17 +451,83 @@ body.folderfolio-resizing * {
   }
 
   /**
-   * The action row sizes to its words, rather than into quarters.
+   * The action row is a segmented bar: four equal quarters, full bleed.
    *
-   * `Rename · Delete · Sort · More` are equal quarters of a 300px rail by
-   * design — 75px each, which is what the board draws. Quartering a 522px
-   * band instead gives each of them 130px and the row stops reading as four
-   * buttons and starts reading as four panels. They size to content here and
-   * sit against the left edge, where the eye already is.
+   * This reverses a call made earlier in the same pass, and the reason it was
+   * wrong is worth keeping. When these buttons were still 34px tall, sizing
+   * them to their words was right: quartering the band gave each 130px, and a
+   * 130px × 34px cell with an 11.5px label in it reads as a panel, not a
+   * button. So they were set to `flex: 0 0 auto`.
+   *
+   * Once the row became a 44px touch bar that stopped being true, and the
+   * measurement said so: the four tools occupied 277px of a 506px row and left
+   * **229px of dead space** beside them. A row of four cells that stops a
+   * little over halfway does not read as "sized to its content", it reads as
+   * unfinished.
+   *
+   * At 44px tall with dividers running the full height, four equal quarters is
+   * what a segmented action bar looks like — and it is what the board draws
+   * for the rail, at its own width. The labels are centred here rather than
+   * left-aligned, which the desktop avoids because a dragged rail makes
+   * centred words drift; this band cannot be dragged, so the objection does
+   * not apply.
    */
   body.folderfolio-rail-peek .folderfolio-rail__tool-wrap,
   body.folderfolio-rail-peek .folderfolio-rail__tool {
-    flex: 0 0 auto;
+    /*
+     * A declared quarter, not `flex: 1`.
+     *
+     * With a `0%` basis the four cells came out 135, 135, 118, 118: two of
+     * them are bare buttons carrying `padding: 0 8px` and a 1px divider, the
+     * other two are wrappers with neither, and the 17px difference is exactly
+     * that. Saying `25%` and `border-box` states the width instead of deriving
+     * it, which is the same lesson as the toolbar's first line.
+     */
+    flex: 1 1 25%;
+
+    /*
+     * `flex: 1` is `1 1 0%`, and a flex item still refuses to go below its
+     * content width while `min-width` is `auto`. Measured without this: 135,
+     * 135, 118, 118 — not quarters — and the last cell's right edge at 516 in
+     * a 506px bar, overrunning it by 10px. The labels already have
+     * `white-space: nowrap` and `overflow: hidden`, so there is something to
+     * clip to if a translation ever needs it.
+     */
+    min-width: 0;
+
+    /*
+     * And `border-box`, or they are still not quarters. Two of these four are
+     * bare buttons carrying `padding: 0 8px` and a 1px divider; the other two
+     * are wrappers with neither, holding a button that has both. With
+     * `content-box`, `flex-basis: 0` shares out *content* width equally and
+     * each item then adds its own padding and border on top — measured 135,
+     * 135, 118, 118, which is exactly the 17px those two carry and the others
+     * do not.
+     */
+    box-sizing: border-box;
+  }
+
+  /**
+   * And the type grows with the box.
+   *
+   * 11.5px and a 14px icon are the values for a 34px cell in a 300px rail.
+   * Left alone in a 44px cell they read as a small label adrift in a large
+   * button — which is what "sizes are quite off" meant. 13px and 16px keep the
+   * same relationship to the box the board drew.
+   */
+  body.folderfolio-rail-peek .folderfolio-rail__tool {
+    justify-content: center;
+    gap: 7px;
+    font-size: 13px;
+  }
+
+  body.folderfolio-rail-peek .folderfolio-rail__tool svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  body.folderfolio-rail-peek .folderfolio-rail__primary {
+    font-size: 13px;
   }
 
   /* --------------------------------------- the rail as a disclosure */
