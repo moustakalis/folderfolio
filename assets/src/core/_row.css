@@ -35,6 +35,30 @@
   line-height: 1.4;
 }
 
+/**
+ * The rows of the tree, and the six pixels wp-admin puts under every one.
+ *
+ * `dd, li { margin-bottom: 6px }` is core's, at specificity (0,0,1), and the
+ * `<ul>` above zeroing its own margin does nothing for its children. The tree
+ * is a list because a tree *is* a list — that is what gives a screen reader
+ * the count and the level — so every row inherited it.
+ *
+ * Measured at a 310px rail with the stress fixture: the fixed rows above the
+ * tree, which are buttons in a `<div>` and so never inherited it, sit on a
+ * **36px** pitch; the folder rows immediately below them sat on **42px**. Two
+ * halves of one column, in two rhythms, with nothing in this file asking for
+ * either. The whole tree measured 1,968px where its rows account for 1,692.
+ *
+ * `--ff-row-h` is meant to be the one number that sets this rhythm; a margin
+ * from somebody else's stylesheet underneath each row makes that untrue.
+ *
+ * The same leak reached the breadcrumb, whose items are `<li>`s for the same
+ * reason — see `_content.css`.
+ */
+.folderfolio-tree li {
+  margin: 0;
+}
+
 /* ------------------------------------------------- the two cramped cases */
 
 /**

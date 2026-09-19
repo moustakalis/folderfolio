@@ -29,7 +29,18 @@
 /* --------------------------------------------------------- the breadcrumb */
 
 .folderfolio-crumbs {
-  padding: 8px 0 10px;
+  /**
+   * Symmetric, now that the crumbs are not carrying wp-admin's 6px underneath
+   * them.
+   *
+   * This was `8px 0 10px`, with nothing written down about the asymmetry —
+   * and the reason is almost certainly that it was set while every `<li>` in
+   * the row had `margin-bottom: 6px`, so the visible space read as 8 above
+   * and 16 below and the two extra pixels were an attempt to even it out.
+   * With the margin gone the row sat one pixel high. Same 36px box, text on
+   * the centre line.
+   */
+  padding: 9px 0;
   font-size: 12px;
   color: var(--ff-muted);
 
@@ -53,6 +64,21 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+
+  /**
+   * wp-admin sets `dd, li { margin-bottom: 6px }`.
+   *
+   * These crumbs are `<li>`s — a breadcrumb is a list, and calling it one is
+   * what gives a screen reader the count — so they inherited six pixels of
+   * space underneath them. Every item keeps the same centre, so the row does
+   * not look ragged; what it does is push the whole row **off centre inside
+   * its own band**, six pixels high, which is the misalignment Nick spotted.
+   *
+   * A single class is (0,1,0) and beats a bare element selector, so this needs
+   * no help. The list itself already zeroes its own margins for the same
+   * reason — `ul` carries wp-admin's margin too.
+   */
+  margin: 0;
 }
 
 /* The separator belongs to the crumb that follows it, so the row never opens
