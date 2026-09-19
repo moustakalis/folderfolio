@@ -529,6 +529,61 @@ body.folderfolio-resizing * {
   }
 
   /**
+   * A channel above and below the band, because both sides of it are tappable.
+   *
+   * Measured: the `Add Media File` button's bottom edge sat **8px** above the
+   * band's top edge. Two independently clickable surfaces that close together
+   * invite the wrong one — on a phone, where the finger is the pointer, 8px is
+   * inside the margin of error. Nick asked for the spacing before anyone
+   * mis-tapped it.
+   *
+   * `--ff-rail-gap` rather than a new number: that token already means "the
+   * channel between the rail and the library", and it is the same 20px on the
+   * desktop, where the channel is horizontal. One idea, one value, turned on
+   * its side.
+   */
+  body.folderfolio-has-rail .folderfolio-rail {
+    margin-block: var(--ff-rail-gap);
+  }
+
+  /**
+   * Collapse is a 44px target here, not a 24px one.
+   *
+   * Measured at 75 × 24px inside a 33px footer. 24px is the WCAG 2.5.8
+   * *minimum* and half of what this plugin already gives the closed bar, whose
+   * whole 44px row is the tap target precisely because a 24px chevron was not
+   * enough to hit. A control that closes the sheet should not be harder to
+   * press than the one that opened it.
+   *
+   * The footer becomes a grid because the sizing had to change anyway and this
+   * is where the layout decision is actually being made: `1fr auto` says the
+   * count takes the room and the button takes what it needs, which is what
+   * `margin-left: auto` was standing in for. `height: auto` on both, because
+   * the fixed 32px and 24px would otherwise win over any `min-height`.
+   */
+  body.folderfolio-has-rail.folderfolio-rail-peek .folderfolio-rail__footer {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    flex: 0 0 auto;
+    height: auto;
+
+    /* 52 rather than 44: a 44px button in a 44px bar touches both rules and
+       reads as a cell of a table rather than as something to press. 4px above
+       and below is all it takes to look like a button again. */
+    min-height: 52px;
+    padding: 0 10px;
+  }
+
+  body.folderfolio-rail-peek .folderfolio-rail__collapse {
+    margin-left: 0;
+    height: auto;
+    min-height: 44px;
+    padding: 0 12px;
+    font-size: 12.5px;
+  }
+
+  /**
    * The tab, laid on its side.
    *
    * On the desktop these two nodes are a 28px column: a 24px chevron with the
