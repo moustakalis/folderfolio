@@ -14,13 +14,64 @@
  * *where* is this folder.
  */
 
+import { useEffect, useRef } from 'react';
+
 import { SearchIcon } from './icons';
 import { useRail } from './store';
+import { useIsNarrow } from '../../lib/narrow';
 import { t } from '../../core/api';
+
+/** The class rail.ts puts on <body> while the narrow sheet is open. */
+const PEEK = 'folderfolio-rail-peek';
 
 export function Search() {
     const query = useRail((s) => s.query);
     const setQuery = useRail((s) => s.setQuery);
+    const narrow = useIsNarrow();
+    const ref = useRef<HTMLInputElement>(null);
+
+    /*
+     * On a phone, opening the sheet puts the cursor here.
+     *
+     * The fixture says why. A level of the drill-down view averages 3.7 rows
+     * and 72% of them fit the window whole — but the level you land on is the
+     * top one, and that is 47 roots in the fixture and a dozen or more in a
+     * real library. Typing four characters reaches any of 1,053 folders; the
+     * alternative is scrolling a list the window shows four rows of.
+     *
+     * Only when narrow, and only as the sheet opens. Focusing this on a
+     * desktop would take the cursor away from whatever the person was doing
+     * every time the rail rendered, and the desktop tree does not have the
+     * problem this solves.
+     *
+     * A class observer rather than a prop: the open state belongs to rail.ts,
+     * which is server-rendered chrome outside this React tree — it has to work
+     * before this bundle loads and if it never does.
+     */
+    useEffect(() => {
+        if (!narrow) {
+            return;
+        }
+
+        let was = document.body.classList.contains(PEEK);
+
+        const check = () => {
+            const now = document.body.classList.contains(PEEK);
+
+            // The transition, not the state: re-focusing on every unrelated
+            // class change would fight anyone who had moved on to a row.
+            if (now && !was) {
+                ref.current?.focus();
+            }
+
+            was = now;
+        };
+
+        const observer = new MutationObserver(check);
+        observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+        return () => observer.disconnect();
+    }, [narrow]);
 
     return (
         <div className="folderfolio-rail__search">
@@ -29,6 +80,7 @@ export function Search() {
             </span>
 
             <input
+                ref={ref}
                 type="search"
                 className="folderfolio-rail__search-input"
                 value={query}

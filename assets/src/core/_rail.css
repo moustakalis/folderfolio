@@ -739,6 +739,164 @@ body.folderfolio-resizing * {
     height: 44px;
   }
 
+  /* ------------------------------------------------- the level view (B) */
+
+  /**
+   * One level at a time, drawn with the rail's own row furniture.
+   *
+   * The rows reuse `.folderfolio-row` — the same height token, the same icon,
+   * name and count columns, the same swatch — so a folder looks the same in
+   * the sheet as it does in the desktop tree. What is different is what is on
+   * screen, not how a folder is drawn.
+   */
+  .folderfolio-levels {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .folderfolio-levels__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /**
+   * Where you are, and the way out — two targets, one bar.
+   *
+   * A grid rather than two floated halves: the title has to be allowed to
+   * shrink (`minmax(0, 1fr)`) so that a long folder name ellipses instead of
+   * pushing the way out off the edge, which is the failure a flex row with
+   * default `min-width: auto` produces.
+   *
+   * Sticky, because it is the answer to "where am I" and a level of 47 rows
+   * scrolls it away otherwise — which is precisely the level where the
+   * question gets asked.
+   */
+  .folderfolio-levels__head {
+    display: grid;
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    gap: 2px;
+    background: var(--ff-panel);
+    border-bottom: 1px solid var(--ff-line);
+  }
+
+  .folderfolio-levels__up,
+  .folderfolio-levels__here {
+    display: grid;
+    grid-auto-flow: column;
+    align-items: center;
+    gap: 6px;
+    height: var(--ff-row-h);
+    padding: 0 8px;
+    border: 0;
+    background: none;
+    color: var(--ff-ink);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .folderfolio-levels__up {
+    /* The way out is the smaller of the two, and still a full-height target:
+       44px tall by about 60 wide at its narrowest, which is inside the
+       platform minimum in the direction a thumb actually misses. */
+    grid-template-columns: auto minmax(0, 1fr);
+    max-width: 40vw;
+    color: var(--ff-muted);
+  }
+
+  /* Pointing back the way it came. The icon set has one chevron and this is
+     the honest way to reuse it — a second glyph for the same shape rotated is
+     two things to keep in step. */
+  .folderfolio-levels__up-icon {
+    display: grid;
+    place-items: center;
+    transform: rotate(180deg);
+  }
+
+  .folderfolio-levels__up-label {
+    overflow: hidden;
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .folderfolio-levels__here {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    font-weight: 600;
+  }
+
+  .folderfolio-levels__up:hover,
+  .folderfolio-levels__here:hover {
+    background: var(--ff-hover);
+  }
+
+  .folderfolio-levels__up:focus-visible,
+  .folderfolio-levels__here:focus-visible,
+  .folderfolio-levels__row:focus-visible {
+    outline: 2px solid var(--ff-sel);
+    outline-offset: -2px;
+  }
+
+  /**
+   * A row of the level.
+   *
+   * `grid-template-columns` states the four parts rather than letting them
+   * flow, for the reason the toolbar's first line documents: the name is the
+   * only one allowed to shrink, so a 40-character folder ellipses and the
+   * count and the chevron stay where the eye expects them.
+   */
+  .folderfolio-levels__row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    height: var(--ff-row-h);
+    padding: 0 4px 0 10px;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  /* The row the library is filtered to. A left bar rather than a fill: the
+     sheet sits over the library, and a filled row reads as a hover state on a
+     surface the finger is already touching. */
+  .folderfolio-levels__row[aria-current='true'],
+  .folderfolio-levels__head.is-current {
+    box-shadow: inset 3px 0 0 var(--ff-sel);
+  }
+
+  .folderfolio-levels__row[aria-current='true'],
+  .folderfolio-levels__here[aria-current='true'] {
+    font-weight: 600;
+  }
+
+  /* The affordance, sized as a target even though the whole row is the
+     target — so that a thumb landing on it is landing on something, rather
+     than on 16px of glyph with 14px of nothing around it. */
+  .folderfolio-levels__into {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: var(--ff-row-h);
+    color: var(--ff-muted);
+  }
+
+  .folderfolio-levels__empty {
+    padding: 14px 12px;
+    color: var(--ff-muted);
+    font-size: 12.5px;
+  }
+
   /**
    * The tree's expand chevron: a 20px glyph with a target around it.
    *

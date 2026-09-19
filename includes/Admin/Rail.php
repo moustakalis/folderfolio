@@ -456,6 +456,29 @@ final class Rail
                 'allMedia' => __('All media', 'folderfolio'),
                 'unassigned' => __('Unassigned', 'folderfolio'),
                 'atTopLevel' => __('Top level', 'folderfolio'),
+
+                /*
+                 * The narrow-width level view — one folder's children at a
+                 * time, with the way out named after where it goes rather
+                 * than called "Back". On a sheet with no history stack, the
+                 * useful word is the destination.
+                 *
+                 * translators: %s is the parent folder's name, or "Top level".
+                 */
+                'upToFolder' => __('Up to %s', 'folderfolio'),
+                'noSubfolders' => __('Nothing inside this folder', 'folderfolio'),
+                /*
+                 * The row's whole sentence for assistive tech. The chevron
+                 * that says "this goes somewhere" is decorative, so the words
+                 * have to carry it.
+                 *
+                 * translators: 1: folder name, 2: how many files, 3: how many
+                 * folders are inside it.
+                 */
+                'folderWithSubfolders' => __(
+                    '%1$s, %2$s files, %3$s folders inside',
+                    'folderfolio'
+                ),
                 'createAtRoot' => __('New folder at the top level', 'folderfolio'),
                 'createInFolder' => __('New folder inside the selected folder', 'folderfolio'),
                 'searchPlaceholder' => __('Search folders', 'folderfolio'),

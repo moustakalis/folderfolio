@@ -12,6 +12,7 @@ import { createPortal } from 'react-dom';
 import { Content, ContentCards } from './Content';
 import { FixedRows } from './FixedRows';
 import { Header } from './Header';
+import { Levels } from './Levels';
 import { LibraryToolbar } from './LibraryToolbar';
 import { Results } from './Results';
 import { Search } from './Search';
@@ -27,6 +28,7 @@ import {
     type FolderNode,
 } from './queries';
 import { useRail } from './store';
+import { useIsNarrow } from '../../lib/narrow';
 import { applyFolderFilter, watchFolderLinks } from '../../lib/filter';
 import { t } from '../../core/api';
 
@@ -50,6 +52,15 @@ export function Rail({
     const select = useRail((s) => s.select);
     const pendingUndo = useRail((s) => s.pendingUndo);
     const setPendingUndo = useRail((s) => s.setPendingUndo);
+
+    /*
+     * Below 782px the rail is a full-width band under the title rather than a
+     * column beside the library, and the tree in it gets a 190px window. There
+     * it drills one level at a time instead. One or the other, never both —
+     * two navigation models rendered at once would be two sets of rows
+     * claiming the same folders.
+     */
+    const narrow = useIsNarrow();
 
     const create = useCreateFolder();
     const rename = useRenameFolder();
@@ -298,6 +309,8 @@ export function Rail({
                         </div>
                     ) : query.trim() !== '' ? (
                         <Results nodes={nodes} />
+                    ) : narrow ? (
+                        <Levels nodes={nodes} loading={isPending} />
                     ) : (
                         <Tree
                             nodes={nodes}

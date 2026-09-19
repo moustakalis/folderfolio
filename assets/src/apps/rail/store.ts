@@ -36,6 +36,20 @@ export interface RailState {
 
     expandedIds: Set<number>;
 
+    /**
+     * Which folder's children the narrow-width sheet is showing. `null` is the
+     * top level.
+     *
+     * Separate from `selectedId` and from `expandedIds`, and it has to be all
+     * three. Selection is what the library is filtered to; expansion is what
+     * the desktop tree has open; this is where the sheet is standing. They
+     * move together most of the time and they are not the same fact — going
+     * *back* a level must not re-filter the library, and opening a folder on a
+     * phone must not silently rearrange the tree the same person sees on a
+     * laptop.
+     */
+    levelId: number | null;
+
     /** Non-empty switches the rail from the tree to a flat result list. */
     query: string;
 
@@ -74,6 +88,8 @@ export interface RailState {
     collapse: (id: number) => void;
     /** Open every ancestor of a folder, so a deep link can reveal its row. */
     reveal: (ancestorIds: number[]) => void;
+    /** Move the narrow-width sheet to a folder's children. `null` is the top. */
+    openLevel: (id: number | null) => void;
     setQuery: (query: string) => void;
 
     edit: (editing: Editing | null) => void;
@@ -126,6 +142,14 @@ export const useRail = create<RailState>((set) => ({
     selectedId: folderFromUrl(),
     focusedId: folderFromUrl(),
     expandedIds: new Set<number>(),
+    /*
+     * The sheet opens at the top level even when a folder is selected.
+     *
+     * Levels.tsx moves it to the selected folder as soon as the tree has
+     * loaded, which it cannot do from here: seeding this from the URL would
+     * mean claiming a folder has children before anything has been fetched.
+     */
+    levelId: null,
     query: '',
     editing: null,
     sort: defaultSort(),
@@ -173,6 +197,8 @@ export const useRail = create<RailState>((set) => ({
 
             return { expandedIds: next };
         }),
+
+    openLevel: (id) => set({ levelId: id }),
 
     setQuery: (query) => set({ query }),
 

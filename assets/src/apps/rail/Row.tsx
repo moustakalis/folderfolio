@@ -220,7 +220,8 @@ export function CreateRow({ depth }: { depth: number }) {
 }
 
 /**
- * The input itself, shared by both.
+ * The input itself, shared by both — and by the narrow-width level view,
+ * which has its own row markup but must not have its own editing mechanic.
  *
  * It reads and writes the store directly rather than taking props: there is
  * only ever one of these on screen — that is what a single `editing` slot in
@@ -231,7 +232,7 @@ export function CreateRow({ depth }: { depth: number }) {
  * that commits on blur loses what you typed the moment you reach for anything
  * else, and one that cancels on blur does the same in the other direction.
  */
-function NameInput({ label }: { label: string }) {
+export function NameInput({ label }: { label: string }) {
     const value = useRail((s) => s.editing?.value ?? '');
     const setEditValue = useRail((s) => s.setEditValue);
     const ref = useRef<HTMLInputElement>(null);
