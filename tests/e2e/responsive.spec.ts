@@ -592,6 +592,70 @@ test.describe('the rail across viewport widths', () => {
     });
 
     /**
+     * The band that answers "where am I" meets the hairline it sits under.
+     *
+     * `.folderfolio-rail__body` carried `padding: 6px 0 12px`, which pushed the
+     * band — and with it the selected-path bar drawn inside its left edge — six
+     * pixels below the search rule, so the bar read as too short for its row.
+     * The sticky `top: -6px` had cancelled those six for the *stuck* case only;
+     * at the top of the scroll nothing is stuck and the padding is simply
+     * there, which is the state the screenshot that reported this was taken in.
+     *
+     * So: both states, because the bug was that the two disagreed. One pixel
+     * apart, not zero — the scroller's own top border is between them.
+     */
+    test('the pinned level band meets the hairline, stuck or not', async ({ page }) => {
+        await page.setViewportSize({ width: 1280, height: 900 });
+        await page.goto('/wp-admin/upload.php?mode=grid');
+        await page.locator('#folderfolio-rail').waitFor();
+        await resetFolders(page);
+
+        const brand = await createFolder(page, 'Brand');
+        // Enough children to overflow a 844px-tall phone's rail, so that the
+        // band has something to be stuck over.
+        for (let i = 1; i <= 12; i += 1) {
+            await createFolder(page, `Child ${i}`, brand.id);
+        }
+
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.reload();
+        await page.locator('#folderfolio-rail').waitFor();
+        await page.locator('.folderfolio-rail__tab').click();
+        await page.locator('.folderfolio-levels__row').filter({ hasText: 'Brand' }).click();
+
+        const band = page.locator('.folderfolio-levels__head');
+        await expect(band).toBeVisible();
+
+        const gap = async () =>
+            page.evaluate(() => {
+                const body = document.querySelector('.folderfolio-rail__body');
+                const head = document.querySelector('.folderfolio-levels__head');
+                if (!(body instanceof HTMLElement) || !(head instanceof HTMLElement)) {
+                    return null;
+                }
+                return {
+                    gap: head.getBoundingClientRect().top - body.getBoundingClientRect().top,
+                    scrollable: body.scrollHeight - body.clientHeight,
+                };
+            });
+
+        const atRest = await gap();
+        expect(atRest).not.toBeNull();
+        expect(atRest!.gap).toBeCloseTo(1, 1);
+        // The state the fix is *about* only exists if there is a scroll to be
+        // at the top of; if this ever goes to zero the assertion below is vacuous.
+        expect(atRest!.scrollable).toBeGreaterThan(0);
+
+        await page.evaluate(() => {
+            document.querySelector('.folderfolio-rail__body')!.scrollTop = 120;
+        });
+        await page.waitForTimeout(150);
+
+        const stuck = await gap();
+        expect(stuck!.gap).toBeCloseTo(1, 1);
+    });
+
+    /**
      * Collapsing hid `__body` and `__footer` and left the header, toolbar,
      * fixed rows and search field rendering inside a 28px column with
      * `overflow: visible` — so they drew across the page, and the reopen tab

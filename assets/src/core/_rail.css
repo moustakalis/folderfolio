@@ -165,6 +165,72 @@ body.folderfolio-has-rail .folderfolio-rail {
    * with the first row.
    */
   border-top: 1px solid var(--ff-line);
+
+  /**
+   * The two edges say when there is more.
+   *
+   * A thousand folders is four screens of rail, and neither edge admitted it:
+   * a row cut in half at the bottom is the only cue there is, and the rows are
+   * 44px apart, so often there is no cut row on screen. Both hairlines then
+   * read as "this is the end of the list" when they mean "this is the end of
+   * the box".
+   *
+   * Four background layers and no script, the standard scroll-shadow trick:
+   *
+   *   1, 2  covers, in the panel colour, `background-attachment: local` — they
+   *         scroll *with* the content, so each sits over its shadow only while
+   *         that end of the content is in view;
+   *   3, 4  the shadows themselves, `scroll` — pinned to the box, so they stay
+   *         at its edges while the content moves under them.
+   *
+   * Earlier layers paint over later ones, so at rest each cover hides its
+   * shadow, and scrolling slides the cover away and lets the shadow out. The
+   * covers are the taller pair, 14 against 7, because a cover shorter than its
+   * shadow leaves a rim of it showing at rest.
+   *
+   * `farthest-side` radial rather than linear: the falloff is fastest right at
+   * the edge, which is what an edge shadow does, and it lightens towards the
+   * left and right ends so the band does not read as a second hairline.
+   * Measured down the middle of the rail: 255 all the way at rest; 219 at the
+   * darkest row when scrolled, over a 7px ramp back to 255.
+   *
+   * The positioning area is the padding box, so both sit *inside* the border
+   * above rather than under it.
+   *
+   * One blind spot, and it is deliberate: in the level view the pinned header
+   * is opaque and sits exactly where the top shadow is drawn, so it covers it.
+   * The header is the top edge there — rows visibly slide under it — so the
+   * cue is not lost; giving it a shadow of its own would mean a sentinel and
+   * an observer to know when it is stuck, which is script, and this is not.
+   */
+  background:
+    linear-gradient(var(--ff-panel) 30%, transparent) top / 100% 14px,
+    linear-gradient(transparent, var(--ff-panel) 70%) bottom / 100% 14px,
+    radial-gradient(farthest-side at 50% 0, rgba(0, 0, 0, 0.16), transparent) top /
+      100% 7px,
+    radial-gradient(farthest-side at 50% 100%, rgba(0, 0, 0, 0.16), transparent)
+      bottom / 100% 7px;
+  background-repeat: no-repeat;
+  background-attachment: local, local, scroll, scroll;
+}
+
+/**
+ * The scroller gives up its six pixels under a pinned level header.
+ *
+ * Those six are breathing room for the first *row*. The level view's header is
+ * not a row: it is the band that answers "where am I", drawn like the header,
+ * toolbar and footer bands, each of which meets the hairline it sits under.
+ * With the padding in place the band floated six pixels below the search rule
+ * and the selected-path bar floated with it — which reads as a bar too short
+ * for its row rather than as a row pushed down. Measured at the top of the
+ * scroll: scrollport border 53.4, band top 60.4, bar 44px inside a 50px gap.
+ *
+ * `:has` on the header rather than on the level view, because the level view
+ * also renders without one — at the root, and while the tree loads — and there
+ * the first thing in the scroller *is* a row, which wants the six back.
+ */
+.folderfolio-rail__body:has(.folderfolio-levels__head) {
+  padding-top: 0;
 }
 
 /* ----------------------------------------------------------- the footer */
@@ -780,18 +846,22 @@ body.folderfolio-resizing * {
     position: sticky;
 
     /**
-     * Minus six, because a sticky offset is measured from the scrollport's
-     * **padding** box.
+     * Zero, and the scrollport's top padding is what makes it mean zero.
      *
-     * `.folderfolio-rail__body` is the scroller and carries `padding: 6px 0
-     * 12px` over a 1px top border, so `top: 0` pinned the header seven pixels
-     * down from its own top edge — and scrolled rows kept drawing in the strip
-     * above it. Measured: body top 353.4, header stuck at 360.4.
+     * A sticky offset is measured from the scrollport's **padding** box, so
+     * while `.folderfolio-rail__body` carried `padding: 6px 0 12px` over its
+     * 1px top border, `top: 0` pinned the band seven pixels down from the
+     * hairline and scrolled rows kept drawing in the strip above it — measured
+     * body top 353.4, band stuck at 360.4. `top: -6px` cancelled the six but
+     * left the band floating by the same six at the top of the scroll, where
+     * nothing is stuck and the padding is simply there.
      *
-     * Tied to that padding, and the only thing tying them is this note: if the
-     * body's `padding-top` changes, this changes with it.
+     * So the padding goes instead (see `:has(.folderfolio-levels__head)`
+     * above) and the offset is honest again: stuck and unstuck now agree, both
+     * one pixel below the scrollport's border box. The two are tied, and this
+     * note is the only thing tying them.
      */
-    top: -6px;
+    top: 0;
 
     /**
      * Two, not one, and the one is why the rows showed through it.

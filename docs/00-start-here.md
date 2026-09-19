@@ -129,8 +129,8 @@ it or not; and the narrow sheet spends about 369px of chrome — header, action
 row, the two fixed rows, search, the level header, footer — to show 222px of
 list. Both are worth measuring before they are changed.
 
-Checks at the end of the day: **PHPStan clean, 107 unit, 42 e2e** (library 12,
-responsive 5, rail 10, upload 2, settings 5, search-submit 3, import 4, gallery
+Checks at the end of the day: **PHPStan clean, 107 unit, 43 e2e** (library 12,
+responsive 6, rail 10, upload 2, settings 5, search-submit 3, import 4, gallery
 1), **`tsc` clean**. The integration suite was *not* re-run — see below.
 
 ### 19 Sep, later still — the wide-viewport sweep
@@ -223,7 +223,8 @@ header's own box. `z-index: 2`.
 the scrollport's **padding** box; `.folderfolio-rail__body` carries
 `padding: 6px 0 12px` over a 1px top border, so `top: 0` pinned the header
 seven pixels down from its own top edge. `top: -6px`, tied to that padding by
-a comment.
+a comment — and see the next section, which retired the offset by removing the
+padding instead.
 
 **The filter badge was a tall block with the digit on its floor.**
 `line-height` inherits as a computed **length**, so the button's 32.3px — sized
@@ -236,6 +237,43 @@ from its parent's.
 as `BrandMark` in `icons.tsx` — the same shapes as the block icon and the
 wordpress.org listing, filled rather than stroked because it is a logo and not
 a member of the icon set. Its own 6px gap, not the header's 8px.
+
+### 20 Sep, later — the band meets the hairline, and the edges admit there is more
+
+Full account: `claude/progress-2026-09-20b-flush-band-and-scroll-shadows.md`.
+
+**The selected-path bar looked too short for its row, and the element was
+fine.** The inset shadow paints the full padding box — a 4x clone of the band
+proved it — and a red reference bar drawn beside the live one measured
+identical, 78px against 79. The variable was the *state*. Nick's screenshot,
+read pixel by pixel, put the bar 12 device pixels (5.4 CSS px) late at the top
+and flush at the bottom: six pixels, which is `.folderfolio-rail__body`'s
+`padding-top`. **At the top of the scroll nothing is stuck**, so the band sat
+after that padding, and `top: -6px` had only ever fixed the stuck case.
+
+So the padding goes instead, and only where a band is actually there:
+`.folderfolio-rail__body:has(.folderfolio-levels__head) { padding-top: 0 }`,
+with the sticky offset back to `top: 0`. `:has` on the **header**, not on the
+level view, because the level view also renders without one — at the root and
+while the tree loads — and there the first thing in the scroller *is* a row,
+which wants the six back. Measured after: 1px between scrollport and band in
+**both** states, and that pixel is the border. Guarded by *"the pinned level
+band meets the hairline, stuck or not"*, which fails if the rule is reverted.
+
+**The lesson under it:** a fix scoped to one state is half a fix, and the half
+nobody looks at is the resting one. Sticky elements have two geometries; assert
+both.
+
+**Scroll shadows on the rail's scroller**, four background layers and no
+script: two covers in the panel colour at `background-attachment: local`, two
+`farthest-side` radial shadows at `scroll`. The covers scroll with the content
+and hide their shadows at rest; scrolling slides them away. The covers are
+taller than the shadows — 14 against 7 — because a cover shorter than its
+shadow leaves a rim showing at rest. Measured down the middle of the rail: 255
+at rest, **219** at the darkest row when scrolled, over a 7px ramp. One blind
+spot, deliberate: in the level view the opaque pinned band sits exactly where
+the top shadow is drawn and covers it — the band is the top edge there, and
+giving it a shadow of its own needs a sentinel and an observer, which is script.
 
 ### Three recorded deviations from the board
 
@@ -1334,7 +1372,29 @@ chip whose font-size differs from its parent's needs its own `line-height`.
 
 **A sticky offset is measured from the scrollport's padding box**, not its
 border box. `top: 0` inside a scroller with `padding-top` leaves exactly that
-much room above the stuck element for content to scroll through.
+much room above the stuck element for content to scroll through — and **that
+padding is still there when nothing is stuck**, which is the state a negative
+`top` does not reach. Prefer removing the padding to cancelling it: `top: 0`
+then means the same thing in both states.
+
+**A scroll shadow drawn as a background layer is behind the content.** The
+rail's four-layer shadow works because its rows are `background: none`; a
+hover or selected row, or an opaque sticky header, covers it. That is why the
+pinned level band has no top shadow of its own.
+
+**`computer{action: "zoom"}` does not magnify.** It returns the region at
+roughly its own pixel size, so a 30 x 100 crop comes back 34 x 112 and settles
+nothing. For a few-pixel question either **save the screenshot** —
+`save_to_disk: true` with `scale: 1`, which lands in the *cloud container*
+where Python can read it column by column — or **draw a reference element** in
+the page beside the thing in question and compare the two. Both were needed to
+find the level band's six pixels. `zoom`'s region coordinates are in the
+full-resolution frame, not CSS pixels; on this machine the factor is ~1.795.
+
+**A cloned element loses scoped custom properties.** Appending a clone to
+`document.body` to inspect it in isolation collapsed a 176px band to 18px,
+because `--ff-row-h` is defined on an ancestor. Append the clone **inside** the
+component, then position it.
 
 **`z-index` ties are broken by document order.** The rail's row parts are
 `position: relative; z-index: 1`, so anything meant to cover a row needs 2 —
