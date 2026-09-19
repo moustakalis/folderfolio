@@ -209,6 +209,34 @@ sheet.
 
 Both are one pitch now — 36px on the desktop, 44 in the phone sheet.
 
+### 20 Sep — three defects Nick caught in one screenshot
+
+**The sticky level header painted behind its own rows.** It had `z-index: 1`,
+and so do `.folderfolio-row__icon`, `__name` and `__count` — each
+`position: relative` so it sits above the row's guides. A tie in z-index is
+broken by document order, and the rows come after the header, so the header
+drew its white background and the row's text drew over it. Confirmed with
+`elementFromPoint`, which returned `.folderfolio-row__name` inside the
+header's own box. `z-index: 2`.
+
+**And a 7px strip above it leaked anyway.** A sticky offset is measured from
+the scrollport's **padding** box; `.folderfolio-rail__body` carries
+`padding: 6px 0 12px` over a 1px top border, so `top: 0` pinned the header
+seven pixels down from its own top edge. `top: -6px`, tied to that padding by
+a comment.
+
+**The filter badge was a tall block with the digit on its floor.**
+`line-height` inherits as a computed **length**, so the button's 32.3px — sized
+for its own 14px text — laid an 11px digit out in a 25.4px line box inside a
+17px pill. `place-items: center` centred the box it was given, and that box was
+8px taller than the pill. `line-height: 1` on any pill whose font-size differs
+from its parent's.
+
+**The rail header carries the mark now**, from `assets/brand/mark.svg` inlined
+as `BrandMark` in `icons.tsx` — the same shapes as the block icon and the
+wordpress.org listing, filled rather than stroked because it is a logo and not
+a member of the icon set. Its own 6px gap, not the header's 8px.
+
 ### Three recorded deviations from the board
 
 Each was a decision the handoff does not contain, taken deliberately:
@@ -1298,6 +1326,19 @@ runs there — which is what the `require.fileNotFound` entry in
 `phpstan.neon`'s `ignoreErrors` exists for. Copy a built `assets/build/` into
 a checkout and that pattern stops matching, and `reportUnmatchedIgnoredErrors`
 reports a failure that CI does not have.
+
+**`line-height` inherits as a computed length, not as a ratio.** A child with a
+smaller font-size gets the *parent's* pixel line-height, which is how an 11px
+digit ended up in a 25.4px line box inside a 17px pill. Any badge, pill or
+chip whose font-size differs from its parent's needs its own `line-height`.
+
+**A sticky offset is measured from the scrollport's padding box**, not its
+border box. `top: 0` inside a scroller with `padding-top` leaves exactly that
+much room above the stuck element for content to scroll through.
+
+**`z-index` ties are broken by document order.** The rail's row parts are
+`position: relative; z-index: 1`, so anything meant to cover a row needs 2 —
+the sticky level header looked transparent for exactly this reason.
 
 **Two toolbar slots must never anchor to each other.** The three slots place
 themselves in a chain that ends at a control of core's — bulk before the mode
