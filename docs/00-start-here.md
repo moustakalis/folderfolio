@@ -778,6 +778,25 @@ naming the control inside it. The same fact bites the other way: a `>` selector
 never reaches a control inside one, because it is a grid item and a DOM
 grandchild at the same time.
 
+**The rail has two homes, and the inline script picks by the breakpoint.**
+Wide it is a column, so it lives in `#wpbody` before `#wpbody-content` — the
+only way to get a node between those two elements, since WordPress offers no
+hook there. Narrow it is a band, and being first in `#wpbody` put it *above*
+WordPress's own screen-meta row: measured, it pushed `Help` to 421px and the
+page heading to 481px. Narrow, it moves inside `.wrap` after `.wp-header-end`,
+so the order is Help → title → band → filter row → cards → files. The wide home
+is taken synchronously; the narrow one on `DOMContentLoaded`, because `.wrap`
+has not been parsed when that script runs.
+
+**`insertBefore(node, node)` is the trap to remember.** It is legal, does
+nothing visible, and still fires a removal and an insertion. That wakes any
+MutationObserver watching, which schedules another pass, which does it again —
+and a node detached between `mousedown` and `mouseup` fires **no `click` at
+all**. It cost a whole debugging session: the `Filter` button looked dead to a
+mouse while a scripted `.click()`, synchronous and landing between two churns,
+always worked. Both the toolbar slot and the rail's placement script guard
+against it explicitly now.
+
 **A media-toolbar button carries `margin: 0 0 4px` from core.** Centre a 34px
 box that has 4px below it in a 38px row and it lands 2px high — which is
 exactly what happened to the `Filter` disclosure beside `Bulk select`.
