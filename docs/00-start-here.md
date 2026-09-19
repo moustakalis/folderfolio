@@ -129,7 +129,7 @@ it or not; and the narrow sheet spends about 369px of chrome — header, action
 row, the two fixed rows, search, the level header, footer — to show 222px of
 list. Both are worth measuring before they are changed.
 
-Checks at the end of the day: **PHPStan clean, 107 unit, 43 e2e** (library 12,
+Checks at the end of the day: **PHPStan clean, 107 unit, 45 e2e** (library 14,
 responsive 6, rail 10, upload 2, settings 5, search-submit 3, import 4, gallery
 1), **`tsc` clean**. The integration suite was *not* re-run — see below.
 
@@ -274,6 +274,41 @@ at rest, **219** at the darkest row when scrolled, over a 7px ramp. One blind
 spot, deliberate: in the level view the opaque pinned band sits exactly where
 the top shadow is drawn and covers it — the band is the top edge there, and
 giving it a shadow of its own needs a sentinel and an observer, which is script.
+
+### 20 Sep, last pass — the root cards, and the bracketed count
+
+Full account: `claude/progress-2026-09-20c-root-cards-and-the-bracketed-count.md`.
+
+**The folders block draws only inside a folder now.** At the root it drew all
+47 top-level folders: **510px at 1440 x 900**, first thumbnail at 851px, the
+library below the fold — and those 47 cards were the 47 rail rows already on
+screen beside them, same names, same counts, and `Row.tsx` makes rail rows drop
+targets too. One line in `useFolderContent`: All media and Unassigned both
+return no children. First thumbnail at the root is now **295px**. The
+`%s top-level folder(s)` eyebrow went with it, and its two i18n entries came
+out of `Admin\Rail.php` — finding 8's outcome is now only its second form.
+
+**The count sits in brackets.** `Archive 29` with nothing in it read
+`Archive 29 0`, and no reader can tell the folder's number from the library's;
+names ending in a number are ordinary (`2024`, `Q3 2025`), and the stress
+fixture is made of them. `Archive 29   (0)` — wp-admin's own convention, the
+one `walker_category_dropdown` has printed for years. **Both copies**:
+`Admin\FolderSelect::label()` for the no-script path and `label()` in
+`FolderSelect.tsx`. Only the native select needs it; everywhere else the count
+is its own element.
+
+**A proposal challenged and not taken: clicking the selected row to deselect
+it.** Defensible under the tag model — folders here are filters, and membership
+is many-to-many. Four costs against it: `.folderfolio-levels__here` already
+means the opposite (you press the band's current folder *to* filter to it);
+`rail.spec.ts` asserts Enter is the only key that filters, so Enter on your own
+row would throw you out; a Finder double-click habit would silently clear; and
+the exit is not scarce — `All media` is a fixed row **outside** the scroller,
+measured pinned at y=136 while the scroller starts at 269, plus the first crumb
+and the select's first option. No precedent in the four competitors either;
+jsTree, which Premio uses, keeps a re-clicked node selected and reserves
+deselection for ctrl/cmd-click. If the affordance is wanted: cmd/ctrl-click, or
+an x on the breadcrumb's last crumb.
 
 ### Three recorded deviations from the board
 
@@ -830,10 +865,18 @@ WordPress stubs cloned into `vendor/`, and a ten-line `vendor/autoload.php`
 registering the same PSR-4 map `composer.json` declares. PHPStan needs
 `--memory-limit=3G` there; 1G is not enough for the 5.7MB stub file.
 
-**The unit suite needs that autoloader.** Run from `vendor/bin`, PHPUnit loads
-`vendor/autoload.php` itself; run as a PHAR, it does not, and 43 of the 107
-tests fail with *"Class not found"* for classes `tests/bootstrap-unit.php`
-deliberately does not `require`. That is the rig being wrong, not the suite.
+**The unit suite needs that autoloader, and `vendor/bin/phpunit` will not load
+it.** In this rig that path *is* the 5MB PHAR, not a Composer shim, so it never
+reads `vendor/autoload.php` — and 43 of the 107 tests fail with *"Class not
+found"* for classes `tests/bootstrap-unit.php` deliberately does not `require`.
+That is the rig being wrong, not the suite. Prepend the autoloader explicitly:
+
+```
+php -d auto_prepend_file=vendor/autoload.php ./vendor/bin/phpunit -c phpunit-unit.xml.dist
+```
+
+107 pass, 296 assertions. Do that **before** reading anything into a red unit
+run there.
 
 **Playwright cannot run on the device VM at all** — `chrome-headless-shell`
 dies with *"error while loading shared libraries: libXdamage.so.1"*, and

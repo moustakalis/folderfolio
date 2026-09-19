@@ -63,16 +63,33 @@ function useFolderContent(nodes: FolderNode[]): {
     ];
 
     /**
-     * Unassigned has no children by definition — it is the absence of a
+     * Children of the folder you are *in* — and nothing at all when you are not
+     * in one.
+     *
+     * Two cases return empty, for the same reason in different words.
+     *
+     * **Unassigned** has no children by definition: it is the absence of a
      * folder, not a place in the tree. Showing the root folders under it would
      * say the opposite.
+     *
+     * **All media** used to draw every root folder here, and that was the block
+     * saying the least for the most. Measured on the 1,053-folder fixture at
+     * the root: **510px at 1440 × 900**, which put the first thumbnail at 851px
+     * and the library below the fold; 406px at 1680, 354px at 1920. Inside a
+     * folder the same block is **42px**. And the 47 cards it drew were the 47
+     * rail rows already on screen beside them — the same names, the same
+     * counts, and `Row.tsx` makes those rows drop targets too, so the cards
+     * were not even the only place to drop onto. Nick's words: useless unless a
+     * specific folder is selected.
+     *
+     * What survives is the case the block is actually for: *what is inside the
+     * folder I am in, besides files* — which the rail answers only if you have
+     * expanded that branch.
      */
     const children =
-        selectedId === null
-            ? nodes
-            : selectedId === 0
-              ? []
-              : (trail[trail.length - 1]?.children ?? []);
+        selectedId === null || selectedId === 0
+            ? []
+            : (trail[trail.length - 1]?.children ?? []);
 
     /**
      * The eyebrow over the cards, which the board computes rather than fixes.
@@ -83,12 +100,12 @@ function useFolderContent(nodes: FolderNode[]): {
      * *where*, which is the one thing the row of cards cannot say about
      * itself.
      *
-     * Two of the board's three cases are deliberately missing. It also draws
+     * Three of the board's four cases are deliberately missing. It also draws
      * "No folders in Brand" and "Files in no folder — nothing to drill into",
      * which mean the line stands alone over empty space; Cards renders nothing
-     * at all in that case, which is the answer DESIGN-TO-CODE.md's "Still
-     * open" list was waiting for. So this is only ever read with at least one
-     * card under it.
+     * at all in that case. And its "%s top-level folders" went with the root
+     * block above — an empty `children` never reaches an eyebrow, so the empty
+     * string here is only ever a type, never a line on screen.
      */
     const here = trail[trail.length - 1];
 
@@ -102,14 +119,7 @@ function useFolderContent(nodes: FolderNode[]): {
               children.length,
               here.name
           )
-        : tn(
-              'topLevelFolder',
-              'topLevelFolders',
-              children.length,
-              '%s top-level folder',
-              '%s top-level folders',
-              children.length
-          );
+        : '';
 
     return { crumbs, children, label };
 }

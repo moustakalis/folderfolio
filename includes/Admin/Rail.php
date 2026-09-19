@@ -602,10 +602,6 @@ final class Rail
                 ),
                 /* translators: %s is the search term that matched nothing. */
                 'noMatch' => __('No folder matches “%s”.', 'folderfolio'),
-                /* translators: %s is the number of folders at the top level. */
-                'topLevelFolder' => __('%s top-level folder', 'folderfolio'),
-                /* translators: %s is the number of folders at the top level. */
-                'topLevelFolders' => __('%s top-level folders', 'folderfolio'),
                 /* translators: 1: number of folders, 2: the folder they are in. */
                 'folderIn' => __('%1$s folder in %2$s', 'folderfolio'),
                 /* translators: 1: number of folders, 2: the folder they are in. */

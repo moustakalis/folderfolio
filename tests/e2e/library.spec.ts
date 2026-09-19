@@ -227,6 +227,35 @@ test.describe('the library toolbar', () => {
         expect(Number.parseFloat(cap ?? '')).toBeLessThanOrEqual(176);
     });
 
+    /**
+     * A folder called `Archive 29` with nothing in it read `Archive 29 0`, and
+     * nobody can tell that 0 from the 29. Names ending in a number are not
+     * exotic — `2024`, `Q3 2025`, `Campaign 12` — and the whole stress fixture
+     * is built from them.
+     *
+     * Brackets, the way `walker_category_dropdown` has printed counts in this
+     * admin for years. Asserted on the *text*, because the defect is entirely
+     * in how the text reads.
+     */
+    test('brackets the count in every option, so a name ending in a number still reads', async ({
+        page,
+    }) => {
+        await createFolder(page, 'Archive 29');
+        await page.reload();
+        await waitForTree(page, 'Archive 29');
+
+        const texts = await page.locator('#folderfolio-folder-filter option').allTextContents();
+
+        expect(texts.length).toBeGreaterThan(2);
+
+        for (const text of texts) {
+            // Every option ends in a bracketed number, and nothing else does.
+            expect(text.trimEnd()).toMatch(/\(\d+\)$/);
+        }
+
+        expect(texts.some((text) => /Archive 29\s*\(\d+\)$/.test(text.trimEnd()))).toBe(true);
+    });
+
     test('keeps the bulk controls when core rebuilds the toolbar', async ({ page }) => {
         // Entering Bulk select re-renders the media frame's toolbar and hides
         // every child of it but three. The slot has to survive that, and the
@@ -585,5 +614,57 @@ test.describe('the media picker', () => {
 
         // And it is a column of the frame, not something floating over it.
         await expect(page.locator('.media-modal .media-frame-content .attachments-browser')).toBeVisible();
+    });
+});
+
+/**
+ * The folders block above the files.
+ *
+ * It draws the children of the folder you are *in*. At All media it used to
+ * draw every root folder, which on the 1,053-folder fixture was 510px at
+ * 1440 x 900 — the first thumbnail 851px down a 900px window — saying nothing
+ * the rail was not already saying beside it, with the same names, the same
+ * counts and the same drop targets.
+ */
+test.describe('the folders block', () => {
+    test.beforeEach(async ({ page }) => {
+        await page.goto('/wp-admin/upload.php?mode=grid');
+        await page.locator('#folderfolio-rail').waitFor();
+        await resetFolders(page);
+    });
+
+    test('draws inside a folder and nowhere else', async ({ page }) => {
+        const brand = await createFolder(page, 'Brand');
+        await createFolder(page, 'Logos', brand.id);
+        await createFolder(page, 'Audio');
+
+        await page.reload();
+        await waitForTree(page, 'Brand');
+
+        const cards = page.locator('.folderfolio-cards');
+        const eyebrow = page.locator('.folderfolio-eyebrow');
+
+        // All media: the roots are in the rail, and only in the rail.
+        await expect(cards).toHaveCount(0);
+        await expect(eyebrow).toHaveCount(0);
+
+        // Inside a folder with children: the block, and the line that counts
+        // them and names where they are.
+        await page.locator('.folderfolio-row__name', { hasText: /^Brand$/ }).click();
+        await expect(cards).toHaveCount(1);
+        await expect(eyebrow).toHaveText(/1 folder in Brand/);
+        await expect(cards.getByRole('button', { name: /Logos/ })).toBeVisible();
+
+        // Inside a folder without children: nothing, rather than a line
+        // standing over empty space.
+        await page.locator('.folderfolio-row__name', { hasText: /^Audio$/ }).click();
+        await expect(cards).toHaveCount(0);
+        await expect(eyebrow).toHaveCount(0);
+
+        // Unassigned is the absence of a folder, so it has no children by
+        // definition — the negative control for the rule above.
+        await page.goto('/wp-admin/upload.php?mode=grid&folderfolio_folder=0');
+        await page.locator('#folderfolio-rail').waitFor();
+        await expect(cards).toHaveCount(0);
     });
 });

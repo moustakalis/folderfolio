@@ -71,10 +71,16 @@ function indent(depth: number): string {
     return '   '.repeat(depth);
 }
 
-/** Name, then the count, separated by an em quad — the closest a native
- *  option gets to the right-aligned figure screen 11 draws. */
+/**
+ * Name, then the count in brackets, separated by an em quad — the closest a
+ * native option gets to the right-aligned figure screen 11 draws.
+ *
+ * The brackets are load-bearing: without them `Archive 29 0` gives a reader no
+ * way to tell the folder's number from the library's. `Admin\FolderSelect`
+ * prints the same shape, and so does wp-admin's own category dropdown.
+ */
 function label(name: string, depth: number, count: number): string {
-    return `${indent(depth)}${name} ${count}`;
+    return `${indent(depth)}${name} (${count})`;
 }
 
 export function FolderSelect({ nodes }: { nodes: FolderNode[] }) {

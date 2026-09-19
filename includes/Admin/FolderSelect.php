@@ -166,12 +166,24 @@ final class FolderSelect
     }
 
     /**
-     * One option's text: indent, name, count.
+     * One option's text: indent, name, then the count in brackets.
      *
      * Non-breaking spaces because an `<option>` collapses ordinary ones, and
      * an em quad before the figure because a native option cannot right-align
      * anything — which is the one thing screen 11 draws that no browser will
-     * render. The number still reads as a number at the end of the line.
+     * render.
+     *
+     * **The brackets are not decoration.** A gap alone leaves `Archive 29 0`,
+     * and a reader has no way to tell the 29 in the name from the 0 that is the
+     * count — the stress fixture is full of names ending in a number, and so
+     * are real libraries (`2024`, `Q3 2025`, `Campaign 12`). Brackets say which
+     * figure belongs to the folder and which to the library, and they are
+     * **wp-admin's own convention**: `walker_category_dropdown` prints
+     * `Name&nbsp;&nbsp;(12)` in every category select in this admin.
+     *
+     * Only the native select needs them. Everywhere else the count is its own
+     * element — a badge on a rail row, a `__count` span in the picker — and a
+     * box around a number needs no brackets to be read as one.
      *
      * Paths are indented rather than written `Brand / Logos / Primary`: an
      * option has a single label for both the open list and the closed control,
@@ -180,6 +192,8 @@ final class FolderSelect
      */
     private static function label(string $name, int $depth, int $count): string
     {
-        return str_repeat("\u{00a0}\u{00a0}\u{00a0}", max(0, $depth)) . $name . "\u{2003}" . $count;
+        return str_repeat("\u{00a0}\u{00a0}\u{00a0}", max(0, $depth))
+            . $name
+            . "\u{2003}(" . $count . ')';
     }
 }
