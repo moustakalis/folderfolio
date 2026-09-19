@@ -398,3 +398,38 @@ export function flattenTree(nodes: FolderNode[], depth = 0, out: FlatFolder[] = 
 
     return out;
 }
+
+/** A folder that matched a search, with the ancestor names above it. */
+export interface FolderHit {
+    node: FolderNode;
+    /** Ancestor names, root first — what the second line of a result shows. */
+    trail: string[];
+}
+
+/**
+ * Every folder whose name contains `needle`, carrying its path.
+ *
+ * Shared by the rail's own results list and by the narrow-width folder picker,
+ * so that typing the same three letters in two places on one screen cannot
+ * produce two different answers.
+ *
+ * Always recurses, match or not: a matching folder inside a non-matching
+ * parent is exactly the case a tree *filter* gets wrong, and it is the common
+ * case once a library is deep.
+ */
+export function searchTree(
+    nodes: FolderNode[],
+    needle: string,
+    trail: string[] = [],
+    out: FolderHit[] = []
+): FolderHit[] {
+    for (const node of nodes) {
+        if (node.name.toLowerCase().includes(needle)) {
+            out.push({ node, trail });
+        }
+
+        searchTree(node.children, needle, [...trail, node.name], out);
+    }
+
+    return out;
+}

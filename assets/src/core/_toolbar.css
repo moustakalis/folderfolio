@@ -662,6 +662,29 @@
   box-shadow: inset 0 0 0 1px var(--ff-sel);
 }
 
+/* ------------------------------------------------ narrow-width folder picker */
+
+/**
+ * Off, everywhere but the narrow container. `.wp-core-ui .button` is **0,2,0**
+ * and sets `display: inline-block`; a bare class is 0,1,0 and loses however
+ * late this file loads, which is the fourth time that trap has been paid for
+ * in this stylesheet. Named through `.wp-core-ui` to match it and win on
+ * order.
+ */
+.wp-core-ui .folderfolio-folder-picker {
+  display: none;
+}
+
+/**
+ * …and the select it stands in for goes the other way.
+ *
+ * Only inside the narrow container (below), and only when the class
+ * FolderPicker.tsx sets is on `<body>` — with scripts off that class never
+ * appears, so the server-rendered select in `#posts-filter` is still the
+ * control that filters the library. It is the whole no-script path; hiding it
+ * on width alone would take it away from the people it is for.
+ */
+
 /* No gap: the caret it used to separate is gone, and the label carries an
    ellipsis instead. See AddToFolder's trigger. */
 .folderfolio-bulk {
@@ -712,9 +735,29 @@
  * by .tablenav's own overflow.
  */
 .folderfolio-flyout {
+  /**
+   * A flex column — the one place in this file where flex is the right answer.
+   *
+   * `useAnchoredPanel` measures the space between the trigger and the edge of
+   * the window and hands it over as `--ff-room`; the panel is clamped to it,
+   * and the scrolling list is the part that has to give so that the search
+   * field above it stays on screen.
+   *
+   * Grid was tried first, per the standing preference, and cannot express it:
+   * a grid's auto rows are never shrunk below their content to fit a bounded
+   * container — only `fr` rows are, and naming the list's row means knowing
+   * its index, which differs between this panel and the picker's. Measured
+   * with grid at a 900px window: the panel clamped to 386px and the list ran
+   * 24px past its own bottom border. Flex says "this child absorbs the
+   * deficit" without knowing where the child sits, which is exactly the
+   * sentence needed here.
+   */
+  display: flex;
+  flex-direction: column;
   position: fixed;
   z-index: 100000;
   width: 300px;
+  max-height: var(--ff-room, none);
   background: var(--ff-panel);
   border: 1px solid var(--ff-field-line);
   box-shadow: 0 3px 10px rgba(29, 35, 39, 0.12);
@@ -827,6 +870,20 @@
 
 /* 168px is six rows. Enough to see that scrolling is possible without the
    panel becoming a column of its own. */
+/* Everything in the panel keeps its own height… */
+.folderfolio-flyout > * {
+  flex: none;
+}
+
+/* …except the list, which gives. `min-height: 0` because a scroll container's
+   automatic minimum size would otherwise hold it open at its content height,
+   which is the flex trap that makes `overflow` look ignored. Named through the
+   parent so the pair above cannot win on source order. */
+.folderfolio-flyout > .folderfolio-flyout__list {
+  flex: 0 1 auto;
+  min-height: 0;
+}
+
 .folderfolio-flyout__list {
   max-height: 168px;
   overflow-y: auto;
@@ -862,6 +919,100 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ------------------------------------------------ the picker's own panel */
+
+/**
+ * Wider than the bulk flyout, and never wider than the window.
+ *
+ * The bulk panel lists folder *names*; this one lists a name over its path —
+ * `Archive 29 / Blog 1610` — which is the line that makes a search result
+ * usable in a tree four levels deep, and 300px cuts it. The clamp is the same
+ * 8px margin `useAnchoredPanel` keeps, so the two agree about the edge of the
+ * screen.
+ */
+.folderfolio-flyout--picker {
+  width: min(340px, calc(100vw - 16px));
+}
+
+/**
+ * A taller list than the bulk panel's, because this one is navigation.
+ *
+ * 168px is six rows, which is right for a picker you have already searched
+ * into. This panel is how you *find* a folder at a width where the tree is not
+ * on screen, and six rows out of 1,053 is a keyhole. 45vh is about ten rows on
+ * a phone and fifteen on a laptop, and it stops short of the viewport because
+ * the panel hangs below its trigger and nothing flips it upward — a known
+ * limit, recorded in docs/00-start-here.md.
+ */
+.folderfolio-flyout--picker .folderfolio-flyout__list {
+  max-height: min(320px, 45vh);
+}
+
+/**
+ * A row of the picker: name over path, count at the end.
+ *
+ * A button rather than a label with a radio in it, because choosing here
+ * *acts* — it changes what the library is showing and shuts the panel — and a
+ * radio would promise a confirm step that does not exist. The bulk flyout's
+ * rows are the other case, which is why they keep their inputs.
+ */
+.folderfolio-flyout__pick {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  padding-right: 10px;
+  /* The same indent arithmetic as the bulk flyout's rows, so a folder sits at
+     the same depth in both panels. Search results pass depth 0: a filtered
+     list is not a tree, and the path line says what the indent used to. */
+  padding-left: calc(10px + var(--ff-depth, 0) * 16px);
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.folderfolio-flyout__pick:hover {
+  background: var(--ff-hover);
+}
+
+.folderfolio-flyout__pick:focus-visible {
+  outline: 2px solid var(--ff-sel);
+  outline-offset: -2px;
+}
+
+/* The row that is currently true. A left bar rather than a tick: the list is
+   scrolled, and a bar is findable from the edge of the scroller. */
+.folderfolio-flyout__pick.is-on {
+  box-shadow: inset 3px 0 0 var(--ff-sel);
+  font-weight: 600;
+}
+
+.folderfolio-flyout__picktext {
+  display: grid;
+  min-width: 0;
+}
+
+/* Where the folder is, for the rows where the indent cannot say it. */
+.folderfolio-flyout__path {
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ff-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folderfolio-flyout__count {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ff-muted);
 }
 
 /**
@@ -1267,7 +1418,116 @@
     position: absolute;
   }
 
+  /* ------------------------------------------- the picker, in place of the select */
+
+  /**
+   * On, and shaped like every other control on this row.
+   *
+   * `inline-grid` with a column flow rather than flex, per the standing
+   * preference, and the same construction as the `Filter` toggle above: height,
+   * type and padding come from `.wp-core-ui .button`, so it matches
+   * `Bulk select` by inheritance rather than by a number copied off a
+   * screenshot. `margin: 0` for the reason written there — core gives a
+   * media-toolbar button `margin: 0 0 4px`, which sits it 2px high in a
+   * centred row.
+   */
+  .wp-core-ui #wpbody-content .folderfolio-folder-picker,
+  #wpbody-content .wp-core-ui .folderfolio-folder-picker {
+    display: inline-grid;
+    grid-auto-flow: column;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    justify-content: start;
+    gap: 6px;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    text-align: left;
+  }
+
+  /* The folder name is the value of this control, so it is the thing that
+     survives a narrow row — the icon beside it never truncates. */
+  #wpbody-content .folderfolio-folder-picker__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  #wpbody-content .folderfolio-folder-picker svg {
+    flex: 0 0 auto;
+  }
+
+  /* Filtering is a state worth seeing from across the room — the same pair of
+     declarations the select carries, for the same reason. */
+  #wpbody-content .folderfolio-folder-picker.is-active,
+  #wpbody-content .folderfolio-folder-picker.is-open {
+    border-color: var(--ff-sel);
+    box-shadow: inset 0 0 0 1px var(--ff-sel);
+  }
+
+  /**
+   * The select steps aside, but only where something has replaced it.
+   *
+   * Both selectors are needed: grid's is rendered by React inside the filter
+   * slot, list's is printed by PHP into `.actions`. Neither is removed — see
+   * FolderPicker.tsx on why the list one in particular must stay in the
+   * document.
+   */
+  body.folderfolio-has-folder-picker #wpbody-content .folderfolio-folder-select,
+  body.folderfolio-has-folder-picker
+    #wpbody-content
+    label[for='folderfolio-folder-filter'] {
+    display: none;
+  }
+
+  /* Closed, the picker is one of the filters that is not on screen. The slot
+     is hidden rather than the button, for the reason written against the
+     filter slot above: `display: contents` promotes the button *and* anything
+     beside it, and a 1px label left behind claims a whole 38px row. */
+  body:not(.folderfolio-filters-open) #wpbody-content .folderfolio-slot--picker {
+    display: none;
+  }
+
+  /* Open, it takes the row the select used to have. */
+  body.folderfolio-filters-open #wpbody-content .folderfolio-slot--picker {
+    display: contents;
+  }
+
+  body.folderfolio-filters-open
+    #wpbody-content
+    .media-toolbar-secondary
+    .folderfolio-folder-picker {
+    grid-area: 4 / 1 / 5 / -1;
+  }
+
   /* ------------------------------------------------------------ list mode */
+
+  /**
+   * The filter group takes the width it is given.
+   *
+   * `.wp-filter` is a wrapping flex row and both of its children are
+   * `flex: 0 1 auto`, so each shrink-wraps its contents. Measured at 528px:
+   * the whole open filter group was **161px wide inside a 506px row**, its
+   * grid computing `86px 0px 63px`, with the search form beside it at 324.8px.
+   * The `width: 100%` declarations below were all honoured — they were 100% of
+   * 161px, which is the containing-block trap this file has now paid for
+   * twice.
+   *
+   * Declared on both children rather than on the group alone, because a
+   * full-width filter group beside a shrink-wrapped search field would just
+   * move the raggedness one row down.
+   */
+  #wpbody-content .wp-filter > .filter-items,
+  #wpbody-content .wp-filter > .search-form {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  /* …and the field inside the search form, for the same reason: the form is
+     now full width, so 100% finally means the row. */
+  #wpbody-content .wp-filter > .search-form #media-search-input {
+    width: 100%;
+  }
 
   #wpbody-content .wp-filter .filter-items {
     display: grid;
@@ -1306,7 +1566,16 @@
 
   body.folderfolio-filters-open #wpbody-content .wp-filter .filter-items > #attachment-filter,
   body.folderfolio-filters-open #wpbody-content .wp-filter .filter-items .actions select,
-  body.folderfolio-filters-open #wpbody-content .wp-filter .filter-items .actions input.button {
+  body.folderfolio-filters-open #wpbody-content .wp-filter .filter-items .actions input.button,
+  /* The picker is a <button>, so it is named rather than caught by the two
+     element selectors above — which is also why it is listed last, where a
+     reader looking for "what else is in this group" will find it. */
+  body.folderfolio-filters-open
+    #wpbody-content
+    .wp-filter
+    .filter-items
+    .actions
+    .folderfolio-folder-picker {
     width: 100%;
     max-width: none;
     margin: 0;

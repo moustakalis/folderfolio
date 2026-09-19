@@ -525,7 +525,17 @@ final class Rail
                 // The narrow-width disclosure that stands for media type,
                 // date and folder once they no longer fit on one line.
                 'filters' => __('Filter', 'folderfolio'),
-                /* translators: %s is how many filters are currently set. */
+                /*
+                 * The badge's sentence, which is the only form of it assistive
+                 * tech gets — the number beside the button is aria-hidden,
+                 * because "2" on its own is not a sentence. A plural pair
+                 * rather than one string: with one filter set it announced
+                 * "1 filters active", which is the count at which this badge
+                 * appears most often.
+                 *
+                 * translators: %s is how many filters are currently set.
+                 */
+                'filterActive' => __('%s filter active', 'folderfolio'),
                 'filtersActive' => __('%s filters active', 'folderfolio'),
                 'verbAdd' => __('Add to', 'folderfolio'),
                 'verbMove' => __('Move to', 'folderfolio'),

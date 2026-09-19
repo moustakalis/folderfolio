@@ -43,7 +43,7 @@
  * own overflow in list mode, and a 300px panel inside it would be clipped.
  */
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { SearchIcon } from './icons';
@@ -54,6 +54,7 @@ import {
     type FolderNode,
 } from './queries';
 import { sortTree, useRail } from './store';
+import { useAnchoredPanel } from './useAnchoredPanel';
 import { watchSelection } from '../../lib/selection';
 import { t, tn } from '../../core/api';
 
@@ -206,7 +207,11 @@ function Flyout({ nodes, ids, source, anchor, onClose }: FlyoutProps) {
     const move = useMoveAttachments();
     const pending = mode === 'move' ? move.isPending : add.isPending;
     const failed = mode === 'move' ? move.isError : add.isError;
-    const ref = useRef<HTMLDivElement>(null);
+
+    /* Pinned to the trigger, dismissed on Escape or a pointer outside.
+       Both are useAnchoredPanel's, shared with the narrow-width folder
+       picker so the two panels cannot drift apart. */
+    const { ref, style } = useAnchoredPanel<HTMLDivElement>(anchor, onClose);
 
     // Sorting and flattening the whole tree is the one cost here that does not
     // depend on what is typed, so it must not be paid per keystroke. At 20,000
@@ -301,67 +306,6 @@ function Flyout({ nodes, ids, source, anchor, onClose }: FlyoutProps) {
         [mode]
     );
 
-    /**
-     * Pinned to the trigger, in viewport coordinates.
-     *
-     * Measured in a layout effect so the panel is never painted at 0,0 first.
-     * Flipped to the right edge of the trigger when the left-aligned position
-     * would run off screen, which it does in list mode on a narrow window
-     * where the bulk group sits close to the right of a shrunken content
-     * column.
-     */
-    const [at, setAt] = useState<{ top: number; left: number } | null>(null);
-
-    useLayoutEffect(() => {
-        if (!anchor) {
-            return;
-        }
-
-        const place = () => {
-            const box = anchor.getBoundingClientRect();
-            const width = ref.current?.offsetWidth ?? 300;
-            const left = Math.max(8, Math.min(box.left, window.innerWidth - width - 8));
-
-            setAt({ top: box.bottom + 2, left });
-        };
-
-        place();
-
-        window.addEventListener('resize', place);
-        window.addEventListener('scroll', place, true);
-
-        return () => {
-            window.removeEventListener('resize', place);
-            window.removeEventListener('scroll', place, true);
-        };
-    }, [anchor]);
-
-    /** Escape, a click outside, and focus leaving — see Toolbar's Menu. */
-    useEffect(() => {
-        const onKey = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') {
-                event.stopPropagation();
-                onClose();
-            }
-        };
-
-        const onPointer = (event: PointerEvent) => {
-            const target = event.target as Node;
-
-            if (!ref.current?.contains(target) && !anchor?.contains(target)) {
-                onClose();
-            }
-        };
-
-        document.addEventListener('keydown', onKey, true);
-        document.addEventListener('pointerdown', onPointer, true);
-
-        return () => {
-            document.removeEventListener('keydown', onKey, true);
-            document.removeEventListener('pointerdown', onPointer, true);
-        };
-    }, [onClose, anchor]);
-
     const submit = () => {
         if (checked.size === 0 || pending) {
             return;
@@ -444,10 +388,7 @@ function Flyout({ nodes, ids, source, anchor, onClose }: FlyoutProps) {
                     ? t('moveToFolder', 'Move to folder')
                     : t('addToFolder', 'Add to folder')
             }
-            style={{
-                top: at ? `${at.top}px` : '-9999px',
-                left: at ? `${at.left}px` : '-9999px',
-            }}
+            style={style}
         >
             {/*
               "**3 files** selected", with the count in bold — screen 11 draws

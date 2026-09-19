@@ -25,12 +25,14 @@ import { createPortal } from 'react-dom';
 
 import { AddToFolder } from './AddToFolder';
 import { FilterDisclosure } from './FilterDisclosure';
+import { FolderPicker } from './FolderPicker';
 import { FolderSelect, useNativeFolderSelect } from './FolderSelect';
 import type { FolderNode } from './queries';
 import {
     bulkSlotPlace,
     disclosureSlotPlace,
     filterSlotPlace,
+    pickerSlotPlace,
     useToolbarSlot,
 } from '../../lib/toolbar-slot';
 import { t } from '../../core/api';
@@ -80,6 +82,9 @@ export function LibraryToolbar({ nodes }: { nodes: FolderNode[] }) {
     const bulkSlot = useToolbarSlot(bulkSlotPlace, 'bulk');
     // Placed in both modes and at every width; CSS decides where it shows.
     const disclosureSlot = useToolbarSlot(disclosureSlotPlace, 'disclosure');
+    // The same, and for the same reason: it stands in for the select below
+    // the breakpoint, and the breakpoint is a container query.
+    const pickerSlot = useToolbarSlot(pickerSlotPlace, 'picker');
 
     useSearchPlaceholder(filterSlot, bulkSlot);
 
@@ -88,6 +93,7 @@ export function LibraryToolbar({ nodes }: { nodes: FolderNode[] }) {
             {filterSlot ? createPortal(<FolderSelect nodes={nodes} />, filterSlot) : null}
             {bulkSlot ? createPortal(<AddToFolder nodes={nodes} />, bulkSlot) : null}
             {disclosureSlot ? createPortal(<FilterDisclosure />, disclosureSlot) : null}
+            {pickerSlot ? createPortal(<FolderPicker nodes={nodes} />, pickerSlot) : null}
         </>
     );
 }

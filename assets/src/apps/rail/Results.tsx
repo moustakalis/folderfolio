@@ -7,30 +7,10 @@
 import { useMemo } from 'react';
 
 import { FolderIcon } from './icons';
-import type { FolderNode } from './queries';
+import { searchTree, type FolderNode } from './queries';
 import { useRail } from './store';
 import { t } from '../../core/api';
 import { swatchStyle } from '../../lib/swatches';
-
-interface Hit {
-    node: FolderNode;
-    /** Ancestor names, root first — what the second line shows. */
-    trail: string[];
-}
-
-function search(nodes: FolderNode[], needle: string, trail: string[] = [], out: Hit[] = []) {
-    for (const node of nodes) {
-        if (node.name.toLowerCase().includes(needle)) {
-            out.push({ node, trail });
-        }
-
-        // Always recurse, match or not: a matching folder inside a
-        // non-matching parent is exactly the case the tree filter got wrong.
-        search(node.children, needle, [...trail, node.name], out);
-    }
-
-    return out;
-}
 
 export function Results({ nodes }: { nodes: FolderNode[] }) {
     const query = useRail((s) => s.query);
@@ -38,7 +18,7 @@ export function Results({ nodes }: { nodes: FolderNode[] }) {
     const select = useRail((s) => s.select);
 
     const needle = query.trim().toLowerCase();
-    const hits = useMemo(() => (needle ? search(nodes, needle) : []), [nodes, needle]);
+    const hits = useMemo(() => (needle ? searchTree(nodes, needle) : []), [nodes, needle]);
 
     if (hits.length === 0) {
         return (

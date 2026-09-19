@@ -123,6 +123,54 @@ export function disclosureSlotPlace(): Place | null {
 }
 
 /**
+ * Where the narrow-width folder picker goes.
+ *
+ * Beside the select it stands in for, in both modes, so that whichever of the
+ * two is on screen is in the same place — the person who widens the window
+ * finds the control where they left it.
+ *
+ * Grid: immediately before the select's own slot, which is a node this module
+ * created and can therefore always find. Falling back through the bulk slot to
+ * the mode toggle covers the pass where the filter slot has not been placed
+ * yet; `before: null` would append, which in this toolbar means after
+ * `Bulk select`.
+ *
+ * List: inside `.actions`, before the select's label — `restrict_manage_posts`
+ * prints label-then-select, and splitting that pair would leave the label
+ * naming a control on the other side of the picker.
+ *
+ * Like the disclosure, this is placed at every width and CSS decides whether
+ * it shows: the deciding width is the library column's, which is a container
+ * query's business and unreadable from script. See FolderPicker.tsx.
+ */
+export function pickerSlotPlace(): Place | null {
+    const grid = document.querySelector('.media-toolbar-secondary');
+
+    if (grid) {
+        return {
+            parent: grid,
+            before:
+                grid.querySelector('.folderfolio-slot--filter')
+                ?? grid.querySelector('.folderfolio-slot--bulk')
+                ?? grid.querySelector('.select-mode-toggle-button'),
+        };
+    }
+
+    const actions = document.querySelector('#wpbody-content .wp-filter .actions');
+
+    if (actions) {
+        return {
+            parent: actions,
+            before:
+                actions.querySelector('label[for="folderfolio-folder-filter"]')
+                ?? actions.querySelector('#folderfolio-folder-filter'),
+        };
+    }
+
+    return null;
+}
+
+/**
  * Where the bulk "Add to folder" trigger goes.
  *
  * List: inside the bulk-actions group, before Apply. Screen 06 draws exactly

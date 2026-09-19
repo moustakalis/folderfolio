@@ -40,45 +40,63 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { FilterIcon } from './icons';
-import { t } from '../../core/api';
+import { useRail } from './store';
+import { t, tn } from '../../core/api';
 
 /** The class the collapse rules key on. On <body>, like the rail's peek. */
 const OPEN = 'folderfolio-filters-open';
 
 /**
- * Every filter control the disclosure speaks for, in both modes.
+ * Core's filter controls — the ones this component can only read from the DOM.
  *
  * Grid prints `select.attachment-filters` twice — media type and date. List
- * prints `#attachment-filter` and `#filter-by-date` instead, plus the folder
- * select PHP renders. Scoped to `#wpbody-content` so a media modal's toolbar is
- * never counted: it is a different shape in a much narrower frame and has no
- * disclosure of its own.
+ * prints `#attachment-filter` and `#filter-by-date` instead. Scoped to
+ * `#wpbody-content` so a media modal's toolbar is never counted: it is a
+ * different shape in a much narrower frame and has no disclosure of its own.
+ *
+ * **Our** folder filter is deliberately not in this list. It used to be, read
+ * as `#folderfolio-folder-filter`, and that was wrong in two ways at once. The
+ * select is no longer the only way to set the folder — the narrow-width
+ * picker, the rail, the breadcrumb and a deep link all go through the store
+ * and never touch a select, so no `change` event ever fires. And on a cold
+ * load carrying `?folderfolio_folder=` the select has not rendered its options
+ * by the time the first count runs, so the badge read nothing while the
+ * library sat filtered. Both measured. The store answers without either
+ * problem.
  */
-const FILTERS = [
+const CORE_FILTERS = [
     '#wpbody-content .media-toolbar-secondary select.attachment-filters',
     '#wpbody-content .wp-filter #attachment-filter',
     '#wpbody-content .wp-filter #filter-by-date',
-    '#wpbody-content #folderfolio-folder-filter',
 ].join(', ');
 
 /**
- * How many of them are set to something other than their first option.
+ * How many of core's are set to something other than their first option.
  *
  * `selectedIndex > 0` rather than a list of default values: core's first option
- * is "All media items" or "All dates", ours is "All media", and every one of
- * them is the "no filter" case by construction. A value test would need this
- * file to know each control's sentinel — 0, '' and -1 are all in use — and
- * would be wrong the first time core changed one.
+ * is "All media items" or "All dates", and both are the "no filter" case by
+ * construction. A value test would need this file to know core's sentinels and
+ * would be wrong the first time one of them changed.
  */
-function countActive(): number {
-    return Array.from(document.querySelectorAll<HTMLSelectElement>(FILTERS)).filter(
+function countCoreActive(): number {
+    return Array.from(document.querySelectorAll<HTMLSelectElement>(CORE_FILTERS)).filter(
         (select) => select.selectedIndex > 0
     ).length;
 }
 
 export function FilterDisclosure() {
     const [open, setOpen] = useState(false);
-    const [active, setActive] = useState(0);
+    const [core, setCore] = useState(0);
+
+    /*
+     * Ours, from the store rather than from a control.
+     *
+     * `null` is All media — no filter at all. `0` is Unassigned, which *is* a
+     * filter, so this cannot be a truthiness check; the same trap lib/filter.ts
+     * documents.
+     */
+    const selectedId = useRail((s) => s.selectedId);
+    const active = core + (selectedId === null ? 0 : 1);
 
     // The class is the whole mechanism, so it is owned here and removed on
     // unmount — otherwise a frame that tears this component down leaves the
@@ -90,15 +108,15 @@ export function FilterDisclosure() {
     }, [open]);
 
     /*
-     * The badge follows the controls, not our own state.
+     * Core's half of the badge follows core's controls, not our own state.
      *
-     * A folder can be chosen from the rail, from the cards, or from a deep URL
-     * on a cold load, and list mode replaces its whole filter row from the
-     * server on every change. So the count is recomputed on any `change` in the
-     * document rather than tracked, and once on mount for the URL-on-load case.
+     * List mode replaces its whole filter row from the server on every change,
+     * so the count is recomputed on any `change` in the document rather than
+     * tracked, and once on mount for the URL-on-load case. Ours is the line
+     * above, which needs neither.
      */
     useEffect(() => {
-        const recount = () => setActive(countActive());
+        const recount = () => setCore(countCoreActive());
 
         recount();
         document.addEventListener('change', recount, true);
@@ -124,7 +142,14 @@ export function FilterDisclosure() {
             ) : null}
             {active > 0 ? (
                 <span className="screen-reader-text">
-                    {t('filtersActive', '%s filters active', String(active))}
+                    {tn(
+                        'filterActive',
+                        'filtersActive',
+                        active,
+                        '%s filter active',
+                        '%s filters active',
+                        String(active)
+                    )}
                 </span>
             ) : null}
         </button>
