@@ -129,8 +129,8 @@ it or not; and the narrow sheet spends about 369px of chrome — header, action
 row, the two fixed rows, search, the level header, footer — to show 222px of
 list. Both are worth measuring before they are changed.
 
-Checks at the end of the day: **PHPStan clean, 107 unit, 45 e2e** (library 14,
-responsive 6, rail 10, upload 2, settings 5, search-submit 3, import 4, gallery
+Checks at the end of the day: **PHPStan clean, 107 unit, 47 e2e** (library 15,
+responsive 6, rail 11, upload 2, settings 5, search-submit 3, import 4, gallery
 1), **`tsc` clean**. The integration suite was *not* re-run — see below.
 
 ### 19 Sep, later still — the wide-viewport sweep
@@ -309,6 +309,49 @@ and the select's first option. No precedent in the four competitors either;
 jsTree, which Premio uses, keeps a re-clicked node selected and reserves
 deselection for ctrl/cmd-click. If the affordance is wanted: cmd/ctrl-click, or
 an x on the breadcrumb's last crumb.
+
+### 20 Sep, last of all — one toolbar shape, and a way out of a filter
+
+Full account: `claude/progress-2026-09-20d-toolbar-shape-and-the-crumb-clear.md`.
+The three shapes that were weighed are drawn to scale at
+`claude.ai/artifact/EhzFV1DooXSJNgXJT8wzcp`.
+
+**`Bulk select` ends the filter line now, at every width.** The declared break —
+a zero-height flex item at `flex: 0 0 100%` on the bulk slot's `::before` — kept
+it in one place and cost a row: three rows and **128px** above 860 of container,
+one of them a 40px line carrying a 94px button with 800px of nothing; and in the
+band **1411-1429px of viewport**, four rows and **168px**, because the break
+arrived before there was room for the filters and the search on one line and the
+folder select was pushed out of the group it belongs to. `margin-left: auto` on
+core's own `.select-mode-toggle-button` is deterministic *and* free, and
+`#wpbody-content .media-toolbar-secondary { flex: 1 0 100% }` comes out of the
+`< 860` container query and applies everywhere. **134px at 1360, 1412, 1456 and
+1700** — one shape from 700px upward, and it is the shape the toolbar already
+had below 1411.
+
+**The open filter panel pairs the media-type and date selects.** Halves, not
+columns: the toolbar's tracks are sized by its first line, so both controls take
+the whole row as their grid area and divide it with `calc(50% - 3px)` against
+the 6px column gap. List mode needed `display: contents` on `.actions` to get
+the two selects into the same grid at all — they live in different parents.
+Grid's panel 224 to **184px**, list's 378 to **294px**.
+
+**The search fills its row in that panel.** It measured 188px in a 629px row
+because it is not in the panel's grid at all and core *floats* it — and a float
+is not a flex item, so `flex-basis: 100%` never claimed the line. `float: none`
+plus an explicit width does. List nests `.search-form > p.search-box > input`
+and all three shrink-wrap.
+
+**The breadcrumb's last crumb carries a clear (x).** The rejected alternative
+was a toggle on the selected rail row; the argument is in the 20c log. 18 x 18
+drawn, because the crumb's line box is 18.2px and a 20px button grew the band
+from 36 to 38; 28 x 34 to a pointer through a pseudo-element. Only on the
+current crumb, and only when that crumb is a filter - Unassigned counts.
+
+**And a placement bug found on the way**: list mode's `Filters` button was
+auto-placing two rows below the view switch, because its slot is
+`display: contents` and the rule said `> .folderfolio-filter-toggle`. A `>`
+selector never reaches a control inside a `display: contents` slot.
 
 ### Three recorded deviations from the board
 
