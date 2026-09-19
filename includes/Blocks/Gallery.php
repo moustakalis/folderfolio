@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FolderFolio\Blocks;
 
+use FolderFolio\Support\Assets;
 use FolderFolio\Support\Capabilities;
 use FolderFolio\Support\Settings;
 
@@ -60,14 +61,14 @@ final class Gallery
             self::STYLE_HANDLE,
             FOLDERFOLIO_PLUGIN_URL . 'assets/build/core/gallery.css',
             [],
-            FOLDERFOLIO_VERSION
+            Assets::version('assets/build/core/gallery.css')
         );
 
         wp_register_style(
             self::EDITOR_HANDLE,
             FOLDERFOLIO_PLUGIN_URL . 'assets/build/core/block-editor.css',
             [],
-            FOLDERFOLIO_VERSION
+            Assets::version('assets/build/core/block-editor.css')
         );
 
         $manifest = FOLDERFOLIO_PLUGIN_DIR . 'assets/build/apps/gallery.asset.php';

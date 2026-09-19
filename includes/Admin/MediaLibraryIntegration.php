@@ -8,6 +8,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+use FolderFolio\Support\Assets;
 use FolderFolio\Support\Capabilities;
 use FolderFolio\Support\Settings;
 
@@ -77,7 +78,7 @@ final class MediaLibraryIntegration
                 'folderfolio-admin',
                 FOLDERFOLIO_PLUGIN_URL . 'assets/build/core/admin.css',
                 [],
-                FOLDERFOLIO_VERSION
+                Assets::version('assets/build/core/admin.css')
             );
         }
 
@@ -92,7 +93,7 @@ final class MediaLibraryIntegration
                 "folderfolio-{$bundle}",
                 FOLDERFOLIO_PLUGIN_URL . "assets/build/core/{$bundle}.js",
                 $dependencies,
-                FOLDERFOLIO_VERSION,
+                Assets::version("assets/build/core/{$bundle}.js"),
                 ['in_footer' => true, 'strategy' => 'defer']
             );
         }

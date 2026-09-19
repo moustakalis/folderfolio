@@ -87,11 +87,29 @@ export function disclosureSlotPlace(): Place | null {
     const grid = document.querySelector('.media-toolbar-secondary');
 
     if (grid) {
-        const viewSwitch = grid.querySelector('.view-switch');
-
+        /*
+         * Anchored to core's first filter label, not to `view-switch`'s next
+         * sibling.
+         *
+         * The first version asked for `viewSwitch.nextElementSibling` — which,
+         * the moment this slot is placed there, **is this slot**. So every
+         * pass computed `before: slot`, the equality check below could never
+         * be satisfied, and `insertBefore(slot, slot)` ran: a legal no-op that
+         * still removes and re-adds the node, which wakes the observer, which
+         * does it again. Measured at a steady 1 Hz, forever.
+         *
+         * A detach between `mousedown` and `mouseup` means the browser fires
+         * **no `click` at all**, so the button looked dead to a mouse while a
+         * scripted `.click()` — synchronous, entirely between two churns —
+         * always worked. That is exactly how it was reported.
+         *
+         * The anchor has to be a node that is always core's, never ours. The
+         * first `label` is the one immediately after the view switch, so this
+         * lands in the same place and can never be self-referential.
+         */
         return {
             parent: grid,
-            before: viewSwitch ? viewSwitch.nextElementSibling : grid.firstElementChild,
+            before: grid.querySelector('label, select.attachment-filters'),
         };
     }
 
@@ -206,17 +224,30 @@ export function useToolbarSlot(place: () => Place | null, name: string): HTMLEle
                 return;
             }
 
+            /*
+             * A `before` of the slot itself means "where you already are".
+             *
+             * `insertBefore(slot, slot)` is legal and does nothing visible,
+             * but it still removes and re-adds the node — so it wakes this
+             * observer, which schedules another pass, which does it again. A
+             * `place()` that names a position relative to a sibling will
+             * return this the moment the slot becomes that sibling, and the
+             * loop it produces is invisible except that every click on
+             * anything inside the slot is silently dropped.
+             */
+            const before = target.before === slot ? slot.nextElementSibling : target.before;
+
             // Already exactly where it should be. Checked rather than
             // re-inserted every time, because re-inserting would be a DOM
             // mutation, which would wake this observer, which would
             // re-insert — a loop that costs nothing visible and never stops.
-            if (slot.parentElement === target.parent && slot.nextElementSibling === target.before) {
+            if (slot.parentElement === target.parent && slot.nextElementSibling === before) {
                 setPlaced(true);
 
                 return;
             }
 
-            target.parent.insertBefore(slot, target.before);
+            target.parent.insertBefore(slot, before);
             restoreFocus();
             setPlaced(true);
         };

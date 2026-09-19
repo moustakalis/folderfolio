@@ -8,6 +8,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+use FolderFolio\Support\Assets;
 use FolderFolio\Support\Capabilities;
 use FolderFolio\Support\Settings;
 
@@ -87,7 +88,7 @@ final class Rail
                 'folderfolio-rail',
                 FOLDERFOLIO_PLUGIN_URL . 'assets/build/core/rail.js',
                 ['wp-api-fetch'],
-                FOLDERFOLIO_VERSION,
+                Assets::version('assets/build/core/rail.js'),
                 ['in_footer' => true, 'strategy' => 'defer']
             );
 

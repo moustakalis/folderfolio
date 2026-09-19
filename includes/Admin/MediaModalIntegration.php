@@ -8,6 +8,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+use FolderFolio\Support\Assets;
 use FolderFolio\Support\Capabilities;
 use FolderFolio\Support\Settings;
 
@@ -97,7 +98,7 @@ final class MediaModalIntegration
             'folderfolio-frame',
             FOLDERFOLIO_PLUGIN_URL . 'assets/build/core/frame.css',
             [],
-            FOLDERFOLIO_VERSION
+            Assets::version('assets/build/core/frame.css')
         );
 
         wp_enqueue_script(

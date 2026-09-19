@@ -11,6 +11,7 @@ if (!defined('ABSPATH')) {
 use FolderFolio\Database\Schema;
 use FolderFolio\Database\StatusReport;
 use FolderFolio\Domain\AttachmentFolderRepository;
+use FolderFolio\Support\Assets;
 use FolderFolio\Support\Settings;
 
 /**
@@ -119,7 +120,7 @@ final class SettingsPage
                 'folderfolio-settings',
                 FOLDERFOLIO_PLUGIN_URL . $style,
                 [],
-                FOLDERFOLIO_VERSION
+                Assets::version($style)
             );
         }
 
@@ -134,7 +135,7 @@ final class SettingsPage
                 'folderfolio-settings',
                 FOLDERFOLIO_PLUGIN_URL . $script,
                 [],
-                FOLDERFOLIO_VERSION,
+                Assets::version($script),
                 ['in_footer' => true, 'strategy' => 'defer']
             );
         }
