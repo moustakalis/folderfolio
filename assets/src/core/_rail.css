@@ -400,7 +400,30 @@ body.folderfolio-resizing * {
     position: static;
     width: auto;
     height: auto;
-    max-height: 60vh;
+    /**
+     * 75vh, not 60.
+     *
+     * The cap was never the problem — `.folderfolio-rail__body` is a real
+     * scroller (`overflow-y: auto`, `min-height: 0`, so the flex trap is
+     * handled) and nothing is clipped however large the tree. What was wrong
+     * is what the cap left for the tree: measured at a 717px viewport, the
+     * fixed chrome takes **325px** — header 75, action row 45, the two fixed
+     * rows 88, search 64, footer 53 — so a 430px band gave the tree **82px**,
+     * under two 44px rows. It was scrolling with three folders in it. The 44px
+     * touch pass is what ate it.
+     *
+     * At 75vh that is 538px and about 190px of tree, four or five rows. The
+     * sheet is a mode the person opened deliberately, so it can afford the
+     * screen; the library is one tap from coming back.
+     *
+     * `dvh` second, and it is not decoration: on a phone `vh` is measured
+     * against the *largest* viewport, the one with the address bar retracted,
+     * so a `vh` cap is taller than the screen for as long as the bar is
+     * showing. `dvh` tracks what is actually visible. The `vh` line stays
+     * underneath it for anything that does not know the unit.
+     */
+    max-height: 75vh;
+    max-height: 75dvh;
     border-right: 0;
     border-bottom: 2px solid var(--ff-rule);
   }
