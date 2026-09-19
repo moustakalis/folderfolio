@@ -25,12 +25,29 @@ test.describe('the library toolbar', () => {
         const select = page.locator('#folderfolio-folder-filter');
         await expect(select).toBeVisible();
 
-        // Order matters: screen 03 puts it after the date filter and before
-        // Bulk select, and core hides the whole row in select mode.
-        const after = await page.evaluate(
-            () =>
-                document.querySelector('.folderfolio-slot--filter')?.previousElementSibling?.id
-        );
+        /*
+         * Order matters: screen 03 puts it after the date filter and before
+         * Bulk select, and core hides the whole row in select mode.
+         *
+         * Our own slots are skipped walking backwards. Three of them anchor in
+         * a chain ending at a control of core's — bulk, then the select, then
+         * the narrow-width picker — so the select's slot is preceded by the
+         * picker's rather than by the date filter itself. Anchoring the picker
+         * the other way round would put them in DOM order and live-lock the
+         * two slots against each other; see `pickerSlotPlace`. What has to be
+         * true is the position among *core's* controls, which is what this
+         * reads.
+         */
+        const after = await page.evaluate(() => {
+            let el = document.querySelector('.folderfolio-slot--filter')
+                ?.previousElementSibling;
+
+            while (el?.classList.contains('folderfolio-slot')) {
+                el = el.previousElementSibling;
+            }
+
+            return el?.id;
+        });
         expect(after).toBe('media-attachment-date-filters');
 
         await expect(select.locator('option')).toContainText(['All media', 'Unassigned', 'Brand']);
@@ -93,7 +110,7 @@ test.describe('the library toolbar', () => {
      */
 
     /**
-     * The folder select stays with the other filters as the column narrows.
+     * The folder control stays with the other filters as the column narrows.
      *
      * It used to leave them at about 860px of toolbar and land on a line with
      * the search, because `.media-toolbar`'s two children — the filters and
@@ -106,34 +123,77 @@ test.describe('the library toolbar', () => {
      * survey that clusters by top reports controls stranded that are not. That
      * mistake has been made twice in this project and once in the analysis that
      * led to this fix.
+     *
+     * Two things have happened to this test since it was written, and both
+     * are the design moving rather than the test rotting:
+     *
+     *  - below 700px of **toolbar** the filters collapse behind one `Filter`
+     *    button. The deciding width is the library column's, not the
+     *    viewport's — the rail is dragged to whatever width its owner likes —
+     *    so a viewport sweep cannot know in advance which side of it any given
+     *    width falls on. At 1200px with a 310px rail the toolbar is 683px,
+     *    which is the collapsed side.
+     *  - below that same breakpoint the select itself steps aside for the
+     *    searchable picker, because at a thousand folders it is a native list
+     *    a thousand rows long.
+     *
+     * So the invariant is no longer "the select is on the line". It is: the
+     * folder control, whichever of the two is on screen, is on the filters'
+     * line and reachable — never stranded on the search's line and never
+     * absent altogether.
      */
-    test('the folder select stays on the filter line as the column narrows', async ({ page }) => {
-        const sameLineAsDate = async () =>
-            page.evaluate(() => {
+    test('the folder control stays on the filter line as the column narrows', async ({ page }) => {
+        const centredWithDate = async (selector: string) =>
+            page.evaluate((sel) => {
                 const date = document.querySelector('#media-attachment-date-filters');
-                const folder = document.querySelector('#folderfolio-folder-filter');
+                const ours = document.querySelector(sel);
 
-                if (!date || !folder) {
+                if (!date || !ours) {
                     return null;
                 }
 
                 const a = date.getBoundingClientRect();
-                const b = folder.getBoundingClientRect();
+                const b = ours.getBoundingClientRect();
 
                 return Math.abs(a.top + a.height / 2 - (b.top + b.height / 2)) < 10;
-            });
+            }, selector);
 
         // Wide enough for all three groups on one line, and narrow enough that
         // they cannot be — the width at which the select used to be evicted.
         for (const width of [1440, 1200]) {
             await page.setViewportSize({ width, height: 900 });
-            await page.locator('#folderfolio-folder-filter').waitFor();
-            await page.waitForTimeout(300);
+            await page.waitForTimeout(400);
 
-            expect(
-                await sameLineAsDate(),
-                `at ${width}px the folder select left the filter group`
-            ).toBe(true);
+            const select = page.locator('#folderfolio-folder-filter');
+            const collapsed = !(await select.isVisible());
+
+            if (!collapsed) {
+                expect(
+                    await centredWithDate('#folderfolio-folder-filter'),
+                    `at ${width}px the folder select left the filter group`
+                ).toBe(true);
+
+                continue;
+            }
+
+            /*
+             * Collapsed: the disclosure is what is on the line, and the folder
+             * control is behind it. Asserting the picker is *centred with the
+             * date select* once open is the same invariant one level in — they
+             * are rows of the same stacked panel there, so "on the line" means
+             * "in the group", which is what the test has always been about.
+             */
+            const disclosure = page.getByRole('button', { name: /^filter$/i });
+
+            await expect(
+                disclosure,
+                `at ${width}px the filters collapsed with nothing to open them`
+            ).toBeVisible();
+
+            await disclosure.click();
+            await expect(page.locator('.folderfolio-folder-picker')).toBeVisible();
+            await expect(page.locator('#media-attachment-date-filters')).toBeVisible();
+            await disclosure.click();
         }
     });
 

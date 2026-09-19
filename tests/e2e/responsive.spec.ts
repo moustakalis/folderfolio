@@ -72,6 +72,28 @@ async function measure(page: Page, width: number): Promise<Measured> {
         const title = q('.wp-heading-inline') as HTMLElement;
         const railBox = r(rail);
 
+        /*
+         * The top of whatever is actually drawn below the rail.
+         *
+         * `stacked` used to compare the rail's bottom with the top of
+         * `#wpbody-content`, which was right while the rail was a *sibling* of
+         * it. Below the breakpoint it is not: Rail.php's placement script
+         * moves the rail into `.wrap`, under the title, which is where it was
+         * asked to go — so the old measurement read "neither stacked nor side
+         * by side" and called a correct layout an overlap.
+         *
+         * The first *following sibling with a box*, not simply the next one:
+         * wp-admin prints `<div class="notice error hide-if-js">` right there,
+         * and a zero-height hidden node reports top 0, which is above
+         * everything. That is what the first attempt at this fix measured
+         * against, and it failed in exactly the same place.
+         */
+        const below = [...rail.parentElement!.children]
+            .slice([...rail.parentElement!.children].indexOf(rail) + 1)
+            .map((el) => r(el))
+            .filter((b) => b.width > 0 && b.height > 0)
+            .reduce((top, b) => Math.min(top, b.top), Infinity);
+
         const tools = [...document.querySelectorAll('.folderfolio-rail__tool')];
 
         // Anything of ours drawn outside the rail's own box. The collapsed
@@ -94,7 +116,7 @@ async function measure(page: Page, width: number): Promise<Measured> {
                 .filter((t) => t.scrollWidth > t.clientWidth + 1)
                 .map((t) => t.textContent!.trim()),
             spillingChildren: spilling,
-            stacked: railBox.bottom <= r(content).top + 2,
+            stacked: content.contains(rail) ? railBox.bottom <= below + 2 : railBox.bottom <= r(content).top + 2,
             sideBySide: railBox.right <= r(content).left + 2,
             railBeforeTitlePx: title ? round(r(title).top - railBox.top) : -1,
             toolWidths: tools.map((t) => round(r(t).width)),
@@ -235,32 +257,48 @@ test.describe('the rail across viewport widths', () => {
         }
 
         /*
-         * And stacking must not stretch the design.
+         * Stacked, the band's controls share the band — in equal parts.
          *
-         * The rail's internals are all fractions of its width, so a full-width
-         * band made the four toolbar buttons 201px each at 782px and the
-         * search field 748px — a 300px design spread across a phone. The
-         * contents are capped at the rail's own width now, which means every
-         * stacked width should measure what 783px measures.
+         * This used to assert the opposite: that every stacked width measured
+         * what 783px measures, because a full-width band had made the four
+         * toolbar buttons 201px each and the search field 748px, "a 300px
+         * design spread across a phone". That was the right reading of the
+         * wrong fix. Capping the contents at the rail's desktop width left the
+         * action row as four small buttons adrift in a 736px bar, which is
+         * what "what happened to actions? sizes are quite off" was about.
          *
-         * Asserted against 783 rather than against a literal, so the day the
-         * board answers what a narrow rail should be, this fails and says so
-         * instead of quietly passing on numbers nobody chose.
+         * The band is not a narrow rail laid on its side; it is its own shape.
+         * So what is asserted now is the shape: four equal quarters, each wide
+         * enough to be a target, none of them clipped — and that last one is
+         * asserted above, at every width, which is what stops "equal" from
+         * being satisfied by four equally useless buttons.
          */
         for (const s of shots.filter((shot) => shot.stacked)) {
-            // Within 2px, not exactly: stacked, the rail drops its 2px right
-            // border for a bottom one, so every fraction inside it lands half
-            // a pixel differently. 83.5 against 83 is the layout being
-            // correct, and an exact comparison would report it as a defect.
-            const stretched = s.toolWidths.filter(
-                (w, i) => Math.abs(w - (at783.toolWidths[i] ?? 0)) > 2
-            );
+            // Within 2px: four equal columns of an odd number of pixels do not
+            // divide evenly, and 190/190/190/189.5 is the layout being right.
+            const widest = Math.max(...s.toolWidths);
+            const narrowest = Math.min(...s.toolWidths);
 
-            expect(stretched, `toolbar stretched at ${s.width}px`).toEqual([]);
+            expect(
+                widest - narrowest,
+                `the action row is not in equal parts at ${s.width}px`
+            ).toBeLessThanOrEqual(2);
+
+            // Each one a real target. 44px is the touch minimum in the other
+            // direction; a quarter of the narrowest band this supports is well
+            // clear of it, and a number here would just be a second copy of
+            // the CSS.
+            expect(
+                narrowest,
+                `the action row's buttons are too narrow at ${s.width}px`
+            ).toBeGreaterThan(60);
+
+            // The search takes the band rather than sitting in a 274px box
+            // inside it — the same decision, one row down.
             expect(
                 s.searchWidth,
-                `search field stretched at ${s.width}px`
-            ).toBeLessThanOrEqual(at783.searchWidth + 4);
+                `the search field does not fill the band at ${s.width}px`
+            ).toBeGreaterThan(widest * 3);
         }
     });
 
@@ -398,11 +436,49 @@ test.describe('the rail across viewport widths', () => {
             'false'
         );
 
-        // Navigation does not depend on opening it: the whole tree is on the
-        // select, indented, with counts.
+        /*
+         * Navigation does not depend on opening it — but not through the
+         * select any more.
+         *
+         * This test used to assert that the whole tree was on
+         * `#folderfolio-folder-filter`, indented, with counts, and that was
+         * the narrow layout's written premise. Against 1,050 folders that
+         * select holds 1,055 options and 24,027 characters: a native picker a
+         * thousand rows long. Below the breakpoint it now steps aside for a
+         * button that opens a searchable, capped panel.
+         *
+         * The select is still in the document — it is the no-script path in
+         * list mode — so this asserts it is hidden rather than absent.
+         */
         const select = page.locator('#folderfolio-folder-filter');
-        await expect(select).toBeVisible();
-        await expect(select.locator('option')).toContainText(['All media', 'Unassigned', 'Brand']);
+        const picker = page.locator('.folderfolio-folder-picker');
+
+        await expect(select).toBeHidden();
+
+        // The picker lives among the collapsed filters, so the disclosure has
+        // to be opened before it is on screen — which is itself the contract:
+        // one button stands for the filters at this width.
+        await page.getByRole('button', { name: /^filter$/i }).click();
+        await expect(picker).toBeVisible();
+        await expect(picker).toHaveText(/all media/i);
+
+        await picker.click();
+
+        const panel = page.getByRole('dialog', { name: /filter by folder/i });
+        await expect(panel).toBeVisible();
+        // Focus is in the search field: at a thousand folders typing is the
+        // way in, and it is the first thing the panel offers.
+        await expect(panel.getByRole('searchbox')).toBeFocused();
+        await expect(panel.getByRole('option', { name: /brand/i })).toBeVisible();
+
+        await panel.getByRole('option', { name: /brand/i }).click();
+        await expect(panel).toBeHidden();
+        await expect(picker).toHaveText(/brand/i);
+        await expect(page).toHaveURL(/folderfolio_folder=\d+/);
+
+        // Put the filters back the way they were, so what follows is the
+        // sheet's own behaviour rather than this paragraph's leftovers.
+        await page.getByRole('button', { name: /^filter/i }).click();
 
         // 2. A tap on the row opens it.
         await bar.click();
@@ -441,6 +517,71 @@ test.describe('the rail across viewport widths', () => {
         await expect(page.locator('.folderfolio-rail__tab')).toBeHidden();
         await expect(rail).not.toHaveClass(/is-collapsed/);
         await expect(tree).toBeVisible();
+    });
+
+    /**
+     * The sheet walks one level at a time below the breakpoint.
+     *
+     * Measured on a 1,050-folder fixture at 528px: the open sheet gave the
+     * tree 190px against a 50,976px tree — 0.37% of it on screen. Drill-down
+     * changes what is in that window rather than how big it is; a level there
+     * averages 3.7 rows.
+     *
+     * What this asserts is the part that is a *contract* rather than a
+     * measurement: one level at a time, a way back out that does not re-filter
+     * the library, and a tapped row that does both — filters, and walks in.
+     */
+    test('the sheet shows one level at a time, and back does not re-filter', async ({
+        page,
+    }) => {
+        // Built wide, for the reason the test above gives: seeding means
+        // seeing the tree, and at 390px the tree is behind the bar.
+        await page.setViewportSize({ width: 1280, height: 900 });
+        await page.goto('/wp-admin/upload.php?mode=grid');
+        await page.locator('#folderfolio-rail').waitFor();
+        await resetFolders(page);
+
+        const brand = await createFolder(page, 'Brand');
+        await createFolder(page, 'Logos', brand.id);
+        await createFolder(page, 'Packaging', brand.id);
+        await createFolder(page, 'Audio');
+
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.reload();
+        await page.locator('#folderfolio-rail').waitFor();
+        await page.locator('.folderfolio-rail__tab').click();
+
+        const levels = page.locator('.folderfolio-levels');
+        const rows = page.locator('.folderfolio-levels__row');
+
+        await expect(levels).toBeVisible();
+        // The desktop tree is not rendered at all down here — one navigation
+        // model at a time, never two sets of rows claiming the same folders.
+        await expect(page.locator('[role="tree"]')).toHaveCount(0);
+
+        // The top level: the roots, and nothing from inside them.
+        await expect(rows).toHaveText([/Audio/, /Brand/]);
+
+        // A tap filters the library *and* walks in.
+        await rows.filter({ hasText: 'Brand' }).click();
+        await expect(page).toHaveURL(new RegExp(`folderfolio_folder=${brand.id}\\b`));
+        await expect(rows).toHaveText([/Logos/, /Packaging/]);
+        await expect(page.locator('.folderfolio-levels__here')).toHaveText(/Brand/);
+
+        // Back goes up without asking the server for anything: the URL is
+        // still the folder that was chosen.
+        await page.locator('.folderfolio-levels__up').click();
+        await expect(rows).toHaveText([/Audio/, /Brand/]);
+        await expect(page).toHaveURL(new RegExp(`folderfolio_folder=${brand.id}\\b`));
+        await expect(
+            rows.filter({ hasText: 'Brand' })
+        ).toHaveAttribute('aria-current', 'true');
+
+        // …and above the breakpoint the tree is back, untouched.
+        await page.setViewportSize({ width: 1280, height: 900 });
+        await page.waitForTimeout(400);
+        await expect(page.locator('[role="tree"]')).toHaveCount(1);
+        await expect(page.locator('.folderfolio-levels')).toHaveCount(0);
     });
 
     /**

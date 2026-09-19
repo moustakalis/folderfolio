@@ -129,11 +129,25 @@ export function disclosureSlotPlace(): Place | null {
  * two is on screen is in the same place — the person who widens the window
  * finds the control where they left it.
  *
- * Grid: immediately before the select's own slot, which is a node this module
- * created and can therefore always find. Falling back through the bulk slot to
- * the mode toggle covers the pass where the filter slot has not been placed
- * yet; `before: null` would append, which in this toolbar means after
+ * Grid: immediately **before** the select's own slot, which is a node this
+ * module created and can therefore always find. Falling back through the bulk
+ * slot to the mode toggle covers the pass where the filter slot has not been
+ * placed yet; `before: null` would append, which in this toolbar means after
  * `Bulk select`.
+ *
+ * Before, not after, and the reason is worth writing down because the obvious
+ * alternative is a live-lock. These three slots anchor in a chain — bulk
+ * before core's mode toggle, filter before bulk, picker before filter — and a
+ * chain that ends at a node of core's has exactly one stable arrangement.
+ * Anchoring the picker to `filter.nextElementSibling` instead, to put it after
+ * the select, closes the chain into a cycle: `filter` then wants to be
+ * immediately before `bulk` and is not, so it moves; which makes `picker`
+ * wrong, so it moves; for ever. Measured — the two ended up in a different
+ * order on two machines, which is what a race looks like from the outside.
+ *
+ * The cost is that the select's own slot no longer *immediately* follows the
+ * date filter in the DOM, only visually. library.spec.ts asserts the position
+ * by skipping our own slots for that reason.
  *
  * List: inside `.actions`, before the select's label — `restrict_manage_posts`
  * prints label-then-select, and splitting that pair would leave the label
