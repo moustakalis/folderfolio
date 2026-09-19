@@ -35,10 +35,36 @@ the current diff. The domain layer, the REST surface and the importers are
 | The rail footer's folder total | done — it had been an empty span since step 3 |
 | Design audit of the library screen | 14 findings, plus 5 found alongside — all closed |
 
-**The design conformance backlog is empty.** Every finding from the 18 Sep
-audit is closed and verified in the browser; what remains before 1.0 is the
-release track — `readme.txt`, Plugin Check in CI, the version bump and an RC
-tag, and five review items.
+**The design conformance backlog is empty**, and as of 19 Sep the plugin is
+**version 1.0.0** with a `readme.txt`.
+
+### 19 Sep — readme.txt, and the narrow toolbar
+
+Full account: `claude/progress-2026-09-19-responsive-toolbar.md` in the
+project, plus the responsive audit at
+`claude.ai/artifact/DvtBqANGSiFtP1XDdFTmUH`.
+
+**Review items #26 and #28 are closed.** `readme.txt` exists, written from a
+feature list audited against the code — `README.md` had claimed folder
+**icons**, which do not ship, and *"Import from FileBird"* when `Catalog.php`
+ships **nine** sources, and had never mentioned the gallery block, the
+shortcode, the settings screen, the Status tab or the WP-CLI commands. Both
+files say the same thing now, and `README.md` carries a **"Not in 1.0.0"**
+section so the icon gap is stated rather than discovered.
+
+**Version 0.2.0 → 1.0.0** in the plugin header, `FOLDERFOLIO_VERSION` and
+`package.json`. Historical *"v0.2.0 did X"* comments were left alone.
+
+**The library toolbar got taller as the window got narrower.** Measured, grid
+mode, 308px rail: 222px at 1100, 248px at 636, **296px at 400**, against 128px
+at 1440 — and at 636 three of the four rows held exactly one control with
+415–499px of empty space beside them. Below **700px of library column** the
+media type, date and folder filters now collapse behind one `Filter` button.
+After: 136px at 1100, 156px at 636 and 400 alike, 109px in list at 636, and
+1440px unchanged. The curve no longer rises as the column narrows.
+
+What remains before 1.0 on wp.org: **screenshots** (Nick is supplying them),
+the **POT**, **Plugin Check in CI**, an RC tag, and the review items below.
 
 Checks at the end of 18 Sep: **PHPStan clean, 107 unit, 47 integration, 40
 e2e, `tsc` clean**, and **no `test.fail()` left anywhere in the suite** — both
@@ -711,21 +737,84 @@ children and then failed on its own row left the children reparented.
 Every one of these cost real time and is now load-bearing somewhere.
 
 **A stylesheet or script change may not reach the browser.** `admin.css` and
-`core/rail.js` are enqueued with `ver=0.2.0`, so a plain reload serves the
+`core/rail.js` are enqueued with `ver=1.0.0`, so a plain reload serves the
 cached copy, `location.reload(true)` is ignored by modern Chrome, and
 `cmd+shift+r` works but drops the query string — which loses a deep-URL state.
 From an automation tool the reliable move is to warm the cache first and then
 reload:
 
 ```js
-await fetch('/wp-content/plugins/folderfolio/assets/build/core/admin.css?ver=0.2.0', { cache: 'reload' });
-await fetch('/wp-content/plugins/folderfolio/assets/build/core/rail.js?ver=0.2.0',  { cache: 'reload' });
+await fetch('/wp-content/plugins/folderfolio/assets/build/core/admin.css?ver=1.0.0', { cache: 'reload' });
+await fetch('/wp-content/plugins/folderfolio/assets/build/core/rail.js?ver=1.0.0',  { cache: 'reload' });
 location.reload();
 ```
 
 Each asset needs its own bust. A session went a full round of measurements with
 fresh CSS and a **stale bundle**, which read as "the JavaScript half of the
 change does not work".
+
+**The browser extension cannot resize the window, so drive widths through an
+iframe instead.** `resize_window` reports success and `innerWidth` does not
+move. What works, and what every number in the 19 Sep audit came from: create a
+same-origin `<iframe>` of the wanted width inside the logged-in page, point it
+at `upload.php`, and `eval` the survey inside it. Media queries *and* container
+queries resolve against the iframe's own viewport, so it measures the real
+thing, it needs no permission, and it never touches the window the person is
+using. It reproduced a screenshot Nick sent, pixel for pixel.
+
+**Only the Comet browser is authenticated.** Claude in Chrome reaches the dev
+site with Nick's session. Playwright and chrome-devtools each connect with
+their own profile and land on `wp-login.php`.
+
+**`upload.php` remembers the view mode in user meta.** A probe that loads
+`?mode=list` leaves the whole library in list mode for the next visitor, who is
+Nick. Pin `?mode=grid` on every probe and restore it afterwards.
+
+**`display: contents` promotes *every* child to a grid or flex item** — a
+`.screen-reader-text` label included. One 1px label inside the folder slot was
+claiming a whole 38px grid row; the toolbar computed `grid-template-rows: 38px
+38px` with a single control on screen. Hide such a slot **as a slot**, not by
+naming the control inside it. The same fact bites the other way: a `>` selector
+never reaches a control inside one, because it is a grid item and a DOM
+grandchild at the same time.
+
+**A media-toolbar button carries `margin: 0 0 4px` from core.** Centre a 34px
+box that has 4px below it in a 38px row and it lands 2px high — which is
+exactly what happened to the `Filter` disclosure beside `Bulk select`.
+`align-self: center` was already correct and was not the cause. Measure the
+*centres* of every control on a row before believing one is aligned.
+
+**Do not invent a size for a control that sits beside one of core's.** The
+first `Filter` button was given `height: 32px`, `font-size: 12.5px` and
+`padding: 0 9px`; `Bulk select` next to it is 34px, 14px and `0 12px`. Let it
+be a `.wp-core-ui .button` and the two match by construction instead of by a
+number copied off a screenshot.
+
+**`width: 100%` cannot beat its own containing block.** The grid-mode search
+field stayed 182px through a stylesheet rule *and* through `width: 100%
+!important` set inline — because its containing block was 182px. When a width
+declaration appears to do nothing, widen the parent; the failure is one level
+up from where it shows.
+
+**An empty grid row costs a whole track.** Closed, the narrow toolbar had
+nothing placed in row 2 and still computed `grid-template-rows: 38px 38px`,
+spending 46px of panel on it — the gap that appeared above the search field.
+Declare `grid-template-rows: auto` so there is exactly one explicit track and
+let the rest be implicit.
+
+**Auto-placement will draw two controls on top of one another.** One filter
+spanned `1 / -1` while the next kept `grid-column: auto` and was placed into
+column 2 of the same row: both at top 338, one 476px wide and one 161px,
+overlapping. In a layout that must not move, place by `grid-area` and state the
+row.
+
+**Core sizes its toolbar controls against a 60px row.** `.view-switch` is 38px
+with `padding: 12px 0`, and the grid-mode toggle computes to 62px to match it.
+Invisible inside core's flex row; as grid items they *become* the row.
+
+**`.wp-core-ui .button` is (0,2,0) and sets `display`.** A bare class that
+tries to hide one of core's buttons loses. Fourth time this has been paid for
+in `_toolbar.css` alone — the file carries the other three notes.
 
 **A container cannot query itself.** `@container` resolves against the nearest
 *ancestor* container, so a rule naming `.folderfolio-rail` inside the rail's own
