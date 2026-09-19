@@ -584,6 +584,72 @@ body.folderfolio-resizing * {
   }
 
   /**
+   * 44px for every control in the open sheet, not just for Collapse.
+   *
+   * Checking the component in its totality is a standing rule here, and it
+   * earned its keep: Collapse was not a one-off. Measured in the open band —
+   * `New folder` **28px**, the four tools **34**, the fixed and folder rows
+   * **36**, the search field **30**. Every one of them under the 44px target
+   * this plugin already gives the closed bar, and every one of them sized for
+   * a mouse pointer on a 300px desktop rail.
+   *
+   * The band is about 70px taller for it, which is the trade Nick took: a
+   * phone sheet whose controls you can hit, rather than a short one you have
+   * to aim at.
+   *
+   * The rows move through `--ff-row-h` rather than by naming `.folderfolio-row`
+   * — one token, and every row that exists now or later follows it, including
+   * the fixed rows and the tree's own. That is what the token is for.
+   */
+  body.folderfolio-rail-peek .folderfolio-rail {
+    --ff-row-h: 44px;
+  }
+
+  body.folderfolio-rail-peek .folderfolio-rail__primary {
+    height: 44px;
+    padding: 0 14px;
+  }
+
+  body.folderfolio-rail-peek .folderfolio-rail__tool {
+    height: 44px;
+  }
+
+  body.folderfolio-rail-peek .folderfolio-rail__search {
+    height: 44px;
+  }
+
+  /**
+   * The tree's expand chevron: a 20px glyph with a target around it.
+   *
+   * It measured 20 × 20 — the smallest thing in the band, and the one most
+   * often aimed at with a thumb. It cannot simply be made 44 wide: the row's
+   * indentation is set from this button's own width, so widening it would move
+   * every folder name to the right.
+   *
+   * So the box keeps its size and a pseudo-element carries the target: 28 × 44,
+   * centred. Full row height vertically, where the miss actually happens, and
+   * 4px either side horizontally — which stays inside the 6px gap before the
+   * folder icon, so it cannot steal a tap meant for the name.
+   *
+   * The `--leaf` variant is a spacer with nothing to toggle, and is left alone.
+   */
+  body.folderfolio-rail-peek .folderfolio-row__switcher:not(.folderfolio-row__switcher--leaf) {
+    position: relative;
+    height: var(--ff-row-h);
+  }
+
+  body.folderfolio-rail-peek
+    .folderfolio-row__switcher:not(.folderfolio-row__switcher--leaf)::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 28px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+
+  /**
    * The tab, laid on its side.
    *
    * On the desktop these two nodes are a 28px column: a 24px chevron with the
