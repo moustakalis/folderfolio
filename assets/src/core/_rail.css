@@ -609,7 +609,39 @@ body.folderfolio-resizing * {
    * its side.
    */
   body.folderfolio-has-rail .folderfolio-rail {
-    margin-block: var(--ff-rail-gap);
+    /* Only above. Below, the breadcrumb row carries its own symmetric padding
+       — see the rule after the next one — so that the crumb sits centred
+       between the band's bottom edge and the rule under it rather than 21px
+       below one and 10px above the other. */
+    margin-block: var(--ff-rail-gap) 0;
+  }
+
+  /**
+   * The content column is flush with the band here.
+   *
+   * `.folderfolio-content` carries `margin: 0 20px 0 2px` so that, on the
+   * desktop, the breadcrumb lines up with the page title rather than with
+   * anything of ours. At this width there is no second column for it to be
+   * offset from, and the offset is simply visible: measured, the crumb row and
+   * its rule were **484px at left 12** while the band above them was **506 at
+   * left 10** — a rule that stops 20px short of the one above it, which is
+   * exactly what Nick saw.
+   */
+  #wpbody-content .folderfolio-content {
+    margin-inline: 0;
+  }
+
+  /**
+   * And the crumb is centred in the space it has.
+   *
+   * `padding: 8px 0 10px` was drawn for a column with no band above it. With
+   * the band's channel on top, the text sat 21px below the band and 10px above
+   * the rule. Symmetric padding, and the channel below the band comes out of
+   * this rather than out of the band's own margin, so there is one number
+   * deciding it instead of two.
+   */
+  #wpbody-content .folderfolio-crumbs {
+    padding-block: var(--ff-rail-gap);
   }
 
   /**
