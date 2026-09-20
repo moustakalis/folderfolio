@@ -372,38 +372,30 @@ rail** (clips by 12), 234 in 278 at 280, 74 to spare at Nick's 310 — so the ol
 pair comes back below **298**, the breakpoint where the indent already drops to
 16 and the tool row is already icons only. No new number.
 
-### Next — settings findings 03, 04, 05, 06
+### Next — finding 01, then the rest of the responsive spec
 
-**The theme rework landed** in `5ab95ef`. wp-admin's colour schemes are
-menu-and-accent themes, not dark modes — all eight set
-`body{background:#f0f0f0}` and none touches a content surface. Nick's call:
-*"the rail is part of the library it filters."* So there is **one surface
-palette**, and the accent reads core's own `--wp-admin-theme-color` (published
-per scheme on `body`, with `-darker-10` and `-darker-20`, and what core paints
-`.button-primary` with). **Four declarations cover all eight schemes and no
-`.admin-color-*` block of ours remains.**
+**Thirteen of the settings audit's fifteen findings are closed.** The layout
+pass (`d3fc3ce`) took 03, 04, 05, 06, 07, 09 and 12 and converted all seven
+flex layouts to grid; 02 and 11 went in `9c59c1b`, guarded in `86e26e0`; 13
+became the theme rework (`5ab95ef`). **08 and 10 are decisions, not work.**
 
-Measured across all eight before committing: white on the theme colour is
-4.57:1 at worst, `-darker-20` as text on the panel 6.52:1 at worst — so
-`--ff-on-sel: #fff` and `--ff-accent-text` are safe by construction, which
-`TokensTest` asserts against the table. It also corrected a disagreement nobody
-had noticed: `--ff-sel` was `#2271b1` and core's own Fresh button paints
-`#007cba`.
+Two left:
 
-`_tokens.css` 205 → 134 lines; `admin.css` 223 → 28, an import manifest, its
-v0.2.0 palette and ~190 lines of pre-rebuild folder-tree rules removed after
-checking all fifteen selectors matched zero elements in the live library.
+- **01** — the card is **759px at 961 and 882px at 960**, and **705 at 783 and
+  760 at 782**. It gets *wider* as the window narrows, at both of wp-admin's
+  own breakpoints, because the 880px cap is measured against a column whose
+  width jumps when the admin menu folds and again when it drops. 961 is the
+  narrowest the card ever gets above the phone range.
+- **15** — the rest of the responsive spec. The roles-matrix guard exists
+  (eleven widths, three assertions, a negative control); the status table, the
+  tools row, the source row and the wizard steps have none.
 
-**Findings 02 and 11 are closed and guarded** (`9c59c1b`, `86e26e0`), along
-with a fourth wrong-pair instance the contrast guard found in the import
-wizard's current-step badge.
-
-**Still open, in Nick's agreed order:** **03, 04, 05, 06** as one pass with
-their grid conversions — he wants **all seven** flex layouts converted, not
-only the four that are also faults; then **07, 09, 12**; then the rest of the
-responsive spec (**15**). **08 and 10 are decisions, not work.** **01** — the
-card getting wider as the window narrows at 961/960 and 783/782 — is also
-still open.
+Headline numbers from the layout pass, for anything that touches these again:
+the matrix's ability columns are **declared at 108px and equalise at 124**, so
+the tick gaps are **124 / 124 / 124** and the table takes **593.5 of 832**;
+below 520 that width comes off and `width: 100%` goes back on, because **a
+specified column width is a minimum in auto table layout** and leaving it would
+put finding 02's floor back above 500px.
 
 ### Three recorded deviations from the board
 
