@@ -372,51 +372,38 @@ rail** (clips by 12), 234 in 278 at 280, 74 to spare at Nick's 310 — so the ol
 pair comes back below **298**, the breakpoint where the indent already drops to
 16 and the tool row is already icons only. No new number.
 
-### Next — the theme rework
+### Next — settings findings 03, 04, 05, 06
 
-Findings **02** and **11** of the settings audit are closed (`9c59c1b`) and
-**guarded** (`86e26e0`), and both cloud rigs were rebuilt. Checks: **PHPStan
-clean, 109 unit (304 assertions), 48 e2e, `tsc` clean.** Full accounts in the
-project at `…-2026-09-20e-…`, `…-20f-…` and `…-20g-…`.
+**The theme rework landed** in `5ab95ef`. wp-admin's colour schemes are
+menu-and-accent themes, not dark modes — all eight set
+`body{background:#f0f0f0}` and none touches a content surface. Nick's call:
+*"the rail is part of the library it filters."* So there is **one surface
+palette**, and the accent reads core's own `--wp-admin-theme-color` (published
+per scheme on `body`, with `-darker-10` and `-darker-20`, and what core paints
+`.button-primary` with). **Four declarations cover all eight schemes and no
+`.admin-color-*` block of ours remains.**
 
-**The theme rework is the next piece of work.** wp-admin's colour schemes are
-menu-and-accent themes, not dark modes: **all eight set
-`body{background:#f0f0f0}`** (Light `#f5f5f5`) and **not one contains
-`#wpcontent`, `#wpbody`, `.wrap`, `.postbox`, `.card` or `table.widefat`**.
-Midnight's 21KB is 104 rules on buttons, 69 on the admin bar, 60 on the admin
-menu, 13 on media accents, 4 on links, 1 on the body.
+Measured across all eight before committing: white on the theme colour is
+4.57:1 at worst, `-darker-20` as text on the panel 6.52:1 at worst — so
+`--ff-on-sel: #fff` and `--ff-accent-text` are safe by construction, which
+`TokensTest` asserts against the table. It also corrected a disagreement nobody
+had noticed: `--ff-sel` was `#2271b1` and core's own Fresh button paints
+`#007cba`.
 
-We do the opposite: blocks for **two of eight** schemes, so on the other six
-`--ff-sel` stays Fresh's `#2271b1` while core's primary button is olive
-`#646c3e` (Ectoplasm), brown `#916745` (Coffee), green `#567958` (Ocean),
-orange `#ad631e` (Sunrise). On Midnight ours is `#69a8bb` — its *notification*
-colour — while core's primary action is red `#cf4339`. And our `accent-color`
-on the matrix checkboxes is already dead: `.folderfolio-matrix
-input[type=checkbox]` is (0,1,1) and core's `.wp-core-ui` rule matches it and
-comes later, so core's accent wins on form controls whatever we write.
+`_tokens.css` 205 → 134 lines; `admin.css` 223 → 28, an import manifest, its
+v0.2.0 palette and ~190 lines of pre-rebuild folder-tree rules removed after
+checking all fifteen selectors matched zero elements in the live library.
 
-**Nick's decision: "the rail is part of the library it filters."** Surfaces
-follow the content — which they already do on seven of eight schemes, just not
-deliberately. The rework drops the 14 Midnight surface tokens, the 10-token
-Midnight folder-colour block and the whole 28-token `.media-modal .folderfolio`
-block — **52 of 79 overrides** — for one accent quartet per scheme across all
-eight. Two tests go with it, both of which exist only to police what is being
-removed.
+**Findings 02 and 11 are closed and guarded** (`9c59c1b`, `86e26e0`), along
+with a fourth wrong-pair instance the contrast guard found in the import
+wizard's current-step badge.
 
-**It should also delete the v0.2.0 palette in `admin.css`.** That `:root` block
-declares `--ff-brand-*`, `--ff-ink-900/700`, `--ff-surface-0/50`, `--ff-border`,
-`--ff-danger-600` and `--ff-success-600` as fixed hexes, and its own comment
-says it "hard-codes hexes that are wrong in seven of core's eight admin colour
-schemes" and survives "only until the rail is rebuilt on the designed
-components" — which has happened. Nothing outside `admin.css` uses those
-tokens; no PHP, TSX or block markup uses the classes they style
-(`.folderfolio-folder-count`, `-folder-name`, `-toggle`, `-children`).
-`TokensTest::test_the_v0_2_0_palette_does_not_grow` pins its surface meanwhile.
-
-**Then, in Nick's agreed order:** findings 03, 04, 05, 06 as one pass with
+**Still open, in Nick's agreed order:** **03, 04, 05, 06** as one pass with
 their grid conversions — he wants **all seven** flex layouts converted, not
-only the four that are faults; then 07, 09, 12; then the rest of the responsive
-spec (15). **08 and 10 are decisions, not work.**
+only the four that are also faults; then **07, 09, 12**; then the rest of the
+responsive spec (**15**). **08 and 10 are decisions, not work.** **01** — the
+card getting wider as the window narrows at 961/960 and 783/782 — is also
+still open.
 
 ### Three recorded deviations from the board
 
