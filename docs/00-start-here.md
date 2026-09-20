@@ -372,48 +372,51 @@ rail** (clips by 12), 234 in 278 at 280, 74 to spare at Nick's 310 — so the ol
 pair comes back below **298**, the breakpoint where the indent already drops to
 16 and the tool row is already icons only. No new number.
 
-### Next — two findings closed, and a theme rework agreed in principle
+### Next — the theme rework
 
-The settings audit (20 Sep) produced fifteen findings; the full write-up is in
-the project at `claude/progress-2026-09-20e-settings-audit.md` and the board is
-`claude.ai/artifact/NNp5KydLR8oFkkezdWESFA`.
+Findings **02** and **11** of the settings audit are closed (`9c59c1b`) and
+**guarded** (`86e26e0`), and both cloud rigs were rebuilt. Checks: **PHPStan
+clean, 109 unit (304 assertions), 48 e2e, `tsc` clean.** Full accounts in the
+project at `…-2026-09-20e-…`, `…-20f-…` and `…-20g-…`.
 
-**Closed in `9c59c1b`** (see `…-2026-09-20f-…`):
-
-- **02** — the roles matrix floored at 361.8px and scrolled the *page* sideways
-  below 397. Below 520 the column padding, head type and the card's own side
-  padding come down; the floor is **272px**, the table is sized by the content
-  box at every width from 320 to 1500, and nothing above 520 moved.
-- **11** — the checked segment paired `--ff-bar` with `--ff-on-sel`, two tokens
-  that only agree on Fresh. Now `--ff-ink` on `--ff-panel`: Fresh 15.89,
-  Modern 15.89, **Midnight 1.09 → 12.84**.
-
-**Still open, in Nick's agreed order:** 03, 04, 05, 06 as one pass with their
-grid conversions; then 07, 09, 12; then the responsive spec (15). **08 and 10
-are decisions, not work.** He has chosen to convert **all seven** flex layouts
-to grid, not only the four that are also faults.
-
-**13 became a theme rework and is the big one.** Verified from
-`~/Dev/playground/wp-admin/css/colors/`: **all eight schemes set
+**The theme rework is the next piece of work.** wp-admin's colour schemes are
+menu-and-accent themes, not dark modes: **all eight set
 `body{background:#f0f0f0}`** (Light `#f5f5f5`) and **not one contains
 `#wpcontent`, `#wpbody`, `.wrap`, `.postbox`, `.card` or `table.widefat`**.
 Midnight's 21KB is 104 rules on buttons, 69 on the admin bar, 60 on the admin
-menu, 13 on media accents, 4 on links, 1 on the body. They are
-menu-and-accent themes, not dark modes.
+menu, 13 on media accents, 4 on links, 1 on the body.
 
-We have blocks for **two of eight** schemes, and on the other six `--ff-sel`
-stays Fresh's `#2271b1` while core's primary button is olive `#646c3e`
-(Ectoplasm), brown `#916745` (Coffee), green `#567958` (Ocean), orange
-`#ad631e` (Sunrise). On Midnight ours is `#69a8bb` — its *notification* colour
-— while core's primary action is red `#cf4339`.
+We do the opposite: blocks for **two of eight** schemes, so on the other six
+`--ff-sel` stays Fresh's `#2271b1` while core's primary button is olive
+`#646c3e` (Ectoplasm), brown `#916745` (Coffee), green `#567958` (Ocean),
+orange `#ad631e` (Sunrise). On Midnight ours is `#69a8bb` — its *notification*
+colour — while core's primary action is red `#cf4339`. And our `accent-color`
+on the matrix checkboxes is already dead: `.folderfolio-matrix
+input[type=checkbox]` is (0,1,1) and core's `.wp-core-ui` rule matches it and
+comes later, so core's accent wins on form controls whatever we write.
 
 **Nick's decision: "the rail is part of the library it filters."** Surfaces
-follow the content, not the chrome — which they already do on seven of eight
-schemes, just not deliberately. The rework drops the 14 Midnight surface
-tokens, the 10-token Midnight folder-colour block and the entire 28-token
-`.media-modal .folderfolio` block — **52 of 79 overrides** — and replaces them
-with one accent quartet per scheme for all eight. Two tests go with it, both of
-which exist only to police what is being removed.
+follow the content — which they already do on seven of eight schemes, just not
+deliberately. The rework drops the 14 Midnight surface tokens, the 10-token
+Midnight folder-colour block and the whole 28-token `.media-modal .folderfolio`
+block — **52 of 79 overrides** — for one accent quartet per scheme across all
+eight. Two tests go with it, both of which exist only to police what is being
+removed.
+
+**It should also delete the v0.2.0 palette in `admin.css`.** That `:root` block
+declares `--ff-brand-*`, `--ff-ink-900/700`, `--ff-surface-0/50`, `--ff-border`,
+`--ff-danger-600` and `--ff-success-600` as fixed hexes, and its own comment
+says it "hard-codes hexes that are wrong in seven of core's eight admin colour
+schemes" and survives "only until the rail is rebuilt on the designed
+components" — which has happened. Nothing outside `admin.css` uses those
+tokens; no PHP, TSX or block markup uses the classes they style
+(`.folderfolio-folder-count`, `-folder-name`, `-toggle`, `-children`).
+`TokensTest::test_the_v0_2_0_palette_does_not_grow` pins its surface meanwhile.
+
+**Then, in Nick's agreed order:** findings 03, 04, 05, 06 as one pass with
+their grid conversions — he wants **all seven** flex layouts converted, not
+only the four that are faults; then 07, 09, 12; then the rest of the responsive
+spec (15). **08 and 10 are decisions, not work.**
 
 ### Three recorded deviations from the board
 
