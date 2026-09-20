@@ -58,13 +58,17 @@ final class TokensTest extends TestCase
     ];
 
     /**
-     * Tokens used as text, which must clear WCAG AA against the panel.
+     * Components that paint on a ground of their own rather than the panel.
+     *
+     * There is one surface palette, so the panel is the ground almost
+     * everywhere. The undo toast is the deliberate exception — it is chrome
+     * rather than page, and carries five tokens of its own.
+     *
+     * Keyed by the block prefix a selector has to contain. The test asserts
+     * every key still matches something, so this cannot rot into a lie.
      */
-    private const INK = [
-        '--ff-ink',
-        '--ff-muted',
-        '--ff-dim',
-        '--ff-danger-text',
+    private const GROUNDS = [
+        '.folderfolio-toast' => '--ff-toast-bg',
     ];
 
     /** Non-text contrast: an icon or a rule, not a word. */
@@ -241,28 +245,176 @@ final class TokensTest extends TestCase
         }
     }
 
-    public function test_text_tokens_clear_wcag_aa_on_the_panel(): void
+    /**
+     * Every token painted as text, found in the stylesheets rather than listed
+     * here, and checked against the ground it actually lands on.
+     *
+     * ## Why this is no longer a constant
+     *
+     * It used to be four token names kept by hand beside the stylesheets that
+     * paint with them: --ff-ink, --ff-muted, --ff-dim, --ff-danger-text. On
+     * 21 Sep --ff-off was found painting live text in four places at 3.24:1 on
+     * the panel — the crumb separator, the folder separator, a folder row's
+     * subtree count, and the one sentence that tells you an import source
+     * holds nothing. None of them had ever failed a test, because no test had
+     * ever been told to look at that token.
+     *
+     * A guard whose scope is a constant guards only that constant. So the
+     * scope is derived: every rule that sets `color: var(--ff-…)` and declares
+     * no background of its own paints on whatever surface it sits on, and this
+     * checks all of them, in all nine schemes.
+     *
+     * Two exemptions, both narrow and both stated:
+     *
+     * - Inactive controls. WCAG 1.4.3 excludes them by name, and that is what
+     *   --ff-off is for now.
+     * - Components with a ground of their own — GROUNDS, above.
+     *
+     * Rules that declare a background as well are the pair test's, below.
+     */
+    public function test_every_token_painted_as_text_clears_aa_on_its_ground(): void
     {
-        $tokens = self::colourTokens(self::css());
-        $panel = (string) $tokens['--ff-panel'];
+        $inks = self::inksInUse();
 
-        foreach (self::INK as $token) {
-            $value = $tokens[$token] ?? null;
+        self::assertNotEmpty(
+            $inks,
+            'No rule was found setting a colour from a token without a background of its own, '
+            . 'which means the scan is broken rather than the stylesheets being clean.'
+        );
 
-            self::assertNotNull($value, "{$token} is not defined.");
+        foreach (array_keys(self::GROUNDS) as $prefix) {
+            $matched = false;
 
-            if (!str_starts_with($value, '#')) {
+            foreach ($inks as [$selector]) {
+                if (str_contains($selector, $prefix)) {
+                    $matched = true;
+
+                    break;
+                }
+            }
+
+            self::assertTrue(
+                $matched,
+                "GROUNDS names {$prefix}, which no longer matches any rule. Either the component "
+                . 'was renamed or it is gone — either way this map is now describing something '
+                . 'that does not exist.'
+            );
+        }
+
+        $failures = [];
+
+        foreach (array_keys(self::SCHEME_ACCENTS) as $scheme) {
+            $values = self::paletteFor($scheme);
+
+            foreach ($inks as [$selector, $token, $ground]) {
+                $fg = $values[$token] ?? null;
+                $bg = $values[$ground] ?? null;
+
+                if ($fg === null || $bg === null) {
+                    $failures[] = sprintf(
+                        '%s: %s paints with %s on %s and one of them is not declared.',
+                        $scheme,
+                        $selector,
+                        $token,
+                        $ground
+                    );
+
+                    continue;
+                }
+
+                if (!str_starts_with($fg, '#') || !str_starts_with($bg, '#')) {
+                    continue;
+                }
+
+                $ratio = self::contrast($fg, $bg);
+
+                if ($ratio >= self::AA) {
+                    continue;
+                }
+
+                $failures[] = sprintf(
+                    '%s: %s paints %s (%s) on %s (%s) at %.2f:1, below AA.',
+                    $scheme,
+                    $selector,
+                    $token,
+                    $fg,
+                    $ground,
+                    $bg,
+                    $ratio
+                );
+            }
+        }
+
+        self::assertSame([], $failures, implode("\n", $failures));
+    }
+
+    /**
+     * Every rule in the component stylesheets that paints text from a token
+     * and leaves the ground to whatever it is sitting on.
+     *
+     * @return list<array{0: string, 1: string, 2: string}> selector, ink, ground
+     */
+    private static function inksInUse(): array
+    {
+        $dir = dirname(__DIR__, 3) . '/assets/src/core';
+        $files = glob($dir . '/*.css');
+
+        self::assertNotFalse($files, "No component stylesheets found in {$dir}.");
+
+        $inks = [];
+
+        foreach ($files as $file) {
+            // _tokens.css declares the tokens; it does not paint with them.
+            if (basename($file) === '_tokens.css') {
                 continue;
             }
 
-            $ratio = self::contrast($value, $panel);
+            $css = (string) file_get_contents($file);
 
-            self::assertGreaterThanOrEqual(
-                self::AA,
-                $ratio,
-                sprintf('%s (%s) on the panel (%s) is %.2f:1, below AA.', $token, $value, $panel, $ratio)
-            );
+            // Comments first: one of them quotes a rule it is describing.
+            $css = (string) preg_replace('#/\*.*?\*/#s', '', $css);
+
+            preg_match_all('/([^{}]+)\{([^{}]*)\}/s', $css, $rules, PREG_SET_ORDER);
+
+            foreach ($rules as $rule) {
+                $selector = trim((string) preg_replace('/\s+/', ' ', $rule[1]));
+                $body = $rule[2];
+
+                if (preg_match('/(?<![-\w])color\s*:\s*var\((--ff-[\w-]+)\)\s*;/', $body, $ink) !== 1) {
+                    continue;
+                }
+
+                // A rule that names its own ground is the pair test's.
+                if (
+                    preg_match(
+                        '/background(?:-color)?\s*:\s*var\((--ff-[\w-]+)\)\s*;/',
+                        $body,
+                        $ignored
+                    ) === 1
+                ) {
+                    continue;
+                }
+
+                // WCAG 1.4.3 exempts inactive user interface components.
+                if (preg_match('/:disabled|\[disabled\]|aria-disabled/', $selector) === 1) {
+                    continue;
+                }
+
+                $ground = '--ff-panel';
+
+                foreach (self::GROUNDS as $prefix => $token) {
+                    if (str_contains($selector, $prefix)) {
+                        $ground = $token;
+
+                        break;
+                    }
+                }
+
+                $inks[] = [basename($file) . ' ' . $selector, $ink[1], $ground];
+            }
         }
+
+        return $inks;
     }
 
     /**

@@ -308,6 +308,130 @@ test.describe('the settings screen', () => {
 
 
     /**
+     * Finding A1 of the 21 Sep re-audit — the half of finding 02 that the
+     * guard above could not see.
+     *
+     * The guard above sweeps eleven widths with the roles this site happens to
+     * have, and every one of their names contains a space. A table's intrinsic
+     * minimum is set by the longest *unbreakable* word in it, so that sweep
+     * measured a floor for those five strings and not a floor for the column.
+     *
+     * A role's display name comes from whatever registered it. Measured
+     * 21 Sep with one German compound — a shape any of the membership plugins
+     * can produce, and so can a plugin that registers a slug as a label — the
+     * table went from its 272px floor to 458.4px and the page scrolled
+     * sideways 91px at 390, 121 at 360 and 161 at 320. Worse than the overflow
+     * finding 02 was opened for.
+     *
+     * Two assertions, and the second is the one that matters. It is easy to
+     * stop the overflow by letting the column be crushed instead:
+     * `overflow-wrap: anywhere` on its own drops the role column's minimum to
+     * one character, the four ability columns take their declared 108px, and
+     * the result is a 27px role column in a 199px-tall row — at ordinary
+     * widths, with ordinary names. So this asserts that the column keeps a
+     * readable width *as well as* that the page does not scroll.
+     */
+    test('the roles matrix survives a role name that cannot be broken', async ({ page }) => {
+        await page.goto(`${SETTINGS}&tab=settings`);
+        await page.locator('.folderfolio-matrix').waitFor();
+
+        // Long, and with no space, hyphen or soft break anywhere in it.
+        const HOSTILE = 'Veranstaltungsmedienverwaltungsbeauftragter';
+
+        const planted = await page.evaluate((name) => {
+            const cell = document.querySelector(
+                '.folderfolio-matrix tbody tr:nth-child(3) th'
+            ) as HTMLElement | null;
+
+            if (cell === null) {
+                return false;
+            }
+
+            cell.textContent = name;
+
+            return /\s/.test(name) === false;
+        }, HOSTILE);
+
+        // The precondition: the string really is unbreakable and the cell
+        // really took it. A test that plants nothing asserts nothing.
+        expect(planted, 'the hostile role name was not planted').toBe(true);
+
+        const rows: Array<{
+            width: number;
+            table: number;
+            content: number;
+            overContent: number;
+            pageOverflow: number;
+            roleColumn: number;
+            roleFont: number;
+        }> = [];
+
+        for (const width of [1280, 960, 782, 650, 600, 521, 520, 390, 375, 360, 320]) {
+            await page.setViewportSize({ width, height: 900 });
+            await page.waitForTimeout(250);
+
+            rows.push(
+                await page.evaluate((w) => {
+                    const matrix = document.querySelector('.folderfolio-matrix') as HTMLElement;
+                    const body = document.querySelector(
+                        '.folderfolio-settings__body'
+                    ) as HTMLElement;
+                    const de = document.documentElement;
+                    const cs = getComputedStyle(body);
+
+                    const content =
+                        body.clientWidth
+                        - parseFloat(cs.paddingLeft)
+                        - parseFloat(cs.paddingRight);
+
+                    const mb = matrix.getBoundingClientRect();
+
+                    // Row 1 is Administrator — an ordinary name. This is the
+                    // column that must not be starved by the fix for row 3.
+                    const ordinary = matrix.querySelector(
+                        'tbody tr:nth-child(1) th'
+                    ) as HTMLElement;
+
+                    return {
+                        width: w,
+                        table: Math.round(mb.width * 10) / 10,
+                        content: Math.round(content * 10) / 10,
+                        overContent: Math.round((mb.width - content) * 10) / 10,
+                        pageOverflow: de.scrollWidth - de.clientWidth,
+                        roleColumn: Math.round(ordinary.getBoundingClientRect().width * 10) / 10,
+                        roleFont: parseFloat(getComputedStyle(ordinary).fontSize),
+                    };
+                }, width)
+            );
+        }
+
+        console.table(rows);
+
+        for (const row of rows) {
+            expect(
+                row.pageOverflow,
+                `${row.width}px: one unbreakable role name scrolls the page sideways by `
+                    + `${row.pageOverflow}px`
+            ).toBe(0);
+
+            expect(
+                row.overContent,
+                `${row.width}px: the table is ${row.table}px in a ${row.content}px content box`
+            ).toBeLessThanOrEqual(0.5);
+
+            // Six characters of the font's own size is about the narrowest a
+            // role column can be and still be read. Expressed against the
+            // font because the metrics come down at 520 with everything else.
+            expect(
+                row.roleColumn,
+                `${row.width}px: the role column collapsed to ${row.roleColumn}px — the fix for `
+                    + 'the long name is starving the ordinary ones'
+            ).toBeGreaterThan(row.roleFont * 6);
+        }
+    });
+
+
+    /**
      * Finding 04 of the settings audit.
      *
      * `.folderfolio-status th` declares `width: 220px`, which is right while

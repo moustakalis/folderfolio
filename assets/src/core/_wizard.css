@@ -137,9 +137,13 @@
   font-weight: 400;
 }
 
+/* --ff-off is 3.24:1 on the panel. It is the disabled ink, and this is not a
+   disabled control — it is the row's whole answer, the one sentence telling
+   you the source holds nothing. It takes the same token as the detail line
+   above it. */
 .folderfolio-source__none {
   font-size: 12px;
-  color: var(--ff-off);
+  color: var(--ff-dim);
 }
 
 /* The preview's lines: a 210px label column, then the sentence. */

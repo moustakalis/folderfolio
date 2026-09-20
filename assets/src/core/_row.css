@@ -331,8 +331,10 @@
   border: 1px dashed var(--ff-off);
 }
 
+/* A number the reader is meant to read, at 3.24:1 on the panel until 21 Sep.
+   Subordinate to the direct count, not faded out of legibility. */
 .folderfolio-row__count-subtree {
-  color: var(--ff-off);
+  color: var(--ff-dim);
 }
 
 /* ----------------------------------------------------------------- states */

@@ -72,7 +72,10 @@
   --ff-ink: #1d2327;
   --ff-muted: #50575e;
   --ff-dim: #646970;
-  --ff-off: #8c8f94;          /* disabled */
+  /* 3.24:1 on the panel, so it is legal only where WCAG 1.4.3 exempts it:
+     an inactive control, or a border. Never running text — it had leaked
+     into four pieces of live text by 21 Sep. */
+  --ff-off: #8c8f94;          /* disabled controls and borders only */
   --ff-line: #dcdcde;         /* hairline within a panel */
   --ff-rule: rgba(29, 35, 39, 0.4); /* 2px rule between sections */
   --ff-guide: #e6e6e8;        /* tree indent guides */

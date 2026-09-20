@@ -494,7 +494,22 @@ final class SettingsPage
                 </form>
             <?php endforeach; ?>
 
-            <button type="button" class="button" data-folderfolio-copy="#folderfolio-report">
+            <?php
+            /*
+             * The confirmation label is handed over from here rather than
+             * written in the bundle. settings.ts falls back to a literal
+             * 'Copied', and until 21 Sep nothing set this attribute — so the
+             * fallback always won and the one word the button says after you
+             * press it was the only string in the plugin that `make-pot`
+             * could not see.
+             */
+            ?>
+            <button
+                type="button"
+                class="button"
+                data-folderfolio-copy="#folderfolio-report"
+                data-folderfolio-copied="<?php esc_attr_e('Copied', 'folderfolio'); ?>"
+            >
                 <?php esc_html_e('Copy report', 'folderfolio'); ?>
             </button>
         </div>

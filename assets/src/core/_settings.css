@@ -309,8 +309,37 @@
   text-align: left;
 }
 
-/* The role name. A row header, not a cell: it names its row, and the four
-   checkboxes beside it are announced with it. */
+/*
+ * The role name. A row header, not a cell: it names its row, and the four
+ * checkboxes beside it are announced with it.
+ *
+ * It is also the only cell in this table holding a string we do not control —
+ * a role's display name comes from whatever registered it. A table will not go
+ * below its intrinsic minimum, and that minimum is the longest unbreakable
+ * word in it: measured 21 Sep, one German compound role name took this table
+ * from its 272px floor to 458.4px and put 161px of the page off screen at 320,
+ * worse than the overflow the floor was written to remove.
+ *
+ * Two declarations, and both are needed.
+ *
+ * `overflow-wrap: anywhere` rather than `break-word`, because only `anywhere`
+ * lowers the min-content width, and min-content is the number that floors a
+ * table. But `anywhere` alone lets the column be starved: above 520 the four
+ * ability columns are declared at 108px, a declared width is a *minimum* in
+ * auto table layout, and with the role column's minimum reduced to one
+ * character the algorithm hands them everything — 27.2px of role column and a
+ * 199.5px-tall row, at ordinary widths with ordinary names. So `min-width`
+ * puts the floor back as a floor of our own.
+ *
+ * 6.4em rather than a pixel value so it tracks the font-size, which comes down
+ * to 12px below 520 with the rest of the matrix's metrics. It is a column
+ * minimum, not a fit for any particular name: a name longer than it still
+ * breaks, which is the point.
+ *
+ * Scoped to this cell and not to `th, td`: giving the ability heads `anywhere`
+ * drops *their* min-content to one letter too, and the tick rhythm at 320 goes
+ * from 47.6 / 47 / 46.3 to 42.1 / 41.6 / 51.5.
+ */
 .folderfolio-matrix th.folderfolio-matrix__role {
   padding: 8px;
   font-size: 13px;
@@ -318,6 +347,8 @@
   text-align: left;
   text-transform: none;
   letter-spacing: 0;
+  overflow-wrap: anywhere;
+  min-width: 6.4em;
 }
 
 .folderfolio-matrix input[type='checkbox'] {
@@ -384,6 +415,15 @@
   padding: 9px 0;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
+}
+
+/* The same intrinsic-minimum problem as the roles matrix, and milder only
+   because the card's padding was absorbing it: at 320 an unbreakable folder
+   name in *Deepest path* took the table to 282.5px inside a 272px content
+   box, with the page reporting no overflow at all. */
+.folderfolio-status th,
+.folderfolio-status td {
+  overflow-wrap: anywhere;
 }
 
 .folderfolio-status__bad {

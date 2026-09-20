@@ -88,7 +88,7 @@
 }
 
 .folderfolio-crumbs__sep {
-  color: var(--ff-off);
+  color: var(--ff-dim);
 }
 
 .folderfolio-crumbs__link {
@@ -448,7 +448,7 @@ body.folderfolio-dragging .folderfolio-row {
  */
 .folderfolio-folders__sep {
   margin: 0 8px;
-  color: var(--ff-off);
+  color: var(--ff-dim);
 }
 
 /* Forced colours drop the hover ink; the underline is what has to survive. */
