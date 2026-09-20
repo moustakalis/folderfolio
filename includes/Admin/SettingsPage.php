@@ -333,8 +333,21 @@ final class SettingsPage
                 <div class="folderfolio-field__control">
                     <div class="folderfolio-swatches">
                         <?php foreach (self::SWATCHES as $slug => $name) : ?>
+                            <?php
+                            /*
+                             * An empty span with a `title` has no accessible
+                             * name and no name at all on a phone, where there
+                             * is no hover — and below 520 this strip takes a
+                             * row of its own, which is exactly the width where
+                             * the tooltip cannot be reached. role="img" plus
+                             * aria-label gives the colour a name; the title
+                             * stays for the pointer.
+                             */
+                            ?>
                             <span
                                 class="folderfolio-swatch"
+                                role="img"
+                                aria-label="<?php echo esc_attr($name); ?>"
                                 style="background: var(--ff-folder-<?php echo esc_attr($slug); ?>)"
                                 title="<?php echo esc_attr($name); ?>"
                             ></span>
