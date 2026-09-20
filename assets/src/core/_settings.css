@@ -87,7 +87,8 @@
 
 /* A settings row: a 200px label column, then the control. */
 .folderfolio-field {
-  display: flex;
+  display: grid;
+  grid-template-columns: 200px 1fr;
   gap: 20px;
   padding: 14px 0;
   border-bottom: 1px solid var(--ff-line);
@@ -99,8 +100,7 @@
 }
 
 .folderfolio-field__label {
-  flex: 0 0 200px;
-  width: 200px;
+  min-width: 0;
 }
 
 .folderfolio-field__name {
@@ -123,7 +123,6 @@
 }
 
 .folderfolio-field__control {
-  flex: 1;
   min-width: 0;
 }
 
@@ -136,7 +135,8 @@
  * some script would have to keep in step.
  */
 .folderfolio-seg {
-  display: flex;
+  display: grid;
+  grid-auto-flow: column;
   width: max-content;
   border: 1px solid var(--ff-field-line);
   margin-bottom: 6px;
@@ -205,7 +205,9 @@
 }
 
 .folderfolio-field__inline {
-  display: flex;
+  display: grid;
+  grid-auto-flow: column;
+  justify-content: start;
   align-items: center;
   gap: 10px;
   font-size: 12.5px;
@@ -220,9 +222,16 @@
  * the folder icon uses, so a scheme change moves both together and there is
  * no second list of hexes to keep in step.
  */
+/*
+ * Ten 20px swatches and a note. As a wrapping flex row the note dropped to a
+ * second line below 433px and took its 6px left margin with it, so it read as
+ * an indented caption rather than a label on the row. Declared instead: ten
+ * fixed tracks and the note in the remainder, and below 520 the note takes a
+ * row of its own deliberately, with the inset zeroed.
+ */
 .folderfolio-swatches {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(10, 20px) 1fr;
   align-items: center;
   gap: 6px;
 }
@@ -233,15 +242,37 @@
 }
 
 .folderfolio-swatches__note {
-  margin-left: 6px;
+  margin-left: 0;
   font-size: 12px;
   color: var(--ff-muted);
 }
 
-/* The roles matrix. */
+/*
+ * The roles matrix.
+ *
+ * It used to be `width: 100%`, which at an 832px card made the four ability
+ * columns auto-size to their head text — 136.1 / 144.1 / 133.2 / 216.3,
+ * because "Assign files" is two words — so the tick gaps came out 140.1 /
+ * 138.6 / 174.8 and the row read as three plus one. The same full width put
+ * 180.8px between the end of a role's name and the first tick it governs,
+ * while the note on the 880px card cap says 96px is already too far.
+ *
+ * One declared width on the ability columns fixes both: the four equalise at
+ * 124px, the gaps are 124 / 124 / 124, and the table shrinks to what it needs
+ * instead of what it is given — 593.5px of the 832 available, which brings the
+ * first tick to 70px from the name.
+ *
+ * The declared width has to come off below 520, where the table is instead
+ * being squeezed to fit a phone: a specified column width is a *minimum* in
+ * auto table layout, so leaving it on would put the floor back above 500px.
+ */
 .folderfolio-matrix {
-  width: 100%;
+  width: auto;
   border-collapse: collapse;
+}
+
+.folderfolio-matrix thead th:not(:first-child) {
+  width: 108px;
 }
 
 .folderfolio-matrix th {
@@ -261,8 +292,11 @@
   text-align: left;
 }
 
+/* --ff-canvas is the page background painted on a panel: 1.14:1, which is not
+   a line. The row rule is what the eye tracks across four tick columns, so it
+   gets the hairline token the rest of the card uses. */
 .folderfolio-matrix tbody tr {
-  border-bottom: 1px solid var(--ff-canvas);
+  border-bottom: 1px solid var(--ff-line);
 }
 
 .folderfolio-matrix td {
@@ -325,9 +359,12 @@
 }
 
 .folderfolio-status tr {
-  border-bottom: 1px solid var(--ff-canvas);
+  border-bottom: 1px solid var(--ff-line);
 }
 
+/* 220px is right while there is room for it; below 520 the key and the value
+   stack, because at a 318px table it left the answer 90px and wrapped
+   "Deepest path" to four lines. */
 .folderfolio-status th {
   width: 220px;
   padding: 9px 8px 9px 0;
@@ -348,10 +385,22 @@
   font-weight: 700;
 }
 
+/*
+ * Two repair actions and one that is not. As a wrapping flex row, Copy report
+ * fell onto a line of its own below 480 and landed under Rebuild paths, which
+ * grouped it with the two destructive tools. Declared: the repair pair on the
+ * left, Copy report pushed to the other end, which is the grouping the wrap
+ * was accidentally denying.
+ */
 .folderfolio-tools {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: start;
   gap: 8px;
+}
+
+.folderfolio-tools > [data-folderfolio-copy] {
+  justify-self: end;
 }
 
 .folderfolio-report {
@@ -362,9 +411,18 @@
   line-height: 1.6;
 }
 
-/* Import — one row per detected source. */
+/*
+ * Import — one row per detected source.
+ *
+ * As a flex row the body was `flex: 1` against a button whose minimum is its
+ * own label, so at a 390px viewport the button held 129.1px and the sentence
+ * that tells you whether to press it was squeezed to 176.9 and wrapped to
+ * three lines. Two declared tracks instead, and below 520 the button takes
+ * the full width under the text rather than a third of the row beside it.
+ */
 .folderfolio-source {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 12px;
   padding: 12px 0;
@@ -386,7 +444,6 @@
 }
 
 .folderfolio-source__body {
-  flex: 1;
   min-width: 0;
 }
 
@@ -400,13 +457,8 @@
 
 @media screen and (max-width: 782px) {
   .folderfolio-field {
-    flex-direction: column;
+    grid-template-columns: 1fr;
     gap: 8px;
-  }
-
-  .folderfolio-field__label {
-    flex-basis: auto;
-    width: auto;
   }
 }
 
@@ -464,5 +516,60 @@
   .folderfolio-matrix th.folderfolio-matrix__role {
     padding-left: 0;
     font-size: 12px;
+  }
+
+  /* A specified column width is a minimum in auto table layout, so the
+     108px that evens the columns on a desktop would hold the floor above
+     500px here. And the table fills the card again rather than shrinking to
+     its own content: with both off, it sat at 301.8px in a 472px box just
+     under the breakpoint, which reads as the table losing its nerve. */
+  .folderfolio-matrix {
+    width: 100%;
+  }
+
+  .folderfolio-matrix thead th:not(:first-child) {
+    width: auto;
+  }
+
+  /* The status table stacks, key over value. */
+  .folderfolio-status th,
+  .folderfolio-status td {
+    display: block;
+    width: auto;
+    padding: 0;
+  }
+
+  .folderfolio-status th {
+    padding-top: 9px;
+  }
+
+  .folderfolio-status td {
+    padding-bottom: 9px;
+  }
+
+  /* One control per row: the two repair buttons and the copy are all full
+     width, rather than two of them sharing a line and the third orphaned. */
+  .folderfolio-tools {
+    grid-template-columns: 1fr;
+  }
+
+  .folderfolio-tools > [data-folderfolio-copy] {
+    justify-self: stretch;
+  }
+
+  /* The source row's action goes under its text, full width. */
+  .folderfolio-source {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  /* The swatch note takes its own row, without the inset it carried when it
+     wrapped by accident. */
+  .folderfolio-swatches {
+    grid-template-columns: repeat(10, 20px);
+  }
+
+  .folderfolio-swatches__note {
+    grid-column: 1 / -1;
   }
 }

@@ -12,8 +12,18 @@
 }
 
 /* The step rail. An ordered list, because that is what it is. */
+/*
+ * Four steps, declared as four tracks.
+ *
+ * As a flex row with `flex: 1` on each step they wrapped three-and-one at a
+ * 390px viewport — 106 + 106 + 106, then step 4 alone at 318, with the first
+ * three squeezed until their titles ran to three lines. Four never divides
+ * into a wrapping row; it divides into two rows of two, which is what this
+ * does below 520.
+ */
 .folderfolio-wizard__steps {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   margin: 0 0 20px;
   padding: 0;
   list-style: none;
@@ -21,7 +31,6 @@
 }
 
 .folderfolio-wizard__step {
-  flex: 1;
   padding: 14px 16px;
   border-right: 1px solid var(--ff-line);
   border-bottom: 3px solid transparent;
@@ -253,5 +262,21 @@
   .folderfolio-wizard__lineLabel {
     flex-basis: auto;
     width: auto;
+  }
+}
+
+@media screen and (max-width: 520px) {
+  .folderfolio-wizard__steps {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* In two columns the right-hand step of each row is the one that ends it,
+     not just the last of the four. */
+  .folderfolio-wizard__step:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .folderfolio-wizard__step:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--ff-line);
   }
 }
