@@ -372,23 +372,23 @@ rail** (clips by 12), 234 in 278 at 280, 74 to spare at Nick's 310 — so the ol
 pair comes back below **298**, the breakpoint where the indent already drops to
 16 and the tool row is already icons only. No new number.
 
-### Next — finding 01, then the rest of the responsive spec
+### Next — the release track
 
-**Thirteen of the settings audit's fifteen findings are closed.** The layout
-pass (`d3fc3ce`) took 03, 04, 05, 06, 07, 09 and 12 and converted all seven
-flex layouts to grid; 02 and 11 went in `9c59c1b`, guarded in `86e26e0`; 13
-became the theme rework (`5ab95ef`). **08 and 10 are decisions, not work.**
+**All fifteen of the settings audit's findings are closed.** The layout pass
+(`d3fc3ce`) took 03, 04, 05, 06, 07, 09 and 12 and converted all seven flex
+layouts to grid; 02 and 11 went in `9c59c1b`, guarded in `86e26e0`; 13 became
+the theme rework (`5ab95ef`); 15 — the four remaining guards, plus the fix the
+first of them found — went in `9519946`. **08 and 10 were decisions, not
+work.**
 
-Two left:
-
-- **01** — the card is **759px at 961 and 882px at 960**, and **705 at 783 and
-  760 at 782**. It gets *wider* as the window narrows, at both of wp-admin's
-  own breakpoints, because the 880px cap is measured against a column whose
-  width jumps when the admin menu folds and again when it drops. 961 is the
-  narrowest the card ever gets above the phone range.
-- **15** — the rest of the responsive spec. The roles-matrix guard exists
-  (eleven widths, three assertions, a negative control); the status table, the
-  tools row, the source row and the wizard steps have none.
+**01 is closed as not a defect.** The card is **759px at 961 and 882px at
+960**, and **705 at 783 and 760 at 782** — it gets *wider* as the window
+narrows, at both of wp-admin's own breakpoints, because the 880px cap is
+measured against a column that loses the admin menu's 160px in one step (→ 36
+at 960, → 0 at 782). **Core's own `.form-table` on `options-general.php` jumps
+by the identical numbers at the identical pixels.** Any plugin that caps a card
+at a fixed `max-width` inherits it. Two fixes were built and costed; neither
+removes the jump.
 
 Headline numbers from the layout pass, for anything that touches these again:
 the matrix's ability columns are **declared at 108px and equalise at 124**, so
@@ -396,6 +396,20 @@ the tick gaps are **124 / 124 / 124** and the table takes **593.5 of 832**;
 below 520 that width comes off and `width: 100%` goes back on, because **a
 specified column width is a minimum in auto table layout** and leaving it would
 put finding 02's floor back above 500px.
+
+**`.folderfolio-status th` is `width: min(220px, 38%)`, not a flat 220px.** The
+flat value floored rather than capped: at 521px of viewport the table is 449px,
+the label took **228px** and the answer **221px**, and the label won in a
+**521–528px band** eight pixels wide. The sweep had measured those numbers and
+not questioned them; the new guard failed on its first run. Write the rule so
+the property holds **by construction**, not at the widths you sampled.
+
+**A guard with an early `continue` can assert nothing and still be green.** The
+source-row guard was written against `row.querySelector('button')` — but a row
+renders a button only when the source holds data, and the e2e harness installs
+no competitors, so every action there is the "Nothing to import" span and every
+row was skipped. The negative control came back **3 failed, not 4**. Count the
+failures against the number of fixes you reverted.
 
 ### Three recorded deviations from the board
 
