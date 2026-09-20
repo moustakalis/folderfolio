@@ -372,6 +372,24 @@ rail** (clips by 12), 234 in 278 at 280, 74 to spare at Nick's 310 — so the ol
 pair comes back below **298**, the breakpoint where the indent already drops to
 16 and the tool row is already icons only. No new number.
 
+### Next — the settings screen has never been audited
+
+The library screen has had four audits in five days. **The settings screen has
+had none since it was built on 17 Sep**, and it is the plugin's other whole
+surface: `/wp-admin/admin.php?page=folderfolio`, three tabs — `&tab=settings`,
+`&tab=import`, `&tab=status`. `Admin\SettingsPage.php` (612 lines) renders the
+tabs and the fields; `Admin\ImportPage.php` (260) renders the wizard;
+`_settings.css` is 396 lines and `_wizard.css` another 244.
+
+Audit it the way the library screen was audited, and in this order: measure it
+in the browser at several widths and in both colour schemes, compare it against
+the design board and against wp-admin's own settings conventions, list what is
+found with numbers attached, and put the list up before changing anything. The
+traps this file records are all live there too — wp-admin's element selectors
+reach inside our components, `.wp-core-ui` beats a bare class of ours, and the
+roles matrix is a table, which is the one shape none of the library work has
+had to lay out.
+
 ### Three recorded deviations from the board
 
 Each was a decision the handoff does not contain, taken deliberately:
