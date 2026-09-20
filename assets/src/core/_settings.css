@@ -165,9 +165,24 @@
   border-left: 1px solid var(--ff-field-line);
 }
 
+/*
+ * The checked segment takes --ff-ink on --ff-panel, which is a pair by
+ * definition: --ff-ink IS the text colour on --ff-panel. It resolved to
+ * --ff-bar and --ff-on-sel until 20 Sep, and those two were never a pair —
+ * --ff-bar is the admin menu's chrome ground, --ff-on-sel is the ink that
+ * sits on --ff-sel. They coincide on Fresh by accident. On Midnight
+ * --ff-on-sel correctly flips dark, because --ff-sel became a light blue,
+ * while the bar stayed dark: #1d2327 on #26292c, 1.09:1, with the *unchecked*
+ * label at 14.97:1. The selected option was the invisible one.
+ *
+ * Third instance of the mistake this file's own tokens document twice
+ * (--ff-accent-text, then the undo toast): borrowing two tokens that happen
+ * to agree on Fresh. On Fresh this resolves to #1d2327 on #ffffff, which is
+ * exactly what the design board draws for this control.
+ */
 .folderfolio-seg input:checked + label {
-  background: var(--ff-bar);
-  color: var(--ff-on-sel);
+  background: var(--ff-ink);
+  color: var(--ff-panel);
   font-weight: 700;
 }
 
@@ -392,5 +407,62 @@
   .folderfolio-field__label {
     flex-basis: auto;
     width: auto;
+  }
+}
+
+/*
+ * Below 520px the roles matrix is the widest thing on this screen, and it has
+ * a floor: five columns whose heads have already wrapped to three lines,
+ * 361.8px, against a 318px content box at a 390px viewport. Left alone the
+ * *page* scrolls sideways — .folderfolio-matrix-wrap is overflow-x: visible,
+ * so there is no scroller to absorb it: 7px at 390, 37px at 360, 77px at 320.
+ *
+ * Trimming the column padding and the head type takes the floor to 277.2px,
+ * which clears every phone down to 320 with the table's shape intact, once the
+ * card's own side padding comes down with it. Measured after: the table is
+ * sized by the content box at 342/312/272 for 390/360/320, sits 13px inside
+ * the card's border at each, and scrollWidth === clientWidth at every width
+ * from 320 to 1500.
+ *
+ * Measuring this the first time, the table was declared to "fit" at 320 on a
+ * clientWidth reading — which includes the card's padding. It did not: it ran
+ * 29.2px past the content box and 4.2px past the card's border, with the page
+ * still not scrolling because the padding absorbed it. Compare the table
+ * against the *content* box, not the client box.
+ *
+ * A scroll container on the wrap was the alternative, with the role column
+ * sticky. It also reaches zero page overflow, and it was rejected: it hides
+ * 44px of ticks at 390 and 114px at 320 behind a horizontal swipe, inside a
+ * form that scrolls vertically. Padding-only, keeping the heads at 11px,
+ * holds 390 but overflows 320 by 29px — 320 is a supported width, so the
+ * heads come down a step too.
+ */
+@media screen and (max-width: 520px) {
+  /* 24px of side padding is 15% of a 320px screen, and it is what pushed the
+     table past the card's own border there: the matrix floors at 272px and the
+     content box was 248. Halving it gives 272 exactly, and the card reads
+     better on a phone for it. */
+  .folderfolio-settings__head,
+  .folderfolio-settings__body {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .folderfolio-matrix th,
+  .folderfolio-matrix td {
+    padding-left: 2px;
+    padding-right: 2px;
+  }
+
+  .folderfolio-matrix th {
+    font-size: 10px;
+    letter-spacing: 0.02em;
+  }
+
+  /* (0,2,1), so it beats the rule above and the base role rule's padding
+     shorthand — which is why the left inset has to be restated here. */
+  .folderfolio-matrix th.folderfolio-matrix__role {
+    padding-left: 0;
+    font-size: 12px;
   }
 }
