@@ -411,6 +411,20 @@ no competitors, so every action there is the "Nothing to import" span and every
 row was skipped. The negative control came back **3 failed, not 4**. Count the
 failures against the number of fixes you reverted.
 
+**The admin menu's current-item arrow was measured and deliberately left.**
+Core paints `#adminmenu li.current a.menu-top::after` the colour of the canvas
+it points into — `#f0f0f0` in seven schemes, `#f5f5f5` in Light. On
+`upload.php` we replaced that canvas: the rail starts at x=160 with a **gap of
+0**, and the arrow's 8px triangle lands inside `#folderfolio-rail`, which is
+`#fff`. A real seam, in all eight schemes, of **15 levels out of 255** — and
+rendered both ways it is **not visible at 8px**. Nick's call: leave it. If it
+ever comes back it is three lines scoped to `body.folderfolio-has-rail`, the
+class we already set on the one screen whose canvas we replace, with
+`var(--ff-panel)` covering all eight.
+
+> **A real measurement is not automatically a visible defect.** Render it
+> before spending a rule on it.
+
 ### Three recorded deviations from the board
 
 Each was a decision the handoff does not contain, taken deliberately:
@@ -1121,6 +1135,29 @@ children and then failed on its own row left the children reparented.
   which would have meant `after()` callbacks never fired in any test.
 
 ## Things that will bite you
+
+**A guard with an early `continue` can assert nothing and still be green.** The
+source-row guard was written against `row.querySelector('button')`, but a
+source row renders a button only when the source **holds data** — and the e2e
+harness installs none of the four competitor plugins, so every action there is
+a `span.folderfolio-source__none` and every row was skipped. It passed with its
+own fix reverted; the negative control came back **3 failed, not 4**. Assert on
+the element that is always there, and on the **declared tracks**
+(`grid-template-columns`), which is what the shape actually rests on. **Count
+negative-control failures against the number of fixes you reverted.**
+
+**A flat pixel width against a proportional container floors rather than caps.**
+`.folderfolio-status th` was `width: 220px`: at 521px of viewport the table is
+449px, the label took **228** and the answer **221**, and the label won in a
+**521–528px band** eight pixels wide that the manual sweep had measured and not
+questioned. `min(220px, 38%)` is true by construction at every width. **Write
+the rule so the property holds everywhere, not at the widths you sampled.**
+
+**The unit suite needs its own config.** `php vendor/bin/phpunit -c
+phpunit-unit.xml.dist` — the bare `phpunit` picks `phpunit.xml.dist`, which is
+the *integration* suite, and dies on a missing `wordpress-tests-lib`. PHPStan
+is `php vendor/bin/phpstan.phar`, not a phar in the repo root.
+
 
 Every one of these cost real time and is now load-bearing somewhere.
 
