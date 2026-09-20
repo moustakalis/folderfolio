@@ -372,6 +372,62 @@ rail** (clips by 12), 234 in 278 at 280, 74 to spare at Nick's 310 — so the ol
 pair comes back below **298**, the breakpoint where the indent already drops to
 16 and the tool row is already icons only. No new number.
 
+### 21 Sep — the settings screen re-inspected cold: twelve held, twelve new
+
+Full account: `claude/progress-2026-09-21-settings-reaudit.md` in the project.
+Board, drawn to scale: **`claude.ai/artifact/5ArmiNuLWKzdZ3EnzCMPfS`**.
+
+**All twelve of the first audit's fixes were re-measured live and all twelve
+hold** — eleven widths (1440, 961, 960, 783, 782, 521, 520, 390, 375, 360, 320)
+and nine admin colour schemes, three tabs, the import wizard driven to its
+preview step. The matrix floor is 272px at 320 with zero page overflow; the
+status answer beats its label at *every pixel* from 521 to 535 (143.9 / 305.1 at
+521), so the 8px band is gone; the steps are 4 above 521 and 2+2 below; copy's
+right edge is 1039, flush with the body's inner right.
+
+**Twelve new findings, A1–A12.** The two that break:
+
+- **A1 — a role name with no break opportunity puts finding 02 straight back.**
+  One unbreakable token takes the matrix's intrinsic minimum from 272 to
+  **458.4px**, and the page scrolls sideways **91px at 390, 121 at 360, 161 at
+  320**. `_settings.css` contains **no `overflow-wrap` at all**; `_wizard.css`
+  declares `overflow-wrap: anywhere` twice. The status table has the same cause,
+  milder — 282.5 against a 272 content box at 320, with page overflow 0 because
+  the padding absorbs it.
+- **A2 — `.folderfolio-source__none` paints `--ff-off`**, `#8c8f94` on the white
+  panel: **3.24:1** at 12px, five instances on the import tab, every scheme.
+  `--ff-off` is commented `/* disabled */` and this is not a disabled control;
+  it is the row's whole answer.
+- **A3 — and this is why A2 was never caught.** `TokensTest::INK` is a
+  hand-written list of four tokens. `color: var(--ff-off)` appears at **eight
+  sites** across `_content.css`, `_wizard.css`, `_toolbar.css` and `_row.css`
+  and is checked by nothing.
+
+The rest: **A4** `"Copied"` in `settings.ts` has no route to translation
+(`data-folderfolio-copied` is set nowhere, so the literal always wins, and the
+POT would never see it); **A5** six flex layouts remain, all in `_wizard.css`
+plus `.folderfolio-settings__tabs`, none saying why, and a dead `flex-wrap:
+wrap` on a container that is now a grid; **A6** no RTL build and eleven physical
+properties that do not mirror; **A7** the Status tab has no heading, no lede,
+and repeats all seven rows verbatim in the report textarea; **A8** both repair
+tools are offered when there is nothing to repair; **A9** ten colour chips whose
+only name is a `title`; **A10** the Folder counts help line describes the
+unselected option; **A11** selection is expressed two ways forty pixels apart;
+**A12** the Administrator row's explanation is four rows below it.
+
+**A copy pass is proposed and not applied.** Nick asked for the settings text to
+read better and sell better. The import wizard's copy is the model — *"No
+account, no licence, no telemetry."* The settings tab ships two developer notes
+(*"§4, the market's worst bug"*, *"Two competitors charge for this table."*) and
+the status tab is written in database vocabulary (*schema version*, *1 row, 1
+distinct file*, *in step with the adjacency list*).
+
+**Nothing has been changed. Nick has the board and has not yet given an order.**
+Two of the findings are his to decide rather than measure: **A8** (should a
+repair with nothing to do be disabled, or available and honest?) and **A11**
+(should the checked segment take core's accent like everything else, or stay
+ink-on-panel?).
+
 ### Next — the release track
 
 **All fifteen of the settings audit's findings are closed.** The layout pass
@@ -1169,6 +1225,32 @@ scrolling because the card's 24px of right padding absorbed it. Use
 `clientWidth − paddingLeft − paddingRight`, and remember that **a page which
 does not scroll sideways is not proof that a child fits its parent** — only
 that the overflow was smaller than the padding around it.
+
+**Rendering the document with the scheme is only half of it — the stylesheet
+has to land where core's did.** The scheme's `colors.min.css` must *replace*
+core's `<link id="colors-css">` in place. Injected at the top of `<head>` it
+loses the cascade to core's later sheets: Light then renders with Midnight's
+menu (`#1d2327`) and a `#f0f0f1` canvas instead of `#f5f5f5`, and a contrast
+sweep comes back clean against the wrong document. Verify the swap took by
+reading `#adminmenuback`'s background, not by trusting the body class.
+
+**The extension's synthetic click does not always dispatch a DOM click event.**
+A capture-phase listener on the document recorded nothing for three clicks that
+the tool reported as successful and that `elementFromPoint` confirmed were on
+the button. Before reporting that a control does nothing, prove the event
+arrived — then exercise the handler directly (`el.click()`) to test its
+branches.
+
+**`overflow-wrap` is not inherited from a sibling stylesheet.** `_wizard.css`
+declares `overflow-wrap: anywhere` twice; `_settings.css` declares it nowhere,
+and a single unbreakable role name takes the roles matrix from a 272px floor to
+**458.4px**, with 161px of page overflow at 320. **A width floor measured with
+the fixture's own strings is a floor for those strings.**
+
+**A guard whose scope is a hand-written constant guards only that constant.**
+`TokensTest::INK` lists four tokens. `color: var(--ff-off)` appears at eight
+sites across four stylesheets and is `#8c8f94` on the panel — **3.24:1** — and
+nothing has ever checked it. Derive the list from the stylesheets.
 
 **A scheme or theme swapped onto a live document leaves stale colours.**
 Rewriting `document.body.className` to drive a colour scheme flips the custom
