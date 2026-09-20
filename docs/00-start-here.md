@@ -372,45 +372,48 @@ rail** (clips by 12), 234 in 278 at 280, 74 to spare at Nick's 310 — so the ol
 pair comes back below **298**, the breakpoint where the indent already drops to
 16 and the tool row is already icons only. No new number.
 
-### Next — the settings audit is done; fifteen findings are waiting on Nick
+### Next — two findings closed, and a theme rework agreed in principle
 
-The settings screen was audited on 20 Sep across three tabs, twenty-five widths
-from 320 to 1500 and three admin colour schemes. **Nothing was changed** — the
-list went up first. Full write-up in the project at
-`claude/progress-2026-09-20e-settings-audit.md`; the board, with every finding
-drawn to scale, is `claude.ai/artifact/NNp5KydLR8oFkkezdWESFA`.
+The settings audit (20 Sep) produced fifteen findings; the full write-up is in
+the project at `claude/progress-2026-09-20e-settings-audit.md` and the board is
+`claude.ai/artifact/NNp5KydLR8oFkkezdWESFA`.
 
-The two that break rather than disfigure:
+**Closed in `9c59c1b`** (see `…-2026-09-20f-…`):
 
-- **The roles matrix stops shrinking at 361.8px.** Five columns whose heads have
-  already wrapped to three lines. The card's content box is the viewport minus
-  70px, so from **433px down** the table is wider than its container and from
-  **397px down** wider than the window — and `.folderfolio-matrix-wrap` is
-  `overflow-x: visible`, so the **page** scrolls sideways: 7px at 390, 37px at
-  360, 77px at 320.
-- **On Midnight the checked segment of *Folder counts* is `#1d2327` on
-  `#26292c` — 1.09:1**, while the *unchecked* label is 14.97:1. The selected
-  option is the invisible one. Fresh is 15.89, Modern 16.67; only Midnight
-  inverts, because the checked background flips to the panel colour and the text
-  colour does not flip with it.
+- **02** — the roles matrix floored at 361.8px and scrolled the *page* sideways
+  below 397. Below 520 the column padding, head type and the card's own side
+  padding come down; the floor is **272px**, the table is sized by the content
+  box at every width from 320 to 1500, and nothing above 520 moved.
+- **11** — the checked segment paired `--ff-bar` with `--ff-on-sel`, two tokens
+  that only agree on Fresh. Now `--ff-ink` on `--ff-panel`: Fresh 15.89,
+  Modern 15.89, **Midnight 1.09 → 12.84**.
 
-The rest, in short: the card is **759px at 961 and 882px at 960** (and 705 → 760
-at 783 → 782), so it gets wider as the window narrows at both of wp-admin's
-breakpoints; the matrix's tick gaps are 140.1 / 138.6 / **174.8** because
-*Assign files* is two words, and the 880px cap leaves **180.9px** between the
-role name and the first tick while its own comment calls 96px too far;
-`.folderfolio-status th` is a hard `width: 220px` that leaves the value column
-90px on a phone; the import source row's button holds 129.1px while its text is
-squeezed to 176.9; the wizard's four steps wrap three-and-one; `Copy report`
-orphans below 480. Seven layouts on the screen are flex with no stated reason,
-four of which are the findings above. And the screen has **nine e2e tests, none
-of them a layout assertion**.
+**Still open, in Nick's agreed order:** 03, 04, 05, 06 as one pass with their
+grid conversions; then 07, 09, 12; then the responsive spec (15). **08 and 10
+are decisions, not work.** He has chosen to convert **all seven** flex layouts
+to grid, not only the four that are also faults.
 
-**Three things were checked and cleared**, and are not defects: Author's
-unticked *Create* box is a saved dev-site value (`Settings::defaultRoles()` and
-the spec board's §12 both say `['create', 'assign']`); the wizard's preview step
-is clean at 1440 and 390; and Midnight tab contrast is fine at 12.84 / 10.43 —
-see the harness trap below for why it first measured 1.09.
+**13 became a theme rework and is the big one.** Verified from
+`~/Dev/playground/wp-admin/css/colors/`: **all eight schemes set
+`body{background:#f0f0f0}`** (Light `#f5f5f5`) and **not one contains
+`#wpcontent`, `#wpbody`, `.wrap`, `.postbox`, `.card` or `table.widefat`**.
+Midnight's 21KB is 104 rules on buttons, 69 on the admin bar, 60 on the admin
+menu, 13 on media accents, 4 on links, 1 on the body. They are
+menu-and-accent themes, not dark modes.
+
+We have blocks for **two of eight** schemes, and on the other six `--ff-sel`
+stays Fresh's `#2271b1` while core's primary button is olive `#646c3e`
+(Ectoplasm), brown `#916745` (Coffee), green `#567958` (Ocean), orange
+`#ad631e` (Sunrise). On Midnight ours is `#69a8bb` — its *notification* colour
+— while core's primary action is red `#cf4339`.
+
+**Nick's decision: "the rail is part of the library it filters."** Surfaces
+follow the content, not the chrome — which they already do on seven of eight
+schemes, just not deliberately. The rework drops the 14 Midnight surface
+tokens, the 10-token Midnight folder-colour block and the entire 28-token
+`.media-modal .folderfolio` block — **52 of 79 overrides** — and replaces them
+with one accent quartet per scheme for all eight. Two tests go with it, both of
+which exist only to police what is being removed.
 
 ### Three recorded deviations from the board
 
@@ -1124,6 +1127,15 @@ children and then failed on its own row left the children reparented.
 ## Things that will bite you
 
 Every one of these cost real time and is now load-bearing somewhere.
+
+**`clientWidth` includes padding, so it is the wrong box to measure a child
+against.** The roles matrix was declared to fit a 320px screen on a
+`clientWidth` reading: it was 277.2 in a content box of 248, running 29.2px
+past the content box and 4.2px past the card's own border, with the page not
+scrolling because the card's 24px of right padding absorbed it. Use
+`clientWidth − paddingLeft − paddingRight`, and remember that **a page which
+does not scroll sideways is not proof that a child fits its parent** — only
+that the overflow was smaller than the padding around it.
 
 **A scheme or theme swapped onto a live document leaves stale colours.**
 Rewriting `document.body.className` to drive a colour scheme flips the custom
