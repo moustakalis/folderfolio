@@ -382,6 +382,14 @@
   margin-bottom: 10px;
 }
 
+/* Status opened straight onto the table — the only tab of the three with no
+   title and no sentence saying what it was for. The lede carries the promise
+   that matters: looking at this page changes nothing. */
+.folderfolio-status__lede {
+  margin-bottom: 16px;
+  max-width: 62ch;
+}
+
 /* Status — a key/value table, not a dashboard. */
 .folderfolio-status {
   width: 100%;

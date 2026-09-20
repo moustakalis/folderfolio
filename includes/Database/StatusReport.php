@@ -47,13 +47,13 @@ final class StatusReport
         $library = $this->assignments->libraryCounts();
 
         return [
-            $this->row(__('Schema version', 'folderfolio'), $this->schemaVersion()),
+            $this->row(__('Database', 'folderfolio'), $this->schemaVersion()),
             $this->row(
                 __('Folders', 'folderfolio'),
                 number_format_i18n($this->folderCount())
             ),
-            $this->row(__('Deepest path', 'folderfolio'), $this->deepestPath()),
-            $this->row(__('File assignments', 'folderfolio'), $this->assignmentSummary()),
+            $this->row(__('Deepest folder', 'folderfolio'), $this->deepestPath()),
+            $this->row(__('Files in folders', 'folderfolio'), $this->assignmentSummary()),
             $this->row(
                 __('Files in no folder', 'folderfolio'),
                 number_format_i18n($library['unassigned'])
@@ -118,7 +118,7 @@ final class StatusReport
         }
 
         return $this->row(
-            __('Orphaned assignments', 'folderfolio'),
+            __('Files pointing at nothing', 'folderfolio'),
             number_format_i18n($orphans),
             $orphans > 0
         );
@@ -141,18 +141,18 @@ final class StatusReport
 
         if (0 === $drifted) {
             return $this->row(
-                __('Materialised paths', 'folderfolio'),
-                __('In step with the adjacency list', 'folderfolio')
+                __('Folder tree', 'folderfolio'),
+                __('Every folder agrees with its parent', 'folderfolio')
             );
         }
 
         return $this->row(
-            __('Materialised paths', 'folderfolio'),
+            __('Folder tree', 'folderfolio'),
             sprintf(
                 /* translators: %s is a number of folders. */
                 _n(
-                    '%s folder disagrees with its parent — rebuild paths',
-                    '%s folders disagree with their parent — rebuild paths',
+                    '%s folder disagrees with its parent — run the repair below',
+                    '%s folders disagree with their parent — run the repair below',
                     $drifted,
                     'folderfolio'
                 ),
@@ -169,12 +169,12 @@ final class StatusReport
 
         if ($stored === $current) {
             /* translators: %s is a schema version number. */
-            return sprintf(__('%s — current', 'folderfolio'), $stored);
+            return sprintf(__('Up to date (version %s)', 'folderfolio'), $stored);
         }
 
         return sprintf(
             /* translators: 1: stored schema version, 2: the version this release expects. */
-            __('%1$s — upgrade to %2$s runs on the next admin request', 'folderfolio'),
+            __('Version %1$s — the update to %2$s runs on the next admin page you open', 'folderfolio'),
             '' === $stored ? '0' : $stored,
             $current
         );
@@ -250,18 +250,22 @@ final class StatusReport
 
         return sprintf(
             /* translators: 1: number of levels, 2: the folder trail, e.g. "Brand / Logos". */
-            _n('%1$s level (%2$s)', '%1$s levels (%2$s)', $levels, 'folderfolio'),
+            _n('%1$s level down: %2$s', '%1$s levels down: %2$s', $levels, 'folderfolio'),
             number_format_i18n($levels),
-            implode(' / ', $trail)
+            implode(' › ', $trail)
         );
     }
 
     /**
-     * Rows and distinct files, because they are not the same number.
+     * Filings and files, because they are not the same number.
      *
-     * A file filed in two folders is two rows and one file. Showing only the
-     * row count makes a library look twice its size; showing only the file
-     * count hides the thing that actually grows the table.
+     * A file filed in two folders is two filings and one file. Showing only
+     * the filing count makes a library look twice its size; showing only the
+     * file count hides the thing that actually grows the table.
+     *
+     * It used to say "41 rows, 38 distinct files" — the shape of the query
+     * rather than the shape of the library, on the tab a worried site owner
+     * opens first.
      */
     private function assignmentSummary(): string
     {
@@ -282,17 +286,17 @@ final class StatusReport
         $files = (int) ($counts['file_count'] ?? 0);
 
         return sprintf(
-            /* translators: 1: e.g. "41 rows". 2: e.g. "38 distinct files". */
+            /* translators: 1: e.g. "38 files". 2: e.g. "filed 41 times". */
             __('%1$s, %2$s', 'folderfolio'),
             sprintf(
-                /* translators: %s is a number of assignment rows. */
-                _n('%s row', '%s rows', $rows, 'folderfolio'),
-                number_format_i18n($rows)
+                /* translators: %s is a number of files. */
+                _n('%s file', '%s files', $files, 'folderfolio'),
+                number_format_i18n($files)
             ),
             sprintf(
-                /* translators: %s is a number of distinct files. */
-                _n('%s distinct file', '%s distinct files', $files, 'folderfolio'),
-                number_format_i18n($files)
+                /* translators: %s is a number of times a file has been filed. */
+                _n('filed %s time', 'filed %s times', $rows, 'folderfolio'),
+                number_format_i18n($rows)
             )
         );
     }

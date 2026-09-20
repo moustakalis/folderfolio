@@ -32,15 +32,18 @@ use FolderFolio\Support\Settings;
  * ## Deltas from the design board
  *
  * 1. The roles matrix is editable. Screen 08 draws ●/○ glyphs; the blurb
- *    beside them ("Two competitors charge for this table") only means anything
+ *    beside them ("Every role, every permission") only means anything
  *    if the table decides something, so the glyphs are checkboxes. A tick is
  *    an input a screen reader can announce and a keyboard can reach, which a
  *    ● is not.
- * 2. Status's first button is "Rebuild paths", not "Rebuild counts". Counts
- *    are computed from the assignments table on every read — there is no cache
- *    to rebuild, and a button that runs nothing is worse than no button. Its
- *    place is taken by "Remove orphaned rows", which is the repair the Doctor
- *    findings actually call for.
+ * 2. Status's first button repairs the folder tree; it does not rebuild
+ *    counts. Counts are computed from the assignments table on every read —
+ *    there is no cache to rebuild, and a button that runs nothing is worse
+ *    than no button. Its place is taken by the one that clears entries for
+ *    files that no longer exist, which is the repair the Doctor findings
+ *    actually call for. Both were named after their mechanism until 21 Sep
+ *    ("Rebuild paths", "Remove orphaned rows"); they are named after their
+ *    outcome now.
  * 3. The Import tab lists detected sources and hands off to the existing
  *    importer. The four-step wizard is screen 07 and is built next; the tab is
  *    where it lands.
@@ -244,7 +247,7 @@ final class SettingsPage
             <div class="folderfolio-field">
                 <div class="folderfolio-field__label">
                     <div class="folderfolio-field__name"><?php esc_html_e('Folder counts', 'folderfolio'); ?></div>
-                    <div class="folderfolio-field__note"><?php esc_html_e('§4, the market’s worst bug', 'folderfolio'); ?></div>
+                    <div class="folderfolio-field__note"><?php esc_html_e('How a folder counts its files', 'folderfolio'); ?></div>
                 </div>
                 <div class="folderfolio-field__control">
                     <div class="folderfolio-seg" role="group" aria-label="<?php esc_attr_e('Folder counts', 'folderfolio'); ?>">
@@ -268,7 +271,19 @@ final class SettingsPage
                         <?php endforeach; ?>
                     </div>
                     <div class="folderfolio-field__help">
-                        <?php esc_html_e('Inherited counts the subtree, so a parent holding a hundred files never reads 0.', 'folderfolio'); ?>
+                        <?php
+                        /*
+                         * Both options, not one. This line used to describe
+                         * *Inherited* only, so on a site set to *Direct only*
+                         * — which is the default — it read as an argument for
+                         * the choice you had just declined, and the option
+                         * actually in force was never described at all.
+                         */
+                        ?>
+                        <strong><?php esc_html_e('Inherited', 'folderfolio'); ?></strong>
+                        <?php esc_html_e('counts everything inside a folder, sub-folders included.', 'folderfolio'); ?>
+                        <strong><?php esc_html_e('Direct only', 'folderfolio'); ?></strong>
+                        <?php esc_html_e('counts just the files filed in the folder itself.', 'folderfolio'); ?>
                     </div>
                 </div>
             </div>
@@ -278,6 +293,7 @@ final class SettingsPage
                     <label class="folderfolio-field__name" for="folderfolio-default-sort">
                         <?php esc_html_e('Default sort', 'folderfolio'); ?>
                     </label>
+                    <div class="folderfolio-field__note"><?php esc_html_e('The order folders open in', 'folderfolio'); ?></div>
                 </div>
                 <div class="folderfolio-field__control">
                     <select id="folderfolio-default-sort" name="default_sort">
@@ -324,7 +340,7 @@ final class SettingsPage
                             ></span>
                         <?php endforeach; ?>
                         <span class="folderfolio-swatches__note">
-                            <?php esc_html_e('Shown on the folder icon', 'folderfolio'); ?>
+                            <?php esc_html_e('Set when you name a folder', 'folderfolio'); ?>
                         </span>
                     </div>
                 </div>
@@ -378,7 +394,7 @@ final class SettingsPage
         <div class="folderfolio-matrix-wrap">
             <div class="folderfolio-field__name"><?php esc_html_e('Who can manage folders', 'folderfolio'); ?></div>
             <div class="folderfolio-field__help folderfolio-matrix-wrap__lede">
-                <?php esc_html_e('Two competitors charge for this table.', 'folderfolio'); ?>
+                <?php esc_html_e('Every role, every permission. Free, and staying free.', 'folderfolio'); ?>
             </div>
 
             <table class="folderfolio-matrix">
@@ -427,7 +443,7 @@ final class SettingsPage
             </table>
 
             <p class="folderfolio-matrix__why">
-                <?php esc_html_e('Administrators always have every folder permission. Everyone else needs the ability to upload files as well as a tick here — this table narrows WordPress’s own permissions, it never widens them.', 'folderfolio'); ?>
+                <?php esc_html_e('This table can only narrow WordPress’s own permissions — it never widens them. Administrators always have every folder permission. Everyone else needs a tick here and the ability to upload files.', 'folderfolio'); ?>
             </p>
         </div>
         <?php
@@ -471,6 +487,11 @@ final class SettingsPage
         $report = new StatusReport();
 
         ?>
+        <div class="folderfolio-field__name"><?php esc_html_e('Health check', 'folderfolio'); ?></div>
+        <div class="folderfolio-field__help folderfolio-status__lede">
+            <?php esc_html_e('What FolderFolio has stored on this site, and the repairs to run if anything has drifted out of step. Nothing here changes until you press one.', 'folderfolio'); ?>
+        </div>
+
         <table class="folderfolio-status">
             <tbody>
                 <?php foreach ($report->rows() as $row) : ?>
@@ -529,8 +550,16 @@ final class SettingsPage
     private function tools(): array
     {
         return [
-            'rebuild-paths' => __('Rebuild paths', 'folderfolio'),
-            'remove-orphans' => __('Remove orphaned rows', 'folderfolio'),
+            /*
+             * Named for the outcome, not the mechanism — and short enough to
+             * survive the row. "Repair the folder tree" and "Clear out entries
+             * for missing files" read better still, and at 521px of viewport
+             * the three controls came to 525.8px in a 449px content box and
+             * pushed 56px of the page off screen. The row is `auto auto 1fr`,
+             * so it does not wrap to tell you: it overflows.
+             */
+            'rebuild-paths' => __('Repair folder tree', 'folderfolio'),
+            'remove-orphans' => __('Forget deleted files', 'folderfolio'),
         ];
     }
 
@@ -611,8 +640,8 @@ final class SettingsPage
 
         $messages = [
             'saved' => __('Settings saved.', 'folderfolio'),
-            'paths' => __('Folder paths rebuilt from parent_id.', 'folderfolio'),
-            'orphans' => __('Orphaned assignment rows removed.', 'folderfolio'),
+            'paths' => __('Folder tree repaired — every folder agrees with its parent again.', 'folderfolio'),
+            'orphans' => __('Entries for files that no longer exist have been cleared out.', 'folderfolio'),
         ];
 
         if (!isset($messages[$done])) {

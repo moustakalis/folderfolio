@@ -520,7 +520,7 @@ test.describe('the settings screen', () => {
      *
      * Two repair actions and one that is not. As a wrapping flex row, Copy
      * report fell onto a line of its own below 480 and landed directly under
-     * Rebuild paths, which read as a third repair tool. It is pushed to the
+     * the first repair button, which read as a third repair tool. It is pushed to the
      * other end of the row now, so the grouping is declared rather than
      * whatever the wrap happens to produce — and below 520 all three take a
      * row each, which groups nothing wrongly.
@@ -582,16 +582,16 @@ test.describe('the settings screen', () => {
     test('Status reports the schema and offers the report as text', async ({ page }) => {
         await page.goto(`${SETTINGS}&tab=status`);
 
-        await expect(page.locator('.folderfolio-status')).toContainText('Schema version');
+        await expect(page.locator('.folderfolio-status')).toContainText('Database');
         await expect(page.locator('.folderfolio-status')).toContainText(
-            'In step with the adjacency list'
+            'Every folder agrees with its parent'
         );
 
         // The report is in a textarea rather than behind the copy button
         // alone, so it can still be selected by hand with scripts off.
         await expect(page.locator('#folderfolio-report')).toHaveValue(/FolderFolio \d/);
 
-        await expect(page.getByRole('button', { name: 'Rebuild paths' })).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Remove orphaned rows' })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Repair folder tree' })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Forget deleted files' })).toBeVisible();
     });
 });
