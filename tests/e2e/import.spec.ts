@@ -104,6 +104,152 @@ test.describe('the import wizard', () => {
         expect(after).toBe(before);
     });
 
+
+    /**
+     * Finding 06 of the settings audit.
+     *
+     * The four steps were a flex row with `flex: 1` on each, so at a 390px
+     * viewport they wrapped three-and-one: 106 + 106 + 106, then step 4 alone
+     * at 318, with the first three squeezed until their titles ran to three
+     * lines. Four never divides into a wrapping row — it divides into two rows
+     * of two.
+     *
+     * The assertion is that the steps are always equal and never orphaned,
+     * which is true of both shapes and false of every wrap.
+     */
+    test('the four steps are equal and never orphan one of themselves', async ({ page }) => {
+        await openWizard(page);
+
+        for (const width of [1440, 782, 600, 521, 520, 390, 320]) {
+            await page.setViewportSize({ width, height: 900 });
+            await page.waitForTimeout(220);
+
+            const strip = await page.evaluate(() => {
+                const steps = [...document.querySelectorAll('.folderfolio-wizard__step')].map(
+                    (s) => {
+                        const b = s.getBoundingClientRect();
+                        return { w: Math.round(b.width * 10) / 10, top: Math.round(b.top) };
+                    }
+                );
+
+                const rows = [...new Set(steps.map((s) => s.top))];
+
+                return {
+                    count: steps.length,
+                    widths: steps.map((s) => s.w),
+                    rows: rows.length,
+                    perRow: rows.map((t) => steps.filter((s) => s.top === t).length),
+                };
+            });
+
+            expect(strip.count, `${width}px: the wizard did not render four steps`).toBe(4);
+
+            const widest = Math.max(...strip.widths);
+            const narrowest = Math.min(...strip.widths);
+
+            expect(
+                widest - narrowest,
+                `${width}px: the steps are uneven — ${strip.widths.join(' / ')}`
+            ).toBeLessThanOrEqual(1);
+
+            // Four across, or two and two. Never three and one.
+            expect(
+                strip.perRow,
+                `${width}px: the steps wrapped ${strip.perRow.join(' + ')}`
+            ).toEqual(width >= 521 ? [4] : [2, 2]);
+        }
+    });
+
+    /**
+     * Finding 05.
+     *
+     * The source row's body was `flex: 1` against a button whose minimum is
+     * its own label, so the text yielded and the button did not: at a 390px
+     * viewport the button held 129.1px — 41% of the row — and the sentence
+     * that tells you whether to press it was squeezed to 176.9 and wrapped to
+     * three lines. Below 520 the button goes under the text at full width.
+     */
+    test('a source row never gives its action more room than its text', async ({ page }) => {
+        await openWizard(page);
+
+        // The steps are server-rendered; the source list arrives over REST, so
+        // the strip being on screen does not mean the rows are.
+        await page.locator('.folderfolio-source').first().waitFor();
+
+        // Every row has exactly two children: the text, and an action that is a
+        // button when the source holds data and a "nothing to import" span when
+        // it does not. The harness installs no competitors, so here they are all
+        // spans - which is why this measures the second child rather than a
+        // button that would never be found.
+        for (const width of [1440, 782, 521, 520, 390, 320]) {
+            await page.setViewportSize({ width, height: 900 });
+            await page.waitForTimeout(220);
+
+            const rows = await page.evaluate(() =>
+                [...document.querySelectorAll('.folderfolio-source')].map((row) => {
+                    const body = row.querySelector('.folderfolio-source__body') as HTMLElement;
+                    const action = row.children[1] as HTMLElement | undefined;
+                    const style = getComputedStyle(row);
+                    const bb = body.getBoundingClientRect();
+
+                    return {
+                        display: style.display,
+                        tracks: style.gridTemplateColumns,
+                        kids: row.children.length,
+                        body: Math.round(bb.width),
+                        action: action ? Math.round(action.getBoundingClientRect().width) : null,
+                        under: action
+                            ? action.getBoundingClientRect().top >= bb.bottom - 1
+                            : null,
+                        rowWidth: Math.round(row.getBoundingClientRect().width),
+                    };
+                })
+            );
+
+            expect(rows.length, `${width}px: the wizard rendered no sources`).toBeGreaterThan(3);
+
+            for (const row of rows) {
+                expect(row.kids, `${width}px: a source row is not text plus action`).toBe(2);
+
+                // Declared tracks, not a flex line: this is what the row's shape
+                // rests on, and it is checkable whether or not the action has a
+                // label wide enough to squeeze the text.
+                expect(
+                    row.display,
+                    `${width}px: the source row is ${row.display}, not a grid`
+                ).toBe('grid');
+
+                const tracks = row.tracks.split(' ').filter(Boolean);
+
+                if (width >= 521) {
+                    expect(
+                        tracks.length,
+                        `${width}px: the row declares ${row.tracks}, not two tracks`
+                    ).toBe(2);
+
+                    expect(
+                        row.body,
+                        `${width}px: the action (${row.action}px) has more room than the text (${row.body}px)`
+                    ).toBeGreaterThan(row.action as number);
+                } else {
+                    expect(
+                        tracks.length,
+                        `${width}px: the row declares ${row.tracks}, not one track`
+                    ).toBe(1);
+
+                    expect(row.under, `${width}px: the action did not go under the text`).toBe(
+                        true
+                    );
+
+                    expect(
+                        row.action,
+                        `${width}px: stacked, but the action is not full width`
+                    ).toBe(row.rowWidth);
+                }
+            }
+        }
+    });
+
     test('an import route refuses somebody who cannot manage the site', async ({ page }) => {
         // Logged in as an administrator here, so this asserts the route's own
         // capability rather than the session's: every import route is

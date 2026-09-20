@@ -306,6 +306,155 @@ test.describe('the settings screen', () => {
         expect(at(320).headFont).toBe('10px');
     });
 
+
+    /**
+     * Finding 04 of the settings audit.
+     *
+     * `.folderfolio-status th` declares `width: 220px`, which is right while
+     * there is room for it and wrong once there is not: at a 318px table it
+     * left the value 90px — 28% of the row for the answer and 72% for the
+     * label — and wrapped "Deepest path" to four lines. Below 520 the key and
+     * the value stack instead, so both get the full width.
+     *
+     * The assertion is the *relationship*, not the 220: a key column that is
+     * wider than its value column is the defect, whatever the numbers are on
+     * the machine running this.
+     */
+    test('the status table gives the answer more room than the label, or stacks', async ({
+        page,
+    }) => {
+        await page.goto(`${SETTINGS}&tab=status`);
+        await page.locator('.folderfolio-status').waitFor();
+
+        const rows: Array<{
+            width: number;
+            pairs: number;
+            stacked: boolean;
+            key: number;
+            value: number;
+            tallest: number;
+        }> = [];
+
+        for (const width of [1440, 782, 521, 520, 390, 320]) {
+            await page.setViewportSize({ width, height: 900 });
+            await page.waitForTimeout(220);
+
+            rows.push(
+                await page.evaluate((w) => {
+                    const trs = [...document.querySelectorAll('.folderfolio-status tr')];
+                    const first = trs[0];
+                    const th = first.querySelector('th') as HTMLElement;
+                    const td = first.querySelector('td') as HTMLElement;
+                    const tb = th.getBoundingClientRect();
+                    const db = td.getBoundingClientRect();
+
+                    return {
+                        width: w,
+                        pairs: trs.filter((tr) => tr.querySelector('th') && tr.querySelector('td'))
+                            .length,
+                        stacked: tb.bottom <= db.top + 1,
+                        key: Math.round(tb.width),
+                        value: Math.round(db.width),
+                        tallest: Math.round(
+                            Math.max(...trs.map((tr) => tr.getBoundingClientRect().height))
+                        ),
+                    };
+                }, width)
+            );
+        }
+
+        console.table(rows);
+
+        for (const row of rows) {
+            // The precondition: a table of key/value pairs. One with no rows
+            // satisfies everything below.
+            expect(row.pairs, `${row.width}px: the status table rendered no pairs`).toBeGreaterThan(
+                3
+            );
+
+            if (row.stacked) {
+                // Stacked, both halves get the row.
+                expect(row.key, `${row.width}px: stacked, but the key is not full width`).toBe(
+                    row.value
+                );
+            } else {
+                expect(
+                    row.value,
+                    `${row.width}px: the label (${row.key}px) has more room than the answer (${row.value}px)`
+                ).toBeGreaterThan(row.key);
+            }
+        }
+
+        const at = (w: number) => rows.find((r) => r.width === w)!;
+
+        expect(at(521).stacked, '521 is above the breakpoint').toBe(false);
+        expect(at(520).stacked, '520 is where the table stacks').toBe(true);
+    });
+
+    /**
+     * Finding 07.
+     *
+     * Two repair actions and one that is not. As a wrapping flex row, Copy
+     * report fell onto a line of its own below 480 and landed directly under
+     * Rebuild paths, which read as a third repair tool. It is pushed to the
+     * other end of the row now, so the grouping is declared rather than
+     * whatever the wrap happens to produce — and below 520 all three take a
+     * row each, which groups nothing wrongly.
+     */
+    test('the copy control is not grouped with the repair tools', async ({ page }) => {
+        await page.goto(`${SETTINGS}&tab=status`);
+        await page.locator('.folderfolio-tools').waitFor();
+
+        for (const width of [1440, 782, 600, 521, 520, 390]) {
+            await page.setViewportSize({ width, height: 900 });
+            await page.waitForTimeout(220);
+
+            const shape = await page.evaluate(() => {
+                const tools = document.querySelector('.folderfolio-tools') as HTMLElement;
+                const body = document.querySelector(
+                    '.folderfolio-settings__body'
+                ) as HTMLElement;
+                const cs = getComputedStyle(body);
+                const contentRight =
+                    body.getBoundingClientRect().right - parseFloat(cs.paddingRight);
+
+                const kids = [...tools.children] as HTMLElement[];
+                const copy = tools.querySelector('[data-folderfolio-copy]') as HTMLElement;
+
+                return {
+                    children: kids.length,
+                    rows: new Set(kids.map((k) => Math.round(k.getBoundingClientRect().top))).size,
+                    copyIsLast: kids.indexOf(copy) === kids.length - 1,
+                    copyFlushRight:
+                        Math.abs(copy.getBoundingClientRect().right - contentRight) < 1.5,
+                    copyFullWidth:
+                        Math.abs(
+                            copy.getBoundingClientRect().width -
+                                (contentRight - body.getBoundingClientRect().left -
+                                    parseFloat(cs.paddingLeft))
+                        ) < 1.5,
+                };
+            });
+
+            expect(shape.children, `${width}px: the tools row lost a control`).toBe(3);
+            expect(shape.copyIsLast, `${width}px: the copy control moved`).toBe(true);
+
+            if (width >= 521) {
+                expect(shape.rows, `${width}px: the tools row wrapped`).toBe(1);
+                expect(
+                    shape.copyFlushRight,
+                    `${width}px: the copy control is not at the end of the row`
+                ).toBe(true);
+            } else {
+                expect(shape.rows, `${width}px: the tools are not one per row`).toBe(3);
+                expect(
+                    shape.copyFullWidth,
+                    `${width}px: stacked, but the copy control is not full width`
+                ).toBe(true);
+            }
+        }
+    });
+
     test('Status reports the schema and offers the report as text', async ({ page }) => {
         await page.goto(`${SETTINGS}&tab=status`);
 

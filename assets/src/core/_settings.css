@@ -362,11 +362,17 @@
   border-bottom: 1px solid var(--ff-line);
 }
 
-/* 220px is right while there is room for it; below 520 the key and the value
-   stack, because at a 318px table it left the answer 90px and wrapped
-   "Deepest path" to four lines. */
+/*
+ * 220px is right while there is room for it, and the cap is what makes that
+ * true rather than a guess: at a 449px table the flat 220 left the answer
+ * 221px, so the label had more room than the value it labels — measured at
+ * 521px of viewport, one pixel above the breakpoint the stacking uses, in an
+ * eight-pixel band nobody had looked at. A relative ceiling means the key can
+ * never out-measure the value at any width, instead of not doing so outside
+ * one band. Below 520 they stack anyway.
+ */
 .folderfolio-status th {
-  width: 220px;
+  width: min(220px, 38%);
   padding: 9px 8px 9px 0;
   font-size: 13px;
   font-weight: 400;
