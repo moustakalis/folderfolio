@@ -372,23 +372,45 @@ rail** (clips by 12), 234 in 278 at 280, 74 to spare at Nick's 310 — so the ol
 pair comes back below **298**, the breakpoint where the indent already drops to
 16 and the tool row is already icons only. No new number.
 
-### Next — the settings screen has never been audited
+### Next — the settings audit is done; fifteen findings are waiting on Nick
 
-The library screen has had four audits in five days. **The settings screen has
-had none since it was built on 17 Sep**, and it is the plugin's other whole
-surface: `/wp-admin/admin.php?page=folderfolio`, three tabs — `&tab=settings`,
-`&tab=import`, `&tab=status`. `Admin\SettingsPage.php` (612 lines) renders the
-tabs and the fields; `Admin\ImportPage.php` (260) renders the wizard;
-`_settings.css` is 396 lines and `_wizard.css` another 244.
+The settings screen was audited on 20 Sep across three tabs, twenty-five widths
+from 320 to 1500 and three admin colour schemes. **Nothing was changed** — the
+list went up first. Full write-up in the project at
+`claude/progress-2026-09-20e-settings-audit.md`; the board, with every finding
+drawn to scale, is `claude.ai/artifact/NNp5KydLR8oFkkezdWESFA`.
 
-Audit it the way the library screen was audited, and in this order: measure it
-in the browser at several widths and in both colour schemes, compare it against
-the design board and against wp-admin's own settings conventions, list what is
-found with numbers attached, and put the list up before changing anything. The
-traps this file records are all live there too — wp-admin's element selectors
-reach inside our components, `.wp-core-ui` beats a bare class of ours, and the
-roles matrix is a table, which is the one shape none of the library work has
-had to lay out.
+The two that break rather than disfigure:
+
+- **The roles matrix stops shrinking at 361.8px.** Five columns whose heads have
+  already wrapped to three lines. The card's content box is the viewport minus
+  70px, so from **433px down** the table is wider than its container and from
+  **397px down** wider than the window — and `.folderfolio-matrix-wrap` is
+  `overflow-x: visible`, so the **page** scrolls sideways: 7px at 390, 37px at
+  360, 77px at 320.
+- **On Midnight the checked segment of *Folder counts* is `#1d2327` on
+  `#26292c` — 1.09:1**, while the *unchecked* label is 14.97:1. The selected
+  option is the invisible one. Fresh is 15.89, Modern 16.67; only Midnight
+  inverts, because the checked background flips to the panel colour and the text
+  colour does not flip with it.
+
+The rest, in short: the card is **759px at 961 and 882px at 960** (and 705 → 760
+at 783 → 782), so it gets wider as the window narrows at both of wp-admin's
+breakpoints; the matrix's tick gaps are 140.1 / 138.6 / **174.8** because
+*Assign files* is two words, and the 880px cap leaves **180.9px** between the
+role name and the first tick while its own comment calls 96px too far;
+`.folderfolio-status th` is a hard `width: 220px` that leaves the value column
+90px on a phone; the import source row's button holds 129.1px while its text is
+squeezed to 176.9; the wizard's four steps wrap three-and-one; `Copy report`
+orphans below 480. Seven layouts on the screen are flex with no stated reason,
+four of which are the findings above. And the screen has **nine e2e tests, none
+of them a layout assertion**.
+
+**Three things were checked and cleared**, and are not defects: Author's
+unticked *Create* box is a saved dev-site value (`Settings::defaultRoles()` and
+the spec board's §12 both say `['create', 'assign']`); the wizard's preview step
+is clean at 1440 and 390; and Midnight tab contrast is fine at 12.84 / 10.43 —
+see the harness trap below for why it first measured 1.09.
 
 ### Three recorded deviations from the board
 
@@ -1102,6 +1124,22 @@ children and then failed on its own row left the children reparented.
 ## Things that will bite you
 
 Every one of these cost real time and is now load-bearing somewhere.
+
+**A scheme or theme swapped onto a live document leaves stale colours.**
+Rewriting `document.body.className` to drive a colour scheme flips the custom
+properties — `--ff-ink` on the element read `#f0f0f1` correctly — while an
+anchor's already-resolved `color` stayed at the *light* scheme's value. The
+settings tabs measured 1.09:1 and 2.00:1 on Midnight and looked like the
+headline finding of the audit; re-rendered they are 12.84 and 10.43. **When the
+scheme is the variable, render the document with it**: fetch the HTML, rewrite
+the `admin-color-*` token in `<body class>`, inject `<base href>` and that
+scheme's `colors.min.css`, and hand the string to `iframe.srcdoc`. This also
+avoids writing to Nick's profile, which is where the real setting lives.
+
+**wp-admin's colour schemes leave the content canvas light.** Midnight's own
+stylesheet opens `body{background:#f0f0f0}`. Only the menu, the bar and the
+accents go dark. Any reasoning of the form "it sits in a dark admin page" holds
+for the rail, which abuts the menu, and not for a centred card.
 
 **A stylesheet or script change may not reach the browser.** `admin.css` and
 `core/rail.js` are enqueued with `ver=1.0.0`, so a plain reload serves the
