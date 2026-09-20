@@ -180,6 +180,187 @@ final class TokensTest extends TestCase
     }
 
     /**
+     * Finding 11 of the settings audit, generalised.
+     *
+     * Three times now a component has painted text on a fill using two tokens
+     * that are not a pair, and got away with it because they happen to agree
+     * on Fresh. --ff-accent-text was the first. The undo toast was the second,
+     * which is why it has five tokens of its own. The third was the settings
+     * screen's segmented control, which set `background: var(--ff-bar)` with
+     * `color: var(--ff-on-sel)` — the admin menu's chrome ground under the ink
+     * that belongs on --ff-sel. Both are near-black on Fresh. On Midnight
+     * --ff-on-sel correctly flips dark, because --ff-sel became a light blue,
+     * while --ff-bar stayed dark: #1d2327 on #26292c, 1.09:1, with the
+     * *unchecked* label at 14.97. The selected option was the invisible one.
+     *
+     * The other two tests in this file check tokens one at a time against the
+     * panel. That cannot see a wrong pairing, because both halves of this one
+     * are individually fine. So this reads the component stylesheets instead
+     * and checks the pairs they actually declare together.
+     *
+     * It only looks at rules that set both properties from tokens, which is
+     * the house rule anyway — a hex literal in component CSS is already a
+     * failure elsewhere in this class.
+     */
+    public function test_every_declared_foreground_on_background_pair_clears_aa(): void
+    {
+        $tokens = self::css();
+        $base = self::colourTokens($tokens);
+        $midnight = self::declarations($tokens, '.admin-color-midnight .folderfolio') + $base;
+
+        $pairs = self::declaredPairs();
+
+        self::assertNotEmpty(
+            $pairs,
+            'No rule was found setting both a colour and a background from tokens, which means '
+            . 'the scan is broken rather than the stylesheets being clean.'
+        );
+
+        $failures = [];
+
+        foreach (['Fresh' => $base, 'Midnight' => $midnight] as $scheme => $values) {
+            foreach ($pairs as [$selector, $ink, $ground]) {
+                $fg = $values[$ink] ?? null;
+                $bg = $values[$ground] ?? null;
+
+                if ($fg === null || $bg === null) {
+                    // The v0.2.0 block in admin.css, which declares a parallel
+                    // palette of its own. It is pinned below rather than
+                    // checked here: its hexes are fixed, so a contrast figure
+                    // against a scheme panel would be meaningless.
+                    continue;
+                }
+
+                if (!str_starts_with($fg, '#') || !str_starts_with($bg, '#')) {
+                    continue;
+                }
+
+                $ratio = self::contrast($fg, $bg);
+
+                if ($ratio >= self::AA) {
+                    continue;
+                }
+
+                $failures[] = sprintf(
+                    '%s: %s paints %s (%s) on %s (%s) at %.2f:1.',
+                    $scheme,
+                    $selector,
+                    $ink,
+                    $fg,
+                    $ground,
+                    $bg,
+                    $ratio
+                );
+            }
+        }
+
+        self::assertSame([], $failures, implode("\n", $failures));
+    }
+
+    /**
+     * Every rule in the component stylesheets that sets both a colour and a
+     * background from a token.
+     *
+     * @return list<array{0: string, 1: string, 2: string}> selector, ink, ground
+     */
+    private static function declaredPairs(): array
+    {
+        $dir = dirname(__DIR__, 3) . '/assets/src/core';
+        $files = glob($dir . '/*.css');
+
+        self::assertNotFalse($files, "No component stylesheets found in {$dir}.");
+
+        $pairs = [];
+
+        foreach ($files as $file) {
+            // _tokens.css declares the tokens; it does not paint with them.
+            if (basename($file) === '_tokens.css') {
+                continue;
+            }
+
+            $css = (string) file_get_contents($file);
+
+            // Comments first: one of them quotes a rule it is describing, and
+            // a scan that reads comments finds pairs nobody declared.
+            $css = (string) preg_replace('#/\*.*?\*/#s', '', $css);
+
+            preg_match_all('/([^{}]+)\{([^{}]*)\}/s', $css, $rules, PREG_SET_ORDER);
+
+            foreach ($rules as $rule) {
+                $selector = trim((string) preg_replace('/\s+/', ' ', $rule[1]));
+                $body = $rule[2];
+
+                if (
+                    preg_match('/(?<![-\w])color\s*:\s*var\((--ff-[\w-]+)\)\s*;/', $body, $ink) !== 1
+                    || preg_match(
+                        '/background(?:-color)?\s*:\s*var\((--ff-[\w-]+)\)\s*;/',
+                        $body,
+                        $ground
+                    ) !== 1
+                ) {
+                    continue;
+                }
+
+                $pairs[] = [basename($file) . ' ' . $selector, $ink[1], $ground[1]];
+            }
+        }
+
+        return $pairs;
+    }
+
+
+    /**
+     * The v0.2.0 palette in admin.css, pinned so it cannot grow.
+     *
+     * admin.css still carries a `:root` block from before the rail was
+     * rebuilt, declaring --ff-brand-*, --ff-ink-900, --ff-ink-700,
+     * --ff-surface-* and friends as fixed hexes. Its own comment says what is
+     * wrong with it — "it hard-codes hexes that are wrong in seven of core's
+     * eight admin colour schemes" — and sets the condition for its removal:
+     * "it survives only until the rail is rebuilt on the designed components".
+     * The rail has been rebuilt. Nothing outside admin.css uses those tokens,
+     * and no PHP, TSX or block markup uses the classes they style.
+     *
+     * So it is dead, and it is on the theme rework's list. Until then this
+     * test holds its surface exactly where it is: the pair check above skips
+     * rules whose tokens _tokens.css does not declare, and this makes sure
+     * that skip can never quietly cover a *new* rule.
+     */
+    public function test_the_v0_2_0_palette_does_not_grow(): void
+    {
+        $known = [
+            'admin.css .folderfolio-folder-count',
+        ];
+
+        $declared = array_keys(self::declarations(self::css(), '.folderfolio'));
+        $midnight = array_keys(
+            self::declarations(self::css(), '.admin-color-midnight .folderfolio')
+        );
+        $defined = array_flip(array_merge($declared, $midnight));
+
+        $strays = [];
+
+        foreach (self::declaredPairs() as [$selector, $ink, $ground]) {
+            if (isset($defined[$ink]) && isset($defined[$ground])) {
+                continue;
+            }
+
+            $strays[] = $selector;
+        }
+
+        sort($strays);
+        sort($known);
+
+        self::assertSame(
+            $known,
+            $strays,
+            "A rule is painting with a token _tokens.css does not declare. Every colour in a "
+            . "component stylesheet has to resolve through the scheme blocks, or it is wrong in "
+            . "seven of core's eight admin colour schemes."
+        );
+    }
+
+    /**
      * The media modal is a white sheet in every admin colour scheme, so the
      * folder column inside it uses the light palette whatever the scheme says.
      * That is a copy of the Fresh block, and a copy drifts: add a token to one

@@ -55,9 +55,22 @@
   font-weight: 700;
 }
 
+/*
+ * The current step's number is a filled marker, so it needs a foreground and
+ * a background that are a pair. It set --ff-on-sel on --ff-bar, which are not
+ * one: --ff-bar is the admin menu's chrome ground and --ff-on-sel is the ink
+ * that belongs on --ff-sel. Both are near-black on Fresh, so it looked right.
+ * On Midnight --ff-on-sel flips dark while the bar stays dark — 1.09:1, the
+ * number invisible on the one step you are actually on.
+ *
+ * Same fault, same week, as the settings screen's segmented control, and the
+ * fourth of its kind in this codebase. --ff-ink on --ff-panel is a pair by
+ * definition, and it matches what that control now does.
+ */
 .folderfolio-wizard__step[aria-current='step'] .folderfolio-wizard__num {
-  background: var(--ff-bar);
-  color: var(--ff-on-sel);
+  background: var(--ff-ink);
+  color: var(--ff-panel);
+  border-color: var(--ff-ink);
 }
 
 .folderfolio-wizard__title {

@@ -184,6 +184,128 @@ test.describe('the settings screen', () => {
         ).toHaveAttribute('aria-checked', 'true');
     });
 
+
+    /**
+     * Finding 02 of the settings audit.
+     *
+     * The roles matrix is the only table on either of the plugin's screens,
+     * and a table has an intrinsic minimum it will not go below. It floored at
+     * 361.8px against a 318px content box at a 390px viewport, and
+     * `.folderfolio-matrix-wrap` is `overflow-x: visible`, so there was no
+     * scroller to absorb it and the *page* scrolled sideways instead: 7px at
+     * 390, 37px at 360, 77px at 320.
+     *
+     * Two assertions, because either alone passes on a broken screen.
+     * `scrollWidth === clientWidth` alone is satisfied by an overflow smaller
+     * than the padding around it — which is exactly how this was first
+     * mis-measured as fixed, with the table still 4.2px past the card's own
+     * border at 320. And a table-inside-card check alone says nothing about
+     * anything else on the page.
+     *
+     * The precondition matters too: an empty table fits everything. The column
+     * count is asserted so this cannot pass on a matrix that failed to render.
+     */
+    test('the roles matrix fits its card at every width, and the page never scrolls sideways', async ({
+        page,
+    }) => {
+        await page.goto(`${SETTINGS}&tab=settings`);
+        await page.locator('.folderfolio-matrix').waitFor();
+
+        type Row = {
+            width: number;
+            columns: number;
+            roles: number;
+            table: number;
+            content: number;
+            overContent: number;
+            pastBorder: number;
+            pageOverflow: number;
+            headFont: string;
+        };
+
+        const rows: Row[] = [];
+
+        // 783/782 is where wp-admin drops the admin menu; 521/520 is our own
+        // breakpoint; the rest are real phones. 1280 is the control: nothing
+        // below 520 should reach it.
+        for (const width of [1280, 960, 783, 782, 521, 520, 480, 390, 375, 360, 320]) {
+            await page.setViewportSize({ width, height: 900 });
+            // Let the media query and the table's own layout settle.
+            await page.waitForTimeout(250);
+
+            rows.push(
+                await page.evaluate((w) => {
+                    const matrix = document.querySelector('.folderfolio-matrix') as HTMLElement;
+                    const card = document.querySelector('.folderfolio-settings') as HTMLElement;
+                    const body = document.querySelector(
+                        '.folderfolio-settings__body'
+                    ) as HTMLElement;
+                    const de = document.documentElement;
+                    const cs = getComputedStyle(body);
+
+                    // clientWidth INCLUDES padding, so it is the wrong box to
+                    // compare a child against.
+                    const content =
+                        body.clientWidth
+                        - parseFloat(cs.paddingLeft)
+                        - parseFloat(cs.paddingRight);
+
+                    const mb = matrix.getBoundingClientRect();
+                    const cb = card.getBoundingClientRect();
+
+                    return {
+                        width: w,
+                        columns: matrix.querySelectorAll('thead th').length,
+                        roles: matrix.querySelectorAll('tbody tr').length,
+                        table: Math.round(mb.width * 10) / 10,
+                        content: Math.round(content * 10) / 10,
+                        overContent: Math.round((mb.width - content) * 10) / 10,
+                        pastBorder: Math.round((mb.right - cb.right) * 10) / 10,
+                        pageOverflow: de.scrollWidth - de.clientWidth,
+                        headFont: getComputedStyle(
+                            matrix.querySelector('thead th') as HTMLElement
+                        ).fontSize,
+                    };
+                }, width)
+            );
+        }
+
+        console.table(rows);
+
+        // The precondition: five roles against four abilities, plus the role
+        // column. An empty table would satisfy everything below.
+        for (const row of rows) {
+            expect(row.columns, `${row.width}px: the matrix did not render its heads`).toBe(5);
+            expect(row.roles, `${row.width}px: the matrix did not render its roles`).toBe(5);
+        }
+
+        // The defect, at every width.
+        for (const row of rows) {
+            expect(
+                row.pageOverflow,
+                `${row.width}px: the page scrolls sideways by ${row.pageOverflow}px`
+            ).toBe(0);
+
+            expect(
+                row.overContent,
+                `${row.width}px: the table is ${row.table}px in a ${row.content}px content box`
+            ).toBeLessThanOrEqual(0.5);
+
+            expect(
+                row.pastBorder,
+                `${row.width}px: the table reaches past the card's own border`
+            ).toBeLessThan(0);
+        }
+
+        // The breakpoint fires where the stylesheet says, and nowhere else.
+        const at = (w: number) => rows.find((r) => r.width === w)!;
+
+        expect(at(1280).headFont, 'the wide metrics are untouched').toBe('11px');
+        expect(at(521).headFont, '521 is above the breakpoint').toBe('11px');
+        expect(at(520).headFont, '520 is where the narrow metrics start').toBe('10px');
+        expect(at(320).headFont).toBe('10px');
+    });
+
     test('Status reports the schema and offers the report as text', async ({ page }) => {
         await page.goto(`${SETTINGS}&tab=status`);
 
