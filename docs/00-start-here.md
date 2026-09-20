@@ -372,6 +372,63 @@ rail** (clips by 12), 234 in 278 at 280, 74 to spare at Nick's 310 — so the ol
 pair comes back below **298**, the breakpoint where the indent already drops to
 16 and the tool row is already icons only. No new number.
 
+### 21 Sep, later — A1–A6 closed, the copy pass, and one dead rule
+
+Full account: `claude/progress-2026-09-21b-a1-to-a6-and-the-copy-pass.md`.
+Commits `19933c3`, `7d089ee`, `5983d21`, `ac7e10d`. **PHPStan clean, 109 unit
+(305 assertions), 53 e2e, `tsc` clean.**
+
+**A1 took two attempts, and the width sweep is what caught the first one.**
+`overflow-wrap: anywhere` on `.folderfolio-matrix th, td` removed the overflow
+and **starved the role column**: between 521 and ~650 the four ability columns
+are declared at 108px, a declared width is a *minimum* in auto table layout,
+and with the role column's min-content reduced to one character the algorithm
+handed them everything — **27.2px of role column in a 199.5px-tall row**, at
+ordinary widths with ordinary names. Scoping the rule below 520 instead leaves
+**78px of page overflow at 521**, so A1 is not a phone problem. What holds is
+two declarations on the one cell carrying a string we do not control:
+`overflow-wrap: anywhere` **and** `min-width: 6.4em` — em so it tracks the
+font-size that comes down at 520, and scoped to the role cell because giving
+the ability heads `anywhere` takes the tick rhythm at 320 from 47.6/47/46.3 to
+42.1/41.6/51.5.
+
+**A2/A3.** `--ff-off` (3.24:1) stops painting text in four places and takes
+`--ff-dim`; the three `:disabled` uses stay, because WCAG 1.4.3 exempts
+inactive components. `TokensTest::INK` is gone — the ink list is **derived**
+from every rule that sets `color: var(--ff-…)` with no background of its own,
+checked against the ground it lands on, with one declared `GROUNDS` entry for
+the undo toast and a test that fails if that entry stops matching anything.
+
+**A4.** `data-folderfolio-copied` is set now, so `Copied` is translatable.
+
+**A5/A6/A13.** `_wizard.css` joins the house rule: four of its five flex
+layouts are grid, two stay flex and **say why**, and the dead `flex-wrap: wrap`
+on `.folderfolio-wizard__steps` is gone. Every physical property in both
+stylesheets is logical now, so RTL mirrors with **no `-rtl.css` at all**. And
+`.folderfolio-seg label + label` **matched nothing for the life of the
+component** — the radio inputs are siblings between the labels — and looked
+right because the checked fill's own edge painted what the rule was meant to.
+
+**The copy pass (`7d089ee`).** The import wizard's voice, applied to the other
+two tabs. *"§4, the market's worst bug"* and *"Two competitors charge for this
+table."* are gone; the Folder counts help line names **both** options instead
+of only the unselected one; Status has a **Health check** heading and a lede,
+and its rows say *Database / Deepest folder / Files in folders / Files pointing
+at nothing / Folder tree* rather than *schema version / materialised paths / in
+step with the adjacency list*.
+
+> **A copy change is a layout change.** Longer repair-button labels came to
+> 525.8px in a 449px content box at 521 and pushed **56px of the page off
+> screen**, because `.folderfolio-tools` is `auto auto 1fr` and overflows
+> rather than wrapping. A longer swatch note wrapped inside its own track at
+> 783 and 521. Neither was visible in a screenshot at 1440.
+
+**Still open, and two of them are Nick's:** **A8** (should a repair with
+nothing to repair be disabled, or available and honest?) and **A11** (should
+the checked segment take core's accent, or stay ink on panel?) are decisions.
+**A12**, and the second halves of **A7** (the report textarea repeats the table
+verbatim) and **A9** (a legend that looks like a picker), are open.
+
 ### 21 Sep — the settings screen re-inspected cold: twelve held, twelve new
 
 Full account: `claude/progress-2026-09-21-settings-reaudit.md` in the project.
