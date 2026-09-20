@@ -32,7 +32,7 @@
 
 .folderfolio-wizard__step {
   padding: 14px 16px;
-  border-right: 1px solid var(--ff-line);
+  border-inline-end: 1px solid var(--ff-line);
   border-bottom: 3px solid transparent;
 
   /* Sits the marker on the rule rather than under it, the same way the
@@ -44,7 +44,7 @@
 }
 
 .folderfolio-wizard__step:last-child {
-  border-right: 0;
+  border-inline-end: 0;
 }
 
 .folderfolio-wizard__step[aria-current='step'] {
@@ -53,12 +53,11 @@
 }
 
 .folderfolio-wizard__num {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: inline-grid;
+  place-items: center;
   width: 20px;
   height: 20px;
-  margin-right: 8px;
+  margin-inline-end: 8px;
   border: 1px solid var(--ff-ink);
   font-size: 11px;
   font-weight: 700;
@@ -89,6 +88,10 @@
   line-height: 1.3;
 }
 
+/* Flex, deliberately. The title and the eyebrow are two items of unknown
+   width that should sit on one line while they fit and break to two when they
+   do not. A grid can only wrap by declaring tracks, and declared tracks would
+   size the eyebrow against the title instead of against its own text. */
 .folderfolio-wizard__head {
   display: flex;
   align-items: baseline;
@@ -146,27 +149,28 @@
   color: var(--ff-dim);
 }
 
-/* The preview's lines: a 210px label column, then the sentence. */
+/* The preview's lines: a 210px label column, then the sentence. Two declared
+   tracks, the same shape as `.folderfolio-field` on the settings tab — and it
+   stacks at the same 782 that stacks those, not at 520, because 782 is where
+   wp-admin drops the admin menu and the card changes width. */
 .folderfolio-wizard__lines {
   border-top: 2px solid var(--ff-field-line);
 }
 
 .folderfolio-wizard__line {
-  display: flex;
+  display: grid;
+  grid-template-columns: 210px 1fr;
   gap: 14px;
   padding: 12px 0;
   border-bottom: 1px solid var(--ff-line);
 }
 
 .folderfolio-wizard__lineLabel {
-  flex: 0 0 210px;
-  width: 210px;
   font-size: 14px;
   font-weight: 700;
 }
 
 .folderfolio-wizard__lineDetail {
-  flex: 1;
   min-width: 0;
   font-size: 12.5px;
   color: var(--ff-muted);
@@ -174,6 +178,10 @@
   overflow-wrap: anywhere;
 }
 
+/* Flex, deliberately, for the same reason as `__head`: a variable number of
+   controls plus a note, each as wide as its own label, wrapping when the row
+   runs out. `grid-auto-flow: column` would put them all on one line and
+   overflow; `repeat(auto-fit, …)` would make them equal. */
 .folderfolio-wizard__actions {
   display: flex;
   align-items: center;
@@ -206,8 +214,8 @@
 }
 
 .folderfolio-wizard__barLine {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto;
   margin-bottom: 20px;
   font-size: 12.5px;
   color: var(--ff-muted);
@@ -248,24 +256,20 @@
 .folderfolio-wizard__error {
   padding: 12px 14px;
   margin: 14px 0;
-  border-left: 4px solid var(--ff-danger);
+  border-inline-start: 4px solid var(--ff-danger);
   background: var(--ff-hover);
   font-size: 13px;
 }
 
 @media screen and (max-width: 782px) {
-  .folderfolio-wizard__steps {
-    flex-wrap: wrap;
-  }
+  /* `.folderfolio-wizard__steps` declared `flex-wrap: wrap` here until 21 Sep.
+     It has been a grid since the layout pass, so it did nothing — except tell
+     the next reader the steps still wrap, which is the one thing they were
+     fixed to stop doing. */
 
   .folderfolio-wizard__line {
-    flex-direction: column;
+    grid-template-columns: 1fr;
     gap: 4px;
-  }
-
-  .folderfolio-wizard__lineLabel {
-    flex-basis: auto;
-    width: auto;
   }
 }
 
@@ -277,7 +281,7 @@
   /* In two columns the right-hand step of each row is the one that ends it,
      not just the last of the four. */
   .folderfolio-wizard__step:nth-child(2n) {
-    border-right: 0;
+    border-inline-end: 0;
   }
 
   .folderfolio-wizard__step:nth-child(-n + 2) {

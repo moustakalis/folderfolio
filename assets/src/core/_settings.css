@@ -47,7 +47,9 @@
  * bookmark comes back where it was left.
  */
 .folderfolio-settings__tabs {
-  display: flex;
+  display: grid;
+  grid-auto-flow: column;
+  justify-content: start;
   gap: 20px;
   border-bottom: 2px solid var(--ff-field-line);
 }
@@ -161,8 +163,17 @@
   cursor: pointer;
 }
 
-.folderfolio-seg label + label {
-  border-left: 1px solid var(--ff-field-line);
+/*
+ * The divider between the options.
+ *
+ * This was `label + label` and matched nothing: the radio inputs are siblings
+ * between the labels, so the adjacent selector never fired. With two options
+ * one of them is always checked, and the checked fill's own edge looked like
+ * a divider, which is why nobody noticed. `:not(:first-of-type)` is what the
+ * rule was trying to say.
+ */
+.folderfolio-seg label:not(:first-of-type) {
+  border-inline-start: 1px solid var(--ff-field-line);
 }
 
 /*
@@ -242,7 +253,7 @@
 }
 
 .folderfolio-swatches__note {
-  margin-left: 0;
+  margin-inline-start: 0;
   font-size: 12px;
   color: var(--ff-muted);
 }
@@ -289,7 +300,7 @@
 }
 
 .folderfolio-matrix th:first-child {
-  text-align: left;
+  text-align: start;
 }
 
 /* --ff-canvas is the page background painted on a panel: 1.14:1, which is not
@@ -306,7 +317,7 @@
 }
 
 .folderfolio-matrix td:first-child {
-  text-align: left;
+  text-align: start;
 }
 
 /*
@@ -344,7 +355,7 @@
   padding: 8px;
   font-size: 13px;
   font-weight: 400;
-  text-align: left;
+  text-align: start;
   text-transform: none;
   letter-spacing: 0;
   overflow-wrap: anywhere;
@@ -415,7 +426,7 @@
   padding: 9px 8px 9px 0;
   font-size: 13px;
   font-weight: 400;
-  text-align: left;
+  text-align: start;
   color: var(--ff-muted);
 }
 
@@ -568,7 +579,7 @@
   /* (0,2,1), so it beats the rule above and the base role rule's padding
      shorthand — which is why the left inset has to be restated here. */
   .folderfolio-matrix th.folderfolio-matrix__role {
-    padding-left: 0;
+    padding-inline-start: 0;
     font-size: 12px;
   }
 
