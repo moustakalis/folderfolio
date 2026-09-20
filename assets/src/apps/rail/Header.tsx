@@ -45,7 +45,7 @@ export function Header() {
               same shape as the block icon and the wordpress.org listing.
             */}
             <span className="folderfolio-rail__brand">
-                <BrandMark />
+                <BrandMark size={16} />
                 <span className="folderfolio-rail__eyebrow">FolderFolio</span>
             </span>
 

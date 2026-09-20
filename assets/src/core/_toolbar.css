@@ -537,6 +537,18 @@
   .media-frame:not(.mode-select)
   .media-toolbar-secondary
   > .select-mode-toggle-button {
+  /**
+   * Last on the line, and then pushed to the end of it.
+   *
+   * `margin-left: auto` alone left it **36px short of the right edge**
+   * (measured: right edge 913 in a 949px row), because core prints a
+   * `<span class="spinner">` after it — 20px wide plus its margins, and an auto
+   * margin only claims the free space *before* the item, not after. `order`
+   * puts our button last among the line's items so there is nothing after it
+   * to reserve room; the spinner keeps its place inline, where core shows it
+   * anyway.
+   */
+  order: 1;
   margin-left: auto;
 }
 

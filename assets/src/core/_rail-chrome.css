@@ -60,19 +60,55 @@
 }
 
 /* Optically centred: the mark's shapes sit on a 20-unit grid whose lower edge
-   is heavier, and the eyebrow is 10px uppercase with no descenders, so a plain
+   is heavier, and the eyebrow is uppercase with no descenders, so a plain
    centre line leaves the word riding high against it. */
 .folderfolio-rail__brand svg {
   flex: 0 0 auto;
   margin-top: -1px;
 }
 
+/**
+ * Twelve, because twelve is what else is on this row.
+ *
+ * At 10px the product's name was the **smallest type in the rail** — beside a
+ * 12px/700 `New folder` button, above an 11.5px tool row and 13px folder rows.
+ * A wordmark that is the quietest thing on its own panel reads as an
+ * afterthought, which is what Nick saw.
+ *
+ * Twelve rather than thirteen: it matches the only other thing on this row
+ * exactly, and thirteen would make the plugin's own name the largest text in
+ * the rail, which overstates it inside wp-admin. The mark goes 14 to 16 with
+ * it, keeping the 1.4 ratio it was drawn at and landing on the icon set's own
+ * row size.
+ *
+ * Measured across the rail's drag range, brand + gap + button against the
+ * header's inner width:
+ *
+ *     240px rail   123 + 8 + 103 = 234 in 238  — clips by 12
+ *     280px rail   123 + 8 + 103 = 234 in 278  — 44 to spare
+ *     310px rail   …                    in 308  — 74 to spare
+ *
+ * So the old pair comes back below 298, where the indent already drops to 16
+ * and the tool row is already icons only. No new breakpoint, and the wordmark
+ * never clips — which it did, by 2px, even at 10px before this.
+ */
 .folderfolio-rail__eyebrow {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ff-ink);
+}
+
+@container folderfolio-rail (width < 298px) {
+  .folderfolio-rail__eyebrow {
+    font-size: 10px;
+  }
+
+  .folderfolio-rail__brand svg {
+    width: 14px;
+    height: 14px;
+  }
 }
 
 /* ---------------------------------------------------------------- buttons */
