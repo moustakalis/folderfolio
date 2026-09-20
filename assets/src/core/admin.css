@@ -1,10 +1,23 @@
 /**
- * FolderFolio Admin Styles
+ * FolderFolio admin styles — the import manifest.
  *
- * The :root block below is v0.2.0 and is on its way out: it hard-codes hexes
- * that are wrong in seven of core's eight admin colour schemes. It survives
- * only until the rail is rebuilt on the designed components; nothing new may
- * use it. Everything designed resolves through _tokens.css.
+ * Everything this screen draws lives in the partials below and resolves
+ * through _tokens.css.
+ *
+ * Until 20 Sep this file also carried a v0.2.0 `:root` block of its own —
+ * --ff-brand-700/600/100, --ff-ink-900, --ff-ink-700, --ff-surface-0/50,
+ * --ff-border, --ff-danger-600, --ff-success-600 — plus about 190 lines of
+ * rules for the folder tree as it was drawn before the rail was rebuilt. Its
+ * own comment said what was wrong with it and when it should go: it
+ * "hard-codes hexes that are wrong in seven of core's eight admin colour
+ * schemes", and it "survives only until the rail is rebuilt on the designed
+ * components".
+ *
+ * The rail has been rebuilt. Checked before removing it: nothing outside this
+ * file referenced those tokens, no PHP, TSX or block markup used any of the
+ * fifteen selectors, and every one of them matched zero elements in the live
+ * media library with the rail mounted. It was shipping about 200 lines of
+ * dead CSS and a second, scheme-blind palette to every Media > Library page.
  */
 
 @import './_tokens.css';
@@ -13,211 +26,3 @@
 @import './_rail-chrome.css';
 @import './_content.css';
 @import './_toolbar.css';
-
-:root {
-  --ff-brand-700: #3047a8;
-  --ff-brand-600: #4059c7;
-  --ff-brand-100: #e8ecff;
-  --ff-ink-900: #1d2327;
-  --ff-ink-700: #50575e;
-  --ff-surface-0: #ffffff;
-  --ff-surface-50: #f6f7f7;
-  --ff-border: #dcdcde;
-  --ff-danger-600: #b32d2e;
-  --ff-success-600: #00a32a;
-}
-
-/* Folder Tree Container */
-/**
- * v0.2.0 drew this as a card, because it sat in the content column and needed
- * an edge of its own. It is inside the rail now, which supplies the panel, the
- * 2px rule and the scrolling — so a border here is a box inside a box.
- *
- * The rows it contains are still v0.2.0's; _row.css replaces them at step 4.
- */
-#folderfolio-folder-tree {
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  padding: 0 12px;
-  margin: 0;
-  max-width: none;
-}
-
-/* Header */
-.folderfolio-tree-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--ff-border);
-}
-
-.folderfolio-tree-header h3 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ff-ink-900);
-}
-
-.folderfolio-actions {
-  display: flex;
-  gap: 6px;
-}
-
-/* Search */
-.folderfolio-tree-search {
-  margin-bottom: 12px;
-}
-
-.folderfolio-tree-search input {
-  width: 100%;
-  padding: 6px 8px;
-  font-size: 13px;
-  border: 1px solid var(--ff-border);
-  border-radius: 3px;
-}
-
-/* Tree List */
-.folderfolio-tree-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.folderfolio-tree-item {
-  margin: 0;
-  padding: 0;
-}
-
-.folderfolio-folder-row {
-  display: flex;
-  align-items: center;
-  padding: 6px 8px;
-  cursor: pointer;
-  border-radius: 3px;
-  transition: background-color 0.15s ease;
-}
-
-.folderfolio-folder-row:hover {
-  background: var(--ff-surface-50);
-}
-
-.folderfolio-tree-item.active .folderfolio-folder-row {
-  background: var(--ff-brand-100);
-  border-left: 3px solid var(--ff-brand-700);
-  padding-left: 5px;
-}
-
-/* Toggle Icon */
-.folderfolio-toggle {
-  width: 20px;
-  height: 20px;
-  font-size: 16px;
-  color: var(--ff-ink-700);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.folderfolio-toggle:hover {
-  color: var(--ff-brand-600);
-}
-
-/* Folder Name */
-.folderfolio-folder-name {
-  flex: 1;
-  font-size: 13px;
-  color: var(--ff-ink-900);
-  margin-left: 4px;
-}
-
-/* Folder Count */
-.folderfolio-folder-count {
-  font-size: 11px;
-  color: var(--ff-ink-700);
-  background: var(--ff-surface-50);
-  padding: 2px 6px;
-  border-radius: 10px;
-  margin-left: 8px;
-}
-
-/* Children */
-.folderfolio-children {
-  list-style: none;
-  margin: 0;
-  padding: 0 0 0 20px;
-  display: none;
-}
-
-.folderfolio-children.expanded {
-  display: block;
-}
-
-/* Empty State */
-.folderfolio-empty {
-  padding: 12px 8px;
-  font-size: 13px;
-  color: var(--ff-ink-700);
-  font-style: italic;
-}
-
-/* Media Grid Integration */
-.media-folder-filter {
-  margin-bottom: 16px;
-  padding: 12px;
-  background: var(--ff-brand-100);
-  border: 1px solid var(--ff-brand-600);
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.media-folder-filter .current-folder {
-  font-weight: 600;
-  color: var(--ff-brand-700);
-}
-
-/* Upload indicator */
-.folderfolio-upload-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  background: var(--ff-success-600);
-  color: white;
-  border-radius: 3px;
-  font-size: 12px;
-  margin-top: 8px;
-}
-
-/* Responsive */
-@media screen and (max-width: 782px) {
-  #folderfolio-folder-tree {
-    max-width: 100%;
-  }
-
-  .folderfolio-tree-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .folderfolio-actions {
-    width: 100%;
-    justify-content: flex-start;
-  }
-}
-
-/* The .folderfolio-sidebar wrapper is gone with the old mount point; the rail
-   is the container now. See _rail.css. */
-
-/* v0.2.0's bulk folder bar is gone — see MediaLibraryIntegration. Its markup
-   was generated by assets/src/core/bulk-actions.ts, deleted at step 7b, so
-   .folderfolio-bulk-actions and .folderfolio-selected-count no longer appear
-   on any screen. The Add-to-folder flyout replaces both; its styles are in
-   _toolbar.css. */

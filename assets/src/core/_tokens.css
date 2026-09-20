@@ -1,37 +1,72 @@
 /**
- * FolderFolio design tokens.
+ * The colour tokens.
  *
- * WordPress core's palette, resolved per admin colour scheme. Nothing in the
- * plugin may hard-code an ink, a rule or a field colour: eight schemes ship
- * with core and a literal hex will be wrong in seven of them.
+ * ## One palette, and an accent that is core's
  *
- * The body carries one of core's .admin-color-* classes, so the scheme blocks
- * below are the only place a colour is chosen.
+ * wp-admin's eight colour schemes are **menu-and-accent themes, not dark
+ * modes**. Every one of them sets `body { background: #f0f0f0 }` — Light sets
+ * #f5f5f5 — and not one contains `#wpcontent`, `#wpbody`, `.wrap`, `.postbox`,
+ * `.card` or `table.widefat`. Midnight's 21KB is 104 rules on buttons and
+ * `.wp-core-ui`, 69 on the admin bar, 60 on the admin menu, 13 on media
+ * accents, 4 on links, and one on the body background. The content area is
+ * untouched in all eight.
+ *
+ * This file used to do the opposite: it carried a full dark surface palette
+ * for Midnight and nothing at all for six of the eight schemes, so FolderFolio
+ * was the only dark content column in an otherwise light admin — and its
+ * selection colour stayed Fresh's blue while core's primary button was olive
+ * on Ectoplasm, brown on Coffee, green on Ocean and orange on Sunrise. We
+ * themed the one thing core does not, and did not theme the one thing it does.
+ *
+ * So: **one surface palette for every scheme**, and the accent comes from
+ * core's own variable. `--wp-admin-theme-color` is published per scheme on
+ * `body`, with `-darker-10` and `-darker-20` beside it, which is how core's
+ * own `.button-primary` is painted. Referencing it covers all eight schemes in
+ * four declarations and cannot drift from what the admin around us is doing.
+ *
+ * Measured, all eight: white on the theme colour is 4.57:1 at worst (Light)
+ * and 5.61 at best (Modern); `-darker-20` as text on the panel is 6.52:1 at
+ * worst (Midnight) and 9.02 at best (Ectoplasm). So `--ff-on-sel: #fff` and
+ * `--ff-accent-text: -darker-20` are safe in every scheme by construction,
+ * which is what `TokensTest` asserts against the table of eight.
+ *
+ * The fallback is `#007cba`, which is what core itself falls back to on
+ * `:root`. The old `#2271b1` was not core's Fresh accent at all — under Fresh
+ * core's own primary button paints `#007cba`, so our selection colour had been
+ * quietly disagreeing with the button next to it.
+ *
+ * ## The rail decides this, not the settings card
+ *
+ * Nick: *"the rail is part of the library it filters."* The rail sits between
+ * the dark admin menu and the light media library, and it is the only surface
+ * where "follow the chrome" and "follow the content" disagree. It follows the
+ * content. Everything else follows from that.
+ *
+ * ## What is deliberately not scheme-dependent
+ *
+ * The undo toast. It is a dark sheet on every scheme because it is chrome
+ * rather than page, and it has five tokens of its own so that nothing borrows
+ * a page token for it — which is how it rendered dark-on-dark at 1.2:1 before.
  */
 
-/**
- * The one token that is not scoped to .folderfolio.
- *
- * The channel between the rail and the library column. Core leaves 5px there,
- * which reads as two panels that failed to meet rather than as a gutter
- * anyone chose — and at the foot of the page it left the Collapse button a
- * few pixels from core's "Thank you for creating with WordPress".
- *
- * It is on :root because the two elements that have to agree about it —
- * #wpbody-content and #wpfooter — are core's and are outside .folderfolio, so
- * a declaration in the block below would not reach either of them. It carries
- * no colour, so it is not a scheme decision and nothing here is duplicated.
- */
 :root {
   --ff-rail-gap: 20px;
 }
 
 .folderfolio {
-  /* Fresh — core's default, and the fallback for any scheme not listed. */
-  --ff-sel: #2271b1;          /* selection, primary action */
-  --ff-sel-hover: #135e96;
-  --ff-on-sel: #fff;          /* ink on a selection fill */
-  --ff-bar: #1d2327;          /* admin menu, admin bar */
+  /*
+   * The accent, from core. Four declarations for eight schemes.
+   * --ff-on-sel is the ink that sits *on* --ff-sel and nothing else; pairing
+   * it with any other ground is the mistake this codebase has made four times.
+   */
+  --ff-sel: var(--wp-admin-theme-color, #007cba);
+  --ff-sel-hover: var(--wp-admin-theme-color-darker-10, #006ba1);
+  --ff-on-sel: #fff;
+  --ff-accent-text: var(--wp-admin-theme-color-darker-20, #005a87);
+
+  /* Surfaces. One palette, every scheme — wp-admin's content area is light in
+     all eight, so ours is too. */
+  --ff-bar: #1d2327;          /* admin menu, admin bar — chrome, not page */
   --ff-canvas: #f0f0f1;
   --ff-panel: #fff;
   --ff-ink: #1d2327;
@@ -41,24 +76,28 @@
   --ff-line: #dcdcde;         /* hairline within a panel */
   --ff-rule: rgba(29, 35, 39, 0.4); /* 2px rule between sections */
   --ff-guide: #e6e6e8;        /* tree indent guides */
-  --ff-wash: #f0f6fc;         /* selected row */
+
+  /* The selected row. A tint of whatever the scheme's accent is, so it is not
+     a blue wash under an orange admin. The flat value comes first as the
+     fallback for anything that cannot parse color-mix. */
+  --ff-wash: #f0f6fc;
+  --ff-wash: color-mix(in srgb, var(--ff-sel) 8%, #fff);
+
   --ff-hover: #f6f7f7;
   --ff-field: #fff;
   --ff-field-line: #8c8f94;
   --ff-danger: #d63638;
-  --ff-danger-text: #b32d2e;  /* on white */
-  --ff-accent-text: #135e96;  /* accent as body-size text on white */
+  --ff-danger-text: #b32d2e;
 
   /*
    * The undo toast names a context none of the tokens above describe: a dark
    * sheet that stays dark in every scheme, because it is chrome rather than
-   * page. Borrowing --ff-bar and --ff-canvas for it worked on Fresh and was
-   * dark-on-dark at 1.2:1 on Midnight — the same mistake --ff-accent-text
-   * made, and found the same way, by looking at it on a dark scheme.
+   * page. Borrowing --ff-bar and --ff-canvas for it was dark-on-dark at 1.2:1
+   * on Midnight — the same mistake --ff-accent-text made, and found the same
+   * way, by looking at it on a dark scheme.
    *
-   * Deliberately identical across all schemes, and listed as shared in
-   * TokensTest for that reason. The accents are Midnight's, because they are
-   * the ones drawn to sit on something this dark.
+   * Deliberately identical across all schemes. The accents are the ones drawn
+   * to sit on something this dark.
    */
   --ff-toast-bg: #1d2327;
   --ff-toast-ink: #f0f0f1;
@@ -73,125 +112,15 @@
   --ff-switcher: 20px;
 }
 
-.admin-color-modern .folderfolio {
-  --ff-sel: #3858e9;
-  --ff-sel-hover: #1d35b4;
-  --ff-bar: #1e1e1e;
-}
-
-.admin-color-midnight .folderfolio {
-  --ff-sel: #69a8bb;
-  --ff-sel-hover: #89bac9;
-  --ff-on-sel: #1d2327;
-  --ff-bar: #26292c;
-  --ff-canvas: #32373c;
-  --ff-panel: #26292c;
-  --ff-ink: #f0f0f1;
-  --ff-muted: #d7dade;
-  --ff-dim: #b4b9bd;
-  --ff-line: #4f5559;
-  --ff-rule: rgba(240, 240, 241, 0.35);
-  --ff-guide: #3c4145;
-  --ff-wash: rgba(105, 168, 187, 0.2);
-  --ff-hover: rgba(255, 255, 255, 0.07);
-  --ff-field: #32373c;
-
-  /* These three name a context — "on white" — that Midnight does not have.
-     With no value here they inherited Fresh's straight through and rendered
-     dark-on-dark: --ff-accent-text at 2.5:1, --ff-danger-text at 2.32:1.
-     Found rendering screen 02 in Midnight; TokensTest now fails the build if
-     any colour token loses its Midnight override again.
-
-     --ff-danger is a light red here, for text, borders and icons. A
-     destructive *fill* on Midnight needs a paired ink on top of it; that
-     pairing is settled when the delete button is built, not guessed now. */
-  --ff-accent-text: #9ec8d6;
-  --ff-danger: #f39a9b;
-  --ff-danger-text: #f39a9b;
-}
-
 /**
  * Folder colours — ten fixed swatches, no free picker: a user-chosen hex
  * cannot be guaranteed legible across eight schemes. Colour paints the 16px
  * folder icon only, never the row, so selection always owns the row.
+ *
+ * One set now, not two. The second set existed for a dark panel that no
+ * scheme produces any more.
  */
 .folderfolio {
-  --ff-folder-slate: #50575e;
-  --ff-folder-red: #d63638;
-  --ff-folder-clay: #9e3526;
-  --ff-folder-ochre: #8a6a12;
-  --ff-folder-moss: #008a20;
-  --ff-folder-teal: #135e96;
-  --ff-folder-steel: #2271b1;
-  --ff-folder-indigo: #3858e9;
-  --ff-folder-plum: #6d2a58;
-  --ff-folder-ink: #1d2327;
-}
-
-.admin-color-midnight .folderfolio {
-  --ff-folder-slate: #c3c4c7;
-  --ff-folder-red: #f39a9b;
-  --ff-folder-clay: #ff9784;
-  --ff-folder-ochre: #e0bb52;
-  --ff-folder-moss: #8fd9a0;
-  --ff-folder-teal: #9ec8d6;
-  --ff-folder-steel: #9ec8e8;
-  --ff-folder-indigo: #a9b7f5;
-  --ff-folder-plum: #d79bc2;
-  --ff-folder-ink: #f0f0f1;
-}
-
-/**
- * Inside WordPress's media modal, every scheme is Fresh.
- *
- * Core's media frame is a white sheet in all eight admin colour schemes —
- * media-views.css hard-codes it, and does not consult the scheme for the
- * modal's own ground. On Midnight the folder column therefore rendered a dark
- * panel inside a white dialog: legible in isolation (name 12.84:1 against its
- * own panel), and obviously foreign the moment you looked at it. The rail has
- * the opposite problem and no problem at all — it sits in a dark admin page,
- * so it matches.
- *
- * So the modal gets the light palette back, accent included. Not surfaces
- * only: `--ff-on-sel` is the ink that sits *on* `--ff-sel`, and
- * `--ff-accent-text` is the accent at body size on the panel, so the three
- * are one decision. Midnight's accent on white would leave the drag-over name
- * at 1.6:1.
- *
- * `.media-modal .folderfolio` is 0,2,0 — the same specificity as
- * `.admin-color-midnight .folderfolio` — so this wins only because it comes
- * after it. Keep it last in this file.
- *
- * `--ff-off` and `--ff-field-line` are absent because they are the same in
- * every scheme — there is nothing for the modal to undo — and the five
- * `--ff-toast-*` tokens are absent because the toast is portaled to the body,
- * outside the modal. Both sets are TokensTest's SHARED list.
- *
- * The values are a copy of the Fresh block above, and a copy is a thing that
- * drifts. TokensTest::test_the_media_modal_restates_fresh_exactly is what
- * stops it: it fails if this block and the base block ever disagree, or if a
- * new token is added to one and not the other.
- */
-.media-modal .folderfolio {
-  --ff-sel: #2271b1;
-  --ff-sel-hover: #135e96;
-  --ff-on-sel: #fff;
-  --ff-bar: #1d2327;
-  --ff-canvas: #f0f0f1;
-  --ff-panel: #fff;
-  --ff-ink: #1d2327;
-  --ff-muted: #50575e;
-  --ff-dim: #646970;
-  --ff-line: #dcdcde;
-  --ff-rule: rgba(29, 35, 39, 0.4);
-  --ff-guide: #e6e6e8;
-  --ff-wash: #f0f6fc;
-  --ff-hover: #f6f7f7;
-  --ff-field: #fff;
-  --ff-danger: #d63638;
-  --ff-danger-text: #b32d2e;
-  --ff-accent-text: #135e96;
-
   --ff-folder-slate: #50575e;
   --ff-folder-red: #d63638;
   --ff-folder-clay: #9e3526;

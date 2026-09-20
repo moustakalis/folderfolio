@@ -53,9 +53,13 @@ final class MediaLibraryIntegration
         // The mount point moved to Rail. It used to be rendered here, into
         // all_admin_notices, which put the folder tree inside the content
         // column and in the notices stack — so it scrolled away with the page
-        // and a plugin update notice could push it down the screen. Rail
-        // renders #folderfolio-folder-tree inside the rail proper; this class
-        // still owns the bundles that populate it.
+        // and a plugin update notice could push it down the screen. Rail owns
+        // the rail's own markup now; this class still owns the bundles that
+        // populate it.
+        //
+        // The id this comment used to name, #folderfolio-folder-tree, was
+        // v0.2.0's and is rendered by nothing — its last trace was ~200 lines
+        // of dead CSS in admin.css, removed 20 Sep.
     }
 
     /**

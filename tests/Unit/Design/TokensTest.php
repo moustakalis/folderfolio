@@ -8,20 +8,26 @@ use FolderFolio\Support\Swatches;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Guards the colour tokens against one specific, repeatable mistake.
+ * Guards the colour tokens.
  *
- * _tokens.css declares a base block for Fresh and overrides it per scheme.
- * Modern differs from Fresh only in accent, so inheriting the rest is correct.
- * Midnight inverts the lightness, so *every* colour that is not deliberately
- * shared has to be redeclared there — and when one is missed it does not fail
- * loudly. It renders dark ink on a dark panel and simply looks wrong to
- * whoever happens to switch schemes.
+ * ## What changed on 20 Sep
  *
- * That is not hypothetical: --ff-accent-text, --ff-danger-text and --ff-danger
- * were all inherited into Midnight at 2.5:1, 2.3:1 and 3.1:1 against the
- * panel. The first was caught by eye while rendering the folder row; the other
- * two were only found by looking for more of the same. This test is what
- * finding them by eye is meant to be replaced by.
+ * _tokens.css used to declare a base palette for Fresh and override it per
+ * scheme — a full dark surface set for Midnight and nothing at all for six of
+ * the eight schemes. Most of this file existed to police that: that Midnight
+ * overrode every colour it did not deliberately share, and that the media
+ * modal restated Fresh exactly because it had to undo Midnight.
+ *
+ * wp-admin's schemes turned out not to work that way. All eight set
+ * `body { background: #f0f0f0 }` and none of them touches a content surface —
+ * they are menu-and-accent themes, not dark modes. So there is **one surface
+ * palette** now, and the accent comes from **core's own**
+ * `--wp-admin-theme-color`, published per scheme on `body`.
+ *
+ * That deleted three tests. What replaces them is the check the old shape
+ * could not express: the accent is not ours to declare, and whatever core
+ * hands us has to stay legible with the ink we put on it — in all eight
+ * schemes, not the two we used to carry blocks for.
  *
  * It parses the stylesheet rather than rendering it, so it stays in the
  * WordPress-free unit suite and runs in milliseconds.
@@ -29,40 +35,40 @@ use PHPUnit\Framework\TestCase;
 final class TokensTest extends TestCase
 {
     /**
-     * Tokens Midnight deliberately shares with Fresh.
+     * Core's own accent per scheme, read from `--wp-admin-theme-color` on
+     * `body` in a live admin page, 20 Sep 2026.
      *
-     * --ff-off and --ff-field-line are #8c8f94 in every scheme by design —
-     * the handoff's colour table lists them identically across all three —
-     * and both clear 4.5:1 on Midnight's panel.
+     * Fresh ships no colours stylesheet, so it takes the value core falls back
+     * to on `:root` — and core's Fresh `.button-primary` paints exactly that.
+     * Our old `--ff-sel: #2271b1` was not it: the selection colour had been
+     * quietly disagreeing with the button beside it.
+     *
+     * [theme colour, darker-20]
      */
-    private const SHARED = [
-        '--ff-off',
-        '--ff-field-line',
-
-        /*
-         * The undo toast is a dark sheet on every scheme — chrome, not page —
-         * so its five tokens are the same everywhere by design. They exist at
-         * all because borrowing the page's tokens for that context produced
-         * dark-on-dark on Midnight.
-         */
-        '--ff-toast-bg',
-        '--ff-toast-ink',
-        '--ff-toast-edge',
-        '--ff-toast-accent',
-        '--ff-toast-bar',
+    private const SCHEME_ACCENTS = [
+        'Fresh' => ['#007cba', '#005a87'],
+        'Blue' => ['#437aa8', '#346084'],
+        'Coffee' => ['#916745', '#6e4e35'],
+        'Ectoplasm' => ['#646c3e', '#464c2b'],
+        'Light' => ['#007cba', '#005a87'],
+        'Midnight' => ['#cf4339', '#ab322a'],
+        'Modern' => ['#3858e9', '#183ad6'],
+        'Ocean' => ['#567958', '#415b42'],
+        'Sunrise' => ['#ad631e', '#824a16'],
     ];
 
     /**
-     * Tokens used as text, which must clear WCAG AA against the panel they
-     * sit on.
+     * Tokens used as text, which must clear WCAG AA against the panel.
      */
     private const INK = [
         '--ff-ink',
         '--ff-muted',
         '--ff-dim',
-        '--ff-accent-text',
         '--ff-danger-text',
     ];
+
+    /** Non-text contrast: an icon or a rule, not a word. */
+    private const AA_LARGE = 3.0;
 
     private const AA = 4.5;
 
@@ -82,11 +88,8 @@ final class TokensTest extends TestCase
     {
         $found = [];
 
-        // Anchored to the start of a line. Unanchored, `.folderfolio` also
-        // matches the tail of `.admin-color-midnight .folderfolio`, so the
-        // base lookup would silently return Midnight's values and the Fresh
-        // contrast check would be measuring the wrong panel. That is exactly
-        // what this file first did.
+        // Anchored to the start of a line, so `.folderfolio` does not also
+        // match the tail of a descendant selector.
         $pattern = '/^' . preg_quote($selector, '/') . '\s*\{(.*?)\}/ms';
 
         preg_match_all($pattern, $css, $blocks);
@@ -115,99 +118,171 @@ final class TokensTest extends TestCase
         );
     }
 
-    public function test_midnight_overrides_every_colour_it_does_not_deliberately_share(): void
+    /**
+     * The base palette with one scheme's accent resolved into it.
+     *
+     * @return array<string, string>
+     */
+    private static function paletteFor(string $scheme): array
     {
-        $css = self::css();
-        $midnight = self::declarations($css, '.admin-color-midnight .folderfolio');
+        [$theme, $darker20] = self::SCHEME_ACCENTS[$scheme];
 
-        $missing = [];
-
-        foreach (array_keys(self::colourTokens($css)) as $token) {
-            // Folder colours have their own Midnight block, so they are
-            // covered by the same lookup.
-            if (in_array($token, self::SHARED, true) || isset($midnight[$token])) {
-                continue;
-            }
-
-            $missing[] = $token;
-        }
-
-        self::assertSame(
-            [],
-            $missing,
-            "Midnight inverts the lightness, so these inherit a colour meant for a white "
-            . "background and will render dark on dark: " . implode(', ', $missing)
+        return array_merge(
+            self::colourTokens(self::css()),
+            [
+                '--ff-sel' => $theme,
+                '--ff-sel-hover' => $darker20,
+                '--ff-accent-text' => $darker20,
+            ]
         );
     }
 
-    public function test_text_tokens_clear_wcag_aa_on_every_scheme(): void
+    /**
+     * The accent is core's, and there is no scheme block of ours left.
+     *
+     * Four declarations cover eight schemes, and they cannot drift from what
+     * the admin around us is doing — which is the whole point. A hex here
+     * would be a seventh scheme's worth of wrong.
+     */
+    public function test_the_accent_comes_from_core_and_not_from_a_block_of_our_own(): void
     {
         $css = self::css();
         $base = self::colourTokens($css);
-        $midnight = self::declarations($css, '.admin-color-midnight .folderfolio');
 
-        $schemes = [
-            'Fresh' => [$base, (string) $base['--ff-panel']],
-            'Midnight' => [$midnight + $base, (string) $midnight['--ff-panel']],
+        $expected = [
+            '--ff-sel' => '--wp-admin-theme-color',
+            '--ff-sel-hover' => '--wp-admin-theme-color-darker-10',
+            '--ff-accent-text' => '--wp-admin-theme-color-darker-20',
         ];
 
-        foreach ($schemes as $name => [$tokens, $panel]) {
-            foreach (self::INK as $token) {
-                $value = $tokens[$token] ?? null;
+        foreach ($expected as $token => $coreVariable) {
+            self::assertArrayHasKey($token, $base, "{$token} is not declared.");
+            self::assertStringContainsString(
+                "var({$coreVariable}",
+                $base[$token],
+                "{$token} has to read core's {$coreVariable}, not declare a colour of its own — "
+                . "otherwise it is right in one scheme and wrong in the other seven."
+            );
+        }
 
-                self::assertNotNull($value, "{$token} is not defined for {$name}.");
+        self::assertStringNotContainsString(
+            '.admin-color-',
+            $css,
+            'A per-scheme block is back. The surfaces are one palette now and the accent comes '
+            . "from core, so there is nothing a scheme block can say that is not a mistake."
+        );
 
-                if (!str_starts_with($value, '#')) {
-                    continue;
-                }
+        self::assertStringNotContainsString(
+            '.media-modal',
+            $css,
+            'The media-modal block existed only to undo Midnight\'s dark surfaces. There are '
+            . 'none to undo.'
+        );
+    }
 
-                $ratio = self::contrast($value, $panel);
+    /**
+     * Whatever core's accent is, our ink has to survive it.
+     *
+     * --ff-on-sel is the ink that sits *on* --ff-sel and nothing else. This is
+     * the assertion the old per-scheme shape could not make, because it only
+     * knew two of the eight schemes.
+     */
+    public function test_the_ink_on_the_accent_clears_aa_in_every_scheme(): void
+    {
+        $onSel = self::colourTokens(self::css())['--ff-on-sel'] ?? null;
 
-                self::assertGreaterThanOrEqual(
-                    self::AA,
-                    $ratio,
-                    sprintf(
-                        '%s: %s (%s) on the panel (%s) is %.2f:1, below AA.',
-                        $name,
-                        $token,
-                        $value,
-                        $panel,
-                        $ratio
-                    )
-                );
-            }
+        self::assertNotNull($onSel, '--ff-on-sel is not declared.');
+
+        foreach (self::SCHEME_ACCENTS as $scheme => [$theme, $_]) {
+            $ratio = self::contrast($onSel, $theme);
+
+            self::assertGreaterThanOrEqual(
+                self::AA,
+                $ratio,
+                sprintf(
+                    '%s: --ff-on-sel (%s) on core\'s accent (%s) is %.2f:1.',
+                    $scheme,
+                    $onSel,
+                    $theme,
+                    $ratio
+                )
+            );
         }
     }
 
     /**
-     * Finding 11 of the settings audit, generalised.
+     * And the accent used as body-size text has to clear the panel.
      *
-     * Three times now a component has painted text on a fill using two tokens
-     * that are not a pair, and got away with it because they happen to agree
-     * on Fresh. --ff-accent-text was the first. The undo toast was the second,
-     * which is why it has five tokens of its own. The third was the settings
-     * screen's segmented control, which set `background: var(--ff-bar)` with
+     * That is what --ff-accent-text is for, and why it reads core's
+     * `-darker-20` rather than the theme colour itself: the theme colour is
+     * 4.57:1 at worst as text, which passes, but only just — the darker step
+     * is 6.52:1 at worst and is what core uses for its own hover state.
+     */
+    public function test_the_accent_as_text_clears_aa_on_the_panel_in_every_scheme(): void
+    {
+        $panel = self::colourTokens(self::css())['--ff-panel'] ?? null;
+
+        self::assertNotNull($panel, '--ff-panel is not declared.');
+
+        foreach (self::SCHEME_ACCENTS as $scheme => [$_, $darker20]) {
+            $ratio = self::contrast($darker20, $panel);
+
+            self::assertGreaterThanOrEqual(
+                self::AA,
+                $ratio,
+                sprintf(
+                    '%s: the accent as text (%s) on the panel (%s) is %.2f:1.',
+                    $scheme,
+                    $darker20,
+                    $panel,
+                    $ratio
+                )
+            );
+        }
+    }
+
+    public function test_text_tokens_clear_wcag_aa_on_the_panel(): void
+    {
+        $tokens = self::colourTokens(self::css());
+        $panel = (string) $tokens['--ff-panel'];
+
+        foreach (self::INK as $token) {
+            $value = $tokens[$token] ?? null;
+
+            self::assertNotNull($value, "{$token} is not defined.");
+
+            if (!str_starts_with($value, '#')) {
+                continue;
+            }
+
+            $ratio = self::contrast($value, $panel);
+
+            self::assertGreaterThanOrEqual(
+                self::AA,
+                $ratio,
+                sprintf('%s (%s) on the panel (%s) is %.2f:1, below AA.', $token, $value, $panel, $ratio)
+            );
+        }
+    }
+
+    /**
+     * Every rule that paints text on a fill, checked as a pair.
+     *
+     * Four times a component has painted one token on another that is not its
+     * pair, and got away with it because the two happen to agree on Fresh.
+     * --ff-accent-text was the first. The undo toast was the second, which is
+     * why it has five tokens of its own. The settings screen's segmented
+     * control was the third and the import wizard's current-step badge the
+     * fourth: both set `background: var(--ff-bar)` with
      * `color: var(--ff-on-sel)` — the admin menu's chrome ground under the ink
-     * that belongs on --ff-sel. Both are near-black on Fresh. On Midnight
-     * --ff-on-sel correctly flips dark, because --ff-sel became a light blue,
-     * while --ff-bar stayed dark: #1d2327 on #26292c, 1.09:1, with the
-     * *unchecked* label at 14.97. The selected option was the invisible one.
+     * that belongs on --ff-sel — and both were 1.09:1 on Midnight.
      *
-     * The other two tests in this file check tokens one at a time against the
-     * panel. That cannot see a wrong pairing, because both halves of this one
-     * are individually fine. So this reads the component stylesheets instead
-     * and checks the pairs they actually declare together.
-     *
-     * It only looks at rules that set both properties from tokens, which is
-     * the house rule anyway — a hex literal in component CSS is already a
-     * failure elsewhere in this class.
+     * The other tests here check tokens one at a time against the panel, which
+     * cannot see a wrong pairing: both halves are individually fine. This one
+     * reads the pairs the stylesheets actually declare, in all eight schemes.
      */
     public function test_every_declared_foreground_on_background_pair_clears_aa(): void
     {
-        $tokens = self::css();
-        $base = self::colourTokens($tokens);
-        $midnight = self::declarations($tokens, '.admin-color-midnight .folderfolio') + $base;
-
         $pairs = self::declaredPairs();
 
         self::assertNotEmpty(
@@ -218,16 +293,22 @@ final class TokensTest extends TestCase
 
         $failures = [];
 
-        foreach (['Fresh' => $base, 'Midnight' => $midnight] as $scheme => $values) {
+        foreach (array_keys(self::SCHEME_ACCENTS) as $scheme) {
+            $values = self::paletteFor($scheme);
+
             foreach ($pairs as [$selector, $ink, $ground]) {
                 $fg = $values[$ink] ?? null;
                 $bg = $values[$ground] ?? null;
 
                 if ($fg === null || $bg === null) {
-                    // The v0.2.0 block in admin.css, which declares a parallel
-                    // palette of its own. It is pinned below rather than
-                    // checked here: its hexes are fixed, so a contrast figure
-                    // against a scheme panel would be meaningless.
+                    $failures[] = sprintf(
+                        '%s: %s paints with %s on %s and one of them is not declared.',
+                        $scheme,
+                        $selector,
+                        $ink,
+                        $ground
+                    );
+
                     continue;
                 }
 
@@ -308,125 +389,31 @@ final class TokensTest extends TestCase
         return $pairs;
     }
 
-
     /**
-     * The v0.2.0 palette in admin.css, pinned so it cannot grow.
-     *
-     * admin.css still carries a `:root` block from before the rail was
-     * rebuilt, declaring --ff-brand-*, --ff-ink-900, --ff-ink-700,
-     * --ff-surface-* and friends as fixed hexes. Its own comment says what is
-     * wrong with it — "it hard-codes hexes that are wrong in seven of core's
-     * eight admin colour schemes" — and sets the condition for its removal:
-     * "it survives only until the rail is rebuilt on the designed components".
-     * The rail has been rebuilt. Nothing outside admin.css uses those tokens,
-     * and no PHP, TSX or block markup uses the classes they style.
-     *
-     * So it is dead, and it is on the theme rework's list. Until then this
-     * test holds its surface exactly where it is: the pair check above skips
-     * rules whose tokens _tokens.css does not declare, and this makes sure
-     * that skip can never quietly cover a *new* rule.
+     * The ten folder colours paint a 16px icon, not a word, so the bar is the
+     * non-text one. They sit on the panel in every scheme now — there is only
+     * one panel.
      */
-    public function test_the_v0_2_0_palette_does_not_grow(): void
+    public function test_the_folder_swatches_read_against_the_panel(): void
     {
-        $known = [
-            'admin.css .folderfolio-folder-count',
-        ];
-
-        $declared = array_keys(self::declarations(self::css(), '.folderfolio'));
-        $midnight = array_keys(
-            self::declarations(self::css(), '.admin-color-midnight .folderfolio')
-        );
-        $defined = array_flip(array_merge($declared, $midnight));
-
-        $strays = [];
-
-        foreach (self::declaredPairs() as [$selector, $ink, $ground]) {
-            if (isset($defined[$ink]) && isset($defined[$ground])) {
-                continue;
-            }
-
-            $strays[] = $selector;
-        }
-
-        sort($strays);
-        sort($known);
-
-        self::assertSame(
-            $known,
-            $strays,
-            "A rule is painting with a token _tokens.css does not declare. Every colour in a "
-            . "component stylesheet has to resolve through the scheme blocks, or it is wrong in "
-            . "seven of core's eight admin colour schemes."
-        );
-    }
-
-    /**
-     * The media modal is a white sheet in every admin colour scheme, so the
-     * folder column inside it uses the light palette whatever the scheme says.
-     * That is a copy of the Fresh block, and a copy drifts: add a token to one
-     * and forget the other and the modal renders a Midnight colour on white,
-     * which is the failure this file exists to catch, one context along.
-     *
-     * Geometry is excluded because it is inherited, not restated — the modal
-     * changes its own row height in _row.css, not here. So are the SHARED
-     * tokens: they are the same in every scheme, so there is nothing for the
-     * modal to undo, and the undo toast they describe is portaled to the body,
-     * outside the modal entirely.
-     */
-    public function test_the_media_modal_restates_fresh_exactly(): void
-    {
-        $css = self::css();
-        $base = array_diff_key(self::colourTokens($css), array_flip(self::SHARED));
-        $modal = self::declarations($css, '.media-modal .folderfolio');
-
-        self::assertNotSame([], $modal, 'The media modal has no palette of its own.');
-
-        $missing = array_diff_key($base, $modal);
-
-        self::assertSame(
-            [],
-            array_keys($missing),
-            'The media modal inherits these from whichever scheme is active, and on '
-            . 'Midnight that is a dark value on core\'s white dialog: '
-            . implode(', ', array_keys($missing))
-        );
-
-        $extra = array_diff_key($modal, $base);
-
-        self::assertSame(
-            [],
-            array_keys($extra),
-            'These exist only in the media modal block, so nothing defines them '
-            . 'anywhere else: ' . implode(', ', array_keys($extra))
-        );
-
-        foreach ($base as $token => $value) {
-            self::assertSame(
-                $value,
-                $modal[$token],
-                "{$token} differs between Fresh and the media modal; the modal is Fresh."
-            );
-        }
-    }
-
-    public function test_the_folder_swatches_exist_in_both_light_and_dark(): void
-    {
-        $css = self::css();
-        $base = self::colourTokens($css);
-        $midnight = self::declarations($css, '.admin-color-midnight .folderfolio');
+        $tokens = self::colourTokens(self::css());
+        $panel = (string) $tokens['--ff-panel'];
 
         $swatches = array_filter(
-            array_keys($base),
-            static fn (string $t): bool => str_starts_with($t, '--ff-folder-')
+            $tokens,
+            static fn (string $t): bool => str_starts_with($t, '--ff-folder-'),
+            ARRAY_FILTER_USE_KEY
         );
 
         self::assertCount(10, $swatches, 'Ten fixed swatches, no free picker.');
 
-        foreach ($swatches as $swatch) {
-            self::assertArrayHasKey(
-                $swatch,
-                $midnight,
-                "{$swatch} has no dark-row pair; a folder colour has to stay legible in Midnight."
+        foreach ($swatches as $token => $hex) {
+            $ratio = self::contrast($hex, $panel);
+
+            self::assertGreaterThanOrEqual(
+                self::AA_LARGE,
+                $ratio,
+                sprintf('%s (%s) on the panel is %.2f:1, below the 3:1 non-text floor.', $token, $hex, $ratio)
             );
         }
     }
@@ -471,15 +458,11 @@ final class TokensTest extends TestCase
      * sets `--ff-folder: var(--ff-folder-mauve)`, the property resolves to
      * nothing, and the icon renders in the default colour as though the
      * folder had never been given one.
-     *
-     * Midnight is in here too, because a swatch declared only in the base
-     * block is the original bug this file was written for, one context along.
      */
     public function test_the_ten_swatches_agree_across_php_css_and_typescript(): void
     {
         $css = self::css();
         $base = self::declarations($css, '.folderfolio');
-        $midnight = self::declarations($css, '.admin-color-midnight .folderfolio');
 
         foreach (Swatches::HEX as $key => $hex) {
             $token = "--ff-folder-{$key}";
@@ -490,12 +473,6 @@ final class TokensTest extends TestCase
                 $base[$token],
                 "Swatches::HEX['{$key}'] and {$token} disagree; the PHP copy is the one "
                 . "imports and the nearest-swatch migration read."
-            );
-            self::assertArrayHasKey(
-                $token,
-                $midnight,
-                "{$token} has no Midnight pair, so a {$key} folder renders a colour chosen "
-                . "for a white panel on a dark one."
             );
         }
 
