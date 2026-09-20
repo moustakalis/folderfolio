@@ -353,6 +353,25 @@ auto-placing two rows below the view switch, because its slot is
 `display: contents` and the rule said `> .folderfolio-filter-toggle`. A `>`
 selector never reaches a control inside a `display: contents` slot.
 
+### 20 Sep, after that — the corner, and the wordmark
+
+**`Bulk select` was 36px short of the right edge** after the declared position
+landed — measured right edge 913 in a 949px row. `margin-left: auto` claims the
+free space *before* an item, not after it, and core prints a
+`<span class="spinner">` after this button, 20px plus its margins. **`order: 1`**
+puts our button last among the line's items so nothing after it reserves room;
+the spinner keeps its place inline, where core shows it anyway. 941 of 949 now.
+
+**The eyebrow goes 10px to 12px, the mark 14 to 16.** At 10 the product's name
+was the smallest type in the rail — beside a 12px/700 `New folder` button,
+above an 11.5px tool row and 13px folder rows. Twelve rather than thirteen,
+because twelve is exactly what else is on that row and thirteen would make the
+plugin's own name the largest text in the rail. Measured across the drag range,
+brand + gap + button against the header's inner width: **234 in 238 at a 240px
+rail** (clips by 12), 234 in 278 at 280, 74 to spare at Nick's 310 — so the old
+pair comes back below **298**, the breakpoint where the indent already drops to
+16 and the tool row is already icons only. No new number.
+
 ### Three recorded deviations from the board
 
 Each was a decision the handoff does not contain, taken deliberately:
