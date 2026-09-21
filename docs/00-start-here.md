@@ -1510,18 +1510,33 @@ children and then failed on its own row left the children reparented.
 `claude/plan-1.0-coexistence-and-migration.md`; the cold-start prompt is
 `claude/cold-start-prompt-1.0-blockers.md`. Summary:
 
-**Phase 1, the two silent data bugs.** (1.1) The uploader race — `9cff4ad`
-holds against FileBird alone and CatFolders alone and **fails against both
-together**; replace the single macrotask re-assert with a short retry sequence
-and **verify against two clobberers, not one**. (1.2) Premio's
-`jQuery("#wpbody").load()` does not destroy our rail — it **resurrects** a
-fresh server-rendered copy inside `#wpbody-content` with an empty React root,
-668px tall, pushing the file table to `top: 953px` in a 700px viewport; make
-placement idempotent over **identity**, not position. (1.3) The e2e harness
-installs no competitors, which is why neither was caught — build a synthetic
-**"bad neighbour" mu-plugin** (~30 lines: assign `proto.init` at `wp.domReady`
-without chaining, `#wpbody.load()` on a click, `#wpcontent{padding-left:305px}`)
-and guard against that rather than shipping a rival into the rig.
+**Phase 1 is BUILT AND VERIFIED LIVE** — `aa38f06`, plus `49e0993` for a bug
+the live check found in it. Record:
+`claude/progress-2026-09-21l-phase-1-built.md`.
+
+*(1.1) The uploader race.* The defect in `9cff4ad` was not the number of
+writers: it tested `document.readyState === 'loading'`, which is **false in a
+`strategy: defer` bundle** — a deferred script runs at `interactive`, parsing
+finished and `DOMContentLoaded` still to come. The listener was never
+registered, and the whole re-assertion rode on one `setTimeout(…, 0)` queued
+*before* the task that fires `DOMContentLoaded` was queued; which of the two
+runs first depends on how long the deferred phase took, i.e. on how many
+plugins are active. Now `!== 'complete'`, a retry sequence, `window.load`, and
+a re-assert on the first pointer or key event.
+
+*(1.2) The rail resurrection.* Placement is idempotent over **identity**: live
+nodes captured once and compared by object, `#wpbody-content` re-resolved every
+call, copies swept, a `MutationObserver` on `#wpbody` (which survives a
+`.load()` of its own contents). Two things it exposed — `[hidden]` is a *UA*
+`display: none` that our own `display: flex` had been cancelling for the life of
+the component, and `useLateMount` was watching the very node Premio replaces.
+
+*(1.3) The harness.* `tests/e2e/helpers/bad-neighbour.ts` is a synthetic
+neighbour — **injected, not a mu-plugin**, because Playground keeps its SQLite
+integration in `wp-content/mu-plugins` and mounting over that directory takes
+the database with it. Three guards in `tests/e2e/coexistence.spec.ts`, and the
+`posts_clauses` negative control in
+`tests/Integration/Admin/MediaLibraryFilterTest.php`.
 
 **Phase 2, the visible collisions.** Stop writing to `#wpcontent` at all — our
 `padding-left: 0` and Premio's `305px` have identical specificity and ours
@@ -1533,7 +1548,11 @@ including `themes.php` (a bug with or without a rival).
 
 **Phase 3**, `refreshListTable()` replacing seven regions wholesale and
 destroying rivals' JS-injected controls — decide before costing.
-**Phase 4**, migration: **F + C** recommended, blocked on Nick choosing.
+**Phase 4**, migration: **F + C** recommended, blocked on Nick choosing — the
+options are drawn to scale on board `claude.ai/artifact/9rqG9ogYRKEvsJt3wHA6oc`,
+whose Part B also argues the coexistence stance (**coexist, then retire**: never
+gate the install, and offer the deactivation only once the import has run).
+**Answered: we name the vendor** — *"20 folders from FileBird"*.
 **Phase 5**, the existing release track.
 
 **Numbers not to re-derive:** FileBird silently hides **28 of 47 files** when
@@ -1583,10 +1602,42 @@ protect you.** FileBird, CatFolders and Premio each assign it without capturing
 the previous value, so a later plugin discards your wrapper with no error. We
 lost this race by construction — `strategy: defer` runs at parse-complete,
 they patch at `wp.domReady` / `DOMContentLoaded`, which is afterwards.
-**Closed in `9cff4ad`**: the guard is now the wrapper's own identity
+**Closed in `aa38f06`**: the guard is the wrapper's own identity
 (`folderfolioUploadTarget`) rather than a boolean, and the wrap is re-asserted
-on a macrotask after the document is ready. Verified live with FileBird active.
-See `claude/progress-2026-09-21i-the-uploader-race.md`.
+from a `DOMContentLoaded` listener, a retry sequence, `window.load` and the
+first user interaction. `9cff4ad` got the identity guard right and the timing
+wrong; see the two traps below. Verified live against FileBird **and**
+CatFolders together. See `claude/progress-2026-09-21l-phase-1-built.md`.
+
+**`strategy: defer` means `readyState === 'interactive'`, not `'loading'`.** A
+deferred script runs after parsing and before `DOMContentLoaded`, so a
+`'loading'` test inside one is false on every page load and the listener it
+guards is never registered. Test `!== 'complete'` — the only state in which the
+event has already fired.
+
+**A macrotask queued before `DOMContentLoaded` is queued may run before it.**
+The ordering between the timer queue and the task that fires the event is not
+specified, and in practice it depends on how long the deferred-script phase ran
+— which depends on how many plugins are active. A race whose outcome varies
+with the rest of the site looks exactly like a fix that works.
+
+**`[hidden]` is a UA rule, and your own `display` cancels it.**
+`.folderfolio-rail { display: flex }` beat the attribute for the life of the
+component. If `hidden` is load-bearing, say `display: none` in your own
+stylesheet.
+
+**A placement test that describes half the arrangement re-runs for ever.**
+`rail.nextSibling !== content` is false as soon as the handle sits between them,
+so `place()` re-inserted on every call — harmless while something called it
+twice a page, an infinite loop the moment a `MutationObserver` did, and a frozen
+renderer on `upload.php`. Write the test against the finished state, **and make
+the repair deaf to its own mutations** so being wrong again cannot freeze a
+page.
+
+**`npm install` is not `yarn install`.** This is a Yarn 4 project
+(`packageManager: yarn@4.18.0`, `.yarnrc.yml`); npm ignores `yarn.lock` and
+silently resolves a different tree. The first symptom was somewhere else
+entirely — a Playwright browser binary that no longer existed.
 
 **A boolean guard on a patch you do not own is a bug.** `wrapped = true`
 answers *"did I ever wrap?"* when the question is *"is my wrapper still
