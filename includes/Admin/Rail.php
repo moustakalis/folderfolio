@@ -362,7 +362,21 @@ final class Rail
                         }
                     }
 
-                    if (rail.parentNode !== body || rail.nextSibling !== content) {
+                    /*
+                     * The test has to describe the finished arrangement, not
+                     * half of it: rail, then handle, then the content column.
+                     *
+                     * `rail.nextSibling === content` is false the moment the
+                     * handle is in place, so this re-ran both inserts on every
+                     * call. Harmless while place() ran twice a page load. An
+                     * infinite loop the moment a MutationObserver calls it,
+                     * because each insert is a mutation and each mutation
+                     * schedules another repair. Measured: a frozen renderer on
+                     * upload.php.
+                     */
+                    if (rail.parentNode !== body
+                        || rail.nextSibling !== handle
+                        || handle.nextSibling !== content) {
                         body.insertBefore(rail, content);
                         body.insertBefore(handle, content);
                     }
@@ -412,8 +426,23 @@ final class Rail
 
                 function repair() {
                     pending = false;
-                    sweepCopies();
-                    place();
+
+                    /*
+                     * Deaf while it works. Our own removals and insertions are
+                     * mutations like anybody else's, and disconnecting empties
+                     * the record queue, so a repair can never schedule itself.
+                     * The corrected test above already makes the common case a
+                     * no-op; this is what makes it true by construction rather
+                     * than by the test being right.
+                     */
+                    observer.disconnect();
+
+                    try {
+                        sweepCopies();
+                        place();
+                    } finally {
+                        watch();
+                    }
                 }
 
                 function schedule() {
@@ -443,6 +472,16 @@ final class Rail
                     }
                 });
 
+                // #wpbody survives a .load() of its own contents, so this
+                // observer outlives the thing it is watching for.
+                function watch() {
+                    var body = document.getElementById('wpbody');
+
+                    if (body) {
+                        observer.observe(body, { childList: true, subtree: true });
+                    }
+                }
+
                 /*
                  * The wide home is taken at once, because this script is
                  * printed at the top of #wpbody-content and .wrap has not been
@@ -455,12 +494,7 @@ final class Rail
                 rail.hidden = false;
                 handle.hidden = rail.classList.contains('is-collapsed');
 
-                // #wpbody survives a .load() of its own contents, so this
-                // observer outlives the thing it is watching for.
-                observer.observe(document.getElementById('wpbody'), {
-                    childList: true,
-                    subtree: true,
-                });
+                watch();
 
                 if ('loading' === document.readyState) {
                     document.addEventListener('DOMContentLoaded', repair);
