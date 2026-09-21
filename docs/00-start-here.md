@@ -1690,6 +1690,18 @@ every region left in the list embeds the query string in a link. The guard is
 still worth having — for the same-URL refresh, which is the one that happens
 while somebody is working.
 
+**Fixing an empty state means finding every empty state.** The rail has two
+renderers — `Tree` above 782px and `Levels`, the drill-down sheet, below — and
+each had its own "No folders yet". Fixing `Tree.tsx` alone left the untrue
+sentence shipping at every width where the rail is a band. A component that
+answers "what if there is nothing here" is rarely the only one.
+
+**To see an empty state on a library that is not empty, empty the cache, not
+the database.** Walk the fiber tree from the app's mount point to the
+`QueryClient` and `setQueryData(key, [])`. Nothing is written and a reload puts
+it back — which is how F was looked at without deleting the 1,050 stress
+folders.
+
 **A boolean guard on a patch you do not own is a bug.** `wrapped = true`
 answers *"did I ever wrap?"* when the question is *"is my wrapper still
 installed?"* — and it had silently killed the existing re-check on every folder
