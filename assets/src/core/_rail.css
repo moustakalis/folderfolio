@@ -144,6 +144,25 @@ body.folderfolio-has-rail .folderfolio-rail {
   border-right: 2px solid var(--ff-rule);
 }
 
+/**
+ * `hidden` has to be said twice.
+ *
+ * The attribute is a UA `display: none`, and the rule above declares
+ * `display: flex` on the same element — an author declaration, which wins. So
+ * the `hidden` Rail.php prints was doing nothing at all, for the life of the
+ * component.
+ *
+ * It matters twice. At parse time it is what makes the frame before the
+ * inline script moves the rail a frame in which nothing is drawn. And under
+ * Premio's Folders, which refetches this page's markup on a folder click, it
+ * is what stops the inert copy that comes back — still carrying `hidden` —
+ * from drawing 668px of empty panel above the file table before the repair in
+ * Rail.php's script runs. The repair is the fix; this is the frame before it.
+ */
+.folderfolio-rail[hidden] {
+  display: none;
+}
+
 /* The scrolling region. min-height:0 on both this and the rail is what lets it
    scroll instead of growing the flex column past the viewport. */
 .folderfolio-rail__body {

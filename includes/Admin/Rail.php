@@ -45,6 +45,16 @@ use FolderFolio\Support\Settings;
  * library at the wrong width followed by a reflow. This is the case inline
  * script exists for.
  *
+ * ## And it has to survive a neighbour rebuilding the page
+ *
+ * Printing inside `#wpbody-content` has a second consequence, measured under
+ * Premio's Folders: a plugin that refetches this screen and swaps
+ * `#wpbody-content` in gets *a copy of this markup* for free. The live rail is
+ * taken out of the document — not destroyed; its React root survives being
+ * detached — and an inert copy arrives in its place. So the script below
+ * compares by identity, sweeps copies, and puts the live node back. See its
+ * comments for the numbers.
+ *
  * ## How wide it is
  *
  * From user meta, so the width is in the markup on first paint. See
@@ -273,12 +283,22 @@ final class Rail
 
         <script>
             (function () {
-                var body = document.getElementById('wpbody'),
-                    content = document.getElementById('wpbody-content'),
-                    rail = document.getElementById('folderfolio-rail'),
+                /*
+                 * The live nodes, captured once and compared by identity
+                 * everywhere below — never looked up by id again.
+                 *
+                 * Because a plugin that refetches this page brings a *copy* of
+                 * this markup back with it. Premio's Folders runs
+                 * jQuery('#wpbody').load(url + ' #wpbody-content') on a folder
+                 * click, and since this markup is printed on all_admin_notices
+                 * — which is inside #wpbody-content — the fetched fragment
+                 * carries a second #folderfolio-rail. getElementById would
+                 * hand that one over, and the app is not mounted in it.
+                 */
+                var rail = document.getElementById('folderfolio-rail'),
                     handle = document.getElementById('folderfolio-rail-handle');
 
-                if (!body || !content || !rail || !handle) {
+                if (!rail || !handle || !document.getElementById('wpbody')) {
                     return;
                 }
 
@@ -303,6 +323,20 @@ final class Rail
                  * surface and leaves the admin header alone.
                  */
                 function place() {
+                    /*
+                     * Both re-resolved on every call rather than captured,
+                     * because #wpbody-content is exactly the node a rival
+                     * replaces. A captured reference is a detached div, and
+                     * inserting the rail before it puts the rail somewhere
+                     * nobody is looking.
+                     */
+                    var body = document.getElementById('wpbody'),
+                        content = document.getElementById('wpbody-content');
+
+                    if (!body || !content) {
+                        return;
+                    }
+
                     if (narrow.matches) {
                         var wrap = content.querySelector('.wrap'),
                             anchor = wrap
@@ -337,22 +371,101 @@ final class Rail
                 }
 
                 /*
+                 * Anything wearing one of our two ids that is not one of our
+                 * two nodes is a copy that came back with somebody's refetched
+                 * markup, and it is a shell: the React root mounted into the
+                 * live node and stays mounted there even while that node is
+                 * detached, so the copy has an empty #folderfolio-rail-app and
+                 * no tree in it. Measured under Premio in a 700px viewport, it
+                 * drew 668px of empty panel and pushed the file table to
+                 * top: 953px. A dead shell is worse than an absence, because
+                 * it looks present.
+                 *
+                 * The <style id="folderfolio-rail-gutter"> copy is left alone
+                 * on purpose: it carries the same single declaration, and the
+                 * live one is inside the content column, so a refetch destroys
+                 * ours and the copy is what keeps the footer indented.
+                 */
+                function sweepCopies() {
+                    var copies = document.querySelectorAll(
+                            '#folderfolio-rail, #folderfolio-rail-handle'
+                        ),
+                        i,
+                        node;
+
+                    for (i = 0; i < copies.length; i++) {
+                        node = copies[i];
+
+                        if (node !== rail && node !== handle && node.parentNode) {
+                            node.parentNode.removeChild(node);
+                        }
+                    }
+                }
+
+                /*
+                 * Placement has to survive somebody else rebuilding the page
+                 * around it. Note the order: throw the copy away first, so
+                 * that place() is never choosing between two nodes with the
+                 * same id.
+                 */
+                var pending = false;
+
+                function repair() {
+                    pending = false;
+                    sweepCopies();
+                    place();
+                }
+
+                function schedule() {
+                    if (pending) {
+                        return;
+                    }
+
+                    pending = true;
+
+                    // A microtask: one repair for a whole .html() call's worth
+                    // of mutations, and it lands before the next paint.
+                    Promise.resolve().then(repair);
+                }
+
+                var observer = new MutationObserver(function (records) {
+                    for (var i = 0; i < records.length; i++) {
+                        // The app's own renders are mutations too, and in a
+                        // tree of a thousand folders there are a great many
+                        // of them.
+                        if (rail.contains(records[i].target)) {
+                            continue;
+                        }
+
+                        schedule();
+
+                        return;
+                    }
+                });
+
+                /*
                  * The wide home is taken at once, because this script is
                  * printed at the top of #wpbody-content and .wrap has not been
                  * parsed yet — there is nothing to anchor to. The narrow home
                  * is taken as soon as there is, which is still before any
                  * bundle of ours runs.
                  */
-                body.insertBefore(rail, content);
-                body.insertBefore(handle, content);
+                place();
 
                 rail.hidden = false;
                 handle.hidden = rail.classList.contains('is-collapsed');
 
+                // #wpbody survives a .load() of its own contents, so this
+                // observer outlives the thing it is watching for.
+                observer.observe(document.getElementById('wpbody'), {
+                    childList: true,
+                    subtree: true,
+                });
+
                 if ('loading' === document.readyState) {
-                    document.addEventListener('DOMContentLoaded', place);
+                    document.addEventListener('DOMContentLoaded', repair);
                 } else {
-                    place();
+                    repair();
                 }
 
                 // Crossing the breakpoint sends it to the other home.

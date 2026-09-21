@@ -37,9 +37,15 @@
  *
  * Two changes answer it. The guard is the wrapper's own identity rather than
  * a boolean, so a replacement is *detectable*; and the wrap is re-asserted
- * after the document is ready, on a macrotask, which is after every handler
- * the clobberers register. Re-wrapping then wraps *their* init and calls
- * through, so both plugins keep working — we chain even when they do not.
+ * repeatedly after the document is ready. Re-wrapping then wraps *their* init
+ * and calls through, so both plugins keep working — we chain even when they
+ * do not.
+ *
+ * The first attempt at the second half re-asserted once, on one macrotask,
+ * and lost against FileBird and CatFolders together. `reassertAfterReady()`
+ * below has the measurement and why a single tick was the wrong shape: where
+ * the failure mode is "last writer wins", one more writer is not one more of
+ * the same thing.
  *
  * The `multipart_params` seam is what covered this in the meantime: an
  * uploader built while our wrapper was missing still copied the parameter at
@@ -135,13 +141,42 @@ function watchUploaders(): void {
 }
 
 /**
+ * When the wrap is put back, in milliseconds after the document is ready.
+ *
+ * A sequence rather than one tick, because "after the plugins that clobber
+ * us" is not a single moment. Measured in their own bundles: FileBird calls
+ * its patch from `wp.domReady`, which runs the callback *synchronously* when
+ * `readyState` is already `interactive` — which it is for every deferred
+ * bundle on the page; CatFolders calls its patch from its own
+ * `DOMContentLoaded` listener; Premio patches during parsing, from a classic
+ * script. Three plugins, three different stages.
+ */
+const RETRY_DELAYS = [0, 50, 250, 1000];
+
+/**
  * Put the wrap back after the plugins that overwrite it have run.
  *
- * `strategy: defer` puts this bundle at parse-complete; `wp.domReady` and
- * `DOMContentLoaded` handlers run afterwards, and a macrotask after the event
- * has been dispatched runs after all of them. Both steps are cheap and
- * idempotent — `watchUploaders()` returns immediately when the wrapper is
- * already ours — so this costs nothing on a site with no rival installed.
+ * ## Why one macrotask was not enough
+ *
+ * This bundle is enqueued with `strategy: defer`, and a deferred script runs
+ * in the window where `document.readyState` is already **`interactive`**:
+ * parsing has finished and `DOMContentLoaded` has *not* fired yet. So the old
+ * `readyState === 'loading'` test was false here on every page load, the
+ * listener was never registered, and the whole re-assertion rode on a single
+ * `setTimeout(…, 0)` queued *before* the task that fires `DOMContentLoaded`
+ * was queued. Which of those two the event loop runs first is not specified,
+ * and in practice it turns on how long the deferred-script phase took — that
+ * is, on how many plugins are active. Which is exactly the measurement: the
+ * guard held with FileBird alone and with CatFolders alone, and was gone with
+ * both.
+ *
+ * So the test is `!== 'complete'` — the only readyState at which
+ * `DOMContentLoaded` has already fired — and the timer is a sequence rather
+ * than a bet, with `window.load` at the end of it.
+ *
+ * Every entry is idempotent: `watchUploaders()` returns immediately when the
+ * wrapper is already ours, so on a site with no rival installed this is a
+ * handful of early returns.
  */
 function reassertAfterReady(): void {
     const again = (): void => {
@@ -149,18 +184,44 @@ function reassertAfterReady(): void {
         apply();
     };
 
-    const afterHandlers = (): void => {
+    const sequence = (): void => {
         again();
-        setTimeout(again, 0);
+
+        for (const delay of RETRY_DELAYS) {
+            window.setTimeout(again, delay);
+        }
     };
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', afterHandlers, {
-            once: true,
-        });
-    } else {
-        afterHandlers();
+    if (document.readyState !== 'complete') {
+        document.addEventListener('DOMContentLoaded', sequence, { once: true });
+        window.addEventListener('load', sequence, { once: true });
     }
+
+    // And now, because a plugin that patched during parsing has already had
+    // its turn.
+    sequence();
+
+    /*
+     * Once more when the page is first touched.
+     *
+     * A fixed sequence of delays answers the four plugins on the market
+     * today, all of which have finished by `load`. It cannot answer one that
+     * patches later still — when a media modal opens, say. The first pointer
+     * or key event is the cheapest thing that is certain to come before an
+     * upload, and `once` means it costs one early return and then nothing.
+     */
+    const onFirstInput = (): void => {
+        again();
+    };
+
+    window.addEventListener('pointerdown', onFirstInput, {
+        once: true,
+        capture: true,
+    });
+    window.addEventListener('keydown', onFirstInput, {
+        once: true,
+        capture: true,
+    });
 }
 
 /**

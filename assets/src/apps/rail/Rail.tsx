@@ -440,9 +440,12 @@ function ancestorsOf(nodes: FolderNode[], id: number, trail: number[] = []): num
  * rest. This resolves it whenever the document changes and stops as soon as it
  * has one, then watches for that node being torn out so it can be put back.
  *
- * The observer is the whole of #wpbody-content rather than a narrower root
- * because the element it is waiting for is the one that tells it where to
- * look.
+ * The observer is the whole of #wpbody rather than a narrower root, for two
+ * reasons: the element it is waiting for is the one that tells it where to
+ * look, and #wpbody-content is itself replaceable — Premio's list-mode folder
+ * click swaps the whole content column, and an observer attached to the old
+ * one would be watching a detached node while the mount it is meant to
+ * restore never comes back.
  */
 function useLateMount(find: () => HTMLElement | null): HTMLElement | null {
     const [mount, setMount] = useState<HTMLElement | null>(find);
@@ -450,7 +453,7 @@ function useLateMount(find: () => HTMLElement | null): HTMLElement | null {
     useEffect(() => {
         if (mount?.isConnected) {
             // Already placed: watch only for it being removed.
-            const root = document.getElementById('wpbody-content');
+            const root = document.getElementById('wpbody');
 
             if (!root) {
                 return;
@@ -467,7 +470,7 @@ function useLateMount(find: () => HTMLElement | null): HTMLElement | null {
             return () => observer.disconnect();
         }
 
-        const root = document.getElementById('wpbody-content');
+        const root = document.getElementById('wpbody');
 
         if (!root) {
             return;
