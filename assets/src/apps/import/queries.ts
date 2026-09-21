@@ -38,6 +38,12 @@ export interface RunState {
     unreachable: Array<{ id: number; name: string; reason: string }>;
     error: string;
     can_undo: boolean;
+    /**
+     * Whether the plugin this import read from is still switched on — a fact
+     * about the site now, not part of the stored run. See
+     * `Rest\ImportController::runPayload()`.
+     */
+    source_plugin_active: boolean;
 }
 
 export interface PlanCounts {

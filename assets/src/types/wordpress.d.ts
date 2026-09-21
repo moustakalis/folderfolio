@@ -196,6 +196,8 @@ interface FolderFolioConfig {
   pluginUrl: string;
   /** admin_url('upload.php'), for the import report's way back. */
   uploadUrl?: string;
+  /** admin_url('plugins.php'), for the import report's offer to retire the source. */
+  pluginsUrl?: string;
   version: string;
   /**
    * The four abilities of the roles matrix, resolved for this user. Optional
@@ -212,6 +214,24 @@ interface FolderFolioConfig {
   defaultSort?: string;
   /** The undo grace period, in seconds. */
   undoWindow?: number;
+
+  /**
+   * Another folder plugin's data, when this library has none of ours.
+   *
+   * Absent in the ordinary case — both because the site has folders here and
+   * because working it out costs nine sources' queries. See
+   * `Modules\Import\Elsewhere`.
+   */
+  elsewhere?: {
+    key: string;
+    label: string;
+    folders: number;
+    files: number;
+    /** How many *other* plugins also hold folders. */
+    others: number;
+    /** The Import tab, or '' when this user cannot reach it. */
+    importUrl: string;
+  };
 }
 
 declare const wp: WpGlobal | undefined;

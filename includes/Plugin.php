@@ -15,6 +15,7 @@ use FolderFolio\Admin\MediaLibraryFilter;
 use FolderFolio\Admin\MediaLibraryIntegration;
 use FolderFolio\Admin\MediaModalIntegration;
 use FolderFolio\Admin\Menu;
+use FolderFolio\Admin\PluginsRow;
 use FolderFolio\Admin\Rail;
 use FolderFolio\Admin\SettingsPage;
 use FolderFolio\Blocks\Gallery;
@@ -108,6 +109,12 @@ final class Plugin
             // that it filters the library with scripts off, and so that a list
             // refresh gets a correctly-selected copy back from the server.
             (new FolderSelect())->register();
+
+            // One line under our own row on the plugins screen, when another
+            // folder plugin holds data and this library holds none of ours.
+            // It is the moment of activation; the rail's empty state is the
+            // moment of confusion.
+            (new PluginsRow())->register();
 
             // The Folders column in the list table — the only column
             // FolderFolio adds, and where list mode's drill-down happens.

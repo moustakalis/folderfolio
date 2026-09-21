@@ -8,6 +8,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+use FolderFolio\Modules\Import\Elsewhere;
 use FolderFolio\Support\Assets;
 use FolderFolio\Support\Capabilities;
 use FolderFolio\Support\Settings;
@@ -661,6 +662,18 @@ final class Rail
             'countMode' => $settings['count_mode'],
             'defaultSort' => $settings['default_sort'],
             'undoWindow' => $settings['undo_window'],
+
+            /*
+             * What another folder plugin is holding, when this library holds
+             * nothing of ours — the one thing the rail's empty state needs in
+             * order to stop saying something untrue.
+             *
+             * Server-rendered rather than fetched, so the correct sentence is
+             * in the markup on first paint instead of replacing a wrong one a
+             * moment later. It is null on almost every site and costs one
+             * COUNT to find that out; Modules\Import\Elsewhere has the rest.
+             */
+            'elsewhere' => Elsewhere::forConfig(),
             'i18n' => [
                 'folders' => __('Folders', 'folderfolio'),
                 'newFolder' => __('New folder', 'folderfolio'),
@@ -715,6 +728,43 @@ final class Rail
                     'folderfolio'
                 ),
                 'emptyTree' => __('No folders yet', 'folderfolio'),
+
+                /*
+                 * The other empty library: one that has been filed, somewhere
+                 * else. The counts are phrased separately and placed into the
+                 * body, because a template with "%s folders" baked into it
+                 * cannot be made singular by any translator.
+                 *
+                 * translators: 1: the other plugin's name, 2: a folder count
+                 * already phrased, 3: a file count already phrased.
+                 */
+                'emptyElsewhereTitle' => __(
+                    'Your media is already filed — just not here.',
+                    'folderfolio'
+                ),
+                'emptyElsewhereBody' => __(
+                    '%1$s has %2$s holding %3$s. Bringing them over adds them to FolderFolio — nothing is moved, and nothing is removed from where it is now.',
+                    'folderfolio'
+                ),
+                /* translators: %s is a number of folders. */
+                'emptyElsewhereFolderOne' => __('%s folder', 'folderfolio'),
+                /* translators: %s is a number of folders. */
+                'emptyElsewhereFolderMany' => __('%s folders', 'folderfolio'),
+                /* translators: %s is a number of files. */
+                'emptyElsewhereFileOne' => __('%s file', 'folderfolio'),
+                /* translators: %s is a number of files. */
+                'emptyElsewhereFileMany' => __('%s files', 'folderfolio'),
+                /* translators: %s is a number of other plugins. */
+                'emptyElsewhereOtherOne' => __(
+                    '%s other plugin has folders here too.',
+                    'folderfolio'
+                ),
+                /* translators: %s is a number of other plugins. */
+                'emptyElsewhereOtherMany' => __(
+                    '%s other plugins have folders here too.',
+                    'folderfolio'
+                ),
+                'emptyElsewhereAction' => __('Review the import', 'folderfolio'),
                 /* translators: %s is the number of folders. */
                 'folderTotal' => __('%s folders', 'folderfolio'),
                 'folderTotalOne' => __('1 folder', 'folderfolio'),

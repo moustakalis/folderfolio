@@ -9,6 +9,7 @@ if (!defined('ABSPATH')) {
 }
 
 use FolderFolio\Modules\Import\Catalog;
+use FolderFolio\Modules\Import\Run;
 use FolderFolio\Modules\Import\Planner;
 use FolderFolio\Modules\Import\Runner;
 use FolderFolio\Modules\Import\RunStore;
@@ -109,7 +110,7 @@ class ImportController
 
         return $this->ok([
             'sources' => Catalog::detect(),
-            'run' => null === $run ? null : $run->toArray(),
+            'run' => $this->runPayload($run),
         ]);
     }
 
@@ -171,7 +172,7 @@ class ImportController
         }
 
         /** @var \FolderFolio\Modules\Import\Run $result */
-        return $this->ok(['run' => $result->toArray()]);
+        return $this->ok(['run' => $this->runPayload($result)]);
     }
 
     /**
@@ -185,5 +186,32 @@ class ImportController
     private function fail(string $message, int $status): WP_REST_Response
     {
         return new WP_REST_Response(['success' => false, 'error' => $message], $status);
+    }
+
+    /**
+     * A run, plus one fact about the site as it is right now.
+     *
+     * `source_plugin_active` is not in `Run::toArray()` on purpose: a run is a
+     * stored record, that method is also what writes it to the database, and a
+     * plugin being switched on is not a property of something that happened
+     * last Tuesday. Freezing it there would mean the wizard telling somebody
+     * they can deactivate a plugin they turned off a week ago.
+     *
+     * It is what the report's last line is gated on — *"its folders are here
+     * now, so you can turn it off"* is only worth saying while it is on.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function runPayload(?Run $run): ?array
+    {
+        if (null === $run) {
+            return null;
+        }
+
+        $payload = $run->toArray();
+
+        $payload['source_plugin_active'] = Catalog::find($run->sourceKey)?->isPluginActive() ?? false;
+
+        return $payload;
     }
 }

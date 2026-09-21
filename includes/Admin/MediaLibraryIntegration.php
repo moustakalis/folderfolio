@@ -8,6 +8,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+use FolderFolio\Modules\Import\Elsewhere;
 use FolderFolio\Support\Assets;
 use FolderFolio\Support\Capabilities;
 use FolderFolio\Support\Settings;
@@ -168,6 +169,12 @@ final class MediaLibraryIntegration
             'countMode' => $settings['count_mode'],
             'defaultSort' => $settings['default_sort'],
             'undoWindow' => $settings['undo_window'],
+
+            // And the rail's empty state, for the same reason as the three
+            // above: whichever of the two bundles is enqueued first wins the
+            // `||`, so a key in only one of them is a feature that works on
+            // some page loads.
+            'elsewhere' => Elsewhere::forConfig(),
             // No 'i18n' here any more. All four labels belonged to
             // upload-integration.ts, and media-library-integration.ts — the
             // only bundle left on this screen — renders no text of its own.

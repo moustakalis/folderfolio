@@ -12,6 +12,22 @@
  * the assignments it made, and keeps any folder somebody has put their own
  * files into since. That is said on the screen, because an undo whose limits
  * are a surprise is worse than no undo.
+ *
+ * ## And the line about turning the other plugin off
+ *
+ * This is the only moment at which "you can deactivate FileBird now" is both
+ * **safe** and **obviously right**: their folders are already here, the import
+ * added and never moved, and the person is looking at the proof. Saying it on
+ * install would be asking somebody to take a working system down to try an
+ * unknown one, which is the moment they deactivate ours instead — so we share
+ * the screen for as long as it takes to earn the switch, and offer the switch
+ * only once it has been earned. None of the four plugins on the market does
+ * this; three ask you to import and none of them tells you that you are now
+ * carrying two.
+ *
+ * Gated on the plugin still being on, which is a fact about the site now
+ * rather than part of the stored run — see
+ * `Rest\ImportController::runPayload()`.
  */
 
 import { t, tn } from '../../core/api';
@@ -106,6 +122,19 @@ export function Report({
                       )
                     : summary(run)}
             </p>
+
+            {!undone && run.source_plugin_active && (
+                <p className="folderfolio-wizard__note folderfolio-wizard__retire">
+                    {t(
+                        'importRetire',
+                        '%s is still switched on. Its folders are here now, and nothing in FolderFolio needs it running — so you can deactivate it whenever you like.',
+                        run.label
+                    )}{' '}
+                    <a href={window.folderFolio?.pluginsUrl ?? 'plugins.php'}>
+                        {t('importRetireLink', 'Open Plugins')}
+                    </a>
+                </p>
+            )}
 
             {run.duplicates_collapsed > 0 && !undone && (
                 <p className="folderfolio-wizard__note">

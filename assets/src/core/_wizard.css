@@ -124,6 +124,25 @@
   text-wrap: pretty;
 }
 
+/**
+ * The last line of the report: their folders are here, so the plugin they came
+ * from can be switched off.
+ *
+ * A note, not a warning and not a banner. It is an offer at the one moment it
+ * is safe to make, and it should read as the natural end of the sentence the
+ * summary above it started — louder than the duplicate note beside it, quieter
+ * than the actions below. The accent edge is the same device the settings tabs
+ * use for "this is the live one", which is what the line is about: which
+ * plugin is still running.
+ */
+.folderfolio-wizard__retire {
+  max-width: 62ch;
+  padding-inline-start: 10px;
+  border-inline-start: 3px solid var(--ff-sel);
+  font-size: 12.5px;
+  color: var(--ff-ink);
+}
+
 .folderfolio-wizard__empty {
   padding: 14px 0;
   font-size: 13px;

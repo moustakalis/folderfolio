@@ -113,7 +113,16 @@ class ImportPage
             'nonce' => wp_create_nonce('wp_rest'),
             'version' => FOLDERFOLIO_VERSION,
             'uploadUrl' => esc_url_raw(admin_url('upload.php')),
+            // For the report's last line, which offers to retire the plugin
+            // the import just read from.
+            'pluginsUrl' => esc_url_raw(admin_url('plugins.php')),
             'i18n' => [
+                /* translators: %s is the plugin the import read from. */
+                'importRetire' => __(
+                    '%s is still switched on. Its folders are here now, and nothing in FolderFolio needs it running — so you can deactivate it whenever you like.',
+                    'folderfolio'
+                ),
+                'importRetireLink' => __('Open Plugins', 'folderfolio'),
                 // Step labels.
                 'importStepDetect' => __('Choose a source', 'folderfolio'),
                 'importStepPreview' => __('Preview', 'folderfolio'),

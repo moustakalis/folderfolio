@@ -304,6 +304,66 @@
 }
 
 /**
+ * The other empty library: one that has been filed, somewhere else.
+ *
+ * A block rather than a line, because it has a sentence to make and a way
+ * out to offer, and because it replaces the only thing in the rail at that
+ * moment — there is nothing here for it to compete with. It is a grid: the
+ * title, the body, the optional "and others" line and the button are four
+ * items down one column with one gap between them, and a flex column would
+ * say the same thing less directly.
+ *
+ * `--ff-wash` is the accent at 8% on white: enough to read as a panel of ours
+ * against `--ff-panel`, and not enough to fight the tree that replaces it.
+ * The rail is 300px by default and can be dragged to less, so nothing in here
+ * is given a width.
+ */
+.folderfolio-elsewhere {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+
+  margin: 12px;
+  padding: 14px;
+
+  background: var(--ff-wash);
+  border: 1px solid var(--ff-line);
+  border-radius: 2px;
+
+  text-align: start;
+}
+
+.folderfolio-elsewhere__title {
+  margin: 0;
+  font-weight: 600;
+  color: var(--ff-ink);
+
+  /* A folder plugin's name is one unbreakable token more often than not, and
+     the body below names one. */
+  overflow-wrap: anywhere;
+}
+
+.folderfolio-elsewhere__body,
+.folderfolio-elsewhere__more {
+  margin: 0;
+  color: var(--ff-muted);
+  overflow-wrap: anywhere;
+}
+
+.folderfolio-elsewhere__more {
+  color: var(--ff-dim);
+}
+
+/* `justify-items: start` shrink-wraps it; this keeps a long translation from
+   being clipped rather than wrapping inside the button. */
+.folderfolio-elsewhere__action {
+  max-width: 100%;
+  white-space: normal;
+  height: auto;
+}
+
+
+/**
  * Errors are framed and name the endpoint that failed.
  *
  * "Something went wrong" is not something anyone can act on. A site owner with

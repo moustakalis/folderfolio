@@ -15,6 +15,7 @@ import type { FolderNode } from './queries';
 import { sortTree, useRail } from './store';
 import { can } from '../../lib/can';
 import { t } from '../../core/api';
+import { EmptyTree } from './EmptyTree';
 
 /**
  * The type-ahead buffer: 1s, as the handoff specifies.
@@ -326,13 +327,10 @@ export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: Tre
     const creatingAtRoot = editing?.mode === 'create' && editing.parentId === null;
 
     // Nothing in the tree is not an error, and it is not the search's empty
-    // state either — it is a library nobody has filed yet.
+    // state either. Which of the two empty libraries it is — one nobody has
+    // filed, or one filed somewhere else — is EmptyTree's question.
     if (ordered.length === 0 && !creatingAtRoot) {
-        return (
-            <p className="folderfolio-rail__empty">
-                {t('emptyTree', 'No folders yet')}
-            </p>
-        );
+        return <EmptyTree />;
     }
 
     const firstRowId = visible[0]?.node.id ?? null;

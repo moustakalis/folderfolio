@@ -41,3 +41,13 @@ require_once $root . '/includes/Support/Settings.php';
 // a branch deeper than the path column holds.
 require_once $root . '/includes/Modules/Import/SourceFolder.php';
 require_once $root . '/includes/Modules/Import/SourceTree.php';
+
+/*
+ * Elsewhere, for its `pick()` alone. Loading the file needs no WordPress —
+ * every call to one is inside a method — and `pick()` is the half with a
+ * decision in it: which plugin the rail's empty state names, and how many
+ * others there are. The half that queries four competitors' tables is proved
+ * in a throwaway WordPress instead, which is the only place those tables can
+ * be made to exist.
+ */
+require_once $root . '/includes/Modules/Import/Elsewhere.php';
