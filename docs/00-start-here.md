@@ -1417,6 +1417,14 @@ scrolling because the card's 24px of right padding absorbed it. Use
 does not scroll sideways is not proof that a child fits its parent** — only
 that the overflow was smaller than the padding around it.
 
+**A guard can stop guarding without failing.** Finding 11's wrong pair —
+`--ff-on-sel` on `--ff-bar` — stopped failing the contrast test the day the
+theme rework made `--ff-on-sel` `#fff` in every scheme: white on `#1d2327` is
+15.89:1. The rule it stood for was unenforced for a week and the suite stayed
+green. **Re-run the old negative controls after a system-wide change, not just
+the new one** — and when a rule is semantic rather than numeric, assert it by
+name.
+
 **A screenshot is evidence of what was painted, not of what was painted with.**
 A `var()` that resolves to nothing computes to `transparent`, and a 0.66-scale
 JPEG cannot tell `#f0f0f0` from `#fff`. When the change is a colour, read the
