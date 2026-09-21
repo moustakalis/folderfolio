@@ -23,15 +23,48 @@
  * to record `this` — the same additive shape as lib/media-frame.ts, and
  * deliberately not the `wp.media.create` patch: that one is a factory every
  * plugin calls, where two wrappers means one wins by enqueue order. An
- * uploader's `init` is called once, by its own constructor, on an object
- * nobody else is competing for.
+ * uploader's `init` is called once, by its own constructor.
+ *
+ * ## It is competed for after all, so the wrap is re-asserted
+ *
+ * Measured 21 Sep against FileBird 6.5.8: `wp.Uploader.prototype.init` is a
+ * single slot, and FileBird, CatFolders and Premio's Folders each *assign* it
+ * rather than wrapping it, discarding whatever was there. Worse, they patch
+ * at `wp.domReady` / `DOMContentLoaded` while this bundle is enqueued with
+ * `strategy: defer`, which runs at parse-complete — earlier. So on a site
+ * with one of them active our wrapper was gone by the time anything uploaded,
+ * with no error: `live` stayed empty and `param()` was never called.
+ *
+ * Two changes answer it. The guard is the wrapper's own identity rather than
+ * a boolean, so a replacement is *detectable*; and the wrap is re-asserted
+ * after the document is ready, on a macrotask, which is after every handler
+ * the clobberers register. Re-wrapping then wraps *their* init and calls
+ * through, so both plugins keep working — we chain even when they do not.
+ *
+ * The `multipart_params` seam is what covered this in the meantime: an
+ * uploader built while our wrapper was missing still copied the parameter at
+ * construction. The gap was only ever a *live* uploader being re-pointed at a
+ * newly selected folder.
  */
 
 const PARAM = 'folderfolio_folder';
 
 const live = new Set<WpUploader>();
-let wrapped = false;
 let current: number | null = null;
+
+/**
+ * Stamped on our own wrapper so that a plugin which replaced it can be told
+ * from our own work. A boolean here instead meant "wrapped once, ever", which
+ * is exactly the thing that was not true.
+ */
+const MARK = 'folderfolioUploadTarget';
+
+function isOurWrapper(fn: unknown): boolean {
+    return (
+        typeof fn === 'function' &&
+        (fn as unknown as Record<string, unknown>)[MARK] === true
+    );
+}
 
 /**
  * `''` rather than removing the key.
@@ -69,15 +102,18 @@ function apply(): void {
 function watchUploaders(): void {
     const proto = window.wp?.Uploader?.prototype;
 
-    if (!proto || wrapped) {
+    // Not `wrapped` — the question is whether the wrapper is still *installed*,
+    // which is a different question once another plugin can overwrite it.
+    if (!proto || isOurWrapper(proto.init)) {
         return;
     }
 
-    wrapped = true;
-
+    // Whatever is there now, which on a site running FileBird or CatFolders is
+    // their replacement rather than core's. Calling through keeps their
+    // upload-to-folder working alongside ours.
     const original = proto.init;
 
-    proto.init = function (this: WpUploader, ...args: unknown[]): void {
+    const wrapper = function (this: WpUploader, ...args: unknown[]): void {
         live.add(this);
 
         // Its parameters were copied from the defaults a moment ago, in the
@@ -93,6 +129,38 @@ function watchUploaders(): void {
 
         return result;
     };
+
+    (wrapper as unknown as Record<string, unknown>)[MARK] = true;
+    proto.init = wrapper;
+}
+
+/**
+ * Put the wrap back after the plugins that overwrite it have run.
+ *
+ * `strategy: defer` puts this bundle at parse-complete; `wp.domReady` and
+ * `DOMContentLoaded` handlers run afterwards, and a macrotask after the event
+ * has been dispatched runs after all of them. Both steps are cheap and
+ * idempotent — `watchUploaders()` returns immediately when the wrapper is
+ * already ours — so this costs nothing on a site with no rival installed.
+ */
+function reassertAfterReady(): void {
+    const again = (): void => {
+        watchUploaders();
+        apply();
+    };
+
+    const afterHandlers = (): void => {
+        again();
+        setTimeout(again, 0);
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', afterHandlers, {
+            once: true,
+        });
+    } else {
+        afterHandlers();
+    }
 }
 
 /**
@@ -112,6 +180,7 @@ export function watchUploadTarget(
     initial: number | null
 ): void {
     watchUploaders();
+    reassertAfterReady();
 
     // `0` is Unassigned and `null` is All media. Neither is a folder, and an
     // upload made while looking at either is exactly the upload that should
