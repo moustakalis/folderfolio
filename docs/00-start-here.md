@@ -372,6 +372,56 @@ rail** (clips by 12), 234 in 278 at 280, 74 to spare at Nick's 310 — so the ol
 pair comes back below **298**, the breakpoint where the indent already drops to
 16 and the tool row is already icons only. No new number.
 
+### 21 Sep, after that — the box comes off and the page becomes the surface
+
+Commit `108464c`. **PHPStan clean, 110 unit (307 assertions), 54 e2e, `tsc`
+clean.** Options board: `claude.ai/artifact/Hu8kPi9uQUQErsAAK8Mk1e`.
+
+Nick: the boxed layout reads old school. He is right, and **core agrees** —
+`options-general.php` has no box at all: a transparent `.wrap`, a transparent
+`.form-table`, and not one `.card` or `.postbox`. Ours was a white panel with a
+`#8c8f94` border **and** a drop shadow, the only shadow in the plugin.
+
+**Three grounds were drawn and measured before choosing.** Dropping onto core's
+grey canvas is the most native-looking and it costs finding 12: every rule here
+is `--ff-line`, `#dcdcde`, chosen against `--ff-panel`, and on `#f0f0f0` it goes
+**1.37:1 → 1.20:1** — the matrix row rule with it, which is the rule the eye
+tracks across four tick columns. And nothing would have said so: `TokensTest`
+checks ink against the panel, and **a screen with no panel makes that guard pass
+while describing a surface it does not have.** So the canvas goes white instead
+and every token keeps the ground it was measured against. Text was never the
+question — zero failures, worst pair 5.61:1, in all three.
+
+> **The token had to move, and this is the part that nearly shipped wrong.**
+> `background: var(--ff-panel)` on `#wpcontent` resolves to nothing:
+> `#wpcontent` is an **ancestor** of `.folderfolio`, and the token block is
+> scoped to the component. It computed to `transparent`, so the box came off and
+> the ground stayed grey — the other design, silently. **A 0.66-scale screenshot
+> cannot tell `#f0f0f0` from `#fff`**; the computed style can, and did.
+> `--ff-panel` is on `:root` now, inherited by everything in `.folderfolio`,
+> still one value.
+
+Three guards came with it. `TokensTest::colourTokens()` **reads both scopes**
+— it read only `.folderfolio` before, so a token on `:root` was guarded by
+nothing. A new test fails if a colour is declared in **both** scopes, because
+the merge lets `.folderfolio` win and a drift would resolve silently. And an
+**e2e guard**, because no unit test can see this class of bug: both files were
+correct, only the *pairing* was wrong, and only a browser knows which selector
+can see which custom property. Negative control: putting `--ff-panel` back
+inside `.folderfolio` fails with *"#wpcontent is rgba(0, 0, 0, 0) — the ground
+rule resolved to nothing"*.
+
+Verified on four schemes (Light is the tightest — an `#e5e5e5` menu against
+white content), three tabs, twelve widths, **zero overflow in all 36
+combinations**. `upload.php` is untouched: the rail is still `#fff` on a grey
+canvas at Nick's 310px.
+
+**Finding 10 is re-opened and deliberately left.** The 880 cap leaves 378px to
+the right of the column; that was defensible *because it was canvas*, and
+painted white it is empty page. Rendered it still reads as a left-aligned
+column. The fallback, if it ever stops reading that way, is to let the field
+rules run the full width.
+
 ### 21 Sep, last pass — three questions of Nick's, and the colour legend goes
 
 Commit `afed1e7`. **PHPStan clean, 109 unit (305 assertions), 53 e2e, `tsc`
@@ -1323,6 +1373,15 @@ scrolling because the card's 24px of right padding absorbed it. Use
 `clientWidth − paddingLeft − paddingRight`, and remember that **a page which
 does not scroll sideways is not proof that a child fits its parent** — only
 that the overflow was smaller than the padding around it.
+
+**A screenshot is evidence of what was painted, not of what was painted with.**
+A `var()` that resolves to nothing computes to `transparent`, and a 0.66-scale
+JPEG cannot tell `#f0f0f0` from `#fff`. When the change is a colour, read the
+colour.
+
+**A custom property is only visible to the element it is scoped to and its
+descendants.** `#wpcontent` is an *ancestor* of `.folderfolio`, so a token
+declared on the component is invisible to any rule painting the page around it.
 
 **Rendering the document with the scheme is only half of it — the stylesheet
 has to land where core's did.** The scheme's `colors.min.css` must *replace*
