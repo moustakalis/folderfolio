@@ -372,6 +372,78 @@ rail** (clips by 12), 234 in 278 at 280, 74 to spare at Nick's 310 — so the ol
 pair comes back below **298**, the breakpoint where the indent already drops to
 16 and the tool row is already icons only. No new number.
 
+### 21 Sep, the first minute — what the market does after activation
+
+**No code changed.** Board: `claude.ai/artifact/P1U7zC2ofNWQmnHJ8KweLC`. Full
+record in the project at `claude/progress-2026-09-21f-the-first-minute.md`.
+**Six options drawn; nothing is built until Nick chooses.**
+
+Each rival was activated **alone** with FolderFolio deactivated, measured, then
+deactivated again. The site was restored: four rivals off, FolderFolio on, **no
+fixture data written**. WordPress **7.1.1**. FileBird 6.5.8 · Real Media
+Library Lite 4.23.4 · CatFolders 2.5.6 · Folders (Premio) 3.2.0.
+
+- **Three of four do not redirect.** Read from the network log, not the address
+  bar: each chain ends at core's own
+  `plugins.php?activate=true&plugin_status=all&paged=1&s=`. **Premio's Folders
+  does**, into its own settings page, where a **470 × 478px modal** opens
+  unbidden listing three rivals with counts and an `Import` button each. Shown
+  once; Close persists.
+- **Nobody adds a wp-admin notice.** All five score zero. RML's two notices are
+  **in-panel** — its own React app inside its rail — and cost **210px of a
+  266px-wide rail**, putting its first real folder at **y=460 in a 741px
+  viewport**. Its cross-vendor dismissal **persists server-side**: tree top
+  **361 → 267px**, and it stayed there across a reload. Its second alert only
+  offers *"Hide for 30 days"*, so it comes back.
+- **RML's import is paywalled.** `Import (Folders)` and `Import (FileBird)` on
+  `options-media.php` carry a real **`disabled` attribute** and compute to
+  `#8a8a8a`. The free tier detects a rival, names the offer, then sells it.
+- **Premio also ships a permanent `Unlock all Pro features →` link**, 156 × 14px
+  at `#ff5983`, in the rail, not dismissible; its `New Folder` button is
+  `#f51366`, brand pink rather than core's accent.
+- **The market splits two and two, and not by reach.** FileBird (200k) and
+  CatFolders (6k) bury the migration two clicks inside a settings page nothing
+  points at — **exactly as we do**. RML and Premio put it where the user
+  already is. **We are in the majority, not an outlier.**
+- **Our Import tab reports 77 folders and 89 file assignments** across the four
+  — FileBird 20/28, RML 7/0, CatFolders 35/36, Folders 15/25 — and nothing
+  anywhere else says a word about it.
+
+**What wordpress.org actually forbids.** Activation redirects: **no rule** —
+the word appears once in the guidelines, about affiliate links. The real cost
+is a bug: an unguarded redirect that `exit`s inside core's bulk-activate loop
+leaves every later plugin unactivated (**trac #40252**, open nine years), and
+core is moving the other way (**#61040** proposes an opt-in *Open* button).
+**Guideline 11 is the one that binds** — notices must be *"limited in scope and
+used sparingly, be that contextually **or** only on the plugin's setting
+page"*, and the media screen **is** the contextual home for a media-folders
+plugin. **A dismissal must persist**: core's `is-dismissible` only removes the
+DOM node. **Naming a competitor is permitted** — the ban covers readme *tags*
+(guideline 12) and *slugs* (17) and nothing else. **Plugin Check tests none of
+it**; its one relevant check is Safe Redirect, so use `wp_safe_redirect()`.
+
+**The recommendation: F, paired with C, holding B in reserve.**
+`assets/src/apps/rail/Tree.tsx:331` renders `No folders yet` when the tree is
+empty, and its own comment calls that *"a library nobody has filed yet"* — a
+sentence that is **false whenever a rival has data**. So this is not a notice
+to justify but an untrue sentence to fix: nothing added, nothing to dismiss, no
+user meta, no AJAX, no guideline-11 exposure, and it deletes itself the moment
+a folder exists. **~3 hours and one guard**, against ~a day and two for a
+notice. Its one unavoidable piece of state: `Catalog::detect()` runs nine
+sources' queries and is far too heavy for every `upload.php` load, so it needs
+a **cached boolean**. **C** is a line on our own plugins-list row via
+`after_plugin_row` — ~2 hours, no state at all. **E, redirect on activate, is
+rejected on the product's own terms, not the directory's.**
+
+**Method caveat.** All four had been activated before, on 18 Sep, to build the
+fixtures, so what was measured is strictly a **second** activation. Premio
+still redirected and RML still showed its cross-vendor alert, so those two are
+not first-run-gated; FileBird and CatFolders on a genuinely fresh install could
+differ, and proving it would mean deleting their options rows in phpMyAdmin.
+
+**Three traps this pass taught** — 34, 35 and 36 in the project's start-here
+page, and in *Things that will bite you* below.
+
 ### 21 Sep, last of all — A11 takes core's accent, and a guard that had stopped guarding
 
 Commit `a9ee2c6`. **PHPStan clean, 111 unit (309 assertions), 54 e2e, `tsc`
@@ -1382,6 +1454,28 @@ children and then failed on its own row left the children reparented.
   which would have meant `after()` callbacks never fired in any test.
 
 ## Things that will bite you
+
+**A notice is not always an `admin_notices` notice.** RML renders its two
+alerts from its own React app inside its rail, so a `#wpbody-content` sweep for
+`.notice` counts **zero** while the screen plainly has two, costing 210px.
+Count wp-admin notices and in-component notices separately, and look at the
+screen.
+
+**Read a redirect from the network log, not the address bar.** After a plugin
+activation on this site `location.search` shows `plugin_status&paged&s` with
+**no `activate` param** — something rewrites the URL after load. The network
+log shows core's real chain. Inferring "no redirect" from the visible URL is
+right only by luck.
+
+**A disabled button is a DOM fact, not a colour.** RML's paywalled import
+buttons carry a real `disabled` attribute; a merely grey style would have
+looked identical and meant something else.
+
+**`javascript_tool` refuses a result that looks like a query string.** It
+returns `[BLOCKED: Cookie/query string data]` when the value contains
+`?k=v&k=v` or a nonce-shaped token. Return `location.pathname` and an array of
+param **keys**, never a rebuilt query string.
+
 
 **A guard with an early `continue` can assert nothing and still be green.** The
 source-row guard was written against `row.querySelector('button')`, but a
