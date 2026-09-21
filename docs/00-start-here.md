@@ -1556,14 +1556,26 @@ from Premio's *Folders*, with no runtime rival detection.
 `body.folderfolio-has-rail`, so `frame.css` stops reaching core's theme and
 plugin browsers on the seven picker screens.
 
-**Phase 3**, `refreshListTable()` replacing seven regions wholesale and
-destroying rivals' JS-injected controls — decide before costing.
-**Phase 4**, migration: **F + C** recommended, blocked on Nick choosing — the
-options are drawn to scale on board `claude.ai/artifact/9rqG9ogYRKEvsJt3wHA6oc`,
-whose Part B also argues the coexistence stance (**coexist, then retire**: never
-gate the install, and offer the deactivation only once the import has run).
-**Answered: we name the vendor** — *"20 folders from FileBird"*.
-**Phase 5**, the existing release track.
+**Phase 3 is DONE** (`c3bdcbb`). `refreshListTable()` no longer replaces
+`.tablenav.top`, `.tablenav.bottom` or `.wp-filter .actions` — the three places
+other plugins put controls, where a server-rendered copy brings their markup
+back and cannot bring their JavaScript back. Narrowed to `.tablenav-pages`; the
+filter-bar region was redundant because `syncFilterForm()` already sets our
+select. Plus a byte-identical skip and a `folderfolio:list-refreshed` event on
+`document`, which is the honest answer to `#the-list`: core offers no event for
+"the rows changed", which is why every plugin decorates on ready and never
+again.
+
+**Phase 4 is DONE** (`a1124bf`). Nick took **F + C**, the **vendor named**, and
+**stance 3 — coexist, then retire**, from board
+`claude.ai/artifact/9rqG9ogYRKEvsJt3wHA6oc`. F is the rail's empty state telling
+the truth; C is a line under our own plugins row via `after_plugin_row`; the
+retire line is the import report's last sentence, shown only while the source
+plugin is still switched on. `Modules\Import\Elsewhere` gates on our own
+folder count, caches for an hour behind that, and needs no invalidation — an
+import creates folders here, so the gate closes before the cache is read.
+
+**Phase 5**, the existing release track, is what is left.
 
 **Numbers not to re-derive:** FileBird silently hides **28 of 47 files** when
 active; our `posts_clauses` bail is **load-bearing** and three of four rivals
@@ -1661,6 +1673,22 @@ the rule is harmless.**
 out, so its box does not move when that padding changes. One term had to be
 added to its indent and another had *not* to be subtracted, and both were found
 by measuring — after the footer text landed on the 5px resize handle.
+
+**The fixture you need may not be a state your dev site can be in.** F and C
+are gated on this library having no folders of ours, and the dev site has
+1,053. Both halves still got a real proof — the gate *closing* on the dev site,
+the gate *opening* in a WordPress booted for the purpose with
+`wp-playground-cli run-blueprint` and a `runPHP` step (whose stdout is only
+surfaced on a **failed** step, so the probe ends in `exit(1)`). When the two
+states cannot coexist, prove them in two places rather than reasoning about
+one.
+
+**Write the comment the measurement supports, not the one that sounds right.**
+The list refresh's no-op guard was first commented as "sorting links differ, a
+bulk-action row matches". Measured: on a folder change nothing matches, because
+every region left in the list embeds the query string in a link. The guard is
+still worth having — for the same-URL refresh, which is the one that happens
+while somebody is working.
 
 **A boolean guard on a patch you do not own is a bug.** `wrapped = true`
 answers *"did I ever wrap?"* when the question is *"is my wrapper still
