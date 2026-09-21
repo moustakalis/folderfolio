@@ -530,6 +530,42 @@ final class TokensTest extends TestCase
     }
 
     /**
+     * --ff-on-sel is the ink for --ff-sel, and for nothing else.
+     *
+     * The codebase has painted --ff-on-sel on --ff-bar four times — the undo
+     * toast, --ff-accent-text's original sin, the settings screen's segmented
+     * control and the wizard's current-step badge — and every time it was
+     * 1.09:1 on Midnight, because --ff-on-sel flipped dark with the accent
+     * while the bar stayed dark.
+     *
+     * **The contrast guard no longer catches it.** Since the theme rework
+     * --ff-on-sel is #fff in every scheme, so white on #1d2327 measures
+     * 15.89:1 and passes. The pairing is still wrong — --ff-bar is the admin
+     * menu's chrome ground and this ink belongs to the accent — it is just no
+     * longer wrong in a way a ratio can see. So it is asserted by name.
+     *
+     * Noticed on 21 Sep while writing a negative control for A11 that did not
+     * fail.
+     */
+    public function test_the_accent_ink_is_never_painted_on_the_chrome_ground(): void
+    {
+        $offenders = [];
+
+        foreach (self::declaredPairs() as [$selector, $ink, $ground]) {
+            if ($ink === '--ff-on-sel' && $ground !== '--ff-sel') {
+                $offenders[] = sprintf('%s paints --ff-on-sel on %s', $selector, $ground);
+            }
+        }
+
+        self::assertSame(
+            [],
+            $offenders,
+            "--ff-on-sel is the ink that sits on --ff-sel and nothing else:\n"
+            . implode("\n", $offenders)
+        );
+    }
+
+    /**
      * Every rule in the component stylesheets that sets both a colour and a
      * background from a token.
      *

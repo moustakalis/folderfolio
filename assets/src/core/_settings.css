@@ -206,23 +206,34 @@
 }
 
 /*
- * The checked segment takes --ff-ink on --ff-panel, which is a pair by
- * definition: --ff-ink IS the text colour on --ff-panel. It resolved to
- * --ff-bar and --ff-on-sel until 20 Sep, and those two were never a pair —
- * --ff-bar is the admin menu's chrome ground, --ff-on-sel is the ink that
- * sits on --ff-sel. They coincide on Fresh by accident. On Midnight
- * --ff-on-sel correctly flips dark, because --ff-sel became a light blue,
- * while the bar stayed dark: #1d2327 on #26292c, 1.09:1, with the *unchecked*
- * label at 14.97:1. The selected option was the invisible one.
+ * The checked segment takes the accent.
  *
- * Third instance of the mistake this file's own tokens document twice
- * (--ff-accent-text, then the undo toast): borrowing two tokens that happen
- * to agree on Fresh. On Fresh this resolves to #1d2327 on #ffffff, which is
- * exactly what the design board draws for this control.
+ * ## Two histories, and they end in different places
+ *
+ * It resolved to --ff-bar and --ff-on-sel until 20 Sep, and those two were
+ * never a pair — --ff-bar is the admin menu's chrome ground, --ff-on-sel is
+ * the ink that sits on --ff-sel. They coincide on Fresh by accident. On
+ * Midnight --ff-on-sel correctly flips dark while the bar stays dark:
+ * #1d2327 on #26292c, 1.09:1, with the *unchecked* label at 14.97:1. The
+ * selected option was the invisible one. That was finding 11, and the fix was
+ * --ff-ink on --ff-panel, which is a pair by definition.
+ *
+ * Correct, and still the wrong colour. The re-audit's A11: the active tab's
+ * marker is --ff-sel, core's own --wp-admin-theme-color, and so is every
+ * other thing on this screen that means *chosen* — but the one control whose
+ * entire job is to say which of two options is in force was near-black in all
+ * eight schemes. After a rework whose whole argument is that the accent
+ * belongs to core, the selection marker was the only thing ignoring it.
+ *
+ * Nick's call: take the accent. --ff-on-sel on --ff-sel is the pair this was
+ * reaching for in the first place, and it is safe by construction rather than
+ * by luck — white on the theme colour is 4.57:1 at worst across the eight
+ * (Light) and 5.61 at best (Modern), which TokensTest asserts against the
+ * table of nine.
  */
 .folderfolio-seg input:checked + label {
-  background: var(--ff-ink);
-  color: var(--ff-panel);
+  background: var(--ff-sel);
+  color: var(--ff-on-sel);
   font-weight: 700;
 }
 
