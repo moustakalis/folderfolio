@@ -54,24 +54,52 @@ const QUERY_VAR = 'folderfolio_folder';
  * and sorting a filtered view would drop the folder and silently show
  * everything.
  *
- * .search-box is deliberately absent: it holds whatever the user has typed.
+ * `.search-box` is deliberately absent: it holds whatever the user has typed.
+ *
+ * ## What is *not* in this list any more, and why
+ *
+ * This used to replace `.tablenav.top`, `.tablenav.bottom` and
+ * `.wp-filter .actions` whole. Those are the three places in a list table
+ * where other plugins put things — `restrict_manage_posts` fires in the
+ * filter bar, bulk-action options are appended to `.actions`, and both are
+ * routinely enhanced by script afterwards. A server-rendered copy brings their
+ * *markup* back and cannot bring their JavaScript back, so every folder click
+ * silently undid a neighbour's work. That is us breaking them, on an ordinary
+ * click, and it stopped being defensible the moment coexistence became the
+ * plan rather than an accident.
+ *
+ * So the two `.tablenav`s are narrowed to `.tablenav-pages`, which is the only
+ * part of them a folder filter changes — the count and the page links — and
+ * `.bulkactions` is left alone. And `.wp-filter .actions` is gone entirely:
+ * `syncFilterForm()` below already sets our own folder select from the URL,
+ * which is what that line was added for, and nothing else in the filter bar
+ * depends on which folder is showing.
+ *
+ * `#the-list` stays, because the rows *are* the answer to the question the
+ * user asked. Nobody's row decorations can survive a different set of rows;
+ * what they can have is the event at the end of `refreshListTable()`.
  */
 const REGIONS = [
     '#the-list',
     '.wp-list-table thead tr',
     '.wp-list-table tfoot tr',
-    '.tablenav.top',
-    '.tablenav.bottom',
+    '.tablenav.top .tablenav-pages',
+    '.tablenav.bottom .tablenav-pages',
     '.subsubsub',
-    // The filter bar, which is *not* inside .tablenav.top: WP_Media_List_Table
-    // renders it from views() with $which === 'bar', above the table. It is
-    // where restrict_manage_posts fires, so it holds FolderFolio's own folder
-    // select — and without this line that select keeps showing the folder the
-    // page was first rendered with, while the table below it shows another.
-    // Only .actions, never the whole .wp-filter: its sibling .search-form
-    // holds whatever the user has typed.
-    '.wp-filter .actions',
 ] as const;
+
+/**
+ * Dispatched on `document` once the table has been swapped.
+ *
+ * The honest answer to the part of this that cannot be narrowed away. A plugin
+ * that decorates rows with script has no way to know the rows changed — there
+ * is no core event for it, which is why every one of them decorates on ready
+ * and never again. This is a place to listen.
+ *
+ * Named after the plugin, and carrying the URL, so that a listener can tell
+ * which view it is looking at.
+ */
+export const REFRESHED = 'folderfolio:list-refreshed';
 
 /**
  * One request at a time. Clicking three folders in a row starts three renders,
@@ -139,6 +167,32 @@ export async function refreshListTable(url: string): Promise<boolean> {
             }
 
             if (next) {
+                /*
+                 * A region that came back identical is a region nobody needs
+                 * replaced.
+                 *
+                 * Measured, so that the comment says what is true rather than
+                 * what sounds true: on a **folder change** this never skips
+                 * anything. Every region left in the list carries the query
+                 * string inside a link — the sort headers, the status links,
+                 * the page links — so all of them legitimately differ.
+                 *
+                 * Where it pays is the **same-URL refresh**, which is the one
+                 * that happens while somebody is working: assigning files to a
+                 * folder, or deleting one, re-renders this table at the URL it
+                 * is already on. There the rows change and the header, footer,
+                 * status links and pagination do not — four regions that used
+                 * to be rebuilt, with whatever anyone had put in them, on every
+                 * assignment.
+                 *
+                 * String comparison rather than a DOM diff on purpose: the
+                 * question is exactly "would the swap be a no-op?", and the
+                 * markup is a few kilobytes.
+                 */
+                if (next.outerHTML === current.outerHTML) {
+                    continue;
+                }
+
                 current.replaceWith(next);
             } else {
                 // Present before, absent now — .subsubsub disappears when a
@@ -149,6 +203,8 @@ export async function refreshListTable(url: string): Promise<boolean> {
 
         syncFilterForm(url);
         announce(parsed);
+
+        document.dispatchEvent(new CustomEvent(REFRESHED, { detail: { url } }));
 
         return true;
     } catch (error) {
