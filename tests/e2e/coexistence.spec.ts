@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { createFolder, resetFolders, waitForTree } from './helpers/folders';
 import {
+    claimsTheContentPadding,
     refetchesTheContentColumn,
     takesTheUploaderSlot,
     type NeighbourState,
@@ -207,5 +208,92 @@ test.describe('sharing the media library with a hostile neighbour', () => {
         ]);
         expect(after.appChildren).toBeGreaterThan(0);
         expect(after.treeitems).toBeGreaterThan(0);
+    });
+
+    /**
+     * The seam, and who is allowed to win it.
+     *
+     * Library finding 5 closed a 20px band of page background between the dark
+     * admin menu and the white rail. It did that by zeroing `#wpcontent`'s
+     * inline-start padding — a property on an element we do not own, which
+     * Premio's Folders also writes, at identical specificity, to reserve room
+     * for its own `position: fixed` rail. Ours loaded later and won, so
+     * nothing reserved the room and their rail was drawn on top of ours.
+     * **Winning was the bug.**
+     *
+     * Two assertions, because either alone passes for the wrong reason: a
+     * build that simply dropped finding 5 would satisfy the second, and the
+     * old code satisfied the first.
+     */
+    test('the seam closes against core, and yields to a neighbour that claims it', async ({
+        page,
+    }) => {
+        const geometry = () =>
+            page.evaluate(() => {
+                const box = (el: Element | null): DOMRect | null =>
+                    el ? el.getBoundingClientRect() : null;
+                const rail = document.getElementById('folderfolio-rail');
+                const menu =
+                    document.getElementById('adminmenuwrap') ??
+                    document.getElementById('adminmenu');
+                const wpcontent = document.getElementById('wpcontent');
+                const footer = document.getElementById('wpfooter');
+
+                return {
+                    hidden: document.hidden,
+                    width: window.innerWidth,
+                    padding: wpcontent
+                        ? window.getComputedStyle(wpcontent).paddingInlineStart
+                        : null,
+                    railLeft: Math.round(box(rail)?.left ?? -1),
+                    railRight: Math.round(box(rail)?.right ?? -1),
+                    menuRight: Math.round(box(menu)?.right ?? -1),
+                    footerTextLeft: footer
+                        ? Math.round(
+                              (box(footer)?.left ?? 0) +
+                                  parseFloat(window.getComputedStyle(footer).paddingLeft)
+                          )
+                        : -1,
+                    sideways:
+                        document.documentElement.scrollWidth >
+                        document.documentElement.clientWidth,
+                };
+            });
+
+        await page.goto('/wp-admin/upload.php');
+        await page.locator('#folderfolio-rail').waitFor();
+
+        const alone = await geometry();
+
+        // Wide enough for the rail to be a column rather than a band, or none
+        // of this applies.
+        expect(alone.width).toBeGreaterThan(782);
+
+        // We no longer write to it: core's own padding is still there …
+        expect(alone.padding).not.toBe('0px');
+        // … and the seam is closed anyway, from our own element.
+        expect(alone.railLeft).toBe(alone.menuRight);
+        // The footer still clears the rail — library finding 2.
+        expect(alone.footerTextLeft).toBeGreaterThanOrEqual(alone.railRight);
+        expect(alone.sideways).toBe(false);
+
+        // Now a neighbour reserves 305px for a rail of its own, at Premio's
+        // exact selector and value, present before our script reads it.
+        await claimsTheContentPadding(page);
+        await page.goto('/wp-admin/upload.php');
+        await page.locator('#folderfolio-rail').waitFor();
+
+        const beside = await geometry();
+
+        // The precondition: their claim is in force and we did not overwrite
+        // it. Without this the rest passes on a page where nobody claimed
+        // anything.
+        expect(beside.padding).toBe('305px');
+
+        // Their band runs from the menu's edge to 305px past it. We start
+        // after it, not on it.
+        expect(beside.railLeft).toBeGreaterThanOrEqual(beside.menuRight + 305);
+        expect(beside.footerTextLeft).toBeGreaterThanOrEqual(beside.railRight);
+        expect(beside.sideways).toBe(false);
     });
 });

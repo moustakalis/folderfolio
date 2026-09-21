@@ -305,6 +305,60 @@ final class Rail
                 var narrow = window.matchMedia('(max-width: 782px)');
 
                 /*
+                 * How far the rail is pulled toward the admin menu — library
+                 * finding 5, and the one rule we used to write against
+                 * somebody else's element.
+                 *
+                 * Core gives #wpcontent a 20px inline-start padding, which put
+                 * a band of page background between the dark menu and the
+                 * white rail. We zeroed it. Premio's Folders writes
+                 * `body.wp-admin #wpcontent { padding-left: 305px }` at
+                 * exactly the same specificity to reserve room for its own
+                 * fixed rail — ours loaded later, ours won, nothing reserved
+                 * the room, and their rail was drawn on top of ours. Winning
+                 * was the bug.
+                 *
+                 * So we read that padding instead of writing it. Whatever is
+                 * there, if it is no larger than core's own, is what the rail
+                 * pulls back by (_rail.css does the pulling, from a negative
+                 * inline-start margin on our own element). If somebody has
+                 * made it larger they are using it for something: the pull
+                 * goes to zero, their reservation stands, both rails are
+                 * legible, and the only thing lost is a 20px seam.
+                 *
+                 * `paddingInlineStart` rather than `paddingLeft` because
+                 * wp-admin's RTL stylesheet flips core's own declaration.
+                 */
+                var CORE_PADDING = 20;
+
+                function pull() {
+                    var content = document.getElementById('wpcontent'),
+                        padding;
+
+                    if (!content) {
+                        return;
+                    }
+
+                    padding = parseFloat(
+                        window.getComputedStyle(content).paddingInlineStart
+                    ) || 0;
+
+                    /*
+                     * Two halves of one measurement. What the rail takes back,
+                     * and what it leaves — which #wpfooter still has to clear,
+                     * because its box is positioned against an ancestor
+                     * further out and does not move with this padding at all.
+                     */
+                    var taken = padding > CORE_PADDING ? 0 : padding;
+
+                    document.body.style.setProperty('--ff-rail-pull', taken + 'px');
+                    document.body.style.setProperty(
+                        '--ff-rail-inset',
+                        (padding - taken) + 'px'
+                    );
+                }
+
+                /*
                  * Two homes, because the rail is two different things.
                  *
                  * Wide, it is a column beside the library, so it belongs in
@@ -490,11 +544,20 @@ final class Rail
                  * bundle of ours runs.
                  */
                 place();
+                pull();
 
                 rail.hidden = false;
                 handle.hidden = rail.classList.contains('is-collapsed');
 
                 watch();
+
+                /*
+                 * Once more when everything has loaded, in case a stylesheet
+                 * that claims that padding arrives in the footer. One forced
+                 * style resolution, after the page is done; not on every
+                 * mutation, which is where a getComputedStyle belongs least.
+                 */
+                window.addEventListener('load', pull, { once: true });
 
                 if ('loading' === document.readyState) {
                     document.addEventListener('DOMContentLoaded', repair);
@@ -502,8 +565,12 @@ final class Rail
                     repair();
                 }
 
-                // Crossing the breakpoint sends it to the other home.
-                narrow.addEventListener('change', place);
+                // Crossing the breakpoint sends it to the other home, and
+                // core's own padding is not the same on both sides of it.
+                narrow.addEventListener('change', function () {
+                    place();
+                    pull();
+                });
             })();
         </script>
         <?php

@@ -153,13 +153,21 @@ export async function refetchesTheContentColumn(page: Page): Promise<void> {
  */
 export async function claimsTheContentPadding(page: Page): Promise<void> {
     await page.addInitScript(() => {
-        document.addEventListener('DOMContentLoaded', () => {
-            const style = document.createElement('style');
+        const style = document.createElement('style');
 
-            style.id = 'bad-neighbour-padding';
-            style.textContent = 'body.wp-admin #wpcontent { padding-left: 305px; }';
+        style.id = 'bad-neighbour-padding';
+        style.textContent = 'body.wp-admin #wpcontent { padding-left: 305px; }';
 
-            document.head.append(style);
-        });
+        /*
+         * At document-start, not on `DOMContentLoaded`: a real plugin enqueues
+         * this in the head, so it is in force before Rail.php's inline script
+         * reads the padding to decide how far to pull the rail back. Injecting
+         * it later would test a page the user never sees — and would pass for
+         * the wrong reason, because our own `window.load` re-read would clean
+         * it up afterwards.
+         *
+         * `documentElement` because `head` does not exist yet.
+         */
+        (document.head ?? document.documentElement).append(style);
     });
 }

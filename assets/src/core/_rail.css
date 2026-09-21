@@ -52,25 +52,40 @@ body.folderfolio-has-rail #wpbody > .clear {
 /**
  * The rail sits against the admin menu, with nothing between them.
  *
- * `#wpcontent` carries a 20px left padding that every admin screen inherits,
- * and on this one it put a 20px band of page background between the dark menu
- * and the white rail — two panels that do not meet. The board draws them
- * flush, and the menu's own current-item pointer is drawn to land on whatever
- * is beside it.
+ * `#wpcontent` carries a 20px inline-start padding that every admin screen
+ * inherits, and on this one it put a 20px band of page background between the
+ * dark menu and the white rail — two panels that do not meet. The board draws
+ * them flush, and the menu's own current-item pointer is drawn to land on
+ * whatever is beside it. That is library finding 5.
  *
- * Safe to zero here because `#wpcontent`'s only child that the padding reaches
- * is `#wpbody`: the admin bar inside it is fixed, and the notices are further
- * down inside `#wpbody-content`, which carries its own `--ff-rail-gap`. The
- * library column therefore keeps its gutter and simply gains the 20px of
- * width.
+ * **This used to zero `#wpcontent`'s padding, and winning that was the bug.**
+ * Premio's Folders writes `body.wp-admin #wpcontent { padding-left: 305px }`
+ * to reserve room for its own `position: fixed` rail. Identical specificity,
+ * (1,1,1) each; ours loaded later and won; nothing reserved the room; their
+ * rail was drawn on top of ours and neither was legible. Every rule written
+ * against an element we do not own is a rule somebody else may also write.
  *
- * Above the breakpoint only. Below it the menu is off-canvas, `#wpcontent`
- * has no left margin either, and zeroing this would put the page against the
- * viewport edge.
+ * So the same geometry is achieved from our own element. A negative
+ * inline-start margin on a flex item moves it *and* every item after it, and
+ * shortens its margin box by the same amount — which is precisely what
+ * zeroing the padding did: the rail lands flush against the menu and the
+ * library column gains the 20px.
+ *
+ * `--ff-rail-pull` is set on <body> by Rail.php's inline script, before first
+ * paint, from the padding that is actually there — and set to zero when
+ * somebody else has made it larger than core's own. Their reservation then
+ * stands, both rails are legible, and the only thing lost is a 20px seam.
+ * `--ff-rail-inset` is the other half of the same measurement: the padding the
+ * rail did not take back, which the footer above still has to clear. Both
+ * default to `0px`, because the script that sets them is also the script that
+ * puts the rail in `#wpbody` at all.
+ *
+ * Above the breakpoint only. Below it the menu is off-canvas, `#wpcontent` has
+ * no inline-start margin either, and the rail is a band inside `.wrap`.
  */
 @media screen and (min-width: 783px) {
-  body.folderfolio-has-rail #wpcontent {
-    padding-left: 0;
+  body.folderfolio-has-rail .folderfolio-rail {
+    margin-inline-start: calc(var(--ff-rail-pull, 0px) * -1);
   }
 }
 
@@ -86,10 +101,30 @@ body.folderfolio-has-rail #wpbody > .clear {
  *
  * --ff-rail-gutter is the width the rail occupies right now — printed by
  * Rail.php before first paint and kept true by rail.ts through drags and
- * collapses. The 20px is core's own padding, which this replaces.
+ * collapses. The 20px is the channel between the rail and the library.
+ *
+ * Plus --ff-rail-inset, which is whatever of `#wpcontent`'s inline-start
+ * padding the rail did *not* pull back — zero in the ordinary case, and the
+ * whole of it when another plugin has reserved that space for a rail of its
+ * own. Both terms are needed and neither is the obvious one:
+ *
+ * - #wpfooter is `position: absolute` and resolves against a positioned
+ *   ancestor further out, so its box starts at the admin menu's edge and does
+ *   *not* move when that padding changes. Subtracting the pull instead put the
+ *   footer text at 470, on the resize handle. Measured.
+ * - But the rail does move with the padding it did not take back, so with a
+ *   neighbour reserving 305px the rail ends at 775 while this indent still
+ *   said 490 — core's footer text under our opaque rail, which is library
+ *   finding 2 coming back. Also measured.
+ *
+ * Core's own 20px: inset 0, indent 330, text at 490. A neighbour's 305px:
+ * inset 305, indent 635, text at 795, which is the rail's right edge plus the
+ * channel. The same sentence in both cases — clear the rail, then the gap.
  */
 body.folderfolio-has-rail #wpfooter {
-  padding-left: calc(var(--ff-rail-gutter, 0px) + var(--ff-rail-gap, 20px));
+  padding-left: calc(
+    var(--ff-rail-inset, 0px) + var(--ff-rail-gutter, 0px) + var(--ff-rail-gap, 20px)
+  );
 }
 
 /* And the rail paints over the footer rather than under it, so that the
