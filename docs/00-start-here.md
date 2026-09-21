@@ -1575,7 +1575,11 @@ plugin is still switched on. `Modules\Import\Elsewhere` gates on our own
 folder count, caches for an hour behind that, and needs no invalidation — an
 import creates folders here, so the gate closes before the cache is read.
 
-**Phase 5**, the existing release track, is what is left.
+**What is left, in order.** First a research pass, not a build: what each of
+the four competitors gates behind *Pro*, and which of it belongs in 1.0 rather
+than 1.1 (Nick, 22 Sep; brief in the Claude project as
+`claude/cold-start-prompt-pro-features.md`). It comes first because it can still
+change what 1.0 contains. **Then phase 5**, the existing release track.
 
 **Numbers not to re-derive:** FileBird silently hides **28 of 47 files** when
 active; our `posts_clauses` bail is **load-bearing** and three of four rivals
@@ -2338,8 +2342,11 @@ never both.
 | `m2-importer-matrix.md` | Verified schemas and detection keys per migration source | Yes, when the importers are rewritten |
 | `research/01..04-*.md` | FileBird, Real Media Library, Folders, CatFolders — measured live and read from source | Background, and the reason for several decisions |
 | `deep-review-2026-09-16.md` | 29 numbered findings against 0.2.0 | Partly — #15 is closed; #24, #26, #27, #28 and #29 are still open |
-| *(Claude project)* `progress-2026-09-19b-thousand-folders.md` | The 1,050-folder stress test, the searchable picker, the drill-down sheet — the most recent build log | **Yes — the newest, and outside this repo** |
-| *(Claude project)* `progress-2026-09-19-responsive-toolbar.md` | `readme.txt`, the narrow toolbar, the phone band | Yes |
+| *(Claude project)* `progress-2026-09-22c-f-validated.md` | The rail's empty state, looked at — and the second renderer nobody had looked at — the most recent build log | **Yes — the newest, and outside this repo** |
+| *(Claude project)* `progress-2026-09-22b-phases-3-and-4.md` | Phases 4 and 3, and the 1.0 coexistence plan closed | Yes |
+| *(Claude project)* `progress-2026-09-21g-the-source-read.md` | All four competitors' codebases read; three live findings corrected | Yes — the basis of the coexistence work |
+| *(Claude project)* `progress-2026-09-19b-thousand-folders.md` | The 1,050-folder stress test, the searchable picker, the drill-down sheet | History |
+| *(Claude project)* `progress-2026-09-19-responsive-toolbar.md` | `readme.txt`, the narrow toolbar, the phone band | History |
 | *(Claude project)* `progress-2026-09-18h-transactions-toolbar-phone.md` | #15, the merged bulk trigger, the phone bar | History |
 | `design-handoff.md` | The brief that produced the design | History |
 | `m1-research-and-design-plan.md` | The plan that produced the research | History |
