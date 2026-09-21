@@ -211,6 +211,21 @@
   font-size: 12.5px;
 }
 
+/*
+ * Core reserves `padding-right: 24px` for the caret and paints it at
+ * `calc(100% - 8px)`, so the glyph runs from 24px to 8px off the right edge.
+ * On an auto-width select the text fills its box right up to that padding, and
+ * the only thing between the last letter and the arrow is the browser's
+ * intrinsic-width slack — measured 21 Sep at **2.1px**, against 8px of empty
+ * gutter on the arrow's other side and a 12px inset on the left. The arrow
+ * read as having slid left into the word.
+ *
+ * Six more pixels puts 8px on both sides of it.
+ */
+.folderfolio-settings select {
+  padding-inline-end: 30px;
+}
+
 .folderfolio-settings input[type='number'] {
   width: 64px;
 }
@@ -222,39 +237,6 @@
   align-items: center;
   gap: 10px;
   font-size: 12.5px;
-  color: var(--ff-muted);
-}
-
-/**
- * The ten swatches, shown and not chosen.
- *
- * A folder's colour is picked on the folder, not here; this row is the legend
- * for what those ten are. They are rendered from the same custom properties
- * the folder icon uses, so a scheme change moves both together and there is
- * no second list of hexes to keep in step.
- */
-/*
- * Ten 20px swatches and a note. As a wrapping flex row the note dropped to a
- * second line below 433px and took its 6px left margin with it, so it read as
- * an indented caption rather than a label on the row. Declared instead: ten
- * fixed tracks and the note in the remainder, and below 520 the note takes a
- * row of its own deliberately, with the inset zeroed.
- */
-.folderfolio-swatches {
-  display: grid;
-  grid-template-columns: repeat(10, 20px) 1fr;
-  align-items: center;
-  gap: 6px;
-}
-
-.folderfolio-swatch {
-  width: 20px;
-  height: 20px;
-}
-
-.folderfolio-swatches__note {
-  margin-inline-start: 0;
-  font-size: 12px;
   color: var(--ff-muted);
 }
 
@@ -628,13 +610,4 @@
     align-items: start;
   }
 
-  /* The swatch note takes its own row, without the inset it carried when it
-     wrapped by accident. */
-  .folderfolio-swatches {
-    grid-template-columns: repeat(10, 20px);
-  }
-
-  .folderfolio-swatches__note {
-    grid-column: 1 / -1;
-  }
 }

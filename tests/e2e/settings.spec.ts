@@ -79,6 +79,36 @@ test.describe('the settings screen', () => {
         await expect(page.getByRole('checkbox', { name: 'Delete — Administrator' })).toBeChecked();
     });
 
+    /**
+     * The help line under Folder counts leads with the option that is in
+     * force.
+     *
+     * It described *Inherited* only until 21 Sep, so on a site set to Direct
+     * only — the default — it argued for the choice you had just declined and
+     * never described the one running. Describing only the active option
+     * would fail the other way, so it names both and puts the active one
+     * first, server-side.
+     *
+     * Asserted against the checked radio rather than a fixed string, so it
+     * holds whichever way the setting happens to be stored.
+     */
+    const helpLeadsWithTheActiveOption = async (page: Page): Promise<void> => {
+        const checked = (
+            await page.locator('.folderfolio-seg input:checked + label').textContent()
+        )?.trim();
+
+        expect(checked, 'no option is checked, so there is nothing to lead with').toBeTruthy();
+
+        const lead = (
+            await page.locator('.folderfolio-field__help strong').first().textContent()
+        )?.trim();
+
+        expect(
+            lead,
+            `the help line leads with "${lead}" while "${checked}" is the option in force`
+        ).toBe(checked);
+    };
+
     test('the count setting changes what the library counts', async ({ page }) => {
         // Eight page loads against a WordPress running on php-wasm: seeding a
         // folder tree and a file, reading the badge, changing the setting,
@@ -140,10 +170,16 @@ test.describe('the settings screen', () => {
         expect(await parentBadge()).toBe('1');
 
         await page.goto(`${SETTINGS}&tab=settings`);
+        await helpLeadsWithTheActiveOption(page);
+
         await chooseCount(page, 'Direct only');
         await expect(page.getByRole('radio', { name: 'Direct only' })).toBeChecked();
         await page.getByRole('button', { name: 'Save changes' }).click();
         await expect(page.getByText('Settings saved.')).toBeVisible();
+
+        // The saved page is rendered from the new value, so the clauses have
+        // swapped. Both orders are covered by the two calls.
+        await helpLeadsWithTheActiveOption(page);
 
         await page.goto('/wp-admin/upload.php?mode=grid');
         await waitForTree(page, 'Brand');

@@ -66,28 +66,6 @@ final class SettingsPage
     /** @var list<string> */
     private const TABS = ['settings', 'import', 'status'];
 
-    /**
-     * The ten folder colours, as CSS custom property suffixes.
-     *
-     * The hexes live in _tokens.css and nowhere else: they change per admin
-     * colour scheme, and a second copy in PHP would be the copy that is wrong
-     * on Midnight.
-     *
-     * @var array<string, string>
-     */
-    private const SWATCHES = [
-        'slate' => 'Slate',
-        'red' => 'Red',
-        'clay' => 'Clay',
-        'ochre' => 'Ochre',
-        'moss' => 'Moss',
-        'teal' => 'Teal',
-        'steel' => 'Steel',
-        'indigo' => 'Indigo',
-        'plum' => 'Plum',
-        'ink' => 'Ink',
-    ];
-
     private string $hookSuffix = '';
 
     public function __construct(
@@ -273,17 +251,42 @@ final class SettingsPage
                     <div class="folderfolio-field__help">
                         <?php
                         /*
-                         * Both options, not one. This line used to describe
-                         * *Inherited* only, so on a site set to *Direct only*
-                         * — which is the default — it read as an argument for
-                         * the choice you had just declined, and the option
-                         * actually in force was never described at all.
+                         * Both options, and the one in force leads.
+                         *
+                         * This line used to describe *Inherited* only, so on a
+                         * site set to *Direct only* — which is the default —
+                         * it argued for the choice you had just declined and
+                         * never described the one actually running. Describing
+                         * only the active option instead would fail the other
+                         * way: you cannot choose between two things when you
+                         * are shown one of them.
+                         *
+                         * So both, ordered. Order carries the emphasis, which
+                         * costs no script — a help line that re-writes itself
+                         * on a click would be describing a setting that has
+                         * not been saved yet.
                          */
-                        ?>
-                        <strong><?php esc_html_e('Inherited', 'folderfolio'); ?></strong>
-                        <?php esc_html_e('counts everything inside a folder, sub-folders included.', 'folderfolio'); ?>
-                        <strong><?php esc_html_e('Direct only', 'folderfolio'); ?></strong>
-                        <?php esc_html_e('counts just the files filed in the folder itself.', 'folderfolio'); ?>
+                        $descriptions = [
+                            'inherited' => [
+                                __('Inherited', 'folderfolio'),
+                                __('counts everything inside a folder, sub-folders included.', 'folderfolio'),
+                            ],
+                            'direct' => [
+                                __('Direct only', 'folderfolio'),
+                                __('counts just the files filed in the folder itself.', 'folderfolio'),
+                            ],
+                        ];
+
+                        $active = isset($descriptions[$settings['count_mode']])
+                            ? (string) $settings['count_mode']
+                            : 'inherited';
+
+                        foreach ([$active, 'inherited' === $active ? 'direct' : 'inherited'] as $mode) :
+                            [$name, $sentence] = $descriptions[$mode];
+                            ?>
+                            <strong><?php echo esc_html($name); ?></strong>
+                            <?php echo esc_html($sentence); ?>
+                        <?php endforeach; ?>
                     </div>
                 </div>
             </div>
@@ -306,7 +309,19 @@ final class SettingsPage
                 </div>
             </div>
 
-            <div class="folderfolio-field">
+            <?php
+            /*
+             * `--last` closes the group with a 2px rule before the roles
+             * matrix. It sat on the Folder colours row until 21 Sep, when that
+             * row was removed: ten swatches nobody can change, on the tab for
+             * things you change. A folder's colour is picked on the folder, in
+             * the rail's More menu, where the ten are already shown by name —
+             * and the palette is fixed on purpose, because a folder stores a
+             * swatch name and the hex it resolves to is a property of the
+             * admin colour scheme (see Support\Swatches).
+             */
+            ?>
+            <div class="folderfolio-field folderfolio-field--last">
                 <div class="folderfolio-field__label">
                     <label class="folderfolio-field__name" for="folderfolio-undo-window">
                         <?php esc_html_e('Undo window', 'folderfolio'); ?>
@@ -323,39 +338,6 @@ final class SettingsPage
                         step="1"
                     >
                     <span><?php esc_html_e('seconds before a delete is final', 'folderfolio'); ?></span>
-                </div>
-            </div>
-
-            <div class="folderfolio-field folderfolio-field--last">
-                <div class="folderfolio-field__label">
-                    <div class="folderfolio-field__name"><?php esc_html_e('Folder colours', 'folderfolio'); ?></div>
-                </div>
-                <div class="folderfolio-field__control">
-                    <div class="folderfolio-swatches">
-                        <?php foreach (self::SWATCHES as $slug => $name) : ?>
-                            <?php
-                            /*
-                             * An empty span with a `title` has no accessible
-                             * name and no name at all on a phone, where there
-                             * is no hover — and below 520 this strip takes a
-                             * row of its own, which is exactly the width where
-                             * the tooltip cannot be reached. role="img" plus
-                             * aria-label gives the colour a name; the title
-                             * stays for the pointer.
-                             */
-                            ?>
-                            <span
-                                class="folderfolio-swatch"
-                                role="img"
-                                aria-label="<?php echo esc_attr($name); ?>"
-                                style="background: var(--ff-folder-<?php echo esc_attr($slug); ?>)"
-                                title="<?php echo esc_attr($name); ?>"
-                            ></span>
-                        <?php endforeach; ?>
-                        <span class="folderfolio-swatches__note">
-                            <?php esc_html_e('Set when you name a folder', 'folderfolio'); ?>
-                        </span>
-                    </div>
                 </div>
             </div>
 
