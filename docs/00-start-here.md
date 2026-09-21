@@ -372,6 +372,57 @@ rail** (clips by 12), 234 in 278 at 280, 74 to spare at Nick's 310 — so the ol
 pair comes back below **298**, the breakpoint where the indent already drops to
 16 and the tool row is already icons only. No new number.
 
+### 21 Sep, the source read — three corrections to the first-minute pass
+
+**No code changed.** Board updated in place:
+`claude.ai/artifact/P1U7zC2ofNWQmnHJ8KweLC` (v2). Project record:
+`claude/progress-2026-09-21g-the-source-read.md`.
+
+All four rivals had been activated once before, on 18 Sep, so every live
+measurement was strictly a **second** activation. All four codebases were read
+rather than resetting a fixture. **Three live results were wrong.**
+
+**Do not "drop the tables and reinstall" to get a first run.** First-run state
+lives in `wp_options`, never in a plugin's folder tables — and all four ship a
+**stub `uninstall.php`** (Premio has none at all), so WordPress's Delete button
+removes the files and nothing else. Delete-and-reinstall resets nothing. A true
+first run costs a handful of option rows and no data.
+
+- **RML does redirect**, via `<meta http-equiv="refresh">` from `admin_head` on
+  the plugins screen (`vendor/devowl-wp/real-utils/src/WelcomePage.php:76-85`)
+  — invisible to a network log *and* to a `wp_redirect` grep. Gate: the `raa`
+  key inside the `real_utils-transients` JSON blob, one-shot per install,
+  already spent. **Two of four redirect, not one.** It is also the best-behaved
+  one: it exempts bulk activation and WP-CLI explicitly.
+- **RML also opens a blocking licence modal** on a virgin install —
+  `mask:{closable:false}` plus a MutationObserver that re-opens it — gated
+  purely on `rpm-wpc-code_real-media-library-lite` not existing.
+- **FileBird and CatFolders are not silent on a fresh install.** Both add a
+  *Create your first folder* notice on every admin screen **except**
+  `upload.php`, gated on the **live folder count** (`Core.php:88-94`;
+  `Notices.php:22-32`). The fixtures' 20 and 35 folders are what silenced them.
+- **Premio's redirect re-arms on every activation** —
+  `delete_option` then `add_option("folder_redirect_status", 1)`
+  (`folders.class.php:5951-5953`). And the bulk-activate claim was too strong:
+  core activates everything in request one and Premio redirects on `admin_init`
+  in request two, so **later plugins do still activate**. Its real defect is no
+  capability check — a Subscriber can absorb the redirect and hit a permission
+  wall with the flag spent.
+- **FileBird's review nag arms at +3 days, not day one** — `prepareRun()` calls
+  `Review::update_time_display()` before the notice class is constructed. Its
+  "Later" snooze is 5 days, not the 3 its comment claims, and it re-arms on
+  every plugin update.
+
+**What it changes for us: nothing about the recommendation, everything about
+the argument.** On first-run *noise* FolderFolio is not in a majority — it is
+alone. And it kills one argument for a notice: of the four notices in those
+codebases, **not one dismisses permanently** (CatFolders' cannot be dismissed
+at all — its AJAX action is unreachable dead code; two return after 30 days;
+one after 365). Option F stays the recommendation.
+
+**Four traps this pass taught** — 37 to 40 in the project's start-here page,
+and in *Things that will bite you* below.
+
 ### 21 Sep, the first minute — what the market does after activation
 
 **No code changed.** Board: `claude.ai/artifact/P1U7zC2ofNWQmnHJ8KweLC`. Full
@@ -1454,6 +1505,25 @@ children and then failed on its own row left the children reparented.
   which would have meant `after()` callbacks never fired in any test.
 
 ## Things that will bite you
+
+**`uninstall.php` is usually a stub.** Do not assume delete-and-reinstall
+resets a plugin. All four folder rivals leave every option row and every table
+behind. Read the file before proposing a reinstall.
+
+**A plugin's first-run state is in `wp_options`, never in its data tables.**
+Dropping tables destroys the fixture and resets nothing — and can *create*
+first-run UI as a side effect, because some gates are a live row count rather
+than a flag.
+
+**A redirect does not have to be a redirect.** RML's is
+`<meta http-equiv="refresh">` from `admin_head`: no network log entry, no
+`wp_redirect` grep hit. When a behaviour is gated, the browser can only tell
+you the state of the gate, not the behaviour — read the source.
+
+**A plugin activated once before does not tell the truth about its first run.**
+Establish per gate whether it re-arms (Premio: every activation) or is spent
+(RML: one-shot) before trusting a live result.
+
 
 **A notice is not always an `admin_notices` notice.** RML renders its two
 alerts from its own React app inside its rail, so a `#wpbody-content` sweep for
