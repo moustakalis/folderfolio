@@ -59,6 +59,7 @@ import type { FolderNode } from './queries';
 import { sortTree, useRail } from './store';
 import { t } from '../../core/api';
 import { swatchStyle } from '../../lib/swatches';
+import { EmptyTree } from './EmptyTree';
 
 export interface LevelsProps {
     nodes: FolderNode[];
@@ -214,11 +215,30 @@ export function Levels({ nodes, loading }: LevelsProps) {
                 ))}
 
                 {rows.length === 0 && editing === null ? (
-                    <li className="folderfolio-levels__empty">
-                        {standing.node === null
-                            ? t('emptyTree', 'No folders yet')
-                            : t('noSubfolders', 'Nothing inside this folder')}
-                    </li>
+                    /*
+                     * Two empty sheets, and only one of them is about this
+                     * plugin being new.
+                     *
+                     * At the root, this is the same question the wide rail's
+                     * tree asks — is the library unfiled, or filed somewhere
+                     * else — so it gets the same answer, from the same
+                     * component. It did not, until it was looked at: below
+                     * 782px the rail renders this sheet rather than the tree,
+                     * so fixing `Tree.tsx` alone left the untrue sentence
+                     * shipping on every phone.
+                     *
+                     * Inside a folder, "nothing inside this folder" is true
+                     * whatever any other plugin holds, and stays a line.
+                     */
+                    standing.node === null ? (
+                        <li className="folderfolio-levels__emptyRoot">
+                            <EmptyTree />
+                        </li>
+                    ) : (
+                        <li className="folderfolio-levels__empty">
+                            {t('noSubfolders', 'Nothing inside this folder')}
+                        </li>
+                    )
                 ) : null}
             </ul>
         </div>

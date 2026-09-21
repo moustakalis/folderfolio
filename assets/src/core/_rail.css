@@ -1047,6 +1047,13 @@ body.folderfolio-resizing * {
     font-size: 12.5px;
   }
 
+  /* The root's empty sheet brings its own block, with its own margin and
+     padding — see EmptyTree. A list item around it and nothing else. */
+  .folderfolio-levels__emptyRoot {
+    display: block;
+    padding: 0;
+  }
+
   /**
    * The tree's expand chevron: a 20px glyph with a target around it.
    *

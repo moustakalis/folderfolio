@@ -79,11 +79,18 @@ export function EmptyTree() {
                 </p>
             )}
 
+            {/*
+             * Secondary, not primary. The rail header already has a primary
+             * button — New folder — and measured live the two were the same
+             * `rgb(56, 88, 233)`, 250px apart in a 310px column with nothing
+             * between them. Two primaries in one view is one too many, and
+             * this is not the more important of the two: somebody looking at
+             * an empty rail may well want to start fresh instead. The panel's
+             * wash and border already say "this is an offer"; the button does
+             * not have to shout it as well.
+             */}
             {elsewhere.importUrl !== '' && (
-                <a
-                    className="button button-primary folderfolio-elsewhere__action"
-                    href={elsewhere.importUrl}
-                >
+                <a className="button folderfolio-elsewhere__action" href={elsewhere.importUrl}>
                     {t('emptyElsewhereAction', 'Review the import')}
                 </a>
             )}

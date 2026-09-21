@@ -338,6 +338,11 @@
   font-weight: 600;
   color: var(--ff-ink);
 
+  /* Measured at 310px: without this the sentence broke after "not" and left
+     "here." alone on the second line. Two lines either way; this chooses
+     which two. */
+  text-wrap: balance;
+
   /* A folder plugin's name is one unbreakable token more often than not, and
      the body below names one. */
   overflow-wrap: anywhere;
