@@ -372,6 +372,47 @@ rail** (clips by 12), 234 in 278 at 280, 74 to spare at Nick's 310 — so the ol
 pair comes back below **298**, the breakpoint where the indent already drops to
 16 and the tool row is already icons only. No new number.
 
+### 21 Sep, last pass — three questions of Nick's, and the colour legend goes
+
+Commit `afed1e7`. **PHPStan clean, 109 unit (305 assertions), 53 e2e, `tsc`
+clean.**
+
+**The Folder counts help line leads with the option in force.** It named both
+options in a fixed order, so on a site set to *Direct only* — the default — it
+opened by describing the option you are not using. Describing only the active
+one instead fails the other way: you cannot choose between two things when you
+are shown one of them. Both, active first, **server-side** — a help line that
+re-writes itself on a click would be describing a setting that has not been
+saved yet. The guard asserts against the **checked radio**, not a fixed string,
+so it holds whichever way the setting is stored, and the existing count-mode
+test exercises both orders for free.
+
+**The select's caret was 2.1px from the word and 8px from the edge.** Core
+reserves `padding-right: 24px` and paints the caret at `calc(100% - 8px)`, so
+the glyph runs 24px to 8px off the right edge. On an **auto-width** select the
+text fills its box right up to that padding, and the only thing between the
+last letter and the arrow is the browser's intrinsic-width slack. Against 8px
+of gutter on the arrow's far side and a 12px inset on the left, it read as the
+arrow having slid into the word. `padding-inline-end: 30px` gives 8.1px and
+8px. (The caret also sits **0.7px below centre**, because core positions it at
+`55%` and we force a 30px box. Left alone — same argument as the admin menu's
+arrow.)
+
+**The Folder colours row is gone.** Ten swatches nobody can change, on the tab
+for things you change. A folder's colour is picked **on the folder**, in the
+rail's More menu, where the ten are already shown by name — and the palette is
+fixed on purpose, because a folder stores a swatch *name* and the hex it
+resolves to is a property of the admin colour scheme (`Support\Swatches`). The
+row went with its constant and its rules, `--last` moved to Undo window, and it
+retired a name collision: **`.folderfolio-swatches` was styled in
+`_settings.css` for that legend and in `_toolbar.css` for the real picker**, and
+only separate bundles kept them apart. **A9 is fully closed.**
+
+Three fields on the tab now, zero page overflow at thirteen widths.
+
+> **Nick's admin colour scheme is Modern again** (`#3858e9`), not Midnight.
+> Screenshots he sends are Modern unless he says otherwise.
+
 ### 21 Sep, later — A1–A6 closed, the copy pass, and one dead rule
 
 Full account: `claude/progress-2026-09-21b-a1-to-a6-and-the-copy-pass.md`.
