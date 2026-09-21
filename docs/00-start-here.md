@@ -1538,13 +1538,23 @@ the database with it. Three guards in `tests/e2e/coexistence.spec.ts`, and the
 `posts_clauses` negative control in
 `tests/Integration/Admin/MediaLibraryFilterTest.php`.
 
-**Phase 2, the visible collisions.** Stop writing to `#wpcontent` at all — our
-`padding-left: 0` and Premio's `305px` have identical specificity and ours
-loads later, which is exactly why their fixed rail lands on top of ours;
-achieve the finding-5 seam fix from our own element. Plus the duplicate
-"Folders" column label, and `frame.css` leaking
-`#wpbody-content .wp-filter { container-type: inline-size }` onto seven screens
-including `themes.php` (a bug with or without a rival).
+**Phase 2 is BUILT AND VERIFIED LIVE** — `a1ef706`, `152d0d8`. Record:
+`claude/progress-2026-09-22-phase-2.md`.
+
+*(2.1)* The rule is off `#wpcontent` entirely. The seam of library finding 5 is
+closed by a negative inline-start margin on the rail, sized from two tokens
+`Rail.php` publishes after **reading** that padding: `--ff-rail-pull`, what the
+rail takes back (zero when somebody has widened it past core's own), and
+`--ff-rail-inset`, what it leaves, which `#wpfooter` must clear. Alone the
+geometry matches the old rule to the pixel; beside a neighbour claiming 305px
+our rail starts where their band ends.
+
+*(2.2)* Our list-table column is **"Media folders"** — distinct by construction
+from Premio's *Folders*, with no runtime rival detection.
+
+*(2.3)* Seven `#wpbody-content .wp-filter` selectors are gated on
+`body.folderfolio-has-rail`, so `frame.css` stops reaching core's theme and
+plugin browsers on the seven picker screens.
 
 **Phase 3**, `refreshListTable()` replacing seven regions wholesale and
 destroying rivals' JS-injected controls — decide before costing.
@@ -1638,6 +1648,19 @@ page.
 (`packageManager: yarn@4.18.0`, `.yarnrc.yml`); npm ignores `yarn.lock` and
 silently resolves a different tree. The first symptom was somewhere else
 entirely — a Playwright browser binary that no longer existed.
+
+**A zero that agrees with no prediction is still a zero.** `themes.php` on the
+dev site renders no `.wp-filter` at all, so the `frame.css` leak measured as
+"nothing". The rule was reaching it all the same — injecting a `.wp-filter`
+into `#wpbody-content` by hand produced `container-type: inline-size` and our
+grid on core's element. **Build the element the rule needs before concluding
+the rule is harmless.**
+
+**`position: absolute` does not inherit the padding you are reasoning about.**
+`#wpfooter` sits inside `#wpcontent` but resolves against an ancestor further
+out, so its box does not move when that padding changes. One term had to be
+added to its indent and another had *not* to be subtracted, and both were found
+by measuring — after the footer text landed on the 5px resize handle.
 
 **A boolean guard on a patch you do not own is a bug.** `wrapped = true`
 answers *"did I ever wrap?"* when the question is *"is my wrapper still
