@@ -51,6 +51,21 @@
 
 :root {
   --ff-rail-gap: 20px;
+
+  /*
+   * The panel is declared here, not in the block below, because since 21 Sep
+   * it is the *page's* ground on the settings screen — and the rule that
+   * paints it sits on #wpcontent, which is an ancestor of .folderfolio and
+   * cannot see a token scoped to it. Declared once at document scope and
+   * inherited by everything in .folderfolio, so there is still one value.
+   *
+   * Found the hard way: the first version of that rule read
+   * `background: var(--ff-panel)` on #wpcontent, resolved to nothing, and
+   * computed to `transparent` — the box came off and the ground stayed grey,
+   * which is a different design than the one that was chosen, and a
+   * screenshot at 0.66 scale is not able to tell #f0f0f0 from #fff.
+   */
+  --ff-panel: #fff;
 }
 
 .folderfolio {
@@ -68,7 +83,7 @@
      all eight, so ours is too. */
   --ff-bar: #1d2327;          /* admin menu, admin bar — chrome, not page */
   --ff-canvas: #f0f0f1;
-  --ff-panel: #fff;
+  /* --ff-panel is on :root, above. */
   --ff-ink: #1d2327;
   --ff-muted: #50575e;
   --ff-dim: #646970;

@@ -114,11 +114,50 @@ final class TokensTest extends TestCase
      */
     private static function colourTokens(string $css): array
     {
-        $geometry = ['--ff-row-h', '--ff-indent', '--ff-rail-w', '--ff-switcher'];
+        $geometry = [
+            '--ff-row-h',
+            '--ff-indent',
+            '--ff-rail-w',
+            '--ff-switcher',
+            '--ff-rail-gap',
+        ];
 
+        // Both scopes. Most tokens live on `.folderfolio`, but a rule that
+        // paints an element *outside* the component — #wpcontent, since the
+        // settings screen's ground became the page — cannot see them there, so
+        // those are declared on `:root`. Reading only one block would leave
+        // every token in the other one guarded by nothing, which is the shape
+        // of mistake the derived ink list was written to stop.
         return array_diff_key(
-            self::declarations($css, '.folderfolio'),
+            array_merge(
+                self::declarations($css, ':root'),
+                self::declarations($css, '.folderfolio')
+            ),
             array_flip($geometry)
+        );
+    }
+
+    /**
+     * A token belongs to one scope.
+     *
+     * Declaring the same colour in both `:root` and `.folderfolio` is two
+     * sources of truth for one value, and the second one is the one that goes
+     * stale. `colourTokens()` merges the blocks with `.folderfolio` winning,
+     * so a drift would resolve silently rather than fail.
+     */
+    public function test_no_colour_token_is_declared_in_both_scopes(): void
+    {
+        $css = self::css();
+
+        $both = array_intersect_key(
+            self::declarations($css, ':root'),
+            self::declarations($css, '.folderfolio')
+        );
+
+        self::assertSame(
+            [],
+            array_keys($both),
+            'Declared in both :root and .folderfolio: ' . implode(', ', array_keys($both))
         );
     }
 

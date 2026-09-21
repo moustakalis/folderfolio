@@ -1,28 +1,57 @@
 /**
  * The settings screen — screen 08.
  *
- * One card, three tabs, and a form. No dark branded header, no upgrade
- * banner, no "Go Pro" column: the screen exists to hold five settings and a
- * diagnostics table, and the design's whole point is that it looks like
- * WordPress rather than like a product.
+ * Three tabs and a form. No dark branded header, no upgrade banner, no
+ * "Go Pro" column: the screen exists to hold three settings and a diagnostics
+ * table, and the design's whole point is that it looks like WordPress rather
+ * than like a product.
  *
- * Every colour resolves through _tokens.css, so the card follows the admin
- * colour scheme like everything else. The one thing that does not move is the
- * 880px ceiling: the roles matrix is four narrow columns against a role name,
- * and at full window width the ticks end up an inch from the row they belong
- * to.
+ * ## The box came off on 21 Sep
+ *
+ * It was a white panel with a #8c8f94 border *and* a drop shadow, sitting on
+ * the grey canvas — and that combination, not the white, is what read as a
+ * 2012 .postbox. Core's own settings screen has no box at all: a transparent
+ * .wrap, a transparent .form-table, and not one .card or .postbox on
+ * options-general.php.
+ *
+ * The screen is the page now. Which raises the question of what the ground
+ * underneath becomes, and there the obvious answer is the wrong one.
+ *
+ * Dropping onto core's canvas is the most native-looking option and it costs
+ * finding 12: every rule here is --ff-line, #dcdcde, chosen to read against
+ * --ff-panel. On #f0f0f0 it goes 1.37:1 -> 1.20:1, the matrix row rule with
+ * it — and that is the rule the eye tracks across four tick columns, which is
+ * the whole of finding 12. Worse, no test would say so: TokensTest checks ink
+ * against the panel, and a screen with no panel makes that guard pass while
+ * describing a surface it does not have.
+ *
+ * So the canvas goes white instead, below. Every token keeps the ground it was
+ * measured against, every pair stays true, and the frame is simply gone.
+ *
+ * The one thing that does not move is the 880px ceiling: the roles matrix is
+ * four narrow columns against a role name, and at full window width the ticks
+ * end up an inch from the row they belong to.
  */
 
 .folderfolio-settings {
   max-width: 880px;
   margin: 20px 0 0;
-  background: var(--ff-panel);
-  border: 1px solid var(--ff-field-line);
-
-  /* Not a token: this is the card's own lift off the admin canvas, and it is
-     the only shadow in the plugin. */
-  box-shadow: 0 3px 10px rgba(29, 35, 39, 0.12);
   color: var(--ff-ink);
+}
+
+/*
+ * The screen's ground.
+ *
+ * Scoped by the bundle rather than by a selector: settings.css is enqueued on
+ * this screen's hook alone and admin.css imports neither _settings.css nor
+ * _wizard.css, so no other admin page is repainted. The same is already true
+ * of #wpcontent's zeroed left padding on upload.php — replacing the canvas on
+ * a screen of ours is established.
+ */
+#wpcontent,
+#wpbody,
+#wpbody-content {
+  background: var(--ff-panel);
 }
 
 .folderfolio-settings__head {

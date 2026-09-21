@@ -49,6 +49,78 @@ test.describe('the settings screen', () => {
         await resetSettings(page);
     });
 
+    /**
+     * The screen's ground is the panel, and it is actually painted.
+     *
+     * The box came off on 21 Sep and the canvas went white with it, so that
+     * every token keeps the ground it was measured against. The rule that does
+     * it sits on `#wpcontent` — which is an *ancestor* of `.folderfolio`, and
+     * the first version read `background: var(--ff-panel)` there, where that
+     * token does not exist. It resolved to nothing, computed to
+     * `transparent`, and the screen silently shipped the other design: box
+     * gone, ground still grey.
+     *
+     * No unit test can see that. `_tokens.css` was correct and `_settings.css`
+     * was correct; only the pairing of the two was wrong, and only a browser
+     * knows which selector can see which custom property. Hence this.
+     *
+     * Asserted against the component's own `--ff-panel` rather than a literal,
+     * so it follows the token instead of restating it.
+     */
+    test('the page itself is painted with the panel token, not left transparent', async ({
+        page,
+    }) => {
+        await page.goto(`${SETTINGS}&tab=settings`);
+        await page.locator('.folderfolio-settings').waitFor();
+
+        const ground = await page.evaluate(() => {
+            const paint = (selector: string): string => {
+                const el = document.querySelector(selector);
+
+                return el === null ? 'MISSING' : getComputedStyle(el).backgroundColor;
+            };
+
+            const component = document.querySelector('.folderfolio') as HTMLElement;
+
+            return {
+                token: getComputedStyle(component).getPropertyValue('--ff-panel').trim(),
+                wpcontent: paint('#wpcontent'),
+                wpbody: paint('#wpbody'),
+                wpbodyContent: paint('#wpbody-content'),
+                // The one the rail lives on is deliberately untouched, and
+                // this spec's own page is the only place the rule applies.
+                card: paint('.folderfolio-settings'),
+            };
+        });
+
+        expect(ground.token, 'the panel token is not resolving at all').toMatch(/^#|^rgb/);
+
+        // #fff and rgb(255, 255, 255) are the same colour spelled two ways.
+        const panelIsWhite = /^#fff{1,2}$|^#ffffff$/i.test(ground.token);
+
+        for (const [name, painted] of [
+            ['#wpcontent', ground.wpcontent],
+            ['#wpbody', ground.wpbody],
+            ['#wpbody-content', ground.wpbodyContent],
+        ] as const) {
+            expect(
+                painted,
+                `${name} is ${painted} — the ground rule resolved to nothing, so the box came `
+                    + 'off but the canvas stayed grey'
+            ).not.toBe('rgba(0, 0, 0, 0)');
+
+            if (panelIsWhite) {
+                expect(painted, `${name} is not the panel colour`).toBe('rgb(255, 255, 255)');
+            }
+        }
+
+        // And the card is no longer a card: no ground of its own to be a box.
+        expect(
+            ground.card,
+            'the settings card is painting a background again — it is the page now'
+        ).toBe('rgba(0, 0, 0, 0)');
+    });
+
     test('is one page with three tabs, landing on Settings', async ({ page }) => {
         await page.goto(SETTINGS);
 
