@@ -1506,6 +1506,34 @@ children and then failed on its own row left the children reparented.
 
 ## Things that will bite you
 
+**`wp.Uploader.prototype.init` is a single slot, and wrapping politely does not
+protect you.** FileBird, CatFolders and Premio each assign it without capturing
+the previous value, so a later plugin discards your wrapper with no error.
+**We lose this race by construction**: we enqueue with `strategy: defer`, which
+runs at parse-complete, while they patch at `wp.domReady` /
+`DOMContentLoaded`, which is afterwards. Re-assert late or accept silent loss.
+See `claude/progress-2026-09-21h-coexistence.md`.
+
+**`strategy: defer` runs BEFORE `DOMContentLoaded`, not after.** Enqueueing
+late does not make your JS run last — lifecycle stage beats enqueue order.
+
+**Registering at plugin-include time beats every hook priority.** Premio
+instantiates in its plugin file rather than on `plugins_loaded`, so it is first
+on every shared hook whatever the activation order. Hook priority only orders
+callbacks already registered when the hook fires.
+
+**Our `posts_clauses` filter bails when `folderfolio_folder` is unset, and that
+is load-bearing.** It is the only reason a second folder plugin's library does
+not go blank when ours is installed. Three of four rivals have no such bail and
+two of them force a folder on `upload.php` with no user action. **Do not
+"simplify" it**, and it deserves a guard with a negative control.
+
+**Premio destroys every other plugin's rail on an ordinary click** —
+`jQuery("#wpbody").load(url + " #wpbody-content")` in list mode. Our rail is a
+child of `#wpbody` and is placed once by an inline script, so it does not come
+back until a reload.
+
+
 **`uninstall.php` is usually a stub.** Do not assume delete-and-reinstall
 resets a plugin. All four folder rivals leave every option row and every table
 behind. Read the file before proposing a reinstall.
