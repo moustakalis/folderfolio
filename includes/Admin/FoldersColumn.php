@@ -131,11 +131,26 @@ final class FoldersColumn
      * _content.css is scoped to inside `.wp-list-table`, and why the wrapper
      * carries the bare `folderfolio` class: the `<th>` is core's markup, and
      * `--ff-*` resolves nowhere outside that class.
+     *
+     * ## Why not simply "Folders"
+     *
+     * Premio's Folders registers its taxonomy with `show_admin_column`, so on
+     * a site running both, this table grows two adjacent columns headed
+     * *Folders* and there is no way to tell which is which. Making the header
+     * conditional would mean detecting a rival at runtime, which this plugin
+     * does not do anywhere and should not start doing here.
+     *
+     * So the label is distinct by construction. **"Media folders"** rather
+     * than the product's name: the rail's eyebrow carries *FolderFolio*
+     * deliberately, but a table header is read on every row of every media
+     * library, and a product name there is noise for the majority of sites
+     * that have no second folder plugin at all. A plain noun phrase costs them
+     * nothing and still cannot be confused with a bare *Folders*.
      */
     private static function headerLabel(): string
     {
         return '<span class="folderfolio folderfolio-folders__head">'
-            . esc_html__('Folders', 'folderfolio')
+            . esc_html__('Media folders', 'folderfolio')
             . '</span>';
     }
 

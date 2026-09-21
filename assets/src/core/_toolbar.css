@@ -1185,7 +1185,26 @@
  * grid item and claim a cell of its own.
  */
 
-#wpbody-content .wp-filter {
+/*
+ * Gated on our own body class, which Rail.php prints on `upload.php` alone.
+ *
+ * `frame.css` imports this partial and ships to the seven screens that can
+ * open a media picker — `post.php`, `post-new.php`, `edit.php`, `themes.php`,
+ * `customize.php`, `widgets.php`, `site-editor.php`. `.wp-filter` is not ours:
+ * core uses it for the theme and plugin browsers too, and on a site with
+ * enough themes this rule named *their* filter bar a container and gave it
+ * `contain: layout inline-size style`, which changes the containing block for
+ * any fixed-position descendant. A bug with or without a rival on the site.
+ *
+ * Measured on themes.php: this site renders no `.wp-filter` there at all, so
+ * the screen showed nothing — a zero that agreed with no prediction. Putting
+ * a `.wp-filter` into `#wpbody-content` by hand produced `inline-size` and
+ * `folderfolio-toolbar` on an element we have no business touching, which is
+ * what this gate removes. The neighbouring rules that already carry a
+ * `folderfolio-` body class of ours need no gate: those classes are set by our
+ * own code and exist on no other screen.
+ */
+body.folderfolio-has-rail #wpbody-content .wp-filter {
   container-type: inline-size;
   container-name: folderfolio-toolbar;
 }
@@ -1697,18 +1716,18 @@
     width: 100%;
   }
 
-  #wpbody-content .wp-filter .filter-items {
+  body.folderfolio-has-rail #wpbody-content .wp-filter .filter-items {
     display: grid;
     grid-template-columns: auto auto 1fr;
     align-items: center;
     gap: 8px 6px;
   }
 
-  #wpbody-content .wp-filter .filter-items > * {
+  body.folderfolio-has-rail #wpbody-content .wp-filter .filter-items > * {
     grid-column: 1 / -1;
   }
 
-  #wpbody-content .wp-filter .filter-items > .view-switch {
+  body.folderfolio-has-rail #wpbody-content .wp-filter .filter-items > .view-switch {
     grid-area: 1 / 1;
   }
 
@@ -1724,12 +1743,12 @@
    * supposed to sit beside. The same trap as `> *` above, which is why that
    * one also never reached it.
    */
-  #wpbody-content .wp-filter .filter-items .folderfolio-filter-toggle {
+  body.folderfolio-has-rail #wpbody-content .wp-filter .filter-items .folderfolio-filter-toggle {
     grid-area: 1 / 2;
   }
 
-  body:not(.folderfolio-filters-open) #wpbody-content .wp-filter .filter-items > #attachment-filter,
-  body:not(.folderfolio-filters-open) #wpbody-content .wp-filter .filter-items > .actions {
+  body.folderfolio-has-rail:not(.folderfolio-filters-open) #wpbody-content .wp-filter .filter-items > #attachment-filter,
+  body.folderfolio-has-rail:not(.folderfolio-filters-open) #wpbody-content .wp-filter .filter-items > .actions {
     display: none;
   }
 
