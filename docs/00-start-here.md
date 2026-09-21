@@ -372,6 +372,49 @@ rail** (clips by 12), 234 in 278 at 280, 74 to spare at Nick's 310 — so the ol
 pair comes back below **298**, the breakpoint where the indent already drops to
 16 and the tool row is already icons only. No new number.
 
+### 21 Sep, last of all — A11 takes core's accent, and a guard that had stopped guarding
+
+Commit `a9ee2c6`. **PHPStan clean, 111 unit (309 assertions), 54 e2e, `tsc`
+clean.** Full account: `claude/progress-2026-09-21e-a11-and-the-a8-scenario.md`.
+
+**A11, Nick's call.** The checked segment takes `--ff-on-sel` on `--ff-sel` —
+the pair it was reaching for before finding 11 sent it to `--ff-ink` on
+`--ff-panel`. The tab marker and the checked option are the same colour now, so
+the screen has **one language for *chosen***. Measured in all nine schemes:
+white on the theme colour is **4.57:1 at worst** (Fresh, Light) and **5.61 at
+best** (Modern) — exactly the table `_tokens.css` carries, so it is safe by
+construction.
+
+> **A guard can stop guarding without failing.** Writing A11's negative control
+> showed that finding 11's original pairing — `--ff-on-sel` on `--ff-bar` —
+> **no longer fails the contrast test**: since the theme rework `--ff-on-sel`
+> is `#fff` in every scheme, so white on `#1d2327` is 15.89:1. The pairing is
+> still wrong, it is just no longer wrong in a way a ratio can see. Four
+> instances have shipped and the docs warn about it in three places, and
+> nothing was enforcing it —
+> `test_the_accent_ink_is_never_painted_on_the_chrome_ground` does now, by
+> name. **Re-run the old negative controls after a system-wide change, not
+> just the new one.**
+
+**Left behind, raised and not changed:** the wizard's current-step badge is now
+the last thing using `--ff-ink` on `--ff-panel` for *you are here*, and on the
+import tab it sits directly under a tab marker that is the accent — two
+markers, stacked, in two colours. *Chosen from two options* and *step 1 of 4*
+are arguably different meanings; Nick's to say.
+
+**A8 was the wrong question, and the code says why.** `Repair folder tree`
+calls `backfillPaths(true)`, and that `true` is `$force`, which **skips the
+short-circuit the function already has**. With nothing wrong it walks every
+folder and issues **one UPDATE per folder — 1,053 on the dev site** — writing
+values that are already there: **the button does its maximum work precisely
+when there is nothing to do.** It is safe (`path` and `depth` only; `updated_at`
+has no `ON UPDATE`), but the notice afterwards claims a repair that did not
+happen, and `deleteOrphans()` does the same in past tense. Both functions
+return an `int` and **both return values are thrown away**. So the choice is
+not disable-or-not: it is **drop `$force` when the report says the tree is in
+step, and report the count** — the short-circuit exists and is being
+deliberately bypassed. Recommendation on the table, awaiting Nick.
+
 ### 21 Sep, after that — the box comes off and the page becomes the surface
 
 Commit `108464c`. **PHPStan clean, 110 unit (307 assertions), 54 e2e, `tsc`
