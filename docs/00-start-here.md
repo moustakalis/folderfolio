@@ -1504,7 +1504,79 @@ children and then failed on its own row left the children reparented.
   `WP_UnitTestCase` already opened one. Its first version set `depth = 1`,
   which would have meant `after()` callbacks never fired in any test.
 
+## The 1.0 plan — coexistence and migration
+
+**Both are in 1.0 scope** (Nick, 21 Sep). The authority is the project doc
+`claude/plan-1.0-coexistence-and-migration.md`; the cold-start prompt is
+`claude/cold-start-prompt-1.0-blockers.md`. Summary:
+
+**Phase 1, the two silent data bugs.** (1.1) The uploader race — `9cff4ad`
+holds against FileBird alone and CatFolders alone and **fails against both
+together**; replace the single macrotask re-assert with a short retry sequence
+and **verify against two clobberers, not one**. (1.2) Premio's
+`jQuery("#wpbody").load()` does not destroy our rail — it **resurrects** a
+fresh server-rendered copy inside `#wpbody-content` with an empty React root,
+668px tall, pushing the file table to `top: 953px` in a 700px viewport; make
+placement idempotent over **identity**, not position. (1.3) The e2e harness
+installs no competitors, which is why neither was caught — build a synthetic
+**"bad neighbour" mu-plugin** (~30 lines: assign `proto.init` at `wp.domReady`
+without chaining, `#wpbody.load()` on a click, `#wpcontent{padding-left:305px}`)
+and guard against that rather than shipping a rival into the rig.
+
+**Phase 2, the visible collisions.** Stop writing to `#wpcontent` at all — our
+`padding-left: 0` and Premio's `305px` have identical specificity and ours
+loads later, which is exactly why their fixed rail lands on top of ours;
+achieve the finding-5 seam fix from our own element. Plus the duplicate
+"Folders" column label, and `frame.css` leaking
+`#wpbody-content .wp-filter { container-type: inline-size }` onto seven screens
+including `themes.php` (a bug with or without a rival).
+
+**Phase 3**, `refreshListTable()` replacing seven regions wholesale and
+destroying rivals' JS-injected controls — decide before costing.
+**Phase 4**, migration: **F + C** recommended, blocked on Nick choosing.
+**Phase 5**, the existing release track.
+
+**Numbers not to re-derive:** FileBird silently hides **28 of 47 files** when
+active; our `posts_clauses` bail is **load-bearing** and three of four rivals
+lack it; **FolderFolio + Real Media Library is the only clean pair of ten**.
+
 ## Things that will bite you
+
+**One slot means one winner.** `wp.Uploader.prototype.init` is a single
+extension point and FileBird, CatFolders and Premio each *assign* it without
+chaining. Wrapping politely does not protect you, and **`strategy: defer` runs
+before `DOMContentLoaded`**, so we lose by construction unless the wrap is
+re-asserted late. Lifecycle stage beats enqueue order.
+
+**A boolean guard on a patch you do not own is a bug.** `wrapped = true`
+answers "did I ever wrap?" when the question is "is my wrapper still
+installed?".
+
+**Verifying against one instance of a hazard is not verifying against the
+hazard.** The uploader fix passed FileBird, passed CatFolders, and failed both
+together.
+
+**A node coming back is not the same as a node surviving.** Premio's `.load()`
+re-fetches our shell, so `getElementById` finds a rail and `offsetHeight` is
+non-zero — and the React root inside it is empty. **Check for the mounted app,
+not the element.**
+
+**Winning a CSS fight with another plugin can be the bug.**
+
+**`document.hidden` belongs in every layout probe.** A backgrounded tab reports
+`innerWidth: 0`, flipping every media query to its narrow branch, so the
+component renders its phone layout and the numbers describe a viewport nobody
+is looking at.
+
+**A zero that matches your prediction is the most dangerous measurement there
+is.** Confirm the fixture can produce a non-zero first — the 1,050 stress
+folders are all empty and several are named with trailing numbers.
+
+**Our `posts_clauses` bail is load-bearing.** It returns the clauses untouched
+when `folderfolio_folder` is unset, and it is the only reason installing
+FolderFolio cannot blank another folder plugin's library. **Do not simplify
+it**, and it needs a negative control it has never had.
+
 
 **`wp.Uploader.prototype.init` is a single slot, and wrapping politely does not
 protect you.** FileBird, CatFolders and Premio each assign it without capturing
