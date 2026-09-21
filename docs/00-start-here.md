@@ -1508,11 +1508,24 @@ children and then failed on its own row left the children reparented.
 
 **`wp.Uploader.prototype.init` is a single slot, and wrapping politely does not
 protect you.** FileBird, CatFolders and Premio each assign it without capturing
-the previous value, so a later plugin discards your wrapper with no error.
-**We lose this race by construction**: we enqueue with `strategy: defer`, which
-runs at parse-complete, while they patch at `wp.domReady` /
-`DOMContentLoaded`, which is afterwards. Re-assert late or accept silent loss.
-See `claude/progress-2026-09-21h-coexistence.md`.
+the previous value, so a later plugin discards your wrapper with no error. We
+lost this race by construction — `strategy: defer` runs at parse-complete,
+they patch at `wp.domReady` / `DOMContentLoaded`, which is afterwards.
+**Closed in `9cff4ad`**: the guard is now the wrapper's own identity
+(`folderfolioUploadTarget`) rather than a boolean, and the wrap is re-asserted
+on a macrotask after the document is ready. Verified live with FileBird active.
+See `claude/progress-2026-09-21i-the-uploader-race.md`.
+
+**A boolean guard on a patch you do not own is a bug.** `wrapped = true`
+answers *"did I ever wrap?"* when the question is *"is my wrapper still
+installed?"* — and it had silently killed the existing re-check on every folder
+change for the life of the module. Stamp the function and test for it.
+
+**A zero that matches your prediction is the most dangerous measurement there
+is.** A folder rendering 0 files looked exactly like the predicted blank
+library; the 1,050 stress folders are all empty and that one was named
+*"Campaigns 45"*. **Confirm the fixture can produce a non-zero before believing
+a zero.**
 
 **`strategy: defer` runs BEFORE `DOMContentLoaded`, not after.** Enqueueing
 late does not make your JS run last — lifecycle stage beats enqueue order.
