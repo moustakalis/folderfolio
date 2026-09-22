@@ -425,10 +425,19 @@ as us choosing it for them — but the filter has to be stated, and the
 breadcrumb's × is where it would be.
 
 > The research's best output costs no build time: **the readme**. *"Unlimited
-> nesting"* is a shrug. *"Unlimited nesting — three of the four most-installed
-> folder plugins sell you the second level"* is the product. Naming rivals in
-> readme prose is permitted; the ban covers readme **tags** (guideline 12) and
-> the **slug** (17).
+> nesting"* is a shrug. *"Unlimited nesting, folder permissions by role, and
+> import from nine plugins — all free, all paid features elsewhere"* is the
+> product.
+
+**Nick's three answers, same day.** **Export goes into 1.0** (~3h). **The
+readme names what is paid, not who** — naming rivals in prose is permitted (the
+ban covers readme **tags**, guideline 12, and the **slug**, 17) and he does not
+want that fight on his own listing page, so do not re-propose it. And **folder
+reordering is built now, with 1.0 slipping two days for it** — overruling the
+recommendation to hold it for 1.1, because it is the only row where all four
+rivals beat us. The open design question is his and unanswered: **a manual
+order and a `default_sort` of `name-asc` cannot both be in force.** Draw it
+before building it.
 
 ### 21 Sep, the source read — three corrections to the first-minute pass
 
@@ -1634,9 +1643,10 @@ folder count, caches for an hour behind that, and needs no invalidation — an
 import creates folders here, so the gate closes before the cache is read.
 
 **What is left.** The research pass ran on 22 Sep and is finished — see
-*22 Sep — what the market charges for*, above. It puts **one** feature in front
-of the release (export the folder structure, ~3h) and leaves everything else to
-1.1. **Then phase 5**, the existing release track.
+*22 Sep — what the market charges for*, above. It puts **two** features in
+front of the release: **folder reordering in the tree** (~1.5–2 days, first,
+and 1.0 slips for it) and **export of the folder structure** (~3h). Then the
+readme's two claims, and **then phase 5**, the existing release track.
 
 **Numbers not to re-derive:** FileBird silently hides **28 of 47 files** when
 active; our `posts_clauses` bail is **load-bearing** and three of four rivals
@@ -2425,7 +2435,8 @@ not contain at all.
 | `m2-importer-matrix.md` | Verified schemas and detection keys per migration source | Yes, when the importers are rewritten |
 | `research/01..04-*.md` | FileBird, Real Media Library, Folders, CatFolders — measured live and read from source | Background, and the reason for several decisions |
 | `deep-review-2026-09-16.md` | 29 numbered findings against 0.2.0 | Partly — #15 is closed; #24, #26, #27, #28 and #29 are still open |
-| *(Claude project)* `progress-2026-09-22d-the-paywall-read.md` | What the four rivals gate behind a licence, the two piles, and the cut line — the most recent log | **Yes — the newest, and outside this repo** |
+| *(Claude project)* `progress-2026-09-22e-the-answers.md` | Nick's three answers, and the two features they put into 1.0 — the most recent log | **Yes — the newest, and outside this repo** |
+| *(Claude project)* `progress-2026-09-22d-the-paywall-read.md` | What the four rivals gate behind a licence, the two piles, and the cut line | Yes — its *Awaiting Nick* section is superseded by `…-22e` |
 | *(Claude project)* `progress-2026-09-22c-f-validated.md` | The rail's empty state, looked at — and the second renderer nobody had looked at | Yes |
 | *(Claude project)* `progress-2026-09-22b-phases-3-and-4.md` | Phases 4 and 3, and the 1.0 coexistence plan closed | Yes |
 | *(Claude project)* `progress-2026-09-21g-the-source-read.md` | All four competitors' codebases read; three live findings corrected | Yes — the basis of the coexistence work |
