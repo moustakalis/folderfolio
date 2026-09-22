@@ -372,6 +372,64 @@ rail** (clips by 12), 234 in 278 at 280, 74 to spare at Nick's 310 — so the ol
 pair comes back below **298**, the breakpoint where the indent already drops to
 16 and the tool row is already icons only. No new number.
 
+### 22 Sep — what the market charges for, and what we already give away
+
+Four codebases read again, for a different question: what does each rival put
+behind a licence, and which of it belongs in 1.0. **No code touched, no
+competitor activated** — every gate is readable in source, which is faster and
+spends no fixture. Board `claude.ai/artifact/VPQoAc1vY7XTkERCp8ZPYU`; the full
+record is `progress-2026-09-22d-the-paywall-read.md` in the Claude project.
+
+**Three of the four sell nested subfolders.** CatFolders opens a *"Want
+Subfolders?"* modal, Premio prints *"Sub-folders is a pro feature"* into
+`templates/admin/modals.php:147`, and RML Lite throws
+`OnlyInProVersionException` from `inc/overrides/lite/folder/Creatable.php` —
+a gate at the CRUD layer, not the UI. Only FileBird gives nesting away.
+
+**1.0 already gives away six features this market prices, and mentions none of
+them:**
+
+| Feature | Who charges, and how it is gated |
+|---|---|
+| Nested subfolders | CatFolders · Premio · RML |
+| Folder permissions by role | CatFolders · Premio |
+| Import from rival plugins | RML — real `disabled` attributes, and the four routes are never registered in Lite |
+| Folder colours | FileBird — `disabled: true` on the submenu trigger |
+| Upload into the selected folder | Premio — a `.disabled` anchor pointing at the upgrade URL |
+| The folder tree in the media picker | RML — Lite gets a dropdown |
+
+Add *move to trash before permanent delete*, which Premio sells and our undo
+window answers by another mechanism, and it is seven.
+
+**The only row where all four beat us is folder reordering in the tree** —
+~1.5–2 days, because it needs an order column and a migration, drag-and-drop in
+*both* renderers, and a rule for what a manual order means while `default_sort`
+is `name-asc`. It stays a 1.1 item.
+
+**One feature is recommended into 1.0: export the folder structure**, ~3h — one
+REST `GET` serialising the tree and one button on the Import tab, which already
+exists. Nine importers in and nothing out is a roach motel.
+
+**Download-as-ZIP was rejected despite three of four charging for it.** The
+feature is one function; what ships is temp-file lifecycle, a memory ceiling on
+shared hosting, a timeout on any folder large enough to want it, a
+path-traversal surface and a cleanup schedule. FileBird ships a
+`filebird_saved_downloads` option and a whole `Schedule.php` cron for precisely
+this. *"No account, no licence, no telemetry"* also means nobody on the other
+end of the ticket.
+
+**And a startup folder cannot be built the way the market builds it.** A
+remembered folder forced onto `upload.php` is exactly how FileBird hides 28 of
+47 files with nothing on screen saying so. The user choosing it is not the same
+as us choosing it for them — but the filter has to be stated, and the
+breadcrumb's × is where it would be.
+
+> The research's best output costs no build time: **the readme**. *"Unlimited
+> nesting"* is a shrug. *"Unlimited nesting — three of the four most-installed
+> folder plugins sell you the second level"* is the product. Naming rivals in
+> readme prose is permitted; the ban covers readme **tags** (guideline 12) and
+> the **slug** (17).
+
 ### 21 Sep, the source read — three corrections to the first-minute pass
 
 **No code changed.** Board updated in place:
@@ -1575,11 +1633,10 @@ plugin is still switched on. `Modules\Import\Elsewhere` gates on our own
 folder count, caches for an hour behind that, and needs no invalidation — an
 import creates folders here, so the gate closes before the cache is read.
 
-**What is left, in order.** First a research pass, not a build: what each of
-the four competitors gates behind *Pro*, and which of it belongs in 1.0 rather
-than 1.1 (Nick, 22 Sep; brief in the Claude project as
-`claude/cold-start-prompt-pro-features.md`). It comes first because it can still
-change what 1.0 contains. **Then phase 5**, the existing release track.
+**What is left.** The research pass ran on 22 Sep and is finished — see
+*22 Sep — what the market charges for*, above. It puts **one** feature in front
+of the release (export the folder structure, ~3h) and leaves everything else to
+1.1. **Then phase 5**, the existing release track.
 
 **Numbers not to re-derive:** FileBird silently hides **28 of 47 files** when
 active; our `posts_clauses` bail is **load-bearing** and three of four rivals
@@ -2333,6 +2390,32 @@ choose between the rail's two homes — so `lib/narrow.ts`'s `useIsNarrow()` may
 be read from script, and `Rail.tsx` renders the tree **or** the level view,
 never both.
 
+**A function present in a bundle is not an ungated feature.** FileBird's free
+build ships `updateFolderColor` and `downloadFolder` in full, with working REST
+plumbing behind both, and `Tree.php` returns a `color` for every folder. On a
+capability grep both read as free. **Both menu triggers carry
+`disabled: true`.** The same component serves both tiers, so the gate is the
+attribute on the trigger, an unregistered route, or a thrown exception — never
+the absence of the code. Grep for the gate, not the capability.
+
+**A vendor's own page can under-report its own paywall.** Real Media Library's
+"PRO vs Free" page lists five paid features and was last updated two years ago
+against version 4.7; the installed build is 4.23.4 and the source carries
+**eight** gates. The startup folder, the picker's tree view and recursive
+upload appear on no page anywhere. And one feature the page sells as PRO —
+**export** — is registered unconditionally in `inc/rest/Reset.php` and works in
+Lite. Read a vendor page for what the free build cannot contain, never for what
+it can.
+
+**A comparison table shipped inside the plugin is still marketing.** Premio's
+`templates/admin/upgrade-table.php` is a 700-line pricing page inside the
+plugin, and FileBird ships a 47-row `{feature, pro, free}` array in its own
+bundle. Both are vendor claims that happen to live in the repository. Read them
+for the feature **names** — a free list of what the vendor thinks is worth
+money — then check each one against its gate. Their `readme.txt` files are the
+better source still, and the only good one for a feature the free build does
+not contain at all.
+
 ## Which document is which
 
 | Document | What it is | Still authoritative? |
@@ -2342,7 +2425,8 @@ never both.
 | `m2-importer-matrix.md` | Verified schemas and detection keys per migration source | Yes, when the importers are rewritten |
 | `research/01..04-*.md` | FileBird, Real Media Library, Folders, CatFolders — measured live and read from source | Background, and the reason for several decisions |
 | `deep-review-2026-09-16.md` | 29 numbered findings against 0.2.0 | Partly — #15 is closed; #24, #26, #27, #28 and #29 are still open |
-| *(Claude project)* `progress-2026-09-22c-f-validated.md` | The rail's empty state, looked at — and the second renderer nobody had looked at — the most recent build log | **Yes — the newest, and outside this repo** |
+| *(Claude project)* `progress-2026-09-22d-the-paywall-read.md` | What the four rivals gate behind a licence, the two piles, and the cut line — the most recent log | **Yes — the newest, and outside this repo** |
+| *(Claude project)* `progress-2026-09-22c-f-validated.md` | The rail's empty state, looked at — and the second renderer nobody had looked at | Yes |
 | *(Claude project)* `progress-2026-09-22b-phases-3-and-4.md` | Phases 4 and 3, and the 1.0 coexistence plan closed | Yes |
 | *(Claude project)* `progress-2026-09-21g-the-source-read.md` | All four competitors' codebases read; three live findings corrected | Yes — the basis of the coexistence work |
 | *(Claude project)* `progress-2026-09-19b-thousand-folders.md` | The 1,050-folder stress test, the searchable picker, the drill-down sheet | History |
