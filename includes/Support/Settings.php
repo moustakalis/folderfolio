@@ -61,8 +61,16 @@ final class Settings
     /**
      * Matches SortOrder in assets/src/apps/rail/store.ts. A value that is not
      * in this list would leave the rail's sort menu with nothing selected.
+     *
+     * `custom` is the odd one and belongs here all the same. The other four
+     * are views over the same data; custom is the arrangement the folders
+     * carry themselves, which is exactly what this setting's own reasoning
+     * calls "a property of how the site is organised". A site whose tree is
+     * arranged by hand is the site that wants to open on it — and without
+     * this, a folder dragged into place is only visible until the next page
+     * load.
      */
-    public const SORTS = ['name-asc', 'name-desc', 'newest', 'oldest'];
+    public const SORTS = ['name-asc', 'name-desc', 'newest', 'oldest', 'custom'];
 
     /**
      * The four columns of the roles matrix, in the order screen 08 draws them.

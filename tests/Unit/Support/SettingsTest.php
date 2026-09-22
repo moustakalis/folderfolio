@@ -34,6 +34,9 @@ final class SettingsTest extends TestCase
         // selected, which is why this cannot simply be stored as given.
         $this->assertSame('name-asc', Settings::sanitize(['default_sort' => 'size'])['default_sort']);
         $this->assertSame('oldest', Settings::sanitize(['default_sort' => 'oldest'])['default_sort']);
+        // The arrangement the folders carry. Without this a dragged folder is
+        // only in place until the next page load.
+        $this->assertSame('custom', Settings::sanitize(['default_sort' => 'custom'])['default_sort']);
     }
 
     /**

@@ -362,6 +362,9 @@ final class SettingsPage
             'name-desc' => __('Name, Z–A', 'folderfolio'),
             'newest' => __('Newest first', 'folderfolio'),
             'oldest' => __('Oldest first', 'folderfolio'),
+            // Last, and after the four views: this one is the tree's own
+            // arrangement rather than an order imposed on it.
+            'custom' => __('Custom order', 'folderfolio'),
         ];
     }
 
