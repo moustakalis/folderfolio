@@ -245,10 +245,6 @@ class ImportPage
                 'importDoneAddedOne' => __('%s file added', 'folderfolio'),
                 /* translators: %s is a number of files. */
                 'importDoneAddedMany' => __('%s files added', 'folderfolio'),
-                /* translators: %s is a number of folders. */
-                /* translators: %s is a number of folders. */
-                /* translators: %s is a number of files. */
-                /* translators: %s is a number of files. */
                 /* translators: 1: a plugin name. 2: a number of duplicate names. */
                 'importDupNote' => __('%1$s had %2$s duplicate folder names in the same place. Each set became one folder here, holding all of their files.', 'folderfolio'),
                 'importUndoneTitle' => __('Import undone', 'folderfolio'),
@@ -263,6 +259,53 @@ class ImportPage
                 'importUndoNote' => __('Undo removes the folders this import created and the files it filed. A folder you have added your own files to since is kept.', 'folderfolio'),
                 'importProvenanceNote' => __('Every folder records where it came from, so a second run reconciles instead of duplicating.', 'folderfolio'),
                 'importFailed' => __('The import could not continue.', 'folderfolio'),
+
+                // Export. Shipped on 22 Sep reading from t()'s English
+                // fallbacks, which is how a string stays untranslatable
+                // without anything looking broken.
+                'exportEyebrow' => __('Take it with you', 'folderfolio'),
+                'exportLede' => __('Download your folder structure as a file — names, nesting, colours and the order everything sits in. Keep it before a big reorganisation, move it to another site, or just have it.', 'folderfolio'),
+                'exportWithAssignments' => __('Include which files are in which folder', 'folderfolio'),
+                'exportWithAssignmentsHint' => __('Makes a much larger file on a big library.', 'folderfolio'),
+                'exportButton' => __('Export folder structure', 'folderfolio'),
+                'exportBusy' => __('Preparing…', 'folderfolio'),
+                'exportFailed' => __('The export could not be produced.', 'folderfolio'),
+
+                // Bulk create.
+                'bulkEyebrow' => __('Many at once', 'folderfolio'),
+                'bulkLede' => __('Paste a list and get the folders. One per line, and a slash nests — Brand/Logos makes both. Nothing is created until you have seen what would be.', 'folderfolio'),
+                'bulkLabel' => __('Folders, one per line', 'folderfolio'),
+                'bulkPreview' => __('Preview', 'folderfolio'),
+                'bulkPreviewing' => __('Reading…', 'folderfolio'),
+                'bulkCreating' => __('Creating…', 'folderfolio'),
+                /* translators: %s is a number of folders. */
+                'bulkCreateOne' => __('Create %s folder', 'folderfolio'),
+                /* translators: %s is a number of folders. */
+                'bulkCreateMany' => __('Create %s folders', 'folderfolio'),
+                /* translators: %s is a number of folders. */
+                'bulkFolderOne' => __('%s folder', 'folderfolio'),
+                /* translators: %s is a number of folders. */
+                'bulkFolderMany' => __('%s folders', 'folderfolio'),
+                'bulkPlanErrorsOne' => __('Nothing has been created. One line cannot be used — it is marked below.', 'folderfolio'),
+                /* translators: %s is a number of lines that could not be used. */
+                'bulkPlanErrorsMany' => __('Nothing has been created. %s of these lines cannot be used — they are marked below.', 'folderfolio'),
+                'bulkPlanNothing' => __('Every folder on this list is already there. Nothing to create.', 'folderfolio'),
+                /* translators: %1$s is a phrase such as "12 folders". */
+                'bulkPlanSomeOne' => __('Nothing has been created yet. This would add %1$s; one line is already there.', 'folderfolio'),
+                /* translators: 1: a phrase such as "12 folders". 2: a number of lines already present. */
+                'bulkPlanSomeMany' => __('Nothing has been created yet. This would add %1$s; %2$s lines are already there.', 'folderfolio'),
+                /* translators: %s is a phrase such as "12 folders". */
+                'bulkPlanAll' => __('Nothing has been created yet. This would add %s.', 'folderfolio'),
+                'bulkRunNothing' => __('Every folder on this list was already there. Nothing was created.', 'folderfolio'),
+                /* translators: %s is a number of folders. */
+                'bulkRunOne' => __('%s folder created.', 'folderfolio'),
+                /* translators: %s is a number of folders. */
+                'bulkRunMany' => __('%s folders created.', 'folderfolio'),
+                'bulkRowNew' => __('new', 'folderfolio'),
+                'bulkRowCreated' => __('created', 'folderfolio'),
+                'bulkRowExists' => __('already there', 'folderfolio'),
+                'bulkPreviewFailed' => __('The list could not be read.', 'folderfolio'),
+                'bulkCreateFailed' => __('The folders could not be created.', 'folderfolio'),
             ],
         ];
     }

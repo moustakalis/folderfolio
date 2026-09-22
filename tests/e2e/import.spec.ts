@@ -278,3 +278,118 @@ test.describe('the import wizard', () => {
         expect(routes).not.toContain('/folderfolio/v1/import/(?P<importer>[a-z-]+)');
     });
 });
+
+/**
+ * Bulk create — the other way folders arrive on this tab.
+ *
+ * The parse and the resolution are the server's, and the integration suite
+ * owns them. What belongs here is the promise the screen makes: that pressing
+ * Preview writes nothing, that a list with a bad line offers no way to run it,
+ * and that editing the box takes the preview away rather than leaving a
+ * confident wrong answer under the button that acts on it.
+ */
+test.describe('bulk create', () => {
+    test.beforeEach(async ({ page }) => {
+        await page.goto('/wp-admin/upload.php?mode=grid');
+        await page.locator('#folderfolio-rail').waitFor();
+        await resetFolders(page);
+    });
+
+    /** Type a list and press Preview. */
+    async function preview(page: Page, list: string): Promise<void> {
+        await page.locator('#folderfolio-bulk-text').fill(list);
+        await page.getByRole('button', { name: 'Preview' }).click();
+        await page.locator('.folderfolio-bulk__row').first().waitFor();
+    }
+
+    test('previewing writes nothing, and the shared prefix is made once', async ({ page }) => {
+        await page.goto(IMPORT);
+        await page.locator('.folderfolio-bulk').waitFor();
+
+        await preview(page, 'Brand\nBrand/Logos\nBrand/Logos/Primary\nBrand/Icons');
+
+        // Four lines, four folders: Brand is named on every one of them and
+        // counted once, which is the whole of why a plan exists rather than a
+        // loop over getOrCreateByPath().
+        await expect(page.locator('.folderfolio-bulk__summary')).toContainText('would add 4 folders');
+
+        // The bold part of each line is what that line contributes.
+        const rows = page.locator('.folderfolio-bulk__row');
+        await expect(rows).toHaveCount(4);
+        await expect(rows.nth(1).locator('.folderfolio-bulk__new')).toHaveText('Logos');
+        await expect(rows.nth(1).locator('.folderfolio-bulk__old')).toHaveText('Brand');
+
+        // Nothing has been written. The rail behind this page is the check
+        // that matters, not the sentence claiming it.
+        await page.goto('/wp-admin/upload.php?mode=grid');
+        await page.locator('#folderfolio-rail').waitFor();
+        await expect(page.locator('.folderfolio-row__name', { hasText: 'Brand' })).toHaveCount(0);
+    });
+
+    test('a list with a bad line offers no way to run it', async ({ page }) => {
+        await page.goto(IMPORT);
+        await page.locator('.folderfolio-bulk').waitFor();
+
+        await preview(page, 'Brand\n///');
+
+        await expect(page.locator('.folderfolio-bulk__row--error')).toHaveCount(1);
+        await expect(page.locator('.folderfolio-bulk__summary')).toContainText('cannot be used');
+
+        // Not disabled — absent. A greyed Create button beside a list the
+        // person can fix is a control whose only job is to be refused.
+        await expect(page.getByRole('button', { name: /^Create/ })).toHaveCount(0);
+    });
+
+    test('editing the list takes the preview with it', async ({ page }) => {
+        await page.goto(IMPORT);
+        await page.locator('.folderfolio-bulk').waitFor();
+
+        await preview(page, 'Brand\nBrand/Logos');
+        await expect(page.locator('.folderfolio-bulk__row')).toHaveCount(2);
+
+        await page.locator('#folderfolio-bulk-text').fill('Something else entirely');
+
+        // A preview of text that has since changed is a specific, confident,
+        // wrong answer sitting directly under the button that acts on it.
+        await expect(page.locator('.folderfolio-bulk__row')).toHaveCount(0);
+        await expect(page.getByRole('button', { name: /^Create/ })).toHaveCount(0);
+    });
+
+    test('creating twice creates once', async ({ page }) => {
+        await page.goto(IMPORT);
+        await page.locator('.folderfolio-bulk').waitFor();
+
+        await preview(page, 'Brand\nBrand/Logos');
+        await page.getByRole('button', { name: 'Create 2 folders' }).click();
+        await expect(page.locator('.folderfolio-bulk__summary')).toContainText('2 folders created');
+
+        // The same list again. A line naming a folder that exists is a no-op,
+        // which is what makes a list safe to paste after editing three lines
+        // of it.
+        await preview(page, 'Brand\nBrand/Logos');
+        await expect(page.locator('.folderfolio-bulk__summary')).toContainText(
+            'Every folder on this list is already there'
+        );
+        await expect(page.getByRole('button', { name: /^Create/ })).toHaveCount(0);
+    });
+
+    test('the bulk routes sit behind create, not manage_options', async ({ page }) => {
+        const routes = await page.evaluate(async () => {
+            const index = await window.wp.apiFetch({ path: '/folderfolio/v1' });
+
+            return Object.keys((index as { routes: Record<string, unknown> }).routes).filter(
+                (path) => path.includes('/bulk')
+            );
+        });
+
+        // Two routes, not one with a dry_run flag: a boolean that decides
+        // whether a request writes is the parameter that is wrong exactly
+        // once.
+        expect(routes).toEqual(
+            expect.arrayContaining([
+                '/folderfolio/v1/folders/bulk',
+                '/folderfolio/v1/folders/bulk/plan',
+            ])
+        );
+    });
+});

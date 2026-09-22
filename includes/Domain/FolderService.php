@@ -1092,11 +1092,19 @@ class FolderService
      * Idempotent, so calling it on every upload is fine. This is the method
      * most integrations actually want.
      *
+     * `$parentId` is where the path starts, and it defaults to the top level,
+     * which is what every caller before `Domain\FolderBulk` wanted. It is a
+     * seed for the same walk rather than a mode: with it set, "Logos/Primary"
+     * means those two under that folder, and the method is otherwise
+     * unchanged. Nothing validates it here — `create()` rejects a parent that
+     * does not exist, on the first segment, before anything is written.
+     *
      * @return Folder|WP_Error
      */
     public function getOrCreateByPath(
         string $path,
-        string $objectType = FolderRepository::DEFAULT_OBJECT_TYPE
+        string $objectType = FolderRepository::DEFAULT_OBJECT_TYPE,
+        ?int $parentId = null
     ): Folder|WP_Error {
         $segments = $this->splitPath($path);
 
@@ -1107,7 +1115,6 @@ class FolderService
             );
         }
 
-        $parentId = null;
         $current = null;
 
         foreach ($segments as $segment) {

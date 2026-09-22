@@ -10,6 +10,7 @@ if (!defined('ABSPATH')) {
 
 use FolderFolio\Domain\AttachmentFolderRepository;
 use FolderFolio\Domain\Folder;
+use FolderFolio\Domain\FolderBulk;
 use FolderFolio\Domain\FolderRepository;
 use FolderFolio\Domain\FolderService;
 use FolderFolio\Domain\FolderSorts;
@@ -188,6 +189,38 @@ class FolderController
                     'items' => ['type' => 'integer'],
                 ],
             ],
+        ]);
+
+        /*
+         * Many folders from a list — one name per line, a slash nests.
+         *
+         * Two routes rather than one with a `dry_run` flag, following the
+         * import wizard's /plan and /start next door: the preview is a
+         * different question with a different answer, and a boolean that
+         * decides whether a request writes is the kind of parameter that is
+         * wrong exactly once.
+         *
+         * Both are POST. The plan writes nothing and would otherwise be a
+         * GET, but its subject is a block of text a person pastes — which
+         * belongs in a body, not in a query string, a server log and a
+         * browser history.
+         *
+         * `\d+` cannot match "bulk", so neither competes with the id routes
+         * above however they are registered — the same reason /folders/reorder
+         * is spelled the way it is.
+         */
+        register_rest_route($ns, '/folders/bulk/plan', [
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => [$this, 'bulkPlan'],
+            'permission_callback' => [$this, 'canCreateFolders'],
+            'args' => $this->bulkArguments(),
+        ]);
+
+        register_rest_route($ns, '/folders/bulk', [
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => [$this, 'bulkCreate'],
+            'permission_callback' => [$this, 'canCreateFolders'],
+            'args' => $this->bulkArguments(),
         ]);
 
         register_rest_route($ns, '/folders/(?P<id>\d+)/ancestors', [
@@ -465,6 +498,43 @@ class FolderController
         );
     }
 
+    /**
+     * What creating a pasted list would do. Writes nothing.
+     */
+    public function bulkPlan(WP_REST_Request $request): WP_REST_Response
+    {
+        return $this->result(
+            (new FolderBulk())->plan(
+                (string) $request->get_param('text'),
+                $this->nullableInteger($request->get_param('parent_id'))
+            ),
+            200,
+            /** @param array<string, mixed> $plan */
+            static fn (array $plan): array => $plan
+        );
+    }
+
+    /**
+     * Create the list, all of it or none of it.
+     *
+     * Deliberately does **not** return the tree, which every other write here
+     * does. Those are called from the rail, which redraws from what comes
+     * back; this is called from the Tools screen, which has no tree on it, and
+     * a 1,053-folder payload nothing reads is not a courtesy.
+     */
+    public function bulkCreate(WP_REST_Request $request): WP_REST_Response
+    {
+        return $this->result(
+            (new FolderBulk())->run(
+                (string) $request->get_param('text'),
+                $this->nullableInteger($request->get_param('parent_id'))
+            ),
+            201,
+            /** @param array<string, mixed> $plan */
+            static fn (array $plan): array => $plan
+        );
+    }
+
     public function attachments(WP_REST_Request $request): WP_REST_Response
     {
         $id = (int) $request['id'];
@@ -714,10 +784,38 @@ class FolderController
     }
 
     /**
-     * @param callable(int|bool|Folder): array<string, mixed> $successData
+     * The two bulk routes take the same pair, and take it the same way.
+     *
+     * `text` is the raw block, newlines and all, parsed on the server. The
+     * browser could split it into an array and send that, but then half the
+     * parse — which lines are blank, where a path divides — would live in the
+     * client and the preview would be a second implementation free to
+     * disagree with the one that writes.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private function bulkArguments(): array
+    {
+        return [
+            'text' => [
+                'type' => 'string',
+                'required' => true,
+            ],
+            // Absent means the top level, which is what the Tools screen
+            // sends — it has no selection to inherit one from.
+            'parent_id' => [
+                'required' => false,
+                'sanitize_callback' => [$this, 'nullableInteger'],
+            ],
+        ];
+    }
+
+    /**
+     * @param array<string, mixed>|int|bool|Folder|WP_Error $result
+     * @param callable(array<string, mixed>|int|bool|Folder): array<string, mixed> $successData
      */
     private function result(
-        int|bool|Folder|WP_Error $result,
+        array|int|bool|Folder|WP_Error $result,
         int $status,
         callable $successData
     ): WP_REST_Response {

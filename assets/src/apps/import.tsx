@@ -11,6 +11,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createRoot } from 'react-dom/client';
 
+import { BulkCreate } from './import/BulkCreate';
 import { Export } from './import/Export';
 import { Wizard } from './import/Wizard';
 
@@ -28,13 +29,18 @@ if (mount) {
 
     createRoot(mount).render(
         /*
-          Export sits beside the wizard rather than inside it: the wizard is
-          four states watching something happen on the server, and this is one
-          button. It is on the same tab because that tab is where folders
-          enter and leave, not because it is a fifth step.
+          Three siblings, not one flow. The wizard is four states watching
+          something happen on the server; the other two are a button each.
+          They share this tab because it is where folders enter and leave,
+          which is also the order they are in — from another plugin, from a
+          list, and out to a file.
+
+          Bulk create goes above the export for the same reason: both are
+          doors, and the two that bring folders *in* belong together.
         */
         <QueryClientProvider client={client}>
             <Wizard />
+            <BulkCreate />
             <Export />
         </QueryClientProvider>
     );
