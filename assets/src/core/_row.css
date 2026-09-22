@@ -398,11 +398,23 @@
  * eleven filled rectangles, and a twelfth filled thing would read as another
  * colour rather than as a warning.
  */
-.folderfolio-menu__item--danger {
+/*
+ * Doubled, for the third time today.
+ *
+ * `.folderfolio-menu__item { color: var(--ff-ink) }` lives in _toolbar.css,
+ * which admin.css imports AFTER this file — so a single class here ties on
+ * specificity and loses on source order. Measured: the label came back
+ * rgb(29,35,39), which is --ff-ink, not the danger colour.
+ *
+ * The rule to remember is the file order: _row.css, then _rail-chrome.css,
+ * then _toolbar.css. Anything added in the first two that competes with a
+ * `.folderfolio-menu*` rule needs to out-specify it, not merely match it.
+ */
+.folderfolio-menu__item.folderfolio-menu__item--danger {
   color: var(--ff-danger-text);
 }
 
-.folderfolio-menu__item--danger:hover {
+.folderfolio-menu__item.folderfolio-menu__item--danger:hover {
   background: var(--ff-hover);
   color: var(--ff-danger);
 }
