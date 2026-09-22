@@ -51,6 +51,12 @@ final class PreferenceController
                         'properties' => [
                             'open' => ['type' => 'boolean'],
                             'width' => ['type' => 'integer'],
+                            // Nullable, and the null is the point: it is how
+                            // the toggle says "this is no longer my startup
+                            // folder". write() merges onto what is stored, so
+                            // a key left out changes nothing and a key sent
+                            // null clears it.
+                            'startup' => ['type' => ['integer', 'null']],
                         ],
                     ],
                 ],

@@ -244,6 +244,16 @@ export function CloseIcon(props: IconProps) {
     );
 }
 
+/* The tick on a pressed toggle. Heavier than the set's 2px default, because
+   at 11px a 2px stroke reads as a smudge beside 11.5px type. */
+export function CheckIcon(props: IconProps) {
+    return (
+        <Svg {...props} strokeWidth={3}>
+            <path d="M20 6 9 17l-5-5" />
+        </Svg>
+    );
+}
+
 export function UndoIcon(props: IconProps) {
     return (
         <Svg {...props}>

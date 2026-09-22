@@ -352,6 +352,109 @@ test.describe('the settings screen', () => {
     });
 
     /**
+     * The per-user half — tier 1 item 7b.
+     *
+     * Three things, and the third is the one that would be easy to ship
+     * broken: the toggle writes, the write survives a page load, and turning
+     * it off falls back to the **site's** folder rather than to nothing.
+     *
+     * It also asserts the rail's width comes through untouched, because the
+     * toggle sends `startup` alone and relies on the controller merging it
+     * onto what is stored. A version of this that sent the whole preference
+     * object would pass every other assertion here and quietly reset the
+     * width of anyone who had dragged the rail.
+     */
+    test('a person can set their own startup folder, and theirs wins', async ({ page }) => {
+        await page.goto('/wp-admin/upload.php?mode=grid');
+        await page.locator('#folderfolio-rail').waitFor();
+        await resetFolders(page);
+
+        const mine = await createFolder(page, 'Mine');
+        const theirs = await createFolder(page, 'Site Wide');
+
+        // The site sends everyone to one folder.
+        await page.goto(`${SETTINGS}&tab=settings`);
+        await page.getByLabel('Opens in').selectOption(String(theirs.id));
+        await page.getByRole('button', { name: 'Save changes' }).click();
+        await expect(page.getByText('Settings saved.')).toBeVisible();
+
+        // This person picks another, from the row that says where they are.
+        await page.goto(`/wp-admin/upload.php?folderfolio_folder=${mine.id}`);
+        const toggle = page.getByRole('button', { name: 'Start here' });
+        await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+        await toggle.click();
+        await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+
+        // 1. It survives the round trip, and 2. it beats the site's.
+        await page.goto('/wp-admin/upload.php');
+        await expect(page).toHaveURL(new RegExp(`folderfolio_folder=${mine.id}\\b`));
+        await expect(page.getByRole('button', { name: 'Start here' })).toHaveAttribute(
+            'aria-pressed',
+            'true'
+        );
+
+        // The rail's width came back untouched — the write was a merge, not a
+        // replacement.
+        const width = await page.evaluate(async () => {
+            const r = await window.wp.apiFetch({ path: '/folderfolio/v1/preferences' });
+
+            return r.data.rail.width;
+        });
+        expect(width).toBeGreaterThan(0);
+
+        // 3. Off falls back to the site's folder, not to no folder at all.
+        await page.getByRole('button', { name: 'Start here' }).click();
+        await expect(page.getByRole('button', { name: 'Start here' })).toHaveAttribute(
+            'aria-pressed',
+            'false'
+        );
+
+        await page.goto('/wp-admin/upload.php');
+        await expect(page).toHaveURL(new RegExp(`folderfolio_folder=${theirs.id}\\b`));
+
+        await page.goto(`${SETTINGS}&tab=settings`);
+        await page.getByLabel('Opens in').selectOption('');
+        await page.getByRole('button', { name: 'Save changes' }).click();
+        await expect(page.getByText('Settings saved.')).toBeVisible();
+    });
+
+    /**
+     * The site sending you somewhere is not you choosing it.
+     *
+     * The toggle reflects this person's own value and nothing else. If it
+     * showed the *effective* folder, pressing it while the site sent you here
+     * would clear a preference you never set, the site's folder would keep
+     * arriving, and the button would look broken while working correctly.
+     */
+    test('a site-wide startup folder does not press this person\'s toggle', async ({ page }) => {
+        await page.goto('/wp-admin/upload.php?mode=grid');
+        await page.locator('#folderfolio-rail').waitFor();
+        await resetFolders(page);
+
+        const folder = await createFolder(page, 'Everyone Here');
+
+        await page.goto(`${SETTINGS}&tab=settings`);
+        await page.getByLabel('Opens in').selectOption(String(folder.id));
+        await page.getByRole('button', { name: 'Save changes' }).click();
+        await expect(page.getByText('Settings saved.')).toBeVisible();
+
+        await page.goto('/wp-admin/upload.php');
+        await expect(page).toHaveURL(new RegExp(`folderfolio_folder=${folder.id}\\b`));
+
+        // Sent here, told why, and not pretending it was my idea.
+        await expect(page.locator('.folderfolio-startup-note')).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Start here' })).toHaveAttribute(
+            'aria-pressed',
+            'false'
+        );
+
+        await page.goto(`${SETTINGS}&tab=settings`);
+        await page.getByLabel('Opens in').selectOption('');
+        await page.getByRole('button', { name: 'Save changes' }).click();
+        await expect(page.getByText('Settings saved.')).toBeVisible();
+    });
+
+    /**
      * Unassigned is a destination, not the absence of one.
      *
      * `0` is the one value in this setting that a careless read turns into

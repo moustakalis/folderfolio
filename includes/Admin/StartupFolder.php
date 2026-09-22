@@ -46,6 +46,12 @@ use FolderFolio\Support\Settings;
  * asked for, visible in the URL, named in the breadcrumb, and has a × beside
  * it that works.
  *
+ * ## Whose folder
+ *
+ * The person's own, from `RailPreferences`, falling back to the site's from
+ * `Settings`. Nobody has a personal one until they press *Start here* on a
+ * folder, so a site that only uses the site setting behaves as it always did.
+ *
  * ## The one test, and everything it excludes
  *
  * **The query var being present is the whole condition**, whatever its value.
@@ -88,7 +94,7 @@ final class StartupFolder
             return;
         }
 
-        $folderId = Settings::get()['startup_folder'];
+        $folderId = $this->folderFor(get_current_user_id());
 
         if ($folderId === null || !$this->exists($folderId)) {
             return;
@@ -111,6 +117,27 @@ final class StartupFolder
         wp_safe_redirect($url, 302);
 
         exit;
+    }
+
+    /**
+     * This person's startup folder, or the site's.
+     *
+     * Theirs wins when they have one, which is what an override is. They have
+     * none by default, so a site with a startup folder set and nobody who has
+     * chosen their own behaves exactly as it did before this half existed.
+     *
+     * `RailPreferences` is the home for it because it is already the home for
+     * everything about the rail that is this user's rather than the site's,
+     * and it is already read on this request — `Rail::config()` asks for the
+     * same array to decide the rail's width.
+     */
+    private function folderFor(int $userId): ?int
+    {
+        $mine = $userId > 0
+            ? RailPreferences::forUser($userId)['startup']
+            : null;
+
+        return $mine ?? Settings::get()['startup_folder'];
     }
 
     private function shouldRedirect(): bool

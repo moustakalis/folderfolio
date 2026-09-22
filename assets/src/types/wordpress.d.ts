@@ -216,6 +216,17 @@ interface FolderFolioConfig {
   undoWindow?: number;
 
   /**
+   * THIS USER'S own startup folder, and deliberately not the site's.
+   *
+   * `null` is no personal choice, `0` is Unassigned, a positive id is a
+   * folder — the same three-way the query var uses. The breadcrumb's toggle
+   * is pressed when this names the folder being shown; a site-wide startup
+   * folder arriving is explained by the sentence under the crumbs instead,
+   * because pressing the toggle can only set or clear a value of this user's.
+   */
+  startupFolder?: number | null;
+
+  /**
    * Another folder plugin's data, when this library has none of ours.
    *
    * Absent in the ordinary case — both because the site has folders here and

@@ -12,7 +12,7 @@
  * what screen 11 shows at three widths.
  */
 
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
 import { CloseIcon } from './icons';
 import { useRail } from './store';
@@ -24,8 +24,56 @@ export interface Crumb {
     label: string;
 }
 
-export function Breadcrumb({ crumbs }: { crumbs: Crumb[] }) {
+/**
+ * The way out of a filter, and anything else that belongs beside it.
+ *
+ * Two scales, because there are two rows. The library's is 908px and gets
+ * labelled buttons — Nick's call, and the × it replaces was an 18px glyph
+ * with no name on it that shared the path's clipping box. The media picker's
+ * is **220px**, wide enough that the same label would take a third of it, so
+ * it keeps the icon. One action, drawn at the size its row can afford, the
+ * same way `_frame.css` already gives that column a 28px search instead of
+ * the rail's 30px.
+ *
+ * The caller says which, rather than a flag being read in here, because the
+ * library also passes a second control and the picker does not.
+ */
+export function ClearFilter({ compact = false }: { compact?: boolean }) {
     const select = useRail((s) => s.select);
+
+    if (compact) {
+        return (
+            <button
+                type="button"
+                className="folderfolio-crumbs__clear"
+                title={t('clearFilter', 'Clear filter')}
+                aria-label={t('clearFilter', 'Clear filter')}
+                onClick={() => select(null)}
+            >
+                <CloseIcon size={14} />
+            </button>
+        );
+    }
+
+    return (
+        <button
+            type="button"
+            className="folderfolio-crumbs__control"
+            onClick={() => select(null)}
+        >
+            {t('clearFilter', 'Clear filter')}
+        </button>
+    );
+}
+
+/**
+ * @param controls What goes at the end of the row when a folder is being
+ *                 filtered to. Drawn only then — All media as the sole crumb
+ *                 is not a state there is anything to clear or to start in.
+ */
+export function Breadcrumb({ crumbs, controls }: { crumbs: Crumb[]; controls?: ReactNode }) {
+    const select = useRail((s) => s.select);
+    const selectedId = useRail((s) => s.selectedId);
     const ref = useRef<HTMLElement>(null);
     const [hidden, setHidden] = useState(0);
     const [menuOpen, setMenuOpen] = useState(false);
@@ -115,8 +163,29 @@ export function Breadcrumb({ crumbs }: { crumbs: Crumb[] }) {
     const collapsed = rest.slice(0, hidden);
     const shown = rest.slice(hidden);
 
+    /*
+     * The controls are drawn when a folder is being filtered to, which is the
+     * same rule the × followed: All media as the sole crumb is not a state
+     * there is anything to clear or to start in. Unassigned IS one — it is
+     * the absence of a folder, which is still a filter over the library, and
+     * "show me what is not filed yet" is a startup folder somebody wants.
+     */
+    const filtering = selectedId !== null;
+
     return (
         <nav className="folderfolio-crumbs" aria-label={t('breadcrumb', 'Folder path')} ref={ref}>
+            {/*
+              Two tracks, and the split is the whole point of this row's
+              shape: the path may be clipped, the controls never are.
+
+              The × used to sit inside the list, after the current crumb — so
+              it shared the path's clipping box and could be scrolled out of
+              existence by a deep enough path, and it was an 18px glyph with
+              no name on it. Nick's call: labelled buttons, at the end of the
+              row. `min-width: 0` on the path is what lets it shrink at all;
+              without it a grid track never goes below its content and the
+              controls would be pushed out of the box instead.
+            */}
             <ol className="folderfolio-crumbs__list">
                 <Item crumb={first} current={crumbs.length === 1} onSelect={select} />
 
@@ -178,6 +247,10 @@ export function Breadcrumb({ crumbs }: { crumbs: Crumb[] }) {
                     />
                 ))}
             </ol>
+
+            {filtering && controls ? (
+                <div className="folderfolio-crumbs__controls">{controls}</div>
+            ) : null}
         </nav>
     );
 }
@@ -217,42 +290,6 @@ function Item({
                 </button>
             )}
 
-            {/*
-              The way out of the filter, put where the filter is stated.
-
-              The alternative that was weighed and rejected was making the
-              selected rail row a toggle — click the folder you are in and go
-              back to All media. It reads well in the abstract, because a
-              folder here is a filter and not a place, but it collides with
-              three things this build already does: the narrow sheet's own
-              header *is* a press-to-filter control on the folder you are in,
-              so the same gesture would mean two opposite things depending on
-              the view; `Enter` on a focused tree row is the key that filters,
-              so confirming where you are would throw you out; and a folder row
-              invites the double-click everyone learned from Finder, whose
-              second click would silently clear.
-
-              None of that applies to a control of its own with a label on it.
-              It is separately focusable, it cannot misfire, and it sits in the
-              one line on the screen whose whole job is to say what the library
-              is filtered to.
-
-              Only on the current crumb, and only when that crumb is a filter:
-              All media as the sole crumb is not a state there is anything to
-              clear. Unassigned *is* one — it is the absence of a folder, which
-              is still a filter over the library — so it gets the control too.
-            */}
-            {current && crumb.id !== null ? (
-                <button
-                    type="button"
-                    className="folderfolio-crumbs__clear"
-                    title={t('clearFolderFilter', 'Clear the folder filter')}
-                    aria-label={t('clearFolderFilter', 'Clear the folder filter')}
-                    onClick={() => onSelect(null)}
-                >
-                    <CloseIcon size={14} />
-                </button>
-            ) : null}
         </li>
     );
 }

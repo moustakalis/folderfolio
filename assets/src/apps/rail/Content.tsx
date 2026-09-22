@@ -18,10 +18,11 @@
 
 import { useEffect, useState } from 'react';
 
-import { Breadcrumb, type Crumb } from './Breadcrumb';
+import { Breadcrumb, ClearFilter, type Crumb } from './Breadcrumb';
 import { Cards } from './Cards';
 import { CloseIcon } from './icons';
 import type { FolderNode } from './queries';
+import { StartHere } from './StartHere';
 import { useRail } from './store';
 import { arrivedFromStartupFolder, folderFromUrl } from '../../lib/filter';
 import { hasListTable } from '../../lib/list-refresh';
@@ -34,10 +35,26 @@ import { t, tn } from '../../core/api';
  */
 export function Content({ nodes, cards }: { nodes: FolderNode[]; cards: boolean }) {
     const { crumbs, children, label } = useFolderContent(nodes);
+    const selectedId = useRail((s) => s.selectedId);
 
     return (
         <>
-            <Breadcrumb crumbs={crumbs} />
+            {/*
+              The controls are passed in rather than drawn by the breadcrumb,
+              so the media picker — which renders the same component in a
+              220px column — gets the compact pair and not these. The toggle
+              is this screen's alone: a picker opened from a post editor is
+              not somewhere you arrive.
+            */}
+            <Breadcrumb
+                crumbs={crumbs}
+                controls={
+                    <>
+                        <ClearFilter />
+                        {selectedId === null ? null : <StartHere folderId={selectedId} />}
+                    </>
+                }
+            />
             <StartupNote />
             <div className="folderfolio-content__rule" />
             {cards ? <Cards children={children} list={hasListTable()} label={label} /> : null}

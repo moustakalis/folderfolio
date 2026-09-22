@@ -146,6 +146,15 @@ final class MediaModalIntegration
                 'delete' => Capabilities::can('delete'),
                 'assign' => Capabilities::can('assign'),
             ],
+            /*
+             * The same key the rail's own writer carries, for the reason that
+             * writer states: whichever bundle is enqueued first wins and the
+             * other does not clobber it, so a key present in only one is a
+             * value that exists on some screens and not others. The media
+             * modal never draws the toggle, but on upload.php both scripts
+             * are enqueued and either can be the one that wins.
+             */
+            'startupFolder' => RailPreferences::forUser(get_current_user_id())['startup'],
             'countMode' => $settings['count_mode'],
             'defaultSort' => $settings['default_sort'],
             'undoWindow' => $settings['undo_window'],
@@ -160,6 +169,9 @@ final class MediaModalIntegration
                 'renameFolder' => __('Rename folder', 'folderfolio'),
                 'newFolderName' => __('Name for the new folder', 'folderfolio'),
                 'delete' => __('Delete', 'folderfolio'),
+                'clearFilter' => __('Clear filter', 'folderfolio'),
+                'startHere' => __('Start here', 'folderfolio'),
+                'startHereHint' => __('Open the media library in this folder', 'folderfolio'),
                 'dismiss' => __('Dismiss', 'folderfolio'),
                 'startupFolderNote' => __('The media library opens in this folder. Clear the filter in the path above to see everything.', 'folderfolio'),
                 'sortNameAsc' => __('Name, A to Z', 'folderfolio'),

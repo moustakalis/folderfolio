@@ -126,10 +126,14 @@
 }
 
 /* The library column's breadcrumb has room to breathe above and below a 2px
-   rule; in a 240px column that vertical padding is a third of a row. */
+   rule; in a 240px column that vertical padding is a third of a row.
+   `min-height` goes with it for the same reason: this column's row is a line
+   of text and the 18px × beside it, never the 22px buttons the library row
+   carries, so it has no 36px to hold. */
 .folderfolio-frame__crumbs .folderfolio-crumbs {
   margin: 0;
   padding: 0;
+  min-height: 0;
 }
 
 /* -------------------------------------------------------------- search */

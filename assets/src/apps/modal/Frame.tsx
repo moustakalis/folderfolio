@@ -20,7 +20,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { FrameHeader } from './FrameHeader';
-import { Breadcrumb, type Crumb } from '../rail/Breadcrumb';
+import { Breadcrumb, ClearFilter, type Crumb } from '../rail/Breadcrumb';
 import { FixedRows } from '../rail/FixedRows';
 import { Results } from '../rail/Results';
 import { Search } from '../rail/Search';
@@ -256,7 +256,7 @@ function FrameBody({ column }: { column: HTMLElement }) {
                       collapses a four-deep path into root, ellipsis, current.
                     */}
                     <div className="folderfolio-frame__crumbs">
-                        <Breadcrumb crumbs={crumbs} />
+                        <Breadcrumb crumbs={crumbs} controls={<ClearFilter compact />} />
                     </div>
 
                     <div className="folderfolio-frame__body">

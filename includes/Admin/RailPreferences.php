@@ -58,16 +58,68 @@ final class RailPreferences
     public const TAB_WIDTH = 28;
 
     /**
+     * This person's own startup folder — tier 1 item 7b.
+     *
+     * The same three-way every folder value in this plugin uses: `null` is no
+     * personal choice, `0` is Unassigned, a positive id is a folder. It lives
+     * here rather than in `Settings` for the reason the class comment already
+     * gives about width — it is theirs, not their machine's, and not the
+     * site's.
+     *
+     * ## `null` means "no preference", not "none"
+     *
+     * A user with no value here follows the site's `startup_folder`. There is
+     * deliberately no fourth value for *"the site has one and I want none"*:
+     * expressing it would need a control that says so, and the control this
+     * has is a toggle on a folder, which can only say **this one** or **not
+     * this one**. Somebody who does not want the site's folder today clears
+     * the filter, which holds for the session.
+     *
+     * ## And it is read as theirs, never as the site's
+     *
+     * The toggle shows pressed only when *this* value names the folder — not
+     * when the site's does. Otherwise pressing it would have to mean "stop
+     * following the site", the site's folder would keep arriving, and the
+     * button would look broken while working correctly.
+     */
+    public const STARTUP_NONE = null;
+
+    /**
      * @param array<string, mixed> $raw
      *
-     * @return array{open: bool, width: int}
+     * @return array{open: bool, width: int, startup: ?int}
      */
     public static function sanitize(array $raw): array
     {
         return [
             'open' => self::sanitizeOpen($raw['open'] ?? true),
             'width' => self::clampWidth($raw['width'] ?? self::DEFAULT_WIDTH),
+            // `??` on purpose: an absent key and a stored null both mean no
+            // personal startup folder, and nothing needs to tell them apart.
+            'startup' => self::startupFolder($raw['startup'] ?? null),
         ];
+    }
+
+    /**
+     * The startup folder, in the three-way described on STARTUP_NONE.
+     *
+     * The same shape as `Support\Settings::startupFolder()` and
+     * `Admin\MediaLibraryFilter::normalizeFolderId()`, and the same reason
+     * for not calling either: this half of the class is pure and static so it
+     * can be unit-tested with no WordPress loaded, and that one runs
+     * `wp_unslash()`. What the three share is asserted rather than shared —
+     * **`0` is Unassigned and an empty value is absent** — because the failure
+     * mode is one of them quietly starting to read `0` as nothing.
+     *
+     * @param mixed $value
+     */
+    public static function startupFolder($value): ?int
+    {
+        if (null === $value || '' === $value || is_array($value) || !is_numeric($value)) {
+            return null;
+        }
+
+        return max(0, (int) $value);
     }
 
     /**
@@ -103,7 +155,7 @@ final class RailPreferences
     }
 
     /**
-     * @return array{open: bool, width: int}
+     * @return array{open: bool, width: int, startup: ?int}
      */
     public static function forUser(int $userId): array
     {
@@ -120,7 +172,7 @@ final class RailPreferences
     /**
      * @param array<string, mixed> $raw
      *
-     * @return array{open: bool, width: int}
+     * @return array{open: bool, width: int, startup: ?int}
      */
     public static function save(int $userId, array $raw): array
     {

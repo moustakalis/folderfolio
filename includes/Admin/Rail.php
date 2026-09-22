@@ -664,6 +664,23 @@ final class Rail
             'undoWindow' => $settings['undo_window'],
 
             /*
+             * This person's own startup folder, and deliberately NOT the
+             * site's. The toggle in the breadcrumb is pressed when *they*
+             * chose this folder; a site-wide folder arriving is explained by
+             * the sentence under the crumbs instead. If this carried the
+             * effective value, pressing it while the site sent you here would
+             * clear a preference you never set and leave you arriving in the
+             * same place — a control that looks broken while working
+             * correctly.
+             *
+             * In appConfig() and not config(): that one writes
+             * window.folderFolioRail, which is the chrome script's own
+             * globals — width, open, the drag's bounds. Everything the React
+             * app reads is here.
+             */
+            'startupFolder' => RailPreferences::forUser(get_current_user_id())['startup'],
+
+            /*
              * What another folder plugin is holding, when this library holds
              * nothing of ours — the one thing the rail's empty state needs in
              * order to stop saying something untrue.
@@ -867,7 +884,9 @@ final class Rail
                 ),
                 /* translators: %s is the search term that matched nothing. */
                 'noMatch' => __('No folder matches “%s”.', 'folderfolio'),
-                'clearFolderFilter' => __('Clear the folder filter', 'folderfolio'),
+                'clearFilter' => __('Clear filter', 'folderfolio'),
+                'startHere' => __('Start here', 'folderfolio'),
+                'startHereHint' => __('Open the media library in this folder', 'folderfolio'),
                 'dismiss' => __('Dismiss', 'folderfolio'),
                 'startupFolderNote' => __('The media library opens in this folder. Clear the filter in the path above to see everything.', 'folderfolio'),
                 /* translators: 1: number of folders, 2: the folder they are in. */

@@ -34,6 +34,16 @@ export interface RailState {
      */
     focusedId: number | null;
 
+    /**
+     * The folder this user has chosen to open the library in — tier 1 item 7b.
+     *
+     * In the store rather than in the toggle's own state because two
+     * renderers draw the breadcrumb and both have to agree, and because the
+     * value outlives any one of them: seeded from the server on the first
+     * paint, then owned here.
+     */
+    startupFolderId: number | null;
+
     expandedIds: Set<number>;
 
     /**
@@ -82,6 +92,9 @@ export interface RailState {
     pendingUndo: PendingUndo | null;
 
     select: (id: number | null) => void;
+
+    /** Set or clear this user's startup folder. `null` clears it. */
+    setStartupFolder: (id: number | null) => void;
     focus: (id: number | null) => void;
     toggle: (id: number) => void;
     expand: (id: number) => void;
@@ -183,6 +196,7 @@ export interface PendingUndo {
 export const useRail = create<RailState>((set) => ({
     selectedId: folderFromUrl(),
     focusedId: folderFromUrl(),
+    startupFolderId: window.folderFolio?.startupFolder ?? null,
     expandedIds: new Set<number>(),
     /*
      * The sheet opens at the top level even when a folder is selected.
@@ -198,6 +212,8 @@ export const useRail = create<RailState>((set) => ({
     pendingUndo: null,
 
     select: (id) => set({ selectedId: id, focusedId: id }),
+
+    setStartupFolder: (id) => set({ startupFolderId: id }),
     focus: (id) => set({ focusedId: id }),
 
     // A new Set each time rather than mutating: Zustand compares by reference,

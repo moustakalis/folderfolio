@@ -40,13 +40,37 @@
    * With the margin gone the row sat one pixel high. Same 36px box, text on
    * the centre line.
    */
-  padding: 9px 0;
+  /**
+   * Still a 36px box, and now it says so instead of arriving at it.
+   *
+   * It used to be 9px of padding either side of an 18.2px line box. The row
+   * carries 22px buttons now, so that arithmetic would have made it 40 — and
+   * 4px taller on a folder than on All media, since the buttons are only
+   * drawn when something is filtered. The height is declared and the padding
+   * is what is left, so the row is one height whatever is in it.
+   */
+  min-height: 36px;
+  box-sizing: border-box;
+  padding: 7px 0;
   font-size: 12px;
   color: var(--ff-muted);
 
-  /* The measurement the overflow depends on: the row must be able to report
-     that it is wider than its box, which it cannot do if it wraps. */
-  overflow: hidden;
+  /**
+   * Two tracks: the path, and the controls at the end of the row.
+   *
+   * `minmax(0, 1fr)` is what makes the path shrinkable at all — a grid track
+   * never goes below its content without it, and the controls would be
+   * pushed out of the box instead of the path giving way. Which is the whole
+   * arrangement: **the path may be clipped, the controls never are.**
+   *
+   * Until 22 Sep the × sat inside the list, after the current crumb, so it
+   * shared the path's clipping box and a deep enough path could scroll it out
+   * of existence. Nick's call: labelled buttons, at the end of the row.
+   */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
 }
 
 .folderfolio-crumbs__list {
@@ -57,6 +81,12 @@
   padding: 0;
   list-style: none;
   white-space: nowrap;
+
+  /* The clipping moved here from the row when the row became a grid. It is
+     the measurement the overflow rule depends on: the list must be able to
+     report that it is wider than its box, which it cannot do if it wraps. */
+  min-width: 0;
+  overflow: hidden;
 }
 
 .folderfolio-crumbs__item {
@@ -507,4 +537,93 @@ body.folderfolio-dragging .folderfolio-row {
 .folderfolio-startup-note__dismiss:hover {
   background: var(--ff-hover);
   color: var(--ff-ink);
+}
+
+/* --------------------------------------------- the row's two real buttons */
+
+/**
+ * Pinned to the end of the breadcrumb row, and never clipped.
+ *
+ * Measured before they were built: the deepest path on the 1,053-folder
+ * fixture is 437px in a 908px row, so `Clear filter` (75) + `Start here` (72)
+ * + the 8px between them costs 155 of 471px of slack. Below about a 600px
+ * content column the path starts collapsing middle crumbs — which is the
+ * rule that already exists for exactly this, and an ordinary two- or
+ * three-crumb path never comes near it.
+ */
+.folderfolio-crumbs__controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/**
+ * A control, and it looks like one — which is the change.
+ *
+ * The 18px unlabelled × it replaces said nothing about what it cleared, and
+ * `Clear` alone would not either: the library's own search box is one row
+ * down, so a bare "Clear" has two plausible referents.
+ *
+ * 22px rather than the toolbar's 30: this row is 36px and 12px muted text,
+ * and a control that matches the toolbar's scale would be the loudest thing
+ * on a line whose job is to say where you are.
+ */
+.folderfolio-crumbs__control {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--ff-line);
+  border-radius: 2px;
+  background: var(--ff-panel);
+  color: var(--ff-muted);
+  font-family: inherit;
+  font-size: 11.5px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.folderfolio-crumbs__control:hover {
+  border-color: var(--ff-dim);
+  color: var(--ff-ink);
+}
+
+.folderfolio-crumbs__control:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/**
+ * Pressed: this folder is where the library opens for you.
+ *
+ * The fill rather than a changed label. A toggle button keeps one accessible
+ * name and announces its state separately — renaming it on press means a
+ * screen reader announces a different control than the one just activated —
+ * so `aria-pressed`, a tick and this carry the state while the name carries
+ * the action.
+ *
+ * --ff-on-sel on --ff-sel is the pair TokensTest asserts by name, and it is
+ * 4.57:1 at worst across the eight admin schemes. No new colour.
+ */
+.folderfolio-crumbs__control--on,
+.folderfolio-crumbs__control--on:hover {
+  padding-left: 6px;
+  border-color: var(--ff-sel);
+  background: var(--ff-sel);
+  color: var(--ff-on-sel);
+}
+
+.folderfolio-crumbs__control svg {
+  flex: 0 0 auto;
+}
+
+@media (forced-colors: active) {
+  /* The fill does not survive forced colours, so the state has to be said in
+     something that does. */
+  .folderfolio-crumbs__control--on {
+    border-width: 2px;
+  }
 }
