@@ -1647,12 +1647,23 @@ import creates folders here, so the gate closes before the cache is read.
 **What is left.** 1.0 grew on 22 Sep from a finished release into a
 fourteen-feature list — the Claude project's `plan-1.0-features.md` is the
 authority, and `plan-1.0-tier-1.md` is the detail for the seven the tree
-needs. **Tier 1 item 1, folder reordering, is built**, and on 22 Sep the rail
-toolbar was dissolved around it: every folder action lives in `FolderMenu`,
-opened from a ⋮ on the **selected row** above 782px and from one control below
-it, and the global sort moved next to the search field. Next is item 2,
-per-folder sort. Then the readme's two claims, and **then phase 5**, the
-release track.
+needs. **Five of those seven are built**, all on 22 Sep:
+
+| | |
+|---|---|
+| 1 · Folder reordering | `10efda8` — drag, <kbd>Alt</kbd>+arrows, and menu items both renderers can reach |
+| *The toolbar dissolves* | `abbd720` — every folder action into `FolderMenu`, sort onto the search line |
+| 2 · Per-folder sort, folders **and** files | `d529165` `3f3210b` — `Domain\FolderSorts`, `folder_meta`, per-node `sortTree()` |
+| 3 · Expand all / collapse all | `8db432c` — wide only; 1,053 folders expand in 620ms |
+| 4 · Bulk-create folders | `49fbb68` — `Domain\FolderBulk`, plan then run, on the Tools tab |
+| 6 · Export the folder structure | `0888ee5` — `Domain\FolderExport`, format 1, assignments opt-in |
+
+Every folder action now lives in `FolderMenu`, opened from a ⋮ on the
+**selected row** above 782px and from one control below it; the global sort and
+the expand toggle sit next to the search field. **Left: item 5 (cut / copy /
+paste, which needs one decision — copy is a subtree duplicate that does not
+exist yet) and item 7 (startup folder).** Then reading the export back in,
+then the readme's two claims, and **then phase 5**, the release track.
 
 **Numbers not to re-derive:** FileBird silently hides **28 of 47 files** when
 active; our `posts_clauses` bail is **load-bearing** and three of four rivals
@@ -1669,6 +1680,21 @@ re-asserted late. Lifecycle stage beats enqueue order.
 **A boolean guard on a patch you do not own is a bug.** `wrapped = true`
 answers "did I ever wrap?" when the question is "is my wrapper still
 installed?".
+
+**A colour is a pair, and the pair is tested.** `--ff-danger` is a *fill* — the
+one drawn behind white ink — and `--ff-danger-text` is its ink; `--ff-off` is
+the inactive-control token, which is the one thing WCAG 1.4.3 exempts by name,
+and nothing live may use it. `tests/Unit/Design/TokensTest.php` reads every
+rule in `assets/src/core/*.css` that paints from a token and checks it against
+the ground it lands on in nine admin schemes. Both of 22 Sep's contrast bugs
+looked completely fine on screen and were caught only there, so **run
+`vendor/bin/phpunit -c phpunit-unit.xml.dist` after any colour change**.
+
+**`admin.css` imports `_row.css`, then `_rail-chrome.css`, then
+`_toolbar.css`.** A rule written in the first two that merely ties on
+specificity with a `.folderfolio-menu*` rule in the third loses on source
+order, and nothing errors — it just renders the other value. Out-specify, do
+not match.
 
 **Verifying against one instance of a hazard is not verifying against the
 hazard.** The uploader fix passed FileBird, passed CatFolders, and failed both
@@ -2512,7 +2538,7 @@ is inert there.
 | `research/01..04-*.md` | FileBird, Real Media Library, Folders, CatFolders — measured live and read from source | Background, and the reason for several decisions |
 | `deep-review-2026-09-16.md` | 29 numbered findings against 0.2.0 | Partly — #15 is closed; #24, #26, #27, #28 and #29 are still open |
 | *(Claude project)* `plan-1.0-features.md` | The fourteen features 1.0 grew to hold, in three tiers | **Yes — the authority for scope** |
-| *(Claude project)* `plan-1.0-tier-1.md` | The seven the tree needs, with the source read against each; item 1 built | **Yes — the brief for the current work** |
+| *(Claude project)* `plan-1.0-tier-1.md` | The seven the tree needs, with the source read against each; five built, two left | **Yes — the brief for the current work** |
 | *(Claude project)* `progress-2026-09-22e-the-answers.md` | Nick's answers, and the features they put into 1.0 | Yes |
 | *(Claude project)* `progress-2026-09-22d-the-paywall-read.md` | What the four rivals gate behind a licence, the two piles, and the cut line | Yes — its *Awaiting Nick* section is superseded by `…-22e` |
 | *(Claude project)* `progress-2026-09-22c-f-validated.md` | The rail's empty state, looked at — and the second renderer nobody had looked at | Yes |
