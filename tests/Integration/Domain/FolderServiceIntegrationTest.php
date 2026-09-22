@@ -114,4 +114,116 @@ class FolderServiceIntegrationTest extends WP_UnitTestCase
         $result = $this->service->create(['name' => 'Folder', 'color' => 'not-a-colour']);
         $this->assertWPError($result);
     }
+
+    /**
+     * @test
+     */
+    public function reorders_siblings_and_persists_the_order(): void
+    {
+        $a = $this->service->create(['name' => 'Alpha']);
+        $b = $this->service->create(['name' => 'Bravo']);
+        $c = $this->service->create(['name' => 'Charlie']);
+
+        $written = $this->service->reorder(null, [$c->id, $a->id, $b->id]);
+
+        $this->assertSame(3, $written);
+
+        $names = array_map(
+            static fn (array $node): string => (string) $node['name'],
+            $this->service->tree()
+        );
+
+        // Not alphabetical, which is what proves it: the tree query orders by
+        // sort_order first and name only as a tie-break.
+        $this->assertSame(['Charlie', 'Alpha', 'Bravo'], $names);
+    }
+
+    /**
+     * @test
+     */
+    public function reorder_rejects_a_list_that_does_not_describe_the_whole_level(): void
+    {
+        $a = $this->service->create(['name' => 'Alpha']);
+        $b = $this->service->create(['name' => 'Bravo']);
+        $this->service->create(['name' => 'Charlie']);
+
+        $result = $this->service->reorder(null, [$b->id, $a->id]);
+
+        $this->assertWPError($result);
+        $this->assertSame('folderfolio_reorder_stale', $result->get_error_code());
+    }
+
+    /**
+     * @test
+     */
+    public function reorder_rejects_a_repeated_folder(): void
+    {
+        $a = $this->service->create(['name' => 'Alpha']);
+
+        $result = $this->service->reorder(null, [$a->id, $a->id]);
+
+        $this->assertWPError($result);
+        $this->assertSame('folderfolio_reorder_duplicate', $result->get_error_code());
+    }
+
+    /**
+     * @test
+     */
+    public function reorder_moves_a_folder_between_parents_in_one_call(): void
+    {
+        $left = $this->service->create(['name' => 'Left']);
+        $right = $this->service->create(['name' => 'Right']);
+        $moving = $this->service->create(['name' => 'Moving', 'parent_id' => $left->id]);
+        $settled = $this->service->create(['name' => 'Settled', 'parent_id' => $right->id]);
+
+        $written = $this->service->reorder($right->id, [$settled->id, $moving->id]);
+
+        $this->assertSame(2, $written);
+
+        $moved = $this->service->get($moving->id);
+        $this->assertSame($right->id, $moved->parentId);
+
+        $names = array_map(
+            static fn (Folder $f): string => $f->name,
+            $this->service->children($right->id)
+        );
+        $this->assertSame(['Settled', 'Moving'], $names);
+        $this->assertSame([], $this->service->children($left->id));
+    }
+
+    /**
+     * @test
+     */
+    public function reorder_refuses_to_put_a_folder_inside_itself(): void
+    {
+        $a = $this->service->create(['name' => 'Alpha']);
+
+        $result = $this->service->reorder($a->id, [$a->id]);
+
+        $this->assertWPError($result);
+        $this->assertSame('folderfolio_circular_parent', $result->get_error_code());
+    }
+
+    /**
+     * @test
+     *
+     * The all-or-nothing proof. The move is attempted first and fails on the
+     * cycle check, so the order must not be written either — a half-applied
+     * drag would leave the folder where it was, at a position nobody chose.
+     */
+    public function reorder_writes_nothing_when_the_move_inside_it_fails(): void
+    {
+        $parent = $this->service->create(['name' => 'Parent']);
+        $child = $this->service->create(['name' => 'Child', 'parent_id' => $parent->id]);
+        $before = $this->service->get($parent->id)->sortOrder;
+
+        $result = $this->service->reorder($child->id, [$parent->id]);
+
+        $this->assertWPError($result);
+        $this->assertSame('folderfolio_circular_parent', $result->get_error_code());
+
+        $after = $this->service->get($parent->id);
+        $this->assertNull($after->parentId, 'the parent should still be at the top level');
+        $this->assertSame($before, $after->sortOrder, 'no order should have been written');
+    }
 }

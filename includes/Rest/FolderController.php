@@ -141,6 +141,29 @@ class FolderController
             ],
         ]);
 
+        // Not `/folders/{id}/reorder`: the subject is the level, not one
+        // folder, and the level is named by its parent — which is null at the
+        // top. `\d+` cannot match "reorder", so this and the id routes above
+        // do not compete however they are registered.
+        register_rest_route($ns, '/folders/reorder', [
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => [$this, 'reorder'],
+            'permission_callback' => [$this, 'canRenameFolders'],
+            'args' => [
+                // Optional, and absent means the top level. Required-with-null
+                // would make "arrange the roots" unexpressible in a form post.
+                'parent_id' => [
+                    'required' => false,
+                    'sanitize_callback' => [$this, 'nullableInteger'],
+                ],
+                'ids' => [
+                    'type' => 'array',
+                    'required' => true,
+                    'items' => ['type' => 'integer'],
+                ],
+            ],
+        ]);
+
         register_rest_route($ns, '/folders/(?P<id>\d+)/ancestors', [
             'methods' => WP_REST_Server::READABLE,
             'callback' => [$this, 'ancestors'],
@@ -370,6 +393,23 @@ class FolderController
             $result,
             200,
             fn (): array => ['tree' => $this->folders->tree()]
+        );
+    }
+
+    public function reorder(WP_REST_Request $request): WP_REST_Response
+    {
+        $result = $this->folders->reorder(
+            $this->nullableInteger($request->get_param('parent_id')),
+            $this->integerList($request->get_param('ids'))
+        );
+
+        return $this->result(
+            $result,
+            200,
+            fn (int $arranged): array => [
+                'arranged' => $arranged,
+                'tree' => $this->folders->tree(),
+            ]
         );
     }
 

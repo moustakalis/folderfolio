@@ -144,6 +144,38 @@ class FolderRepository
     }
 
     /**
+     * Folders sharing a parent, in display order.
+     *
+     * `children()` cannot answer this for the top level: `parent_id = %d`
+     * never matches NULL, and the root folders are exactly the rows whose
+     * parent is NULL. Reordering has to validate both levels the same way, so
+     * it asks here rather than branching at every call site.
+     *
+     * @return list<FolderRow>
+     */
+    public function siblingsOf(
+        ?int $parentId,
+        string $objectType = self::DEFAULT_OBJECT_TYPE
+    ): array {
+        $sql = $parentId === null
+            ? $this->wpdb->prepare(
+                "SELECT * FROM {$this->table()}
+                 WHERE parent_id IS NULL AND object_type = %s
+                 ORDER BY sort_order ASC, name ASC",
+                $objectType
+            )
+            : $this->wpdb->prepare(
+                "SELECT * FROM {$this->table()}
+                 WHERE parent_id = %d AND object_type = %s
+                 ORDER BY sort_order ASC, name ASC",
+                $parentId,
+                $objectType
+            );
+
+        return $this->wpdb->get_results($sql, ARRAY_A) ?: [];
+    }
+
+    /**
      * Every folder in a subtree, the root folder included.
      *
      * One indexed prefix match — no recursion, no CTE, and so no MySQL 8
@@ -299,6 +331,73 @@ class FolderRepository
         }
 
         return true;
+    }
+
+    /**
+     * Write a whole sibling list's order in one statement.
+     *
+     * One UPDATE rather than one per folder. A level can hold hundreds of
+     * folders and this runs inside a transaction, so N round trips is N row
+     * locks held for the length of the slowest one. The CASE is built from the
+     * caller's own list, so the number of placeholders is the number of ids
+     * and every one of them is still prepared.
+     *
+     * Position is the index in the list. Gaps are not preserved and do not
+     * need to be: the order is the list, and rewriting it whole is what makes
+     * the operation idempotent.
+     *
+     * @param list<int> $idsInOrder
+     * @return int|WP_Error Size of the level that was arranged.
+     */
+    public function applySortOrder(array $idsInOrder): int|WP_Error
+    {
+        if ($idsInOrder === []) {
+            return 0;
+        }
+
+        $cases = [];
+        $args = [];
+
+        foreach (array_values($idsInOrder) as $position => $id) {
+            $cases[] = 'WHEN %d THEN %d';
+            $args[] = $id;
+            $args[] = $position;
+        }
+
+        $args[] = current_time('mysql', true);
+
+        foreach ($idsInOrder as $id) {
+            $args[] = $id;
+        }
+
+        $placeholders = implode(', ', array_fill(0, count($idsInOrder), '%d'));
+
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the
+        // interpolated parts are placeholder strings this method builds, never
+        // caller data; every value goes through prepare() below.
+        $sql = $this->wpdb->prepare(
+            "UPDATE {$this->table()}
+             SET sort_order = CASE id " . implode(' ', $cases) . " END,
+                 updated_at = %s
+             WHERE id IN ({$placeholders})",
+            ...$args
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+        if ($this->wpdb->query($sql) === false) {
+            return new WP_Error(
+                'folderfolio_folder_reorder_failed',
+                __('Unable to save the new folder order.', 'folderfolio')
+            );
+        }
+
+        // The size of the level, deliberately, and not $wpdb's affected-rows
+        // count. MySQL does not count a row whose value did not change, so a
+        // folder that already sat in its new position is missing from that
+        // number — and whether one did depends on what the order happened to
+        // be beforehand. Measured live: arranging three folders that were all
+        // still at the default 0 reported 2.
+        return count($idsInOrder);
     }
 
     /**

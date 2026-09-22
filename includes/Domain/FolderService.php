@@ -383,6 +383,132 @@ class FolderService
     }
 
     /**
+     * Arrange a set of siblings.
+     *
+     * Takes the whole level in its new order rather than a delta. Whole-list
+     * is idempotent, needs no index arithmetic, and cannot half-apply: a
+     * client working from a stale tree gets a rejection instead of an order
+     * that silently drops the folder somebody else just created.
+     *
+     * A drag that crosses parents is a move *and* a reorder, so the move is
+     * folded in here rather than left to a second request. Two requests leave
+     * the folder in its new parent at the wrong position when the second one
+     * fails, and that wrong position is already on the screen.
+     *
+     * The move is delegated to move() rather than reimplemented: the cycle
+     * check, the depth guard, the duplicate-name check and the subtree path
+     * rewrite all live there, and Transaction nests by savepoint so the two
+     * are still one unit of work.
+     *
+     * @param list<int> $ids The level's folders, in the order they should sit.
+     * @return int|WP_Error Size of the level that was arranged.
+     */
+    public function reorder(?int $parentId, array $ids): int|WP_Error
+    {
+        $ids = array_values(array_map('intval', $ids));
+
+        if ($ids === []) {
+            return new WP_Error(
+                'folderfolio_reorder_empty',
+                __('No folders were given to arrange.', 'folderfolio')
+            );
+        }
+
+        if (count($ids) !== count(array_unique($ids))) {
+            return new WP_Error(
+                'folderfolio_reorder_duplicate',
+                __('The same folder was listed more than once.', 'folderfolio')
+            );
+        }
+
+        if ($parentId !== null && in_array($parentId, $ids, true)) {
+            return new WP_Error(
+                'folderfolio_circular_parent',
+                __('A folder cannot be its own parent.', 'folderfolio')
+            );
+        }
+
+        /** @var array<int, Folder> $folders */
+        $folders = [];
+
+        foreach ($ids as $id) {
+            $folder = $this->get($id);
+
+            if ($folder === null) {
+                return new WP_Error(
+                    'folderfolio_folder_not_found',
+                    __('Folder not found.', 'folderfolio')
+                );
+            }
+
+            $folders[$id] = $folder;
+        }
+
+        $objectType = $folders[$ids[0]]->objectType;
+
+        if ($parentId !== null) {
+            $parent = $this->folders->find($parentId);
+
+            if ($parent === null) {
+                return new WP_Error(
+                    'folderfolio_invalid_parent',
+                    __('The selected parent folder does not exist.', 'folderfolio')
+                );
+            }
+
+            $objectType = (string) $parent['object_type'];
+        }
+
+        foreach ($folders as $folder) {
+            if ($folder->objectType !== $objectType) {
+                return new WP_Error(
+                    'folderfolio_reorder_mixed',
+                    __('Those folders do not all belong to the same level.', 'folderfolio')
+                );
+            }
+        }
+
+        // The list has to describe the level as it will be, not a subset of
+        // it. Anything the caller left out would keep whatever sort_order it
+        // has and land somewhere nobody chose.
+        $existing = array_map(
+            static fn (array $row): int => (int) $row['id'],
+            $this->folders->siblingsOf($parentId, $objectType)
+        );
+
+        if (array_values(array_diff($existing, $ids)) !== []) {
+            return new WP_Error(
+                'folderfolio_reorder_stale',
+                __('This folder list is out of date. Reload the page and try again.', 'folderfolio')
+            );
+        }
+
+        $incoming = array_values(array_diff($ids, $existing));
+
+        return Transaction::run(function () use ($ids, $parentId, $incoming): int|WP_Error {
+            foreach ($incoming as $id) {
+                $moved = $this->move($id, $parentId);
+
+                if (is_wp_error($moved)) {
+                    return $moved;
+                }
+            }
+
+            $written = $this->folders->applySortOrder($ids);
+
+            if (is_wp_error($written)) {
+                return $written;
+            }
+
+            Transaction::after(static function () use ($ids, $parentId): void {
+                do_action('folderfolio_folders_reordered', $ids, $parentId);
+            });
+
+            return $written;
+        });
+    }
+
+    /**
      * Delete a folder.
      *
      * $children is required by the REST route rather than defaulted there:
