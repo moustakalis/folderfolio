@@ -1348,8 +1348,9 @@ folder` sits beside `Add to folder`, enabled only when a real folder is being
 viewed, and calls the same mutation the drop handler calls. dnd-kit was the
 wrong tool here: the draggables are core's own attachment tiles and table rows,
 not React components. Folder reordering inside the tree — what the plan
-actually had in mind — is still not built in any input mode, and must ship with
-its keyboard path when it is.
+actually had in mind — is built now, in three gestures that share one piece of
+maths: a drag, <kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd>, and *Move up* / *Move
+down* in the toolbar's More menu.
 
 **The Playwright suite — replaced, and it brings its own WordPress.** See
 below.
@@ -1645,7 +1646,9 @@ import creates folders here, so the gate closes before the cache is read.
 **What is left.** 1.0 grew on 22 Sep from a finished release into a
 fourteen-feature list — the Claude project's `plan-1.0-features.md` is the
 authority, and `plan-1.0-tier-1.md` is the detail for the seven the tree
-needs. **Tier 1 item 1, folder reordering, is built.** Next is item 2,
+needs. **Tier 1 item 1, folder reordering, is built** — including *Move up* /
+*Move down* in the toolbar, which is the only folder surface both renderers
+share and therefore the only one that reaches a phone. Next is item 2,
 per-folder sort. Then the readme's two claims, and **then phase 5**, the
 release track.
 
@@ -1675,6 +1678,16 @@ non-zero — and the React root inside it is empty. **Check for the mounted app,
 not the element.**
 
 **Winning a CSS fight with another plugin can be the bug.**
+
+**When the window will not resize, an iframe is a real viewport.** A
+full-screen macOS window ignores the extension's resize — it reports success
+and nothing moves — which blocks every narrow check. An iframe of the same
+admin page at `width: 600px` is a genuine 600px viewport: same origin, same
+cookies, same bundle, and `matchMedia` inside it reports the *frame's* width,
+so `useIsNarrow()` returns true and `Levels` mounts for real. That is how the
+narrow half of *Move up* / *Move down* was verified. Its one limit is
+geometry — `getBoundingClientRect` inside an offscreen frame returned zeroes,
+so use it for behaviour and measure layout in a window you can actually see.
 
 **`document.hidden` belongs in every layout probe.** A backgrounded tab reports
 `innerWidth: 0`, flipping every media query to its narrow branch, so the
@@ -2446,6 +2459,22 @@ layer is desktop-only by construction. That is a scope fact rather than a
 defect, and it has been true of dragging *files* onto a folder since that
 feature shipped — unremarked anywhere until now. It is why `Levels`, the
 renderer that exists for the phone, was not given the gesture.
+
+**"Does touch get this?" is usually the wrong question — ask which renderer
+has it at all.** Reordering was framed as a touch gap for a day. `Levels.tsx`
+imports nothing from `drag.ts`, `folder-drop.ts` or `useDropTarget.ts` and has
+no key handler, so the gap was *every input below 782px*, mouse and keyboard
+included. The two renderers share exactly one folder surface — the toolbar,
+which `Rail.tsx` renders above the narrow/wide switch — and that is where an
+action belongs when it has to exist everywhere. Check which component draws at
+the width before costing the fix.
+
+**In `Levels`, tapping a folder with children selects it *and* walks into it.**
+So "the selected folder" can be the header rather than a row, with its siblings
+one level back and off screen. An action on the selection can then succeed and
+appear to do nothing. `FolderMenu` steps out to the parent before moving the
+level it is standing in; `levelId` is null in the wide tree, so the same code
+is inert there.
 
 ## Which document is which
 
