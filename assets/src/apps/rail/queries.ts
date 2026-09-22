@@ -31,6 +31,15 @@ export interface FolderNode {
     count: number;
     /** Files anywhere in its subtree — what the badge shows by default. */
     total_count: number;
+    /**
+     * Where the folder sits among its siblings.
+     *
+     * Data, not a view preference: `sort` in store.ts is what the user
+     * happens to be looking at, and this is the arrangement underneath it.
+     * Cast to an int by FolderTree::fromRows, because $wpdb would otherwise
+     * hand it over as a string and "10" sorts before "9".
+     */
+    sort_order: number;
 }
 
 export interface LibraryCounts {
@@ -288,6 +297,118 @@ export function useMoveAttachments() {
             window.dispatchEvent(new CustomEvent('folderfolio:library-changed'));
         },
     });
+}
+
+/**
+ * Arranging a level, and the cross-parent drag that is the same gesture.
+ *
+ * Optimistic, and it has to be: the folder is under the pointer when it is
+ * dropped, so a round trip between the drop and the row landing would read as
+ * the drop not having taken. Unlike a rename there is more than one field to
+ * guess, but all of them are ones the client already knows — which folders,
+ * in which order, under which parent.
+ *
+ * `depth` and `path` are deliberately left alone on a folder that changes
+ * parent. They are derived columns the server rewrites for the whole subtree,
+ * and nothing on screen reads them: both Tree and flattenTree compute indent
+ * from the nesting they are walking. Guessing them here would put a second,
+ * wrong answer in the cache until the invalidate lands.
+ */
+export function useReorderFolders() {
+    const client = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (input: { parentId: number | null; ids: number[] }) => {
+            const response = await apiFetch<ApiEnvelope<{ arranged: number }>>(
+                '/folders/reorder',
+                {
+                    method: 'POST',
+                    data: { parent_id: input.parentId, ids: input.ids },
+                }
+            );
+
+            return response.data;
+        },
+
+        onMutate: async (input) => {
+            await client.cancelQueries({ queryKey: treeKey });
+
+            const previous = client.getQueryData<FolderNode[]>(treeKey);
+
+            client.setQueryData<FolderNode[]>(treeKey, (nodes) =>
+                reorderLevel(nodes ?? [], input.parentId, input.ids)
+            );
+
+            return { previous };
+        },
+
+        onError: (_error, _input, context) => {
+            if (context?.previous) {
+                client.setQueryData(treeKey, context.previous);
+            }
+        },
+
+        // The tree only. A reorder moves no files, so the library counts are
+        // the same numbers — but a folder that changed parent changes two
+        // subtree totals, and those live on the tree nodes.
+        onSettled: () => {
+            void client.invalidateQueries({ queryKey: treeKey });
+        },
+    });
+}
+
+/**
+ * A copy of the tree with one level arranged into the given order.
+ *
+ * Lift, then place. Every folder named in `ids` comes out of wherever it
+ * currently sits — which is the whole operation for a reorder, and also
+ * handles the one arriving from another parent without a second code path.
+ */
+function reorderLevel(
+    nodes: FolderNode[],
+    parentId: number | null,
+    ids: number[]
+): FolderNode[] {
+    const wanted = new Set(ids);
+    const lifted = new Map<number, FolderNode>();
+
+    const lift = (level: FolderNode[]): FolderNode[] =>
+        level.flatMap((node) => {
+            const kept = { ...node, children: lift(node.children) };
+
+            if (wanted.has(node.id)) {
+                lifted.set(node.id, kept);
+
+                return [];
+            }
+
+            return [kept];
+        });
+
+    const rest = lift(nodes);
+
+    const arranged = ids.flatMap((id, index) => {
+        const node = lifted.get(id);
+
+        return node ? [{ ...node, parent_id: parentId, sort_order: index }] : [];
+    });
+
+    if (parentId === null) {
+        // The server rejects a list that does not describe the whole level,
+        // so `rest` holds no other roots by the time this runs. Appending
+        // rather than assuming that keeps a rejected call from losing rows
+        // before the rollback puts them back.
+        return [...arranged, ...rest];
+    }
+
+    const place = (level: FolderNode[]): FolderNode[] =>
+        level.map((node) =>
+            node.id === parentId
+                ? { ...node, children: arranged }
+                : { ...node, children: place(node.children) }
+        );
+
+    return place(rest);
 }
 
 /** A copy of the tree with one node replaced wherever it appears. */

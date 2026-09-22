@@ -52,6 +52,10 @@ final class FolderTree
             $row['id'] = (int) $row['id'];
             $row['parent_id'] = $row['parent_id'] === null ? null : (int) $row['parent_id'];
             $row['depth'] = isset($row['depth']) ? (int) $row['depth'] : 0;
+            // Cast for the same reason id and depth are: this row goes
+            // straight onto the wire and $wpdb hands every column back as a
+            // string, so a client ordering by it would put "10" before "9".
+            $row['sort_order'] = isset($row['sort_order']) ? (int) $row['sort_order'] : 0;
             $row['children'] = [];
 
             $byParent[$row['parent_id'] ?? 0][] = $row;

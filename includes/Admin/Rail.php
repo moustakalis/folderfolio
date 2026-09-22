@@ -719,6 +719,7 @@ final class Rail
                 'sortNameDesc' => __('Name, Z to A', 'folderfolio'),
                 'sortNewest' => __('Newest first', 'folderfolio'),
                 'sortOldest' => __('Oldest first', 'folderfolio'),
+                'sortCustom' => __('Custom order', 'folderfolio'),
                 'undo' => __('Undo', 'folderfolio'),
                 /* translators: %s is the folder name. */
                 'deleted' => __('Deleted “%s”', 'folderfolio'),

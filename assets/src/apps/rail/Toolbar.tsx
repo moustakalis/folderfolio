@@ -24,6 +24,9 @@ const SORTS: Array<{ value: SortOrder; label: string; fallback: string }> = [
     { value: 'name-desc', label: 'sortNameDesc', fallback: 'Name, Z to A' },
     { value: 'newest', label: 'sortNewest', fallback: 'Newest first' },
     { value: 'oldest', label: 'sortOldest', fallback: 'Oldest first' },
+    // Last, and after a rule in the menu: the four above are views the tree
+    // is put into, this one is the tree's own arrangement being shown.
+    { value: 'custom', label: 'sortCustom', fallback: 'Custom order' },
 ];
 
 export function Toolbar({ selected, onDelete }: { selected: FolderNode | null; onDelete: () => void }) {

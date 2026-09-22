@@ -98,9 +98,9 @@ export interface RailState {
     setPendingUndo: (undo: PendingUndo | null) => void;
 }
 
-export type SortOrder = 'name-asc' | 'name-desc' | 'newest' | 'oldest';
+export type SortOrder = 'name-asc' | 'name-desc' | 'newest' | 'oldest' | 'custom';
 
-const SORT_ORDERS: readonly SortOrder[] = ['name-asc', 'name-desc', 'newest', 'oldest'];
+const SORT_ORDERS: readonly SortOrder[] = ['name-asc', 'name-desc', 'newest', 'oldest', 'custom'];
 
 /**
  * The sort the rail opens on.
@@ -216,7 +216,7 @@ export const useRail = create<RailState>((set) => ({
  * nothing and never refetches. Recursive, because a sort that only reordered
  * the top level would be a strange half-measure.
  */
-export function sortTree<T extends { name: string; id: number; children: T[] }>(
+export function sortTree<T extends { name: string; id: number; sort_order: number; children: T[] }>(
     nodes: T[],
     order: SortOrder
 ): T[] {
@@ -233,6 +233,15 @@ export function sortTree<T extends { name: string; id: number; children: T[] }>(
 
             case 'oldest':
                 return a.id - b.id;
+
+            // The arrangement the folders carry themselves. Name breaks the
+            // tie, so a level nobody has dragged is still alphabetical rather
+            // than in id order — every folder starts life at 0.
+            case 'custom':
+                return (
+                    a.sort_order - b.sort_order ||
+                    a.name.localeCompare(b.name, undefined, { numeric: true })
+                );
 
             default:
                 return a.name.localeCompare(b.name, undefined, { numeric: true });
