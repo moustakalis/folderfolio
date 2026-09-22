@@ -425,9 +425,18 @@
   color: var(--ff-muted);
 }
 
+/*
+ * --ff-muted, the same as the value beside it, and not --ff-off.
+ *
+ * --ff-off is the inactive-control token — the one thing WCAG 1.4.3 exempts
+ * by name — and this chevron is not inactive: it is the affordance on a live
+ * row, at 3.24:1 on the panel. The hover rule below already promotes the
+ * chevron and the value together, which says they were always meant to be a
+ * pair; at rest they now are.
+ */
 .folderfolio-menu__item--step > svg {
   flex: 0 0 auto;
-  color: var(--ff-off);
+  color: var(--ff-muted);
 }
 
 .folderfolio-menu__item--step:hover .folderfolio-menu__value,
@@ -500,9 +509,18 @@
   color: var(--ff-danger-text);
 }
 
+/*
+ * Hover does not brighten it, which is the thing that looks wrong and is
+ * right. --ff-danger is the fill colour — it is drawn *behind* white ink —
+ * and #d63638 on --ff-hover's #f6f7f7 measures 4.40:1, under AA by a tenth.
+ * So the one state where the eye is on this item would be the one state it
+ * was hardest to read. --ff-danger-text is the ink of the pair and holds
+ * 5.87:1 against the same wash; the background is the hover, the same as it
+ * is for every other item in the menu.
+ */
 .folderfolio-menu__item.folderfolio-menu__item--danger:hover {
   background: var(--ff-hover);
-  color: var(--ff-danger);
+  color: var(--ff-danger-text);
 }
 
 @media (forced-colors: active) {
