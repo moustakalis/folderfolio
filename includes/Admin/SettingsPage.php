@@ -375,7 +375,11 @@ final class SettingsPage
     {
         return [
             'create' => __('Create', 'folderfolio'),
-            'rename' => __('Rename', 'folderfolio'),
+            // Not "Rename". The key is still `rename` and every stored role
+            // option is untouched — this is the column heading only. What it
+            // now permits is rename, move, reorder, per-folder sort and
+            // cut/paste, which is one idea: restructure the tree.
+            'rename' => __('Organise', 'folderfolio'),
             'delete' => __('Delete', 'folderfolio'),
             'assign' => __('Assign files', 'folderfolio'),
         ];
@@ -422,7 +426,7 @@ final class SettingsPage
                                         <?php disabled($pinned); ?>
                                         aria-label="<?php
                                             echo esc_attr(sprintf(
-                                                /* translators: 1: ability, e.g. Rename. 2: role name, e.g. Editor. */
+                                                /* translators: 1: ability, e.g. Organise. 2: role name, e.g. Editor. */
                                                 __('%1$s — %2$s', 'folderfolio'),
                                                 $label,
                                                 $name

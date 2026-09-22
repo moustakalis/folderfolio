@@ -8,6 +8,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+use FolderFolio\Domain\FolderSorts;
 use WP_Query;
 
 /**
@@ -69,6 +70,10 @@ final class MediaLibraryFilter
         }
 
         $query->set(self::QUERY_VAR, $folderId);
+
+        foreach (self::ordering($folderId) as $key => $value) {
+            $query->set($key, $value);
+        }
     }
 
     /**
@@ -99,7 +104,39 @@ final class MediaLibraryFilter
 
         $args[self::QUERY_VAR] = $folderId;
 
-        return $args;
+        return array_merge($args, self::ordering($folderId));
+    }
+
+    /**
+     * The order this folder shows its files in, if it has been given one.
+     *
+     * **The bail is the feature, and it has to cover ordering exactly as it
+     * covers filtering.** Both callers above have already returned when no
+     * folder was chosen, which is what keeps the promise in the readme — that
+     * this plugin never touches a library nobody filtered. An order quietly
+     * applied to an unfiltered library would be the same broken promise
+     * wearing different clothes, so this is reached only from inside that
+     * guard and never from a filter of its own.
+     *
+     * Zero is Unassigned, which is a real selection but not a folder, so it
+     * has nothing to read an order from.
+     *
+     * `orderby` and `order` and nothing else. They are native WP_Query
+     * arguments, so this never reaches `posts_clauses` — whose negative
+     * control asserts the clauses array is byte-identical, and would fail the
+     * moment an ORDER BY was appended there.
+     *
+     * @return array{orderby?: string, order?: string}
+     */
+    private static function ordering(int $folderId): array
+    {
+        if ($folderId <= 0) {
+            return [];
+        }
+
+        $order = (new FolderSorts())->for($folderId)['files'];
+
+        return $order === null ? [] : FolderSorts::queryArgs($order);
     }
 
     /**

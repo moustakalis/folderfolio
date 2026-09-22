@@ -12,6 +12,7 @@ use FolderFolio\Domain\AttachmentFolderRepository;
 use FolderFolio\Domain\Folder;
 use FolderFolio\Domain\FolderRepository;
 use FolderFolio\Domain\FolderService;
+use FolderFolio\Domain\FolderSorts;
 use FolderFolio\Domain\FolderTree;
 use FolderFolio\Support\Capabilities;
 use WP_Error;
@@ -145,6 +146,31 @@ class FolderController
         // folder, and the level is named by its parent — which is null at the
         // top. `\d+` cannot match "reorder", so this and the id routes above
         // do not compete however they are registered.
+        register_rest_route($ns, '/folders/(?P<id>\\d+)/sort', [
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => [$this, 'sort'],
+            // `rename` — the column headed Organise. A per-folder order is
+            // written down and everyone sees it, so it is the folder's
+            // property in the way its colour is, not the view the person
+            // happens to be in. The global sort, which is that view, is
+            // behind no ability at all.
+            'permission_callback' => [$this, 'canRenameFolders'],
+            'args' => [
+                'scope' => [
+                    'type' => 'string',
+                    'required' => true,
+                    'enum' => FolderSorts::SCOPES,
+                ],
+                // Required, and nullable: clearing an order is the thing this
+                // route is asked to do most often after setting one, and
+                // "follow the global sort" has to be expressible. Absent
+                // would be indistinguishable from a client that forgot.
+                'order' => [
+                    'required' => true,
+                ],
+            ],
+        ]);
+
         register_rest_route($ns, '/folders/reorder', [
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => [$this, 'reorder'],
@@ -373,6 +399,32 @@ class FolderController
             $destination === null || $destination === ''
                 ? null
                 : (int) $destination
+        );
+
+        return $this->result(
+            $result,
+            200,
+            fn (): array => ['tree' => $this->folders->tree()]
+        );
+    }
+
+    /**
+     * How one folder shows what is inside it.
+     *
+     * Returns the whole tree like every other write here, because the client
+     * applies a folder order to that folder's children itself — the order is
+     * data on the node, not an instruction the server carries out.
+     */
+    public function sort(WP_REST_Request $request): WP_REST_Response
+    {
+        $order = $request->get_param('order');
+
+        $result = (new FolderSorts())->set(
+            (int) $request['id'],
+            (string) $request->get_param('scope'),
+            // An empty string arrives from a form post that means "clear it";
+            // JSON sends a real null. Both are the same intent.
+            ($order === null || $order === '') ? null : (string) $order
         );
 
         return $this->result(

@@ -68,7 +68,8 @@ class FolderService
 
     public function __construct(
         private readonly FolderRepository $folders = new FolderRepository(),
-        private readonly AttachmentFolderRepository $assignments = new AttachmentFolderRepository()
+        private readonly AttachmentFolderRepository $assignments = new AttachmentFolderRepository(),
+        private readonly FolderSorts $sorts = new FolderSorts()
     ) {
     }
 
@@ -86,7 +87,14 @@ class FolderService
         string $objectType = FolderRepository::DEFAULT_OBJECT_TYPE,
         ?string $countMode = null
     ): array {
-        $nodes = FolderTree::fromRows($this->folders->all($objectType));
+        // Sorts before counts, and before the `none` branch below: a folder's
+        // own order is not a count mode's business, and returning early
+        // without it would hand the client a tree whose nodes are missing two
+        // keys depending on a setting.
+        $nodes = FolderTree::withSorts(
+            FolderTree::fromRows($this->folders->all($objectType)),
+            $this->sorts->all()
+        );
 
         // No argument means "whatever the site is set to". The literal
         // default used to live here, which made the setting unreachable from

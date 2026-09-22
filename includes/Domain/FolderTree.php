@@ -82,6 +82,32 @@ final class FolderTree
     }
 
     /**
+     * The per-folder orders, onto every node.
+     *
+     * Every node gets both keys whether or not it has a row, because null
+     * here means something — *follow whatever the person is looking at* — and
+     * a key that is sometimes absent is a key the client has to guess about.
+     *
+     * @param list<array<string, mixed>> $nodes
+     * @param array<int, array{folders: ?string, files: ?string}> $sorts
+     * @return list<array<string, mixed>>
+     */
+    public static function withSorts(array $nodes, array $sorts): array
+    {
+        foreach ($nodes as &$node) {
+            $own = $sorts[(int) $node['id']] ?? ['folders' => null, 'files' => null];
+
+            $node['sort_folders'] = $own['folders'];
+            $node['sort_files'] = $own['files'];
+            $node['children'] = self::withSorts($node['children'] ?? [], $sorts);
+        }
+
+        unset($node);
+
+        return $nodes;
+    }
+
+    /**
      * Attach counts to every node.
      *
      * `count` is always the folder's own attachments. `total_count` is the

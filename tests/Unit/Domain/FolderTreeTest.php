@@ -140,4 +140,51 @@ final class FolderTreeTest extends TestCase
 
         self::assertSame([1, 7, 12, 20, 21], $seen);
     }
+
+    /**
+     * Both keys on every node, whether or not the folder has a row.
+     *
+     * Null means *follow whatever the person is looking at*, which is a
+     * value. A key that is sometimes absent is a key the client has to guess
+     * about, and it would be absent for exactly the folders nobody has
+     * touched — the common case.
+     */
+    public function test_every_node_carries_both_sort_keys(): void
+    {
+        $tree = FolderTree::withSorts(FolderTree::fromRows(self::rows()), [
+            1 => ['folders' => 'custom', 'files' => null],
+            12 => ['folders' => null, 'files' => 'oldest'],
+        ]);
+
+        self::assertSame('custom', $tree[0]['sort_folders']);
+        self::assertNull($tree[0]['sort_files']);
+
+        // Three levels down, which is the recursion doing its job.
+        self::assertSame('oldest', $tree[0]['children'][0]['children'][0]['sort_files']);
+        self::assertNull($tree[0]['children'][0]['children'][0]['sort_folders']);
+
+        // And a folder nobody has given an order still answers both.
+        self::assertArrayHasKey('sort_folders', $tree[1]);
+        self::assertArrayHasKey('sort_files', $tree[1]);
+        self::assertNull($tree[1]['sort_folders']);
+        self::assertNull($tree[1]['sort_files']);
+    }
+
+    /**
+     * An order set on one folder must not reach its sibling.
+     *
+     * The bug this guards is the one a naive per-node implementation makes:
+     * carrying the parent's order down as a default and then writing it onto
+     * every node it passes.
+     */
+    public function test_a_folders_order_does_not_leak_to_its_sibling(): void
+    {
+        $tree = FolderTree::withSorts(FolderTree::fromRows(self::rows()), [
+            1 => ['folders' => 'name-desc', 'files' => 'newest'],
+        ]);
+
+        self::assertSame('name-desc', $tree[0]['sort_folders']);
+        self::assertNull($tree[1]['sort_folders']);
+        self::assertNull($tree[0]['children'][0]['sort_folders']);
+    }
 }

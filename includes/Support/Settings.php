@@ -77,7 +77,12 @@ final class Settings
      *
      * `rename` covers moving a folder as well: both edit a folder that already
      * exists, and a fifth column for "move" would be a distinction the person
-     * filling in this table does not think in.
+     * filling in this table does not think in. By 22 Sep it had also grown
+     * reordering, both per-folder sorts and cut/paste, which is why the column
+     * is *headed* **Organise** on the settings screen — see
+     * `SettingsPage::abilityLabels()`. The key stays `rename`: it is what
+     * every stored role option holds, and renaming it would be a migration
+     * bought for a word.
      */
     public const ABILITIES = ['create', 'rename', 'delete', 'assign'];
 
