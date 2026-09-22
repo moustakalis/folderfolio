@@ -8,6 +8,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+use FolderFolio\Domain\FolderExport;
 use FolderFolio\Modules\Import\Catalog;
 use FolderFolio\Modules\Import\Run;
 use FolderFolio\Modules\Import\Planner;
@@ -28,6 +29,13 @@ use WP_REST_Server;
  * | `POST /import/{source}/start` | begins a run |
  * | `POST /import/run` | one batch. Called until the run reports it is done |
  * | `POST /import/stop`, `POST /import/undo` | step 3's button, and step 4's |
+ * | `GET /export` | the other direction, on the same tab |
+ *
+ * Export lives here rather than with the folder routes because it is the
+ * Import tab's other half and shares its permission: it reads the whole
+ * structure of the library at once, which is a site-administration act in the
+ * same way an import is, and not something the folder roles matrix has an
+ * opinion about.
  *
  * The preview being a **GET** is deliberate: it is a read, it is safe to
  * refresh, and a route that previews under POST invites the assumption that
@@ -57,6 +65,22 @@ class ImportController
 
     public function registerRoutes(): void
     {
+        register_rest_route(self::NS, '/export', [
+            'methods' => WP_REST_Server::READABLE,
+            'callback' => [$this, 'export'],
+            'permission_callback' => [$this, 'canManageOptions'],
+            'args' => [
+                // Off by default, and the reason is size: the tree is a few
+                // hundred rows at worst, the file→folder map is one row per
+                // filed attachment with no ceiling.
+                'assignments' => [
+                    'type' => 'boolean',
+                    'required' => false,
+                    'default' => false,
+                ],
+            ],
+        ]);
+
         register_rest_route(self::NS, '/import/sources', [
             'methods' => WP_REST_Server::READABLE,
             'callback' => [$this, 'sources'],
@@ -102,6 +126,30 @@ class ImportController
     public function canManageOptions(): bool
     {
         return current_user_can('manage_options');
+    }
+
+    /**
+     * The whole folder structure, as a document.
+     *
+     * Returned as the document itself rather than wrapped in the
+     * `{success, data}` envelope the write routes use. What the client does
+     * with this is save it to disk under a name a person will recognise
+     * later, and a reader opening that file should find the structure at the
+     * top level rather than one key down inside a transport detail.
+     *
+     * The filename travels in a header so the client does not have to build
+     * the same string from the same two facts and get it subtly different.
+     */
+    public function export(WP_REST_Request $request): WP_REST_Response
+    {
+        $document = (new FolderExport())->document(
+            (bool) $request->get_param('assignments')
+        );
+
+        $response = new WP_REST_Response($document, 200);
+        $response->header('X-FolderFolio-Filename', FolderExport::filename());
+
+        return $response;
     }
 
     public function sources(): WP_REST_Response

@@ -11,6 +11,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createRoot } from 'react-dom/client';
 
+import { Export } from './import/Export';
 import { Wizard } from './import/Wizard';
 
 const mount = document.getElementById('folderfolio-import-app');
@@ -26,8 +27,15 @@ if (mount) {
     });
 
     createRoot(mount).render(
+        /*
+          Export sits beside the wizard rather than inside it: the wizard is
+          four states watching something happen on the server, and this is one
+          button. It is on the same tab because that tab is where folders
+          enter and leave, not because it is a fifth step.
+        */
         <QueryClientProvider client={client}>
             <Wizard />
+            <Export />
         </QueryClientProvider>
     );
 }

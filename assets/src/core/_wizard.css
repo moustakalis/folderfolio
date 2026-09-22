@@ -307,3 +307,48 @@
     border-bottom: 1px solid var(--ff-line);
   }
 }
+
+/* ------------------------------------------- export — the other direction */
+
+/**
+ * A sibling of the wizard, not a fifth step.
+ *
+ * Its own rule above it, because the tab holds two things that happen to
+ * share a subject and the eye should not read the button as the end of the
+ * import flow.
+ */
+.folderfolio-export {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  max-width: 680px;
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--ff-line);
+}
+
+.folderfolio-export .folderfolio-wizard__head {
+  margin: 0;
+}
+
+.folderfolio-export__option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: start;
+  font-size: 13px;
+  color: var(--ff-ink);
+}
+
+.folderfolio-export__option input {
+  margin: 2px 0 0;
+}
+
+/* The size warning, under the label rather than beside it: it qualifies the
+   choice and a person reads it after deciding they want the thing. */
+.folderfolio-export__hint {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--ff-muted);
+}

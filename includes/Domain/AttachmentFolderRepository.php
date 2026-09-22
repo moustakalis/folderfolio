@@ -189,6 +189,37 @@ class AttachmentFolderRepository
     }
 
     /**
+     * Every assignment, as pairs — for the export.
+     *
+     * One query and no grouping in SQL: the caller wants them grouped by
+     * folder and GROUP_CONCAT would cap silently at group_concat_max_len,
+     * which on a default MySQL is 1024 characters — about 130 attachment ids,
+     * with no error when the 131st is dropped. Grouping in PHP has no such
+     * ceiling.
+     *
+     * Ordered so the file is stable: the same library exports byte-identical
+     * twice, which is what makes a diff between two exports mean something.
+     *
+     * @return list<array{folder_id: int, attachment_id: int}>
+     */
+    public function all(): array
+    {
+        $rows = $this->wpdb->get_results(
+            "SELECT folder_id, attachment_id FROM {$this->table()}
+             ORDER BY folder_id ASC, sort_order ASC, attachment_id ASC",
+            ARRAY_A
+        ) ?: [];
+
+        return array_map(
+            static fn (array $row): array => [
+                'folder_id' => (int) $row['folder_id'],
+                'attachment_id' => (int) $row['attachment_id'],
+            ],
+            $rows
+        );
+    }
+
+    /**
      * Direct attachment count for every folder that has at least one.
      *
      * One GROUP BY for the whole tree. Folders with no attachments are absent
