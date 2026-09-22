@@ -154,6 +154,29 @@ export function ArrowUpDownIcon(props: IconProps) {
     );
 }
 
+/**
+ * Plain up and down, for Move up / Move down.
+ *
+ * ArrowUpDownIcon above is the Sort button's glyph — both directions at once,
+ * because sorting is a choice of order. These are one direction each, because
+ * moving is a step.
+ */
+export function ArrowUpIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <path d="m5 12 7-7 7 7M12 19V5" />
+        </Svg>
+    );
+}
+
+export function ArrowDownIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <path d="M12 5v14M19 12l-7 7-7-7" />
+        </Svg>
+    );
+}
+
 export function FilterIcon(props: IconProps) {
     return (
         <Svg {...props}>

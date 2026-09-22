@@ -2,20 +2,25 @@
  * The rail toolbar — screen 03.
  *
  * Four 34px labelled buttons: Rename, Delete, Sort and More. More is the
- * colour picker from screen 11 — see ColorPicker, which is all of it, and why
- * nothing else was invented to keep it company.
+ * panel from screen 11 — see FolderMenu, which is the colour picker plus the
+ * two items reordering overflowed into it.
+ *
+ * Rendered above the narrow/wide switch in Rail.tsx, which is load-bearing
+ * and not incidental: it is the only folder surface both renderers share, so
+ * an action put here works on a phone, in a narrow window and in the wide
+ * tree without being built three times.
  *
  * Labelled, not icon-only. "Delete" next to a bin is redundant; a bin on its
  * own next to a pencil is a guess, and this toolbar acts on whatever folder is
  * selected — the one place in the rail where guessing wrong is expensive.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { ColorPicker } from './ColorPicker';
+import { FolderMenu } from './FolderMenu';
 import { ArrowUpDownIcon, EllipsisIcon, PencilIcon, TrashIcon } from './icons';
 import type { FolderNode } from './queries';
-import { useRail, type SortOrder } from './store';
+import { sortTree, useRail, type SortOrder } from './store';
 import { can } from '../../lib/can';
 import { t } from '../../core/api';
 
@@ -29,7 +34,15 @@ const SORTS: Array<{ value: SortOrder; label: string; fallback: string }> = [
     { value: 'custom', label: 'sortCustom', fallback: 'Custom order' },
 ];
 
-export function Toolbar({ selected, onDelete }: { selected: FolderNode | null; onDelete: () => void }) {
+export function Toolbar({
+    selected,
+    nodes,
+    onDelete,
+}: {
+    selected: FolderNode | null;
+    nodes: FolderNode[];
+    onDelete: () => void;
+}) {
     const edit = useRail((s) => s.edit);
     const sort = useRail((s) => s.sort);
     const setSort = useRail((s) => s.setSort);
@@ -44,6 +57,12 @@ export function Toolbar({ selected, onDelete }: { selected: FolderNode | null; o
     // `delete` gets the button disabled rather than a 403 from a route it was
     // never allowed to call.
     const actable = selected !== null;
+
+    // Sorted here as well as in each renderer, and deliberately: Move up and
+    // Move down step through the order on screen, and the two renderers each
+    // do their own sorting from the same raw tree. Reaching into one of them
+    // for its copy would tie the toolbar to whichever is mounted.
+    const ordered = useMemo(() => sortTree(nodes, sort), [nodes, sort]);
 
     return (
         <div className="folderfolio-rail__toolbar" role="toolbar" aria-label={t('folderActions', 'Folder actions')}>
@@ -133,7 +152,11 @@ export function Toolbar({ selected, onDelete }: { selected: FolderNode | null; o
                 </button>
 
                 {moreOpen && selected ? (
-                    <ColorPicker folder={selected} onClose={() => setMoreOpen(false)} />
+                    <FolderMenu
+                        folder={selected}
+                        ordered={ordered}
+                        onClose={() => setMoreOpen(false)}
+                    />
                 ) : null}
             </div>
         </div>

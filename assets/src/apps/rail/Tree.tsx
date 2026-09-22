@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { CreateRow, Row, GhostRows } from './Row';
 import { useReorderFolders, type FolderNode } from './queries';
 import { useFolderDrop } from './folder-drop';
+import { planSiblingMove } from './move';
 import { sortTree, useRail } from './store';
 import { can } from '../../lib/can';
 import { t } from '../../core/api';
@@ -206,22 +207,24 @@ export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: Tre
                     return;
                 }
 
-                const parent = parentOf(current.node.id);
-                const siblings = parent ? parent.children : ordered;
-                const from = siblings.findIndex((s) => s.id === current.node.id);
-                const to = from + (event.key === 'ArrowDown' ? 1 : -1);
+                // `ordered` and not `nodes`: up means above the row above,
+                // which under Name, A to Z is not the row before it in
+                // sort_order. Shared with the toolbar's Move up / Move down,
+                // which is the same operation reached without a modifier.
+                const plan = planSiblingMove(
+                    ordered,
+                    current.node.id,
+                    event.key === 'ArrowDown' ? 1 : -1
+                );
 
-                if (from === -1 || to < 0 || to >= siblings.length) {
+                if (!plan) {
                     return;
                 }
-
-                const ids = siblings.map((s) => s.id);
-                ids.splice(to, 0, ids.splice(from, 1)[0]);
 
                 // Same as a drop: the arrangement is only visible under
                 // Custom, and the user has just made one.
                 setSort('custom');
-                reorder.mutate({ parentId: parent ? parent.id : null, ids });
+                reorder.mutate(plan);
 
                 return;
             }

@@ -247,3 +247,105 @@ test.describe('the tree keyboard', () => {
         await expect(page.locator('.folderfolio-crumbs')).toContainText('Campaigns');
     });
 });
+
+/**
+ * Reordering a folder — the three gestures that are one operation.
+ *
+ * A drag cannot be asserted here honestly: HTML5 drag events are never fired
+ * by touch and Playwright's mouse-driven `dragTo` synthesises them, so a
+ * green drag test would be testing the synthesiser. What is checked is the
+ * contract underneath it — `planSiblingMove` reached through the two gestures
+ * that use real events — and the one property the drag shares with them: the
+ * arrangement is only visible under Custom, so making one must select it.
+ *
+ * The toolbar case runs at both widths deliberately. `useFolderDrop` and
+ * Alt+Arrow both live in `Tree.tsx`, which is not drawn below 782px, so until
+ * More carried these two items the feature did not exist on a phone at all.
+ * A regression there would be silent at 1280px.
+ */
+test.describe('reordering a folder', () => {
+    test.beforeEach(async ({ page }) => {
+        await page.goto('/wp-admin/upload.php');
+        await page.locator('#folderfolio-rail').waitFor();
+        await resetFolders(page);
+
+        const parent = await createFolder(page, 'Level');
+        for (const name of ['Alpha', 'Bravo', 'Charlie']) {
+            await createFolder(page, name, parent.id);
+        }
+
+        await page.reload();
+        await waitForTree(page, 'Level');
+    });
+
+    /** The probe folders in the order the rail is drawing them. */
+    const arrangement = (page: import('@playwright/test').Page) =>
+        page.evaluate(() =>
+            [...document.querySelectorAll('[data-folderfolio-name]')]
+                .map((el) => el.getAttribute('data-folderfolio-name'))
+                .filter((name): name is string => /^(Alpha|Bravo|Charlie)$/.test(name ?? ''))
+        );
+
+    async function openLevel(page: import('@playwright/test').Page) {
+        await page
+            .locator('.folderfolio-row', { hasText: 'Level' })
+            .locator('.folderfolio-row__switcher')
+            .click();
+    }
+
+    test('Alt+ArrowDown moves a folder one place and selects Custom order', async ({ page }) => {
+        await openLevel(page);
+        await page.locator('.folderfolio-row', { hasText: 'Alpha' }).first().focus();
+        await page.keyboard.press('Alt+ArrowDown');
+
+        await expect.poll(() => arrangement(page)).toEqual(['Bravo', 'Alpha', 'Charlie']);
+
+        // The arrangement exists in sort_order whatever the sort; it is only
+        // *visible* under Custom. A gesture that saved one and left the tree
+        // showing another order is the half-finished version of this feature.
+        await page.getByRole('button', { name: /^sort$/i }).click();
+        await expect(page.getByRole('menuitem', { name: /custom order/i })).toHaveAttribute(
+            'aria-checked',
+            'true'
+        );
+    });
+
+    for (const width of [1280, 600]) {
+        test(`More > Move down reorders at ${width}px`, async ({ page }) => {
+            await page.setViewportSize({ width, height: 900 });
+
+            if (width > 782) {
+                await openLevel(page);
+            } else {
+                // The drill-down: there is no expand here, the row walks in.
+                await page.locator('.folderfolio-levels__row', { hasText: 'Level' }).click();
+            }
+
+            // Alpha is a leaf, so tapping it selects and stays put — the case
+            // where the moved folder and its siblings are both on screen.
+            await page
+                .locator('.folderfolio-row', { hasText: 'Alpha' })
+                .first()
+                .click();
+            await page.getByRole('button', { name: /^more$/i }).click();
+            await page.getByRole('menuitem', { name: /move down/i }).click();
+
+            await expect.poll(() => arrangement(page)).toEqual(['Bravo', 'Alpha', 'Charlie']);
+        });
+    }
+
+    test('the ends of a level disable the direction that would leave it', async ({ page }) => {
+        await openLevel(page);
+
+        await page.locator('.folderfolio-row', { hasText: 'Alpha' }).first().click();
+        await page.getByRole('button', { name: /^more$/i }).click();
+        await expect(page.getByRole('menuitem', { name: /move up/i })).toBeDisabled();
+        await expect(page.getByRole('menuitem', { name: /move down/i })).toBeEnabled();
+        await page.keyboard.press('Escape');
+
+        await page.locator('.folderfolio-row', { hasText: 'Charlie' }).first().click();
+        await page.getByRole('button', { name: /^more$/i }).click();
+        await expect(page.getByRole('menuitem', { name: /move up/i })).toBeEnabled();
+        await expect(page.getByRole('menuitem', { name: /move down/i })).toBeDisabled();
+    });
+});

@@ -307,7 +307,11 @@ export function Rail({
 
             <div className="folderfolio-rail__app">
                 <Header />
-                <Toolbar selected={selectedNode} onDelete={() => selectedNode && startDelete(selectedNode)} />
+                <Toolbar
+                    selected={selectedNode}
+                    nodes={nodes}
+                    onDelete={() => selectedNode && startDelete(selectedNode)}
+                />
                 <FixedRows />
                 <Search />
 

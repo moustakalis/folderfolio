@@ -191,7 +191,7 @@
   background: none;
 }
 
-/* -------------------------------------------- the colour picker — §9.8 */
+/* ------------------------------------- the folder menu behind More — §9.8 */
 
 /**
  * More is the last of four buttons in a 300px rail, so its panel opens from
@@ -202,7 +202,7 @@
  * regions in it, not a list of rows, and --ff-line reads as a divider inside
  * one rather than the edge of one.
  */
-.folderfolio-menu--swatches {
+.folderfolio-menu--folder {
   left: auto;
   right: 0;
   width: 240px;
@@ -211,12 +211,25 @@
   border-color: var(--ff-off);
 }
 
-.folderfolio-swatches__head {
+/* The panel sets its own gutter, so its rows take it too — a menu item's own
+   10px against the heading's 12px is a 2px stagger down the left edge. */
+.folderfolio-menu--folder .folderfolio-menu__item {
+  padding: 7px 12px;
+}
+
+.folderfolio-menu--folder .folderfolio-menu__item:first-of-type {
+  margin-top: 4px;
+}
+
+.folderfolio-menu__head {
   margin: 0;
   padding: 9px 12px;
   border-bottom: 1px solid var(--ff-line);
   font-size: 12.5px;
   color: var(--ff-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .folderfolio-swatches {
