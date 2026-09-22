@@ -16,10 +16,14 @@
  * toolbar because that is where there happened to be a seam.
  */
 
+import { useEffect, useState } from 'react';
+
 import { Breadcrumb, type Crumb } from './Breadcrumb';
 import { Cards } from './Cards';
+import { CloseIcon } from './icons';
 import type { FolderNode } from './queries';
 import { useRail } from './store';
+import { arrivedFromStartupFolder, folderFromUrl } from '../../lib/filter';
 import { hasListTable } from '../../lib/list-refresh';
 import { t, tn } from '../../core/api';
 
@@ -34,9 +38,96 @@ export function Content({ nodes, cards }: { nodes: FolderNode[]; cards: boolean 
     return (
         <>
             <Breadcrumb crumbs={crumbs} />
+            <StartupNote />
             <div className="folderfolio-content__rule" />
             {cards ? <Cards children={children} list={hasListTable()} label={label} /> : null}
         </>
+    );
+}
+
+/**
+ * The sentence that makes the startup folder not FileBird.
+ *
+ * FileBird forces its remembered folder onto `upload.php` with no user action
+ * and nothing on screen: **28 of 47 files disappear** on a stock library and
+ * the only clue is that the grid looks short. The folder's name in the
+ * breadcrumb does not answer that on its own, because a crumb reads identically
+ * whether the person chose the folder or the site did — and the person who has
+ * just arrived is exactly the one who cannot tell.
+ *
+ * ## Why it is here and not inside `Breadcrumb`
+ *
+ * `.folderfolio-crumbs` has `overflow: hidden`, and that is load-bearing: the
+ * overflow rule works by asking whether the row is wider than its box, which
+ * it cannot report if it wraps. A second line inside that box would be
+ * clipped, and would have made the crumb row's height a lie.
+ *
+ * It also keeps the media modal out of it. `Frame.tsx` renders the same
+ * `Breadcrumb`, and a modal opened from a post editor is not an arrival at the
+ * library — there is no redirect behind it and nothing to explain.
+ */
+function StartupNote() {
+    /*
+     * Both read once, in an initialiser, because both are facts about the
+     * arrival rather than about now — and read in an initialiser rather than
+     * an effect so the sentence is in the first paint beside the crumb it
+     * explains.
+     */
+    const [shown, setShown] = useState(arrivedFromStartupFolder);
+    const [arrival] = useState(folderFromUrl);
+
+    const selectedId = useRail((s) => s.selectedId);
+
+    /*
+     * Gone the moment the person goes anywhere else — and this is not
+     * belt-and-braces, it is the bug the browser found.
+     *
+     * The marker is stripped from the URL by `urlForFolder()` on every
+     * selection, but clearing the filter never reloads the page (that is the
+     * whole design of `applyFolderFilter`), so this component is not
+     * remounted and its initialiser is not re-run. The × worked, the library
+     * came back, and the sentence stayed on screen explaining a folder the
+     * person was no longer in.
+     *
+     * A latch rather than `selectedId !== arrival` computed inline, so
+     * choosing the startup folder again by hand later does not bring back a
+     * sentence about an arrival that is long over.
+     */
+    useEffect(() => {
+        if (selectedId !== arrival) {
+            setShown(false);
+        }
+    }, [selectedId, arrival]);
+
+    if (!shown) {
+        return null;
+    }
+
+    return (
+        <p className="folderfolio-startup-note">
+            <span>
+                {t(
+                    'startupFolderNote',
+                    'The media library opens in this folder. Clear the filter in the path above to see everything.'
+                )}
+            </span>
+
+            {/*
+              Dismissing is not clearing. Somebody who meant to be in this
+              folder should be able to stop being told why they are in it
+              without also leaving it — and somebody who did not mean to be
+              has the × on the crumb, which is what this line points at.
+            */}
+            <button
+                type="button"
+                className="folderfolio-startup-note__dismiss"
+                title={t('dismiss', 'Dismiss')}
+                aria-label={t('dismiss', 'Dismiss')}
+                onClick={() => setShown(false)}
+            >
+                <CloseIcon size={12} />
+            </button>
+        </p>
     );
 }
 

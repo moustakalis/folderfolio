@@ -40,6 +40,7 @@ if (!defined('ABSPATH')) {
  * @phpstan-type SettingsArray array{
  *     count_mode: string,
  *     default_sort: string,
+ *     startup_folder: int|null,
  *     undo_window: int,
  *     roles: Matrix
  * }
@@ -86,6 +87,27 @@ final class Settings
      */
     public const ABILITIES = ['create', 'rename', 'delete', 'assign'];
 
+    /**
+     * The folder the media library opens in — tier 1 item 7.
+     *
+     * Three values, and they are the same three the query var and the rail
+     * use: `null` is no startup folder, `0` is Unassigned, and a positive id
+     * is a folder. `0` has to be selectable — "show me what is not filed yet"
+     * is the arrival a person who files media actually wants — which is why
+     * this cannot be an int with 0 meaning off.
+     *
+     * **It never filters a query.** `Admin\StartupFolder` turns it into a
+     * redirect, so the request that renders the library carries the folder in
+     * its URL exactly as a click would. The readme's one claim — that this
+     * plugin never filters your media library unless you pick a folder — is
+     * defended by a negative control asserting the whole `posts_clauses` array
+     * is untouched when no folder is asked for, and defaulting an absent
+     * parameter here would have made that claim false while leaving the test
+     * green, because the test asks the filter and the filter would not have
+     * been the thing that changed.
+     */
+    public const STARTUP_NONE = null;
+
     public const DEFAULT_UNDO = 5;
 
     /**
@@ -108,6 +130,7 @@ final class Settings
         return [
             'count_mode' => 'inherited',
             'default_sort' => 'name-asc',
+            'startup_folder' => self::STARTUP_NONE,
             'undo_window' => self::DEFAULT_UNDO,
             'roles' => self::defaultRoles(),
         ];
@@ -149,9 +172,34 @@ final class Settings
         return [
             'count_mode' => self::oneOf($raw['count_mode'] ?? null, self::COUNT_MODES, $defaults['count_mode']),
             'default_sort' => self::oneOf($raw['default_sort'] ?? null, self::SORTS, $defaults['default_sort']),
+            'startup_folder' => self::startupFolder($raw['startup_folder'] ?? null),
             'undo_window' => self::clampUndo($raw['undo_window'] ?? null),
             'roles' => self::sanitizeRoles($raw['roles'] ?? null),
         ];
+    }
+
+    /**
+     * The startup folder, in the three-way every folder value here uses.
+     *
+     * Deliberately the same shape as `Admin\MediaLibraryFilter::normalizeFolderId()`
+     * and deliberately not a call to it: that one is in the admin layer and
+     * runs `wp_unslash()` and `sanitize_text_field()` on a raw request value,
+     * and this class is sanitised in a unit suite with no WordPress loaded.
+     * The contract they share is the part worth stating — **`'0'` is
+     * Unassigned and `''` is absent** — and it is asserted in `SettingsTest`,
+     * because the failure mode is one of the two quietly starting to treat
+     * `0` as nothing and the Unassigned row becoming unpickable on the one
+     * screen that offers it.
+     *
+     * @param mixed $value
+     */
+    private static function startupFolder($value): ?int
+    {
+        if (null === $value || '' === $value || is_array($value) || !is_numeric($value)) {
+            return null;
+        }
+
+        return max(0, (int) $value);
     }
 
     /**

@@ -12,6 +12,7 @@ use FolderFolio\Admin\FolderSelect;
 use FolderFolio\Admin\FoldersColumn;
 use FolderFolio\Admin\ImportPage;
 use FolderFolio\Admin\MediaLibraryFilter;
+use FolderFolio\Admin\StartupFolder;
 use FolderFolio\Admin\MediaLibraryIntegration;
 use FolderFolio\Admin\MediaModalIntegration;
 use FolderFolio\Admin\Menu;
@@ -104,6 +105,12 @@ final class Plugin
             // the tree that goes inside it.
             (new Rail())->register();
             (new MediaLibraryIntegration())->register();
+
+            // Sends a bare arrival at upload.php to the same URL with the
+            // startup folder on it. Registered beside the rail because the
+            // two are one feature: this puts the folder in the URL, the rail
+            // is what says so on the screen.
+            (new StartupFolder())->register();
 
             // The folder select in list mode's filter bar. Printed by PHP so
             // that it filters the library with scripts off, and so that a list

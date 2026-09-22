@@ -294,6 +294,92 @@ test.describe('the settings screen', () => {
 
 
     /**
+     * The startup folder — tier 1 item 7.
+     *
+     * Four assertions, and the last two are the ones that matter. Anybody can
+     * make a media library open in a folder; the reason this feature is in
+     * 1.0 rather than left to the market is that **it says so and it lets you
+     * out**. FileBird forces its remembered folder onto `upload.php` with no
+     * user action and nothing on screen: 28 of 47 files vanish and the only
+     * clue is that the grid looks short.
+     *
+     * The exit is the fragile half, and it is fragile in a way that would
+     * pass a casual look: clearing the filter works, and then the next page
+     * load puts you straight back. That is why the × is asserted **and then
+     * the URL it produced is loaded again**.
+     */
+    test('the startup folder opens the library in a folder, says so, and lets you out', async ({
+        page,
+    }) => {
+        await page.goto('/wp-admin/upload.php?mode=grid');
+        await page.locator('#folderfolio-rail').waitFor();
+        await resetFolders(page);
+
+        const folder = await createFolder(page, 'Opens Here');
+
+        await page.goto(`${SETTINGS}&tab=settings`);
+        await page.getByLabel('Opens in').selectOption(String(folder.id));
+        await page.getByRole('button', { name: 'Save changes' }).click();
+        await expect(page.getByText('Settings saved.')).toBeVisible();
+
+        // 1. A bare arrival is sent to the folder, and the URL says so rather
+        //    than the filter happening invisibly inside a query.
+        await page.goto('/wp-admin/upload.php');
+        await expect(page).toHaveURL(new RegExp(`folderfolio_folder=${folder.id}\\b`));
+
+        // 2. The screen says it, which is the whole difference between this
+        //    and what the market ships.
+        const note = page.locator('.folderfolio-startup-note');
+        await expect(note).toBeVisible();
+        await expect(page.locator('.folderfolio-crumbs__current')).toHaveText('Opens Here');
+
+        // 3. The way out works, and takes the sentence with it — the sentence
+        //    outliving the filter was a real bug, found in the browser and not
+        //    by any suite.
+        await page.locator('.folderfolio-crumbs__clear').click();
+        await expect(note).toHaveCount(0);
+
+        // 4. And the way out **stays** out on the next load. The URL the ×
+        //    produces carries the folder key with an empty value, which is
+        //    what stops the redirect firing again; if it deleted the key
+        //    instead, this navigation would land back in the folder.
+        const cleared = page.url();
+        expect(cleared).toContain('folderfolio_folder=');
+
+        await page.goto(cleared);
+        await expect(page).toHaveURL(cleared);
+        await expect(page.locator('.folderfolio-startup-note')).toHaveCount(0);
+    });
+
+    /**
+     * Unassigned is a destination, not the absence of one.
+     *
+     * `0` is the one value in this setting that a careless read turns into
+     * "off", and it is a real choice — "show me what is not filed yet" is the
+     * arrival somebody whose job is filing media actually wants. Settings has
+     * a unit test for the same three-way; this asserts it survives the form,
+     * the option, the redirect and the rail.
+     */
+    test('Unassigned can be the startup folder, and zero does not read as off', async ({ page }) => {
+        await page.goto(`${SETTINGS}&tab=settings`);
+        await page.getByLabel('Opens in').selectOption('0');
+        await page.getByRole('button', { name: 'Save changes' }).click();
+        await expect(page.getByText('Settings saved.')).toBeVisible();
+
+        await page.goto('/wp-admin/upload.php');
+
+        await expect(page).toHaveURL(/folderfolio_folder=0\b/);
+        await expect(page.locator('.folderfolio-crumbs__current')).toHaveText('Unassigned');
+
+        // Put it back, so the specs after this one open on an unfiltered
+        // library like every other spec in this file expects.
+        await page.goto(`${SETTINGS}&tab=settings`);
+        await page.getByLabel('Opens in').selectOption('');
+        await page.getByRole('button', { name: 'Save changes' }).click();
+        await expect(page.getByText('Settings saved.')).toBeVisible();
+    });
+
+    /**
      * Finding 02 of the settings audit.
      *
      * The roles matrix is the only table on either of the plugin's screens,

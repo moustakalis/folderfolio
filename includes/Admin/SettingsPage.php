@@ -12,6 +12,8 @@ use FolderFolio\Database\Schema;
 use FolderFolio\Database\StatusReport;
 use FolderFolio\Domain\AttachmentFolderRepository;
 use FolderFolio\Support\Assets;
+use FolderFolio\Domain\FolderService;
+use FolderFolio\Domain\FolderTree;
 use FolderFolio\Support\Settings;
 
 /**
@@ -69,7 +71,8 @@ final class SettingsPage
     private string $hookSuffix = '';
 
     public function __construct(
-        private readonly ImportPage $import
+        private readonly ImportPage $import,
+        private readonly FolderService $folders = new FolderService()
     ) {
     }
 
@@ -306,6 +309,72 @@ final class SettingsPage
                             </option>
                         <?php endforeach; ?>
                     </select>
+                </div>
+            </div>
+
+            <div class="folderfolio-field">
+                <div class="folderfolio-field__label">
+                    <label class="folderfolio-field__name" for="folderfolio-startup-folder">
+                        <?php esc_html_e('Opens in', 'folderfolio'); ?>
+                    </label>
+                    <div class="folderfolio-field__note">
+                        <?php esc_html_e('The folder the media library starts in', 'folderfolio'); ?>
+                    </div>
+                </div>
+                <div class="folderfolio-field__control">
+                    <select id="folderfolio-startup-folder" name="startup_folder">
+                        <?php
+                        /*
+                         * The empty value is "no startup folder", and it is
+                         * not the same as Unassigned below it — which is a
+                         * real destination, and the one somebody whose job is
+                         * filing media actually wants to arrive at.
+                         */
+                        ?>
+                        <option value="" <?php selected($settings['startup_folder'], null); ?>>
+                            <?php esc_html_e('All media — no starting folder', 'folderfolio'); ?>
+                        </option>
+                        <option value="0" <?php selected($settings['startup_folder'], 0); ?>>
+                            <?php esc_html_e('Unassigned — files in no folder', 'folderfolio'); ?>
+                        </option>
+                        <?php
+                        /*
+                         * A stored folder that has since been deleted has no
+                         * option here, so the browser falls back to the first
+                         * one and the field reads "no starting folder".
+                         *
+                         * Left that way deliberately. It is what will actually
+                         * happen — `Admin\StartupFolder` checks the folder
+                         * exists and does not redirect when it does not — so
+                         * the field is describing the behaviour rather than
+                         * the stored number, and the next save tidies the
+                         * option up. The alternative, an option reading
+                         * "folder 412 (deleted)", is a row about a thing that
+                         * is gone on a screen for things you set.
+                         */
+                        ?>
+                        <?php foreach ($this->folderOptions() as $option) : ?>
+                            <option
+                                value="<?php echo esc_attr((string) $option['id']); ?>"
+                                <?php selected($settings['startup_folder'], $option['id']); ?>
+                            >
+                                <?php
+                                // Indent with real spaces rather than a CSS
+                                // rule: an <option>'s text is one run and a
+                                // stylesheet cannot reach inside it.
+                                echo esc_html(str_repeat("\u{00a0}\u{00a0}\u{00a0}", $option['depth']) . $option['name']);
+                                ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <p class="folderfolio-field__help">
+                        <?php
+                        esc_html_e(
+                            'Everyone arrives here. The folder is named in the breadcrumb with a × beside it, and the address bar carries it — so nobody is looking at a filtered library without being told.',
+                            'folderfolio'
+                        );
+                        ?>
+                    </p>
                 </div>
             </div>
 
@@ -568,6 +637,36 @@ final class SettingsPage
     // -----------------------------------------------------------------------
     // Form handling
     // -----------------------------------------------------------------------
+
+    /**
+     * Every folder, in display order, with the depth to indent it by.
+     *
+     * A `<select>` rather than the rail's own picker, because this screen is
+     * plain PHP and always has been — eleven controls posted once, against a
+     * wizard that watches the server. The cost is honest and worth stating:
+     * on the 1,053-folder stress site this is 1,053 options, about 40KB of
+     * markup on a page nobody opens often. A searchable React control here
+     * would be a second folder picker to keep in step with the two that exist.
+     *
+     * @return list<array{id: int, name: string, depth: int}>
+     */
+    private function folderOptions(): array
+    {
+        $options = [];
+
+        FolderTree::walk(
+            $this->folders->tree(),
+            static function (array $node, int $depth) use (&$options): void {
+                $options[] = [
+                    'id' => (int) $node['id'],
+                    'name' => (string) $node['name'],
+                    'depth' => $depth,
+                ];
+            }
+        );
+
+        return $options;
+    }
 
     public function handleSave(): void
     {

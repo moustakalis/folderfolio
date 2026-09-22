@@ -40,6 +40,43 @@ final class SettingsTest extends TestCase
     }
 
     /**
+     * The startup folder's three-way, which is the whole of its contract.
+     *
+     * `Admin\MediaLibraryFilter::normalizeFolderId()` reads the same three
+     * values off the query string and cannot be called from here — it runs
+     * `wp_unslash()` and this suite has no WordPress. So the part the two have
+     * to agree on is asserted rather than shared, and the failure this guards
+     * is the quiet one: either side starting to treat `0` as nothing, which
+     * would make Unassigned unpickable on the one screen that offers it while
+     * everything else kept working.
+     *
+     * @dataProvider startupFolders
+     *
+     * @param mixed $input
+     */
+    public function test_the_startup_folder_keeps_zero_and_drops_nothing($input, ?int $expected): void
+    {
+        $this->assertSame($expected, Settings::sanitize(['startup_folder' => $input])['startup_folder']);
+    }
+
+    /**
+     * @return array<string, array{0: mixed, 1: ?int}>
+     */
+    public static function startupFolders(): array
+    {
+        return [
+            'absent is no startup folder' => [null, null],
+            'the empty option is no startup folder' => ['', null],
+            'zero is Unassigned, not nothing' => [0, 0],
+            'and so is the string the form posts' => ['0', 0],
+            'a folder id survives as an int' => ['12', 12],
+            'a negative id is floored, never stored' => [-4, 0],
+            'a word is not a folder' => ['brand', null],
+            'and neither is an array' => [['12'], null],
+        ];
+    }
+
+    /**
      * @dataProvider undoWindows
      *
      * @param mixed $input

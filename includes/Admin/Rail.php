@@ -868,6 +868,8 @@ final class Rail
                 /* translators: %s is the search term that matched nothing. */
                 'noMatch' => __('No folder matches “%s”.', 'folderfolio'),
                 'clearFolderFilter' => __('Clear the folder filter', 'folderfolio'),
+                'dismiss' => __('Dismiss', 'folderfolio'),
+                'startupFolderNote' => __('The media library opens in this folder. Clear the filter in the path above to see everything.', 'folderfolio'),
                 /* translators: 1: number of folders, 2: the folder they are in. */
                 'folderIn' => __('%1$s folder in %2$s', 'folderfolio'),
                 /* translators: 1: number of folders, 2: the folder they are in. */

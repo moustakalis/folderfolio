@@ -160,6 +160,8 @@ final class MediaModalIntegration
                 'renameFolder' => __('Rename folder', 'folderfolio'),
                 'newFolderName' => __('Name for the new folder', 'folderfolio'),
                 'delete' => __('Delete', 'folderfolio'),
+                'dismiss' => __('Dismiss', 'folderfolio'),
+                'startupFolderNote' => __('The media library opens in this folder. Clear the filter in the path above to see everything.', 'folderfolio'),
                 'sortNameAsc' => __('Name, A to Z', 'folderfolio'),
                 'sortNameDesc' => __('Name, Z to A', 'folderfolio'),
                 'sortNewest' => __('Newest first', 'folderfolio'),

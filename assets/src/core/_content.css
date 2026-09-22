@@ -458,3 +458,53 @@ body.folderfolio-dragging .folderfolio-row {
     text-decoration: underline;
   }
 }
+
+/* ------------------------------------------- the startup folder's sentence */
+
+/**
+ * Between the crumbs and the rule, and outside both.
+ *
+ * It cannot go inside `.folderfolio-crumbs`: that box has `overflow: hidden`
+ * and the breadcrumb's overflow rule depends on it — the row works out how
+ * many middle crumbs to drop by asking whether it is wider than its box, which
+ * it cannot report if it is allowed to wrap. A second line in there would have
+ * been clipped and would have made the 36px row a lie.
+ *
+ * Quiet, but not silent. The whole point of the line is that somebody who did
+ * not choose this folder finds out they are in one, so it carries a wash and a
+ * rule rather than sitting as one more grey sentence among grey sentences —
+ * and it is dismissible, because the second time you see it you already know.
+ */
+.folderfolio-startup-note {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: start;
+  margin: 0 0 8px;
+  padding: 7px 8px 7px 10px;
+  border-inline-start: 2px solid var(--ff-sel);
+  background: var(--ff-hover);
+  color: var(--ff-ink);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* The same control as the breadcrumb's ×, at the same weight, because it is
+   the same gesture — put this away — on a different thing. */
+.folderfolio-startup-note__dismiss {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--ff-dim);
+  cursor: pointer;
+}
+
+.folderfolio-startup-note__dismiss:hover {
+  background: var(--ff-hover);
+  color: var(--ff-ink);
+}

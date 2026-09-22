@@ -13,6 +13,19 @@ import { hasListTable, refreshListTable } from './list-refresh';
 /** Must match MediaLibraryFilter::QUERY_VAR. */
 export const FOLDER_QUERY_VAR = 'folderfolio_folder';
 
+/** Must match Admin\StartupFolder::QUERY_VAR. */
+export const STARTUP_QUERY_VAR = 'folderfolio_startup';
+
+/**
+ * Whether this page view is one the startup folder sent us to.
+ *
+ * Set by the redirect and dropped by the next selection, so it is true exactly
+ * once: on the arrival nobody asked for by clicking.
+ */
+export function arrivedFromStartupFolder(): boolean {
+    return new URL(window.location.href).searchParams.has(STARTUP_QUERY_VAR);
+}
+
 /**
  * Which folder the URL is asking for.
  *
@@ -32,18 +45,36 @@ export function folderFromUrl(): number | null {
     return Number.isNaN(parsed) ? null : parsed;
 }
 
-/** The URL this selection should produce. */
+/**
+ * The URL this selection should produce.
+ *
+ * All media writes the parameter **empty rather than removing it**, and that
+ * one character is what makes the breadcrumb's × work on a site with a startup
+ * folder. `Admin\StartupFolder` redirects a bare arrival at `upload.php` — one
+ * carrying no `folderfolio_folder` key at all — so if clearing the filter
+ * deleted the key, the next reload would put the person straight back in the
+ * folder they had just left. A control that appears to work and does not is
+ * worse than no control.
+ *
+ * `?folderfolio_folder=` is therefore the spelling of *"all media, and I mean
+ * it"*. Written whether or not a startup folder is configured, because a
+ * behaviour that depends on a setting is a behaviour with two versions to
+ * reason about, and both sides already handle the empty string by name: it
+ * normalises to null here and in `MediaLibraryFilter::normalizeFolderId()`, so
+ * the library is unfiltered and `posts_clauses` is untouched.
+ */
 export function urlForFolder(folderId: number | null): string {
     const url = new URL(window.location.href);
 
-    if (folderId === null) {
-        url.searchParams.delete(FOLDER_QUERY_VAR);
-    } else {
-        url.searchParams.set(FOLDER_QUERY_VAR, String(folderId));
-    }
+    url.searchParams.set(FOLDER_QUERY_VAR, folderId === null ? '' : String(folderId));
 
     // Page 3 of the old folder is not page 3 of the new one.
     url.searchParams.delete('paged');
+
+    // The startup marker belongs to the arrival, not to what the person did
+    // next — the same reason `paged` goes. Leaving it on would have the
+    // breadcrumb explaining a folder the person had just chosen themselves.
+    url.searchParams.delete(STARTUP_QUERY_VAR);
 
     return url.toString();
 }
