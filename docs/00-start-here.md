@@ -1658,6 +1658,7 @@ needs. **Six of those seven are built**, all on 22 Sep:
 | 4 · Bulk-create folders | `49fbb68` — `Domain\FolderBulk`, plan then run, on the Tools tab |
 | 6 · Export the folder structure | `0888ee5` — `Domain\FolderExport`, format 1, assignments opt-in |
 | 7 · Startup / default folder | `e9ea158` — `Admin\StartupFolder`, a redirect and not a default, and it says so |
+| 7b · A startup folder of your own | `720ae7f` — `RailPreferences::startup`, a toggle on the breadcrumb row; yours beats the site's |
 
 Every folder action now lives in `FolderMenu`, opened from a ⋮ on the
 **selected row** above 782px and from one control below it; the global sort and
@@ -1672,6 +1673,12 @@ active; our `posts_clauses` bail is **load-bearing** and three of four rivals
 lack it; **FolderFolio + Real Media Library is the only clean pair of ten**.
 
 ## Things that will bite you
+
+**`window.folderFolio` and `window.folderFolioRail` are different objects.**
+`Rail::config()` writes the second — the chrome script's own globals, width
+and the drag's bounds. Everything the React app reads is `appConfig()`. A key
+added to the wrong one is present in the file, ships alongside strings from
+the same edit, and is simply absent on the page.
 
 **One slot means one winner.** `wp.Uploader.prototype.init` is a single
 extension point and FileBird, CatFolders and Premio each *assign* it without
@@ -1693,6 +1700,13 @@ filter would have behaved correctly on a request that had already been changed
 underneath it. `Admin\StartupFolder` is a redirect for that reason and touches
 no query. **When a test asks a component, check that the component is still
 the thing that decides.**
+
+**A grid track never shrinks below its content.** The breadcrumb row is
+`minmax(0, 1fr) auto` — path, then controls — and without the `minmax(0, …)`
+the path would refuse to shrink and push the controls out of the box instead.
+The rule the arrangement exists for: **the path may be clipped, the controls
+never are.** The × it replaced sat inside the list, so a deep enough path
+could scroll the way out of a filter off the end of the row.
 
 **A colour is a pair, and the pair is tested.** `--ff-danger` is a *fill* — the
 one drawn behind white ink — and `--ff-danger-text` is its ink; `--ff-off` is
