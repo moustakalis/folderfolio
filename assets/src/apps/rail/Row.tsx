@@ -12,6 +12,7 @@ import { ChevronDownIcon, ChevronRightIcon, FolderIcon, FolderOpenIcon } from '.
 import type { FolderNode } from './queries';
 import { useDropTarget } from './useDropTarget';
 import { useRail } from './store';
+import { can } from '../../lib/can';
 import { t } from '../../core/api';
 import { swatchStyle } from '../../lib/swatches';
 
@@ -95,6 +96,23 @@ export function Row({
                     + (drop.isOver ? ' is-dragover' : '')
                 }
                 {...drop.handlers}
+                /*
+                  Draggable, and the four attributes the drag reads off it.
+                  They live in the DOM rather than in a React handler because
+                  the dragstart listener is on the document — it is handed an
+                  EventTarget and nothing else, so everything it needs about
+                  this row has to be legible from the element itself.
+
+                  Not while renaming: a draggable ancestor makes text inside
+                  the input impossible to select. Not without the ability
+                  either — the server would refuse the reorder, and a gesture
+                  that only ever fails is worse than one that is absent.
+                */
+                draggable={!renaming && can('rename')}
+                data-folderfolio-folder={node.id}
+                data-folderfolio-parent={node.parent_id ?? ''}
+                data-folderfolio-depth={depth}
+                data-folderfolio-name={node.name}
                 role="treeitem"
                 aria-level={depth + 1}
                 aria-selected={selected}

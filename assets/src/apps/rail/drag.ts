@@ -39,10 +39,64 @@ import { selectedAttachmentIds } from '../../lib/selection';
  * unreadable during `dragover` — the moment the drop target needs to know how
  * many files are coming so it can preview the count.
  */
-let payload: { ids: number[]; sourceFolderId: number | null } | null = null;
+export type DragPayload =
+    | { kind: 'files'; ids: number[]; sourceFolderId: number | null }
+    | {
+          kind: 'folder';
+          folderId: number;
+          parentId: number | null;
+          depth: number;
+          name: string;
+      };
 
-export function draggedPayload() {
+let payload: DragPayload | null = null;
+
+export function draggedPayload(): DragPayload | null {
     return payload;
+}
+
+/**
+ * The files being dragged, or null when it is a folder — or nothing.
+ *
+ * Two payloads share one document, and the drop targets have to be deaf to
+ * the one they do not serve. A folder row accepts files *and* is itself
+ * draggable, so without this a folder dragged over a row would light the
+ * frame that means "file these here".
+ */
+export function draggedFiles() {
+    return payload?.kind === 'files' ? payload : null;
+}
+
+/** The folder being dragged, or null when it is files — or nothing. */
+export function draggedFolder() {
+    return payload?.kind === 'folder' ? payload : null;
+}
+
+/** The folder row a drag started on, read from the attributes Row emits. */
+function folderDragFrom(target: EventTarget | null) {
+    const el = target instanceof Element ? target : null;
+    const row = el?.closest<HTMLElement>('[data-folderfolio-folder]');
+
+    if (!row) {
+        return null;
+    }
+
+    const folderId = Number.parseInt(row.dataset.folderfolioFolder ?? '', 10);
+
+    if (Number.isNaN(folderId)) {
+        return null;
+    }
+
+    const rawParent = row.dataset.folderfolioParent ?? '';
+    const parentId = rawParent === '' ? null : Number.parseInt(rawParent, 10);
+
+    return {
+        kind: 'folder' as const,
+        folderId,
+        parentId: parentId === null || Number.isNaN(parentId) ? null : parentId,
+        depth: Number.parseInt(row.dataset.folderfolioDepth ?? '0', 10) || 0,
+        name: row.dataset.folderfolioName ?? '',
+    };
 }
 
 /** The attachment id on a grid tile or a list row, or null. */
@@ -97,6 +151,33 @@ function idsForDrag(id: number): number[] {
  */
 export function watchDrags(currentFolder: () => number | null): () => void {
     const onDragStart = (event: DragEvent) => {
+        /*
+         * Folders first, and the order matters.
+         *
+         * This listener is on the document in the capture phase, so it sees
+         * every drag on the page. Whichever of the two checks ran second
+         * would null the other one's payload the moment it failed to match —
+         * which is exactly what happened when a folder row was dragged and
+         * only the attachment check existed.
+         */
+        const folder = folderDragFrom(event.target);
+
+        if (folder) {
+            payload = folder;
+
+            event.dataTransfer?.setData('text/plain', folder.name);
+
+            if (event.dataTransfer) {
+                // Never 'copy'. A folder drag rearranges; it never duplicates.
+                event.dataTransfer.effectAllowed = 'move';
+            }
+
+            document.body.classList.add('folderfolio-dragging');
+            document.body.classList.add('folderfolio-dragging-folder');
+
+            return;
+        }
+
         const id = attachmentIdFrom(event.target);
 
         if (id === null) {
@@ -109,6 +190,7 @@ export function watchDrags(currentFolder: () => number | null): () => void {
         const source = currentFolder();
 
         payload = {
+            kind: 'files',
             ids,
             // `0` is Unassigned — a real source, and one you can move out of.
             // `null` is All media, which is not a folder.
@@ -133,6 +215,7 @@ export function watchDrags(currentFolder: () => number | null): () => void {
     const onDragEnd = () => {
         payload = null;
         document.body.classList.remove('folderfolio-dragging');
+        document.body.classList.remove('folderfolio-dragging-folder');
     };
 
     document.addEventListener('dragstart', onDragStart, true);

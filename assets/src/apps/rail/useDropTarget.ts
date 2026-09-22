@@ -4,12 +4,17 @@
  * Both are drop targets, and the design gives both the same treatment — a 2px
  * frame rather than a fill, and the count tag showing what the folder will
  * hold — so both use this.
+ *
+ * **Files only.** The frame means "into this container", and it is reserved
+ * for the payload that has a container to go into. A folder being dragged is
+ * answered by the insertion rule in folder-drop.ts, whose position says which
+ * parent and which slot — a frame could say neither.
  */
 
 import { useCallback, useRef, useState } from 'react';
 
 import { useMoveAttachments } from './queries';
-import { draggedPayload } from './drag';
+import { draggedFiles } from './drag';
 
 export function useDropTarget(folderId: number) {
     /** The number of files hovering over this target, or null for none. */
@@ -25,7 +30,7 @@ export function useDropTarget(folderId: number) {
     const depth = useRef(0);
 
     const onDragEnter = useCallback((event: React.DragEvent) => {
-        const payload = draggedPayload();
+        const payload = draggedFiles();
 
         if (!payload) {
             return;
@@ -37,7 +42,7 @@ export function useDropTarget(folderId: number) {
     }, []);
 
     const onDragOver = useCallback((event: React.DragEvent) => {
-        const payload = draggedPayload();
+        const payload = draggedFiles();
 
         if (!payload) {
             return;
@@ -63,7 +68,7 @@ export function useDropTarget(folderId: number) {
 
     const onDrop = useCallback(
         (event: React.DragEvent) => {
-            const payload = draggedPayload();
+            const payload = draggedFiles();
 
             depth.current = 0;
             setIncoming(null);

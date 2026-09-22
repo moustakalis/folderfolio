@@ -472,3 +472,66 @@
     outline-offset: -2px;
   }
 }
+
+/* ------------------------------------------------------- the insertion rule */
+
+/**
+ * Where a dragged folder will land.
+ *
+ * A frame is what a *file* drop draws, and it means "into this container".
+ * This is the other language: a rule, whose left offset is the depth the
+ * folder will sit at — so one indicator answers both which parent and which
+ * slot, and nesting is not a second state to learn.
+ *
+ * The tree becomes the positioning context for it. Safe: the only other
+ * absolutely positioned thing in here is the guide line, which resolves
+ * against `.folderfolio-row`, and that is positioned itself.
+ */
+.folderfolio-tree {
+  position: relative;
+}
+
+/* No height of its own, so an always-mounted marker costs the list nothing. */
+.folderfolio-tree__marker-slot {
+  height: 0;
+  margin: 0;
+  overflow: visible;
+}
+
+.folderfolio-tree__marker {
+  position: absolute;
+  right: 10px; /* the row's own padding-right */
+  height: 3px;
+  margin-top: -1.5px; /* centred on the boundary, not sitting below it */
+  background: var(--ff-sel);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* The dot is what makes a 3px line read as a caret rather than as a border. */
+.folderfolio-tree__marker::before {
+  content: '';
+  position: absolute;
+  left: -3px;
+  top: -2.5px;
+  width: 8px;
+  height: 8px;
+  background: var(--ff-sel);
+  border-radius: 50%;
+}
+
+/**
+ * Said out loud, because `[hidden]` is a UA rule and any `display` of our own
+ * would cancel it — which is exactly how `.folderfolio-rail[hidden]` was dead
+ * for the life of the component (trap 54).
+ */
+.folderfolio-tree__marker[hidden] {
+  display: none;
+}
+
+@media (forced-colors: active) {
+  .folderfolio-tree__marker,
+  .folderfolio-tree__marker::before {
+    background: Highlight;
+  }
+}

@@ -11,7 +11,8 @@
 import { useCallback, useEffect, useMemo } from 'react';
 
 import { CreateRow, Row, GhostRows } from './Row';
-import type { FolderNode } from './queries';
+import { useReorderFolders, type FolderNode } from './queries';
+import { useFolderDrop } from './folder-drop';
 import { sortTree, useRail } from './store';
 import { can } from '../../lib/can';
 import { t } from '../../core/api';
@@ -81,9 +82,16 @@ export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: Tre
     const expand = useRail((s) => s.expand);
     const collapse = useRail((s) => s.collapse);
     const edit = useRail((s) => s.edit);
+    const setSort = useRail((s) => s.setSort);
+    const reorder = useReorderFolders();
 
     const ordered = useMemo(() => sortTree(nodes, sort), [nodes, sort]);
     const visible = useMemo(() => flatten(ordered, expandedIds), [ordered, expandedIds]);
+
+    // Holds no React state on purpose — see folder-drop.ts. A marker in state
+    // would re-render this component on every pointer move of a drag, and
+    // re-rendering this component re-creates every Row beneath it.
+    const drop = useFolderDrop(visible, ordered);
 
     const parentOf = useCallback(
         (id: number) => visible.find((v) => v.node.children.some((c) => c.id === id))?.node ?? null,
@@ -178,6 +186,45 @@ export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: Tre
                 event.preventDefault();
                 focus(visible[Math.max(0, Math.min(visible.length - 1, to))].node.id);
             };
+
+            /*
+             * Alt + Up/Down rearranges instead of navigating.
+             *
+             * Not a nicety. A drag is a pointer gesture, and without a
+             * keyboard path the arrangement would be a feature only some
+             * people can create — on a tree whose entire keyboard contract is
+             * otherwise complete.
+             *
+             * Among siblings only. Changing depth from the keyboard is a
+             * second gesture with its own ambiguities, and cut/paste is the
+             * better home for it.
+             */
+            if (event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+                event.preventDefault();
+
+                if (!can('rename')) {
+                    return;
+                }
+
+                const parent = parentOf(current.node.id);
+                const siblings = parent ? parent.children : ordered;
+                const from = siblings.findIndex((s) => s.id === current.node.id);
+                const to = from + (event.key === 'ArrowDown' ? 1 : -1);
+
+                if (from === -1 || to < 0 || to >= siblings.length) {
+                    return;
+                }
+
+                const ids = siblings.map((s) => s.id);
+                ids.splice(to, 0, ids.splice(from, 1)[0]);
+
+                // Same as a drop: the arrangement is only visible under
+                // Custom, and the user has just made one.
+                setSort('custom');
+                reorder.mutate({ parentId: parent ? parent.id : null, ids });
+
+                return;
+            }
 
             switch (event.key) {
                 case 'ArrowDown':
@@ -310,8 +357,9 @@ export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: Tre
             }
         },
         [
-            visible, expandedIds, editing,
+            visible, ordered, expandedIds, editing,
             focus, select, toggle, expand, collapse, edit, parentOf,
+            setSort, reorder,
             onSaveEdit, onCancelEdit, onDelete,
         ]
     );
@@ -341,7 +389,16 @@ export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: Tre
             role="tree"
             aria-label={t('folders', 'Folders')}
             onKeyDown={onKeyDown}
+            {...drop.handlers}
         >
+            {/*
+              The insertion rule. Always mounted and hidden, because the drag
+              moves it by writing to its style rather than by re-rendering —
+              and a slot with no height so it contributes nothing to the list.
+            */}
+            <li role="none" className="folderfolio-tree__marker-slot" aria-hidden="true">
+                <span ref={drop.markerRef} className="folderfolio-tree__marker" hidden />
+            </li>
             {renderLevel(ordered, 0)}
             {creatingAtRoot ? <CreateRow depth={0} /> : null}
         </ul>
