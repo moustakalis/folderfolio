@@ -1642,11 +1642,12 @@ plugin is still switched on. `Modules\Import\Elsewhere` gates on our own
 folder count, caches for an hour behind that, and needs no invalidation — an
 import creates folders here, so the gate closes before the cache is read.
 
-**What is left.** The research pass ran on 22 Sep and is finished — see
-*22 Sep — what the market charges for*, above. It puts **two** features in
-front of the release: **folder reordering in the tree** (~1.5–2 days, first,
-and 1.0 slips for it) and **export of the folder structure** (~3h). Then the
-readme's two claims, and **then phase 5**, the existing release track.
+**What is left.** 1.0 grew on 22 Sep from a finished release into a
+fourteen-feature list — the Claude project's `plan-1.0-features.md` is the
+authority, and `plan-1.0-tier-1.md` is the detail for the seven the tree
+needs. **Tier 1 item 1, folder reordering, is built.** Next is item 2,
+per-folder sort. Then the readme's two claims, and **then phase 5**, the
+release track.
 
 **Numbers not to re-derive:** FileBird silently hides **28 of 47 files** when
 active; our `posts_clauses` bail is **load-bearing** and three of four rivals
@@ -2426,6 +2427,26 @@ money — then check each one against its gate. Their `readme.txt` files are the
 better source still, and the only good one for a feature the free build does
 not contain at all.
 
+**`$wpdb->query()` on an UPDATE returns MySQL's affected-rows, and MySQL does
+not count a row whose value did not change.** `applySortOrder` first returned
+it: arranging three folders that were all still at the default `0` reported
+**2**, because one of them was already in position. Any count built from that
+number depends on what the previous state happened to be, which is not a
+contract anything should rely on — return the size of the thing you wrote.
+
+**A document-level listener in the capture phase sees every event on the
+page.** `drag.ts` now carries two payload kinds, files and folders, and both
+are dragged in the same document. Whichever check runs second nulls the
+other's payload the moment it fails to match — so the folder check runs first
+and the comment says why.
+
+**HTML5 drag events are never fired by touch.** `drag.ts` and `useDropTarget`
+are built entirely on `dragstart` / `dragover` / `drop`, so the whole drag
+layer is desktop-only by construction. That is a scope fact rather than a
+defect, and it has been true of dragging *files* onto a folder since that
+feature shipped — unremarked anywhere until now. It is why `Levels`, the
+renderer that exists for the phone, was not given the gesture.
+
 ## Which document is which
 
 | Document | What it is | Still authoritative? |
@@ -2435,7 +2456,9 @@ not contain at all.
 | `m2-importer-matrix.md` | Verified schemas and detection keys per migration source | Yes, when the importers are rewritten |
 | `research/01..04-*.md` | FileBird, Real Media Library, Folders, CatFolders — measured live and read from source | Background, and the reason for several decisions |
 | `deep-review-2026-09-16.md` | 29 numbered findings against 0.2.0 | Partly — #15 is closed; #24, #26, #27, #28 and #29 are still open |
-| *(Claude project)* `progress-2026-09-22e-the-answers.md` | Nick's three answers, and the two features they put into 1.0 — the most recent log | **Yes — the newest, and outside this repo** |
+| *(Claude project)* `plan-1.0-features.md` | The fourteen features 1.0 grew to hold, in three tiers | **Yes — the authority for scope** |
+| *(Claude project)* `plan-1.0-tier-1.md` | The seven the tree needs, with the source read against each; item 1 built | **Yes — the brief for the current work** |
+| *(Claude project)* `progress-2026-09-22e-the-answers.md` | Nick's answers, and the features they put into 1.0 | Yes |
 | *(Claude project)* `progress-2026-09-22d-the-paywall-read.md` | What the four rivals gate behind a licence, the two piles, and the cut line | Yes — its *Awaiting Nick* section is superseded by `…-22e` |
 | *(Claude project)* `progress-2026-09-22c-f-validated.md` | The rail's empty state, looked at — and the second renderer nobody had looked at | Yes |
 | *(Claude project)* `progress-2026-09-22b-phases-3-and-4.md` | Phases 4 and 3, and the 1.0 coexistence plan closed | Yes |
