@@ -869,10 +869,11 @@ Each was a decision the handoff does not contain, taken deliberately:
 1. **The eyebrow carries the product's name**, not "Folders" — in the rail and
    in the media modal's folder column. Not run through `t()`; a brand is not
    translated.
-2. **Below a 300px rail the toolbar is icons only, and the indent drops to
-   16px.** At 300 and up both are exactly the board. 298px in the container
-   queries, not 300: a container query resolves against the **content** box,
-   and the rail's 2px rule is inside its border box.
+2. **Below a 300px rail the indent drops to 16px.** At 300 and up it is
+   exactly the board. 298px in the container queries, not 300: a container
+   query resolves against the **content** box, and the rail's 2px rule is
+   inside its border box. The other half of this — a toolbar going icons-only
+   at the same width — went away with the toolbar on 22 Sep.
 3. **The cards block renders nothing when a folder has no children.** The board
    draws "No folders in Brand" and "Files in no folder — nothing to drill
    into"; `DESIGN-TO-CODE.md` lists that very question under *Still open*, and
@@ -1036,10 +1037,10 @@ nothing at runtime: the custom property resolves to nothing and the icon
 renders as though the folder had no colour. `TokensTest` asserts all three
 agree, including order.
 
-**More is the fourth toolbar button**, and the colour picker (screen 11, §9.8)
-is all of it — the board draws nothing else inside it, and every other folder
-action already has a home. Setting a colour checks the `rename` ability,
-because it is the same route.
+**The colour picker (screen 11, §9.8) is part of `FolderMenu`**, which is
+everything you can do to one folder. It was the whole of a fourth toolbar
+button called More until 22 Sep; the toolbar is gone. Setting a colour checks
+the `rename` ability, because it is the same route.
 
 **Uploads go to the selected folder**, which they never did before 18 Sep.
 `upload-integration.ts` was supposed to do it and every path through it was
@@ -1146,11 +1147,11 @@ as:
    `.folderfolio-rail__tool svg` had no `flex: 0 0 auto`, so a button short of
    room shrank its **icon to zero width** before clipping anything else —
    which is why Rename and Delete looked iconless while Sort and More, which
-   had slack, did not. The pencil was never faint; it was 0px wide. With the
-   icon back, four labelled buttons need a 300px rail exactly, so the rail is
-   a query container and below 300 the labels are hidden the wp-admin way and
-   the icons stay. 298px in the condition, not 300: a container query resolves
-   against the content box and the rail's 2px rule is inside its border box.
+   had slack, did not. The pencil was never faint; it was 0px wide. *(That
+   toolbar no longer exists — see 22 Sep — but the lesson does: a flex button
+   short of room crushes its contents before it clips them, so asserting
+   "nothing is clipped" passes on a button that has crushed its icon to
+   nothing.)*
 10. **Drag-over is a frame now**, as both its rules already said in a comment
     while painting a fill — and the fill was `--ff-wash`, the selected row's
     own background, so a row you were about to drop into was indistinguishable
@@ -1646,9 +1647,10 @@ import creates folders here, so the gate closes before the cache is read.
 **What is left.** 1.0 grew on 22 Sep from a finished release into a
 fourteen-feature list — the Claude project's `plan-1.0-features.md` is the
 authority, and `plan-1.0-tier-1.md` is the detail for the seven the tree
-needs. **Tier 1 item 1, folder reordering, is built** — including *Move up* /
-*Move down* in the toolbar, which is the only folder surface both renderers
-share and therefore the only one that reaches a phone. Next is item 2,
+needs. **Tier 1 item 1, folder reordering, is built**, and on 22 Sep the rail
+toolbar was dissolved around it: every folder action lives in `FolderMenu`,
+opened from a ⋮ on the **selected row** above 782px and from one control below
+it, and the global sort moved next to the search field. Next is item 2,
 per-folder sort. Then the readme's two claims, and **then phase 5**, the
 release track.
 
@@ -1678,6 +1680,19 @@ non-zero — and the React root inside it is empty. **Check for the mounted app,
 not the element.**
 
 **Winning a CSS fight with another plugin can be the bug.**
+
+**A rule you add can tie and still lose, and the tie-break is file order.**
+`admin.css` imports `_row.css`, then `_rail-chrome.css`, then `_toolbar.css`.
+Three separate rules were written in the first two on 22 Sep and all three
+silently lost to a same-specificity rule in the third: the row menu's
+`position: absolute` (beaten by `.folderfolio-row > *:not(.folderfolio-row__guide)`,
+which is 0,2,0 against a bare class's 0,1,0, leaving the button a flex item
+50px from the row's edge and 4px over the count); the sort menu's `right: 0`
+(beaten by `.folderfolio-menu { left: 0 }`, so it hung 120px over the
+library); and Delete's colour (beaten by `.folderfolio-menu__item`, so it
+rendered in `--ff-ink`). **Out-specify, do not match** — and none of the three
+showed up as an error anywhere, only as a measurement that disagreed with the
+stylesheet.
 
 **When the window will not resize, an iframe is a real viewport.** A
 full-screen macOS window ignores the extension's resize — it reports success
