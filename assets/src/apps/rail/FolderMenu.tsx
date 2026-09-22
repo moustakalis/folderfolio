@@ -1,50 +1,71 @@
 /**
- * The panel behind More — screen 11, §9.8, plus what overflowed into it.
+ * Everything you can do to one folder — screen 11, §9.8, grown.
  *
- * Move up, Move down, and then the colour picker: ten fixed swatches and "No
- * colour" in a 240px panel under the toolbar's fourth button. No free picker
- * and no hex field: eight colour schemes ship with core, and a hex chosen
- * while looking at one of them cannot be guaranteed to stay legible on the
- * other seven. What is stored is a swatch *name*, and `--ff-folder-<name>` is
- * what resolves it per scheme — see lib/swatches.ts.
+ * ## One menu, two doors
  *
- * This file used to argue that the picker was the whole of More, on the
- * grounds that an overflow menu is for what is overflowing and every folder
- * action already had a home. Reordering is what overflowed. It arrived with
- * two gestures — a drag and Alt+Arrow — and both of them live in Tree.tsx,
- * which is not drawn below 782px. Levels.tsx has no drop target and no key
- * handler, so on a narrow window and on every phone the feature did not
- * exist. The toolbar is rendered above the renderer switch in Rail.tsx, so
- * two items here reach both renderers, touch included, and give the wide tree
- * a visible form of a modifier shortcut nobody discovers.
+ * Above 782px it opens from a ⋮ on the selected row; below, from the
+ * toolbar's More. Same component, same contents, same gates — the only
+ * difference is what it is pinned to. That is the whole point of the split
+ * below: `FolderMenuItems` is the menu, and the two exported wrappers are
+ * only containers.
  *
- * Right-aligned, unlike the Sort menu: More is the last of four buttons in a
- * 300px rail, and a 240px panel opening from its left edge would hang off the
- * rail entirely.
+ * The rule the shape comes from is Nick's: **no action in two places at one
+ * width**. So Rename and Delete left the toolbar entirely and live here, and
+ * the toolbar keeps only what is not a folder action — the global sort, which
+ * needs no selection and no permission and therefore cannot live in a menu
+ * that has both.
+ *
+ * ## No heading
+ *
+ * It said "Colour for <name>" when colour was all it did, then the name alone
+ * when it grew. Both are gone: opened from the row, the menu is physically on
+ * the folder it acts on, and opened from More it acts on the selection, which
+ * is the row drawn in the accent colour two pixels away. A title that repeats
+ * what the pointer is already touching is a row of chrome.
+ *
+ * ## Colour, unchanged
+ *
+ * Ten fixed swatches and "No colour". No free picker and no hex field: eight
+ * colour schemes ship with core, and a hex chosen while looking at one of
+ * them cannot be guaranteed to stay legible on the other seven. What is
+ * stored is a swatch *name*, and `--ff-folder-<name>` is what resolves it per
+ * scheme — see lib/swatches.ts.
  */
 
-import { ArrowDownIcon, ArrowUpIcon } from './icons';
+import { createPortal } from 'react-dom';
+
+import { ArrowDownIcon, ArrowUpIcon, PencilIcon, TrashIcon } from './icons';
 import { planSiblingMove } from './move';
-import { Menu } from './Toolbar';
+import { Menu } from './Menu';
 import type { FolderNode } from './queries';
 import { useReorderFolders, useSetFolderColor } from './queries';
 import { useRail } from './store';
+import { useAnchoredPanel } from './useAnchoredPanel';
+import { can } from '../../lib/can';
 import { SWATCHES, isSwatch, swatchLabel, type Swatch } from '../../lib/swatches';
 import { t } from '../../core/api';
 
-export function FolderMenu({
-    folder,
-    ordered,
-    onClose,
-}: {
+interface FolderMenuProps {
     folder: FolderNode;
     /** The tree as the person is looking at it — see move.ts on why sorted. */
     ordered: FolderNode[];
+    onDelete: () => void;
     onClose: () => void;
-}) {
+}
+
+/**
+ * The items. Rendered inside whichever container opened them.
+ *
+ * Every one of them closes the menu after acting. A menu that stays open
+ * after a destructive or navigational command is a menu you have to dismiss
+ * twice, and the one case for staying open — picking several colours in a
+ * row — is not a thing anybody does.
+ */
+function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps) {
     const setColor = useSetFolderColor();
     const reorder = useReorderFolders();
     const setSort = useRail((s) => s.setSort);
+    const edit = useRail((s) => s.edit);
     const levelId = useRail((s) => s.levelId);
     const openLevel = useRail((s) => s.openLevel);
     const current = isSwatch(folder.color) ? folder.color : null;
@@ -86,76 +107,166 @@ export function FolderMenu({
         onClose();
     }
 
+    const organise = can('rename');
+
     return (
-        <Menu className="folderfolio-menu--folder" onClose={onClose}>
-            {/*
-              The folder's name, and not "Colour for %s" as this panel read
-              when colour was all it did. The menu acts on the selection,
-              which in the narrow renderer is a row you tapped and then
-              navigated away from — naming it is the difference between three
-              items and three items aimed at something.
-            */}
-            <p className="folderfolio-menu__head">
-                <strong>{folder.name}</strong>
-            </p>
-
-            <button
-                type="button"
-                role="menuitem"
-                className="folderfolio-menu__item"
-                disabled={up === null}
-                onClick={() => move(up)}
-            >
-                <ArrowUpIcon size={13} />
-                {t('moveUp', 'Move up')}
-            </button>
-
-            <button
-                type="button"
-                role="menuitem"
-                className="folderfolio-menu__item"
-                disabled={down === null}
-                onClick={() => move(down)}
-            >
-                <ArrowDownIcon size={13} />
-                {t('moveDown', 'Move down')}
-            </button>
-
-            <div className="folderfolio-menu__rule" role="separator" />
-
-            {/*
-              role="group" inside the menu, so a screen reader announces the
-              eleven choices as one set with one of them checked, rather than
-              as eleven unrelated menu items. The eleventh is "No colour",
-              which is a value in this set and not an escape from it — which
-              is why it is a radio and not a separate command.
-            */}
-            <div className="folderfolio-swatches" role="group" aria-label={t('folderColor', 'Folder colour')}>
-                {SWATCHES.map((swatch) => (
+        <>
+            {organise ? (
+                <>
                     <button
-                        key={swatch}
+                        type="button"
+                        role="menuitem"
+                        className="folderfolio-menu__item"
+                        onClick={() => {
+                            edit({
+                                mode: 'rename',
+                                parentId: null,
+                                folderId: folder.id,
+                                value: folder.name,
+                            });
+                            onClose();
+                        }}
+                    >
+                        <PencilIcon size={13} />
+                        {t('rename', 'Rename')}
+                    </button>
+
+                    <button
+                        type="button"
+                        role="menuitem"
+                        className="folderfolio-menu__item"
+                        disabled={up === null}
+                        onClick={() => move(up)}
+                    >
+                        <ArrowUpIcon size={13} />
+                        {t('moveUp', 'Move up')}
+                    </button>
+
+                    <button
+                        type="button"
+                        role="menuitem"
+                        className="folderfolio-menu__item"
+                        disabled={down === null}
+                        onClick={() => move(down)}
+                    >
+                        <ArrowDownIcon size={13} />
+                        {t('moveDown', 'Move down')}
+                    </button>
+
+                    <div className="folderfolio-menu__rule" role="separator" />
+
+                    {/*
+                      role="group" inside the menu, so a screen reader
+                      announces the eleven choices as one set with one of them
+                      checked, rather than as eleven unrelated menu items. The
+                      eleventh is "No colour", which is a value in this set and
+                      not an escape from it — which is why it is a radio and
+                      not a separate command.
+                    */}
+                    <div
+                        className="folderfolio-swatches"
+                        role="group"
+                        aria-label={t('folderColor', 'Folder colour')}
+                    >
+                        {SWATCHES.map((swatch) => (
+                            <button
+                                key={swatch}
+                                type="button"
+                                role="menuitemradio"
+                                aria-checked={current === swatch}
+                                aria-label={swatchLabel(swatch)}
+                                title={swatchLabel(swatch)}
+                                className="folderfolio-swatches__swatch"
+                                style={{ background: `var(--ff-folder-${swatch})` }}
+                                onClick={() => choose(swatch)}
+                            />
+                        ))}
+                    </div>
+
+                    <button
                         type="button"
                         role="menuitemradio"
-                        aria-checked={current === swatch}
-                        aria-label={swatchLabel(swatch)}
-                        title={swatchLabel(swatch)}
-                        className="folderfolio-swatches__swatch"
-                        style={{ background: `var(--ff-folder-${swatch})` }}
-                        onClick={() => choose(swatch)}
-                    />
-                ))}
-            </div>
+                        aria-checked={current === null}
+                        className="folderfolio-swatches__none"
+                        onClick={() => choose(null)}
+                    >
+                        <span className="folderfolio-swatches__empty" aria-hidden="true" />
+                        {t('noColor', 'No colour')}
+                    </button>
+                </>
+            ) : null}
 
-            <button
-                type="button"
-                role="menuitemradio"
-                aria-checked={current === null}
-                className="folderfolio-swatches__none"
-                onClick={() => choose(null)}
-            >
-                <span className="folderfolio-swatches__empty" aria-hidden="true" />
-                {t('noColor', 'No colour')}
-            </button>
+            {/*
+              Delete last and behind its own rule, and gated on `delete`
+              rather than on `rename` — the two abilities are separate columns
+              in the roles matrix and a role can hold either one alone. A
+              reader with neither never opens this menu: the ⋮ is not drawn.
+            */}
+            {can('delete') ? (
+                <>
+                    {organise ? <div className="folderfolio-menu__rule" role="separator" /> : null}
+
+                    <button
+                        type="button"
+                        role="menuitem"
+                        className="folderfolio-menu__item folderfolio-menu__item--danger"
+                        onClick={() => {
+                            onDelete();
+                            onClose();
+                        }}
+                    >
+                        <TrashIcon size={13} />
+                        {t('delete', 'Delete')}
+                    </button>
+                </>
+            ) : null}
+        </>
+    );
+}
+
+/**
+ * The toolbar's door — below 782px, where there is no ⋮.
+ *
+ * Absolutely positioned inside the tool's wrapper and right-aligned, because
+ * More is the last tool in a 300px rail and a 240px panel opening from its
+ * left edge would hang off the rail entirely. `Menu` supplies Escape, the
+ * outside click, and focus returning to the button.
+ */
+export function FolderMenu(props: FolderMenuProps) {
+    return (
+        <Menu className="folderfolio-menu--folder" onClose={props.onClose}>
+            <FolderMenuItems {...props} />
         </Menu>
+    );
+}
+
+/**
+ * The row's door — above 782px.
+ *
+ * Portaled to the body rather than rendered in the row, for the reason
+ * AddToFolder's flyout is: the tree is a scroller with its own overflow, and
+ * a panel inside it is clipped by the row two below the one that opened it.
+ * `useAnchoredPanel` pins it, clamps it to the window, flips it above the
+ * trigger when there is no room underneath, follows a scroll, and closes on
+ * Escape or a pointer outside — all of it already written for the two flyouts
+ * that use it.
+ */
+export function RowMenu({
+    anchor,
+    ...props
+}: FolderMenuProps & { anchor: HTMLElement | null }) {
+    const { ref, style } = useAnchoredPanel<HTMLDivElement>(anchor, props.onClose);
+
+    return createPortal(
+        <div
+            ref={ref}
+            style={style}
+            className="folderfolio folderfolio-menu folderfolio-menu--row"
+            role="menu"
+            aria-label={props.folder.name}
+        >
+            <FolderMenuItems {...props} />
+        </div>,
+        document.body
     );
 }

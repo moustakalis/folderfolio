@@ -348,4 +348,61 @@ test.describe('reordering a folder', () => {
         await expect(page.getByRole('menuitem', { name: /move up/i })).toBeEnabled();
         await expect(page.getByRole('menuitem', { name: /move down/i })).toBeDisabled();
     });
+
+    /**
+     * The ⋮, and the two properties that make it affordable and correct.
+     *
+     * Affordable: one button in a tree that is not virtualised and whose rows
+     * are not memoised. Correct: it is on the selected row, so it and the
+     * narrow width's More can never aim at different folders.
+     *
+     * The third assertion is the one a screenshot would not catch — the name
+     * track must be the same width on a selected row as on an unselected one,
+     * because the space is reserved on every row and only the glyph is
+     * conditional. Reserve it per row instead and selecting a folder reflows
+     * its name, which is the hover version's defect moved to a click.
+     */
+    test('the row menu is on the selected row, and only there', async ({ page }) => {
+        await openLevel(page);
+
+        await expect(page.locator('.folderfolio-row__menu')).toHaveCount(0);
+
+        await page.locator('.folderfolio-row', { hasText: 'Alpha' }).first().click();
+
+        const menus = page.locator('.folderfolio-row__menu');
+        await expect(menus).toHaveCount(1);
+        await expect(
+            page.locator('.folderfolio-row[aria-selected="true"] .folderfolio-row__menu')
+        ).toHaveCount(1);
+
+        // Same name track, selected or not.
+        const tracks = await page.evaluate(() => {
+            const gap = (row: Element) => {
+                const r = row.getBoundingClientRect();
+                const n = row.querySelector('.folderfolio-row__name')!.getBoundingClientRect();
+
+                return Math.round(r.right - n.right);
+            };
+            const rows = [...document.querySelectorAll('.folderfolio-tree .folderfolio-row')];
+
+            return {
+                selected: gap(rows.find((r) => r.getAttribute('aria-selected') === 'true')!),
+                plain: gap(rows.find((r) => r.getAttribute('aria-selected') !== 'true')!),
+            };
+        });
+
+        expect(tracks.selected).toBe(tracks.plain);
+
+        await menus.click();
+
+        const panel = page.locator('.folderfolio-menu--row');
+        await expect(panel).toBeVisible();
+        await expect(panel.getByRole('menuitem', { name: /^rename$/i })).toBeVisible();
+        await expect(panel.getByRole('menuitem', { name: /move up/i })).toBeVisible();
+        await expect(panel.getByRole('menuitem', { name: /move down/i })).toBeVisible();
+        await expect(panel.getByRole('menuitem', { name: /^delete$/i })).toBeVisible();
+
+        // No heading: the menu is physically on the folder it acts on.
+        await expect(panel.locator('.folderfolio-menu__head')).toHaveCount(0);
+    });
 });

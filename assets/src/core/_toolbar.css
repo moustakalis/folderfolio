@@ -1,132 +1,14 @@
 /**
- * Toolbar, menus and the undo toast — design screens 03 and 05.
+ * Menus and the undo toast — design screens 03 and 05.
+ *
+ * The rail's toolbar lived at the top of this file until 22 Sep. It is gone:
+ * the folder actions moved into FolderMenu, opened from a ⋮ on the selected
+ * row above 782px and from the control line below it, and the global sort
+ * moved next to the search field. What is left here is the menu those doors
+ * open and the toast the rail raises.
  *
  * No hex literals; see _tokens.css.
  */
-
-/* --------------------------------------------------------------- toolbar */
-
-.folderfolio-rail__toolbar {
-  flex: 0 0 auto;
-  display: flex;
-  border-bottom: 1px solid var(--ff-line);
-}
-
-.folderfolio-rail__tool-wrap {
-  position: relative;
-  flex: 1;
-  display: flex;
-}
-
-/**
- * Equal quarters, labelled, 34px — Rename, Delete, Sort, More.
- *
- * justify-content is flex-start rather than centre: centred labels in equal
- * columns drift apart as the rail is dragged wider, and a toolbar whose words
- * move when you resize the panel reads as unsettled.
- */
-.folderfolio-rail__tool {
-  flex: 1;
-  display: flex;
-
-  /* The out-of-flow label below resolves against the button rather than
-     against whichever ancestor happens to be positioned. */
-  position: relative;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 6px;
-  height: 34px;
-  padding: 0 8px;
-  background: transparent;
-  border: 0;
-  border-right: 1px solid var(--ff-line);
-  border-radius: 0;
-  font-family: inherit;
-  font-size: 11.5px;
-  color: var(--ff-muted);
-  cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-/**
- * The icon keeps its 14px.
- *
- * Without this, a button short of room shrinks its icon to **zero width**
- * before it clips anything else — so Rename and Delete appeared to have no
- * icon at all while Sort and More, which had slack, kept theirs. It was filed
- * twice, as "the pencil doesn't read at 14px" and as "Rename is clipped", and
- * it was one missing declaration both times.
- */
-.folderfolio-rail__tool svg {
-  flex: 0 0 auto;
-}
-
-.folderfolio-rail__toolbar > *:last-child .folderfolio-rail__tool,
-.folderfolio-rail__toolbar > .folderfolio-rail__tool:last-child {
-  border-right: 0;
-}
-
-/**
- * Under 300px: the icons, without the words.
- *
- * With its icon back, `Rename` needs 80px and a quarter of a 300px rail is 82
- * — so the board's own width is exactly where four labelled buttons stop
- * fitting, and the rail drags down to 240. The board has thirteen screens and
- * none of them is a narrow rail, so this is a decision rather than a reading:
- * at 300 and up it is the board, and below that the labels go and the four
- * icons stay, centred in equal quarters.
- *
- * The label is hidden the way wp-admin hides a label, not with `display:
- * none`. A button whose only content is an <svg aria-hidden> has no
- * accessible name at all, so hiding the word visually is the difference
- * between four icons and four unlabelled buttons. `title` is what a mouse
- * gets, and it is on the button at every width — the same pairing the rail's
- * own expand button uses.
- *
- * 298 rather than 300 because a container query resolves against the
- * container's **content** box, and the rail's 2px right-hand rule is inside
- * its border box. A 300px rail is a 298px container. Written at 300 it fired
- * at the board's own width and hid the labels there, which is the one place
- * they are specified.
- */
-@container folderfolio-rail (width < 298px) {
-  .folderfolio-rail__tool {
-    justify-content: center;
-    gap: 0;
-    padding: 0;
-  }
-
-  .folderfolio-rail__tool-label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
-    padding: 0;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-    border: 0;
-  }
-}
-
-.folderfolio-rail__tool:hover:not(:disabled) {
-  background: var(--ff-hover);
-  color: var(--ff-ink);
-}
-
-/* Disabled says "not for what you have selected", which for Rename and Delete
-   is true of All media and Unassigned — selections, but not folders. */
-.folderfolio-rail__tool:disabled {
-  color: var(--ff-off);
-  cursor: default;
-}
-
-.folderfolio-rail__tool:focus-visible {
-  outline: 2px solid var(--ff-sel);
-  outline-offset: -2px;
-  box-shadow: none;
-}
 
 /* ------------------------------------------------------------------ menu */
 

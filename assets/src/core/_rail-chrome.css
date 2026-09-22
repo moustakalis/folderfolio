@@ -192,6 +192,87 @@
   text-align: left;
 }
 
+/* ---------------------------------------------------- the control line */
+
+/**
+ * Search, Sort, and — below 782px only — the folder menu, on one line.
+ *
+ * The rail's toolbar was dissolved on 22 Sep: the folder actions moved onto
+ * the selected row's ⋮ and the global sort came here, because sort belongs
+ * with search rather than with a row of things that act on a selection.
+ *
+ * The wrapper carries the gutter and the field keeps its own border, so the
+ * buttons sit beside the field rather than inside it. `Search` is also
+ * rendered by the media modal's frame, which has no controls and is not
+ * wrapped — which is why the field's own margin is overridden here rather
+ * than removed from it.
+ */
+.folderfolio-rail__controls {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 12px;
+}
+
+.folderfolio-rail__controls .folderfolio-rail__search {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.folderfolio-rail__control-wrap {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+}
+
+/* Square, and the same 30px as the field beside it, so the three read as one
+   line rather than as a field with decorations. */
+.folderfolio-rail__control {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--ff-field-line);
+  border-radius: 0;
+  background: var(--ff-field);
+  color: var(--ff-muted);
+  cursor: pointer;
+}
+
+.folderfolio-rail__control:hover:not(:disabled) {
+  color: var(--ff-ink);
+}
+
+.folderfolio-rail__control:disabled {
+  color: var(--ff-off);
+  cursor: default;
+}
+
+.folderfolio-rail__control:focus-visible {
+  outline: 2px solid var(--ff-sel);
+  outline-offset: -2px;
+}
+
+.folderfolio-rail__control[aria-expanded='true'] {
+  color: var(--ff-sel);
+}
+
+/**
+ * A menu under a control at the end of the line opens leftward.
+ *
+ * Same reason the folder menu does: these sit within 42px of the rail's right
+ * edge, and a 160px panel anchored to their left edge would hang over the
+ * library. The Sort menu did exactly that from the old toolbar — 25px past a
+ * 308px rail — for as long as it existed there.
+ */
+.folderfolio-menu.folderfolio-menu--end {
+  left: auto;
+  right: 0;
+}
+
 /* ------------------------------------------------------------------ search */
 
 .folderfolio-rail__search {

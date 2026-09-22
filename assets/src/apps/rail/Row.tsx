@@ -6,9 +6,16 @@
  * geometry it passes is `--ff-depth`, which the stylesheet cannot know.
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import { ChevronDownIcon, ChevronRightIcon, FolderIcon, FolderOpenIcon } from './icons';
+import {
+    ChevronDownIcon,
+    ChevronRightIcon,
+    EllipsisVerticalIcon,
+    FolderIcon,
+    FolderOpenIcon,
+} from './icons';
+import { RowMenu } from './FolderMenu';
 import type { FolderNode } from './queries';
 import { useDropTarget } from './useDropTarget';
 import { useRail } from './store';
@@ -30,8 +37,17 @@ export interface RowProps {
      * anyone has arrowed anywhere, and after the focused row is deleted.
      */
     fallbackTabStop: boolean;
+    /**
+     * The tree as the person is looking at it, for the row menu's Move items.
+     *
+     * Handed down rather than sorted here: `Tree` has already done it once
+     * for the whole tree, and doing it per row would be the same work times
+     * the number of rows.
+     */
+    ordered: FolderNode[];
     onSelect: () => void;
     onToggle: () => void;
+    onDelete: () => void;
     /** The child group, when this row is expanded. Rendered inside the <li>. */
     children?: React.ReactNode;
 }
@@ -42,8 +58,10 @@ export function Row({
     expanded,
     renaming,
     fallbackTabStop,
+    ordered,
     onSelect,
     onToggle,
+    onDelete,
     children,
 }: RowProps) {
     /*
@@ -64,8 +82,28 @@ export function Row({
     const selected = useRail((s) => s.selectedId === node.id);
 
     const ref = useRef<HTMLDivElement>(null);
+    const menuRef = useRef<HTMLButtonElement>(null);
+    const [menuOpen, setMenuOpen] = useState(false);
     const hasChildren = node.children.length > 0;
     const drop = useDropTarget(node.id);
+
+    /*
+     * The row's own menu button — screen 03, reworked 22 Sep.
+     *
+     * Drawn on the selected row and nowhere else. That is the whole of what
+     * makes it affordable: one button in a tree that is not virtualised and
+     * whose rows are not memoised, rendered inside the `selected` boolean
+     * this component already subscribes to, so it costs no new render. A
+     * button on every row would be 1,053 of them on the dev site alone.
+     *
+     * It is also what makes it correct. The toolbar acts on the selection; so
+     * does this. They cannot point at different folders, because there is
+     * only ever one folder with a button on it.
+     *
+     * `menuOpen` is local state on purpose. Held in `Tree` it would re-render
+     * the tree and re-create every Row — the 126ms path above.
+     */
+    const canOpenMenu = can('rename') || can('delete');
 
     // The tree is a single tab stop, so focus is moved rather than tabbed to.
     // Only ever when this row is the focused one *and* focus is already inside
@@ -92,6 +130,23 @@ export function Row({
                 className={
                     'folderfolio-row'
                     + (hasChildren ? '' : ' folderfolio-row--leaf')
+                    /*
+                      The reserve, on every row and not only the selected one.
+
+                      The ⋮ is drawn on one row; the space it needs is kept on
+                      all of them, so selecting a folder changes its colour and
+                      nothing else. Reserving it per row instead would reflow
+                      the name track on every click, which is the hover
+                      version's defect moved to a different event.
+
+                      A class rather than a stylesheet selector because this
+                      is exactly the set of rows that can hold the button:
+                      Levels has its own row component, and so do the picker
+                      and the frame. It also makes the read-only case free —
+                      no abilities, no button, no reserve, and the name track
+                      stays at its full 213px.
+                    */
+                    + (canOpenMenu ? ' folderfolio-row--menu-slot' : '')
                     + (renaming ? ' is-renaming' : '')
                     + (drop.isOver ? ' is-dragover' : '')
                 }
@@ -194,9 +249,56 @@ export function Row({
                         <span className="folderfolio-row__count">
                             {drop.isOver ? `+${drop.incoming}` : node.total_count}
                         </span>
+
+                        {/*
+                          A real tab stop, unlike the switcher above — and it
+                          can afford to be, because there is exactly one of
+                          these in the tree. Tab out of the rows and you land
+                          on the menu for the folder you are working on, which
+                          is better than a shortcut nobody discovers.
+
+                          draggable={false} and a mousedown that stops
+                          propagating: the row is draggable and this button
+                          sits at the edge where a drag is most likely to
+                          start, so without both, opening the menu drags the
+                          folder instead.
+                        */}
+                        {selected && canOpenMenu && !renaming ? (
+                            <button
+                                ref={menuRef}
+                                type="button"
+                                className="folderfolio-row__menu"
+                                draggable={false}
+                                aria-haspopup="menu"
+                                aria-expanded={menuOpen}
+                                title={t('folderActions', 'Folder actions')}
+                                aria-label={t('folderActions', 'Folder actions')}
+                                onMouseDown={(event) => event.stopPropagation()}
+                                onDragStart={(event) => event.preventDefault()}
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    setMenuOpen((open) => !open);
+                                }}
+                            >
+                                <EllipsisVerticalIcon size={14} />
+                            </button>
+                        ) : null}
                     </>
                 )}
             </div>
+
+            {menuOpen && selected ? (
+                <RowMenu
+                    folder={node}
+                    ordered={ordered}
+                    anchor={menuRef.current}
+                    onDelete={onDelete}
+                    onClose={() => {
+                        setMenuOpen(false);
+                        menuRef.current?.focus();
+                    }}
+                />
+            ) : null}
 
             {children}
         </li>

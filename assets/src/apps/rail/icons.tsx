@@ -195,6 +195,25 @@ export function EllipsisIcon(props: IconProps) {
     );
 }
 
+/**
+ * Three dots stacked, for the row's menu.
+ *
+ * Vertical, while the toolbar's More is horizontal. They open the same menu,
+ * so the argument for one glyph is real — but they are never on screen at the
+ * same time (More exists only below 782px, the row button only above), and a
+ * column of dots sitting at the end of a row reads as "this row" in a way a
+ * row of dots inside a row does not.
+ */
+export function EllipsisVerticalIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <circle cx="12" cy="12" r="1" />
+            <circle cx="12" cy="5" r="1" />
+            <circle cx="12" cy="19" r="1" />
+        </Svg>
+    );
+}
+
 export function CloseIcon(props: IconProps) {
     return (
         <Svg {...props}>

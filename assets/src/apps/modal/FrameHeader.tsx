@@ -15,7 +15,7 @@
 
 import { useState } from 'react';
 
-import { Menu } from '../rail/Toolbar';
+import { Menu } from '../rail/Menu';
 import { EllipsisIcon } from '../rail/icons';
 import type { FolderNode } from '../rail/queries';
 import { useRail, type SortOrder } from '../rail/store';

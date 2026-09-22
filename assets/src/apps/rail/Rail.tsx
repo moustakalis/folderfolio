@@ -15,10 +15,9 @@ import { Header } from './Header';
 import { Levels } from './Levels';
 import { LibraryToolbar } from './LibraryToolbar';
 import { Results } from './Results';
-import { Search } from './Search';
 import { Toast, UNDO_WINDOW } from './Toast';
 import { watchDrags } from './drag';
-import { Toolbar } from './Toolbar';
+import { RailControls } from './RailControls';
 import { Tree } from './Tree';
 import {
     useCreateFolder,
@@ -307,13 +306,12 @@ export function Rail({
 
             <div className="folderfolio-rail__app">
                 <Header />
-                <Toolbar
+                <FixedRows />
+                <RailControls
                     selected={selectedNode}
                     nodes={nodes}
                     onDelete={() => selectedNode && startDelete(selectedNode)}
                 />
-                <FixedRows />
-                <Search />
 
                 <div className="folderfolio-rail__body">
                     {isError ? (

@@ -420,8 +420,10 @@ export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: Tre
                     expanded={expanded}
                     renaming={editing?.mode === 'rename' && editing.folderId === node.id}
                     fallbackTabStop={nothingFocused && node.id === firstRowId}
+                    ordered={ordered}
                     onSelect={() => select(node.id)}
                     onToggle={() => toggleKeepingFocus(node)}
+                    onDelete={() => onDelete(node)}
                 >
                     {expanded && node.children.length > 0 ? (
                         <ul role="group">

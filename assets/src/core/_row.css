@@ -301,6 +301,118 @@
 
 /* ------------------------------------------------------------------ count */
 
+/* ------------------------------------- the row's own menu — screen 03 */
+
+/**
+ * The reserve every row keeps for the ⋮ that is drawn on one of them.
+ *
+ * 24px of button, 6px of gap and the row's own 10px of padding — so the name
+ * track loses 24px and the count keeps its place. Measured across the 1,053
+ * folders on the dev site at their real depths: nine names truncate at this
+ * width where one did before. Eight names, for a menu on the folder it acts
+ * on.
+ *
+ * The reserve is unconditional within the class and only the glyph is
+ * conditional, so nothing moves when the selection changes. Row.tsx adds the
+ * class, and adds it only when the person has an ability worth a menu.
+ */
+.folderfolio-row--menu-slot {
+  padding-right: 40px;
+}
+
+/*
+ * `.folderfolio-row > *` rather than the class alone, and that is not
+ * decoration.
+ *
+ * Fifty lines up, `.folderfolio-row > *:not(.folderfolio-row__guide)` sets
+ * `position: relative; z-index: 1` so the row's contents paint above the
+ * guide lines. That selector is 0,2,0; a bare class is 0,1,0, so the plain
+ * rule lost and this button stayed in the flex line as a relatively
+ * positioned item — measured on the dev site, sitting 50px from the row's
+ * right edge and overlapping the count by 4px. Matching the specificity and
+ * coming later is what makes `absolute` apply, and the z-index is kept
+ * because the button needs to be above the guides for the same reason
+ * everything else in the row is.
+ */
+.folderfolio-row > .folderfolio-row__menu {
+  position: absolute;
+  z-index: 1;
+  right: 10px;
+  top: calc((var(--ff-row-h) - 24px) / 2);
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  color: var(--ff-muted);
+  cursor: pointer;
+}
+
+.folderfolio-row__menu:hover {
+  color: var(--ff-ink);
+}
+
+.folderfolio-row__menu:focus-visible {
+  outline: 2px solid var(--ff-sel);
+  outline-offset: -2px;
+}
+
+.folderfolio-row__menu[aria-expanded='true'] {
+  color: var(--ff-sel);
+}
+
+/**
+ * The panel it opens.
+ *
+ * Portaled to the body, so it is placed by useAnchoredPanel's inline top and
+ * left and needs `position: fixed` here — the same contract
+ * `.folderfolio-flyout` has. `--ff-room` is the space that hook measured
+ * between the trigger and the edge of the window; the panel is clamped to it
+ * rather than running off the bottom of a short one.
+ */
+.folderfolio-menu--row {
+  position: fixed;
+  z-index: 100000;
+  width: 240px;
+  min-width: 0;
+  max-height: var(--ff-room, none);
+  overflow-y: auto;
+  padding: 4px 0;
+  background: var(--ff-panel);
+  border: 1px solid var(--ff-off);
+  box-shadow: 0 3px 10px rgba(29, 35, 39, 0.12);
+  color: var(--ff-ink);
+}
+
+.folderfolio-menu--row .folderfolio-menu__item {
+  padding: 7px 12px;
+}
+
+/**
+ * Delete, in a menu where everything else is reversible.
+ *
+ * Colour on the label rather than a filled row: the swatch grid above it is
+ * eleven filled rectangles, and a twelfth filled thing would read as another
+ * colour rather than as a warning.
+ */
+.folderfolio-menu__item--danger {
+  color: var(--ff-danger-text);
+}
+
+.folderfolio-menu__item--danger:hover {
+  background: var(--ff-hover);
+  color: var(--ff-danger);
+}
+
+@media (forced-colors: active) {
+  .folderfolio-row__menu[aria-expanded='true'] {
+    color: Highlight;
+  }
+}
+
 .folderfolio-row__count {
   flex: 0 0 auto;
   padding: 1px 6px;

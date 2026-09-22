@@ -94,7 +94,7 @@ async function measure(page: Page, width: number): Promise<Measured> {
             .filter((b) => b.width > 0 && b.height > 0)
             .reduce((top, b) => Math.min(top, b.top), Infinity);
 
-        const tools = [...document.querySelectorAll('.folderfolio-rail__tool')];
+        const tools = [...document.querySelectorAll('.folderfolio-rail__control')];
 
         // Anything of ours drawn outside the rail's own box. The collapsed
         // state is where this bites, but it is worth asking at every width.
@@ -268,30 +268,34 @@ test.describe('the rail across viewport widths', () => {
          * what "what happened to actions? sizes are quite off" was about.
          *
          * The band is not a narrow rail laid on its side; it is its own shape.
-         * So what is asserted now is the shape: four equal quarters, each wide
-         * enough to be a target, none of them clipped — and that last one is
-         * asserted above, at every width, which is what stops "equal" from
-         * being satisfied by four equally useless buttons.
+         *
+         * That shape changed on 22 Sep. There were four equal quarters —
+         * Rename, Delete, Sort, More — and the assertion here was that they
+         * divided the band evenly. The toolbar is gone: the folder actions
+         * moved onto the selected row's ⋮ above 782px, and below it the two
+         * survivors sit at the end of the search line, which is the only row
+         * of controls the rail has left.
+         *
+         * So what is asserted now is that line: **two** square controls, both
+         * a real size, with the search field taking everything else. Sort is
+         * one of them at every width; More is the other, and it exists only
+         * here, because `LevelRow` is a single button and cannot hold a ⋮.
          */
         for (const s of shots.filter((shot) => shot.stacked)) {
-            // Within 2px: four equal columns of an odd number of pixels do not
-            // divide evenly, and 190/190/190/189.5 is the layout being right.
-            const widest = Math.max(...s.toolWidths);
-            const narrowest = Math.min(...s.toolWidths);
-
             expect(
-                widest - narrowest,
-                `the action row is not in equal parts at ${s.width}px`
-            ).toBeLessThanOrEqual(2);
+                s.toolWidths.length,
+                `the band should carry Sort and More and nothing else at ${s.width}px`
+            ).toBe(2);
 
-            // Each one a real target. 44px is the touch minimum in the other
-            // direction; a quarter of the narrowest band this supports is well
-            // clear of it, and a number here would just be a second copy of
-            // the CSS.
-            expect(
-                narrowest,
-                `the action row's buttons are too narrow at ${s.width}px`
-            ).toBeGreaterThan(60);
+            // Square, and the same height as the field beside them. A control
+            // that has been squeezed narrower than it is tall is the failure
+            // this catches, and it is the one a flex row produces silently.
+            for (const w of s.toolWidths) {
+                expect(
+                    w,
+                    `a control is narrower than its own height at ${s.width}px`
+                ).toBeGreaterThanOrEqual(30);
+            }
 
             // The search takes the band rather than sitting in a 274px box
             // inside it — the same decision, one row down.
@@ -497,10 +501,12 @@ test.describe('the rail across viewport widths', () => {
         );
         await page.screenshot({ path: 'test-results/responsive/phone-open.png' });
 
-        // Open, it is still the rail: the tools are there, which is the point
-        // of having a bar rather than hiding the rail outright.
+        // Open, it is still the rail: New folder and the control line are
+        // there, which is the point of having a bar rather than hiding the
+        // rail outright. Two controls, not the old four — Sort, and the More
+        // that only this width has.
         await expect(page.getByRole('button', { name: /new folder/i })).toBeVisible();
-        await expect(page.locator('.folderfolio-rail__tool')).toHaveCount(4);
+        await expect(page.locator('.folderfolio-rail__control')).toHaveCount(2);
 
         // Collapse closes it again, and focus lands on the control that
         // replaces the one that just disappeared.
