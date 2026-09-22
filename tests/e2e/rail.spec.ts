@@ -406,3 +406,109 @@ test.describe('reordering a folder', () => {
         await expect(panel.locator('.folderfolio-menu__head')).toHaveCount(0);
     });
 });
+
+/**
+ * Sorting inside one folder — tier 1 item 2.
+ *
+ * The two assertions that matter are both about scope. A folder's order must
+ * reach its own children, and it must reach *nothing else*: not its sibling,
+ * not the level it sits on, and not its grandchildren, which are inside a
+ * different folder and have their own answer.
+ */
+test.describe('a folder sorts what is inside it', () => {
+    test.beforeEach(async ({ page }) => {
+        await page.goto('/wp-admin/upload.php');
+        await page.locator('#folderfolio-rail').waitFor();
+        await resetFolders(page);
+
+        const outer = await createFolder(page, 'Outer');
+        for (const name of ['Zulu', 'Alpha', 'Mike']) {
+            await createFolder(page, name, outer.id);
+        }
+
+        // A sibling with children of its own, so "does not leak" has
+        // something to be true about.
+        const other = await createFolder(page, 'Other');
+        for (const name of ['Zebra', 'Ant']) {
+            await createFolder(page, name, other.id);
+        }
+
+        await page.reload();
+        await waitForTree(page, 'Outer');
+    });
+
+    const childrenOf = (page: import('@playwright/test').Page, parent: string) =>
+        page.evaluate((name) => {
+            const rows = [...document.querySelectorAll('[data-folderfolio-name]')];
+            const at = rows.findIndex((r) => r.getAttribute('data-folderfolio-name') === name);
+
+            return rows
+                .slice(at + 1)
+                .filter((r) => r.getAttribute('data-folderfolio-depth') === '1')
+                .map((r) => r.getAttribute('data-folderfolio-name')!)
+                .slice(0, 3);
+        }, parent);
+
+    async function openSortStep(page: import('@playwright/test').Page, folder: string) {
+        await page.locator('.folderfolio-row', { hasText: folder }).first().click();
+        await page.locator('.folderfolio-row__menu').click();
+        await page.getByRole('menuitem', { name: /subfolders/i }).click();
+    }
+
+    test('the panel says what each scope is set to before it is opened', async ({ page }) => {
+        await page.locator('.folderfolio-row', { hasText: 'Outer' }).first().click();
+        await page.locator('.folderfolio-row__menu').click();
+
+        const panel = page.locator('.folderfolio-menu--row');
+
+        await expect(panel.locator('.folderfolio-menu__label')).toHaveText(/sort inside/i);
+
+        // Both rows, both unset — which is a value, not an absence.
+        await expect(panel.locator('.folderfolio-menu__value')).toHaveCount(2);
+        await expect(panel.locator('.folderfolio-menu__value').first()).toHaveText(
+            /same as everywhere/i
+        );
+    });
+
+    test('an order reaches that folder\'s children and nothing else', async ({ page }) => {
+        await page
+            .locator('.folderfolio-row', { hasText: 'Outer' })
+            .first()
+            .locator('.folderfolio-row__switcher')
+            .click();
+        await page
+            .locator('.folderfolio-row', { hasText: 'Other' })
+            .first()
+            .locator('.folderfolio-row__switcher')
+            .click();
+
+        await openSortStep(page, 'Outer');
+        await page.getByRole('menuitemradio', { name: /name, z to a/i }).click();
+
+        await expect.poll(() => childrenOf(page, 'Outer')).toEqual(['Zulu', 'Mike', 'Alpha']);
+
+        // The sibling's children are untouched — they follow the global sort,
+        // whatever it happens to be, and are not reversed.
+        await expect.poll(() => childrenOf(page, 'Other')).not.toEqual(['Zebra', 'Ant']);
+    });
+
+    test('Same as everywhere puts it back', async ({ page }) => {
+        await page
+            .locator('.folderfolio-row', { hasText: 'Outer' })
+            .first()
+            .locator('.folderfolio-row__switcher')
+            .click();
+
+        await openSortStep(page, 'Outer');
+        await page.getByRole('menuitemradio', { name: /name, z to a/i }).click();
+        await expect.poll(() => childrenOf(page, 'Outer')).toEqual(['Zulu', 'Mike', 'Alpha']);
+
+        await openSortStep(page, 'Outer');
+        await page.getByRole('menuitemradio', { name: /same as everywhere/i }).click();
+
+        // Not the reversed order any more. Which order it *is* depends on the
+        // site default, and asserting that here would be asserting the
+        // fixture rather than the feature.
+        await expect.poll(() => childrenOf(page, 'Outer')).not.toEqual(['Zulu', 'Mike', 'Alpha']);
+    });
+});

@@ -37,20 +37,10 @@ import { ArrowUpDownIcon, EllipsisIcon } from './icons';
 import { Menu } from './Menu';
 import type { FolderNode } from './queries';
 import { Search } from './Search';
-import { sortTree, useRail, type SortOrder } from './store';
+import { SORT_LABELS, sortTree, useRail } from './store';
 import { can } from '../../lib/can';
 import { useIsNarrow } from '../../lib/narrow';
 import { t } from '../../core/api';
-
-const SORTS: Array<{ value: SortOrder; label: string; fallback: string }> = [
-    { value: 'name-asc', label: 'sortNameAsc', fallback: 'Name, A to Z' },
-    { value: 'name-desc', label: 'sortNameDesc', fallback: 'Name, Z to A' },
-    { value: 'newest', label: 'sortNewest', fallback: 'Newest first' },
-    { value: 'oldest', label: 'sortOldest', fallback: 'Oldest first' },
-    // Last, and after a rule in the menu: the four above are views the tree
-    // is put into, this one is the tree's own arrangement being shown.
-    { value: 'custom', label: 'sortCustom', fallback: 'Custom order' },
-];
 
 export function RailControls({
     selected,
@@ -104,7 +94,7 @@ export function RailControls({
 
                 {sortOpen ? (
                     <Menu className="folderfolio-menu--end" onClose={() => setSortOpen(false)}>
-                        {SORTS.map((option) => (
+                        {SORT_LABELS.map((option) => (
                             <button
                                 key={option.value}
                                 type="button"

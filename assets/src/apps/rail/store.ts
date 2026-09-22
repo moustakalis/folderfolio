@@ -103,6 +103,36 @@ export type SortOrder = 'name-asc' | 'name-desc' | 'newest' | 'oldest' | 'custom
 const SORT_ORDERS: readonly SortOrder[] = ['name-asc', 'name-desc', 'newest', 'oldest', 'custom'];
 
 /**
+ * Is this string one of ours?
+ *
+ * A folder's own order arrives off the wire as a plain string. The server
+ * validates it against the same list on the way in, but a value stored before
+ * that list changes — or written by anything else with database access — must
+ * not leave a level sorted by nothing.
+ */
+/**
+ * The five, in the order every menu draws them, with their i18n keys.
+ *
+ * Data rather than JSX, so it can live beside `SortOrder` instead of in
+ * whichever component happened to need it first. It was in the toolbar until
+ * that was dissolved, and the folder menu needs the same five for its
+ * per-folder step — two copies would drift the moment a sixth is added.
+ */
+export const SORT_LABELS: ReadonlyArray<{ value: SortOrder; label: string; fallback: string }> = [
+    { value: 'name-asc', label: 'sortNameAsc', fallback: 'Name, A to Z' },
+    { value: 'name-desc', label: 'sortNameDesc', fallback: 'Name, Z to A' },
+    { value: 'newest', label: 'sortNewest', fallback: 'Newest first' },
+    { value: 'oldest', label: 'sortOldest', fallback: 'Oldest first' },
+    // Last, and after a rule in the menu: the four above are views the tree
+    // is put into, this one is the tree's own arrangement being shown.
+    { value: 'custom', label: 'sortCustom', fallback: 'Custom order' },
+];
+
+export function isSortOrder(value: unknown): value is SortOrder {
+    return typeof value === 'string' && SORT_ORDERS.includes(value as SortOrder);
+}
+
+/**
  * The sort the rail opens on.
  *
  * A site setting, not a user preference: it is the order a folder tree is
@@ -216,12 +246,17 @@ export const useRail = create<RailState>((set) => ({
  * nothing and never refetches. Recursive, because a sort that only reordered
  * the top level would be a strange half-measure.
  */
-export function sortTree<T extends { name: string; id: number; sort_order: number; children: T[] }>(
-    nodes: T[],
-    order: SortOrder
-): T[] {
+export function sortTree<
+    T extends {
+        name: string;
+        id: number;
+        sort_order: number;
+        sort_folders?: string | null;
+        children: T[];
+    },
+>(nodes: T[], global: SortOrder, level: SortOrder = global): T[] {
     const sorted = [...nodes].sort((a, b) => {
-        switch (order) {
+        switch (level) {
             case 'name-desc':
                 return b.name.localeCompare(a.name, undefined, { numeric: true });
 
@@ -248,5 +283,22 @@ export function sortTree<T extends { name: string; id: number; sort_order: numbe
         }
     });
 
-    return sorted.map((node) => ({ ...node, children: sortTree(node.children, order) }));
+    /*
+     * A folder's own order governs its CHILDREN, and the fallback below it is
+     * the GLOBAL order, not this level's.
+     *
+     * "Sort inside Brand by Z–A" is an answer about what is inside Brand. It
+     * is not an answer about what is inside Brand's subfolders — that is a
+     * separate question with its own answer, and inheriting down would make
+     * one choice silently rewrite a dozen levels the person never looked at.
+     * The unit suite guards the sibling case; this comment is the parent one.
+     */
+    return sorted.map((node) => ({
+        ...node,
+        children: sortTree(
+            node.children,
+            global,
+            isSortOrder(node.sort_folders) ? node.sort_folders : global
+        ),
+    }));
 }

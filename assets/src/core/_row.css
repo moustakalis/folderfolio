@@ -391,6 +391,92 @@
   padding: 7px 12px;
 }
 
+/* -------------------------------- Sort inside — the menu's second step */
+
+/**
+ * The group label above the two scope rows.
+ *
+ * A label and not a menu item: it names what the next two rows are about and
+ * is not itself a choice, so it carries no role and never takes focus.
+ */
+.folderfolio-menu__label {
+  margin: 4px 0 2px;
+  padding: 2px 12px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ff-muted);
+}
+
+/**
+ * A row that opens a step, with its current answer on it.
+ *
+ * `margin-left: auto` on the value rather than `justify-content` on the row,
+ * because the row is three things — name, value, chevron — and space-between
+ * would push the chevron away from the value it belongs with.
+ */
+.folderfolio-menu__value {
+  min-width: 0;
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11.5px;
+  color: var(--ff-muted);
+}
+
+.folderfolio-menu__item--step > svg {
+  flex: 0 0 auto;
+  color: var(--ff-off);
+}
+
+.folderfolio-menu__item--step:hover .folderfolio-menu__value,
+.folderfolio-menu__item--step:hover > svg {
+  color: var(--ff-ink);
+}
+
+/**
+ * The way back, at the top of a step.
+ *
+ * Styled as a heading that happens to be pressable rather than as another
+ * menu item: it is the one row in the panel that names where you are, and
+ * giving it an item's weight would make five siblings look like six choices.
+ * The chevron is the right-pointing one turned around — the same glyph the
+ * scope row used to get here, reversed, which is the whole of the mental
+ * model.
+ */
+.folderfolio-menu__back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 12px;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: left;
+  color: var(--ff-ink);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.folderfolio-menu__back:hover {
+  background: var(--ff-hover);
+}
+
+.folderfolio-menu__back:focus-visible {
+  outline: 2px solid var(--ff-sel);
+  outline-offset: -2px;
+}
+
+.folderfolio-menu__back-icon {
+  display: inline-flex;
+  color: var(--ff-muted);
+  transform: rotate(180deg);
+}
+
 /**
  * Delete, in a menu where everything else is reversible.
  *

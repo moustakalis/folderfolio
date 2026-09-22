@@ -3,47 +3,65 @@
  *
  * ## One menu, two doors
  *
- * Above 782px it opens from a ⋮ on the selected row; below, from the
- * toolbar's More. Same component, same contents, same gates — the only
+ * Above 782px it opens from a ⋮ on the selected row; below, from the control
+ * line's last button. Same component, same contents, same gates — the only
  * difference is what it is pinned to. That is the whole point of the split
  * below: `FolderMenuItems` is the menu, and the two exported wrappers are
  * only containers.
  *
  * The rule the shape comes from is Nick's: **no action in two places at one
  * width**. So Rename and Delete left the toolbar entirely and live here, and
- * the toolbar keeps only what is not a folder action — the global sort, which
- * needs no selection and no permission and therefore cannot live in a menu
- * that has both.
+ * the toolbar itself is gone — what survived it is the global sort, which is
+ * not a folder action and sits beside the search field.
+ *
+ * ## Two steps, not a submenu
+ *
+ * *Sort inside* asks two questions — subfolders, and files — with five and
+ * four answers. Nine more rows would make this panel taller than the tree it
+ * sits over, and a flyout in a 308px rail has nowhere to open but back across
+ * the tree. So choosing a scope replaces the panel's body, with one row back.
+ * One level, no hover, and it works on a touch screen.
  *
  * ## No heading
  *
  * It said "Colour for <name>" when colour was all it did, then the name alone
  * when it grew. Both are gone: opened from the row, the menu is physically on
- * the folder it acts on, and opened from More it acts on the selection, which
- * is the row drawn in the accent colour two pixels away. A title that repeats
- * what the pointer is already touching is a row of chrome.
- *
- * ## Colour, unchanged
- *
- * Ten fixed swatches and "No colour". No free picker and no hex field: eight
- * colour schemes ship with core, and a hex chosen while looking at one of
- * them cannot be guaranteed to stay legible on the other seven. What is
- * stored is a swatch *name*, and `--ff-folder-<name>` is what resolves it per
- * scheme — see lib/swatches.ts.
+ * the folder it acts on, and opened from the control line it acts on the row
+ * drawn in the accent colour. A title repeating what the pointer is already
+ * touching is a row of chrome. The second step's back row carries the scope's
+ * name, which is the one place a heading says something.
  */
 
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-import { ArrowDownIcon, ArrowUpIcon, PencilIcon, TrashIcon } from './icons';
+import {
+    ArrowDownIcon,
+    ArrowUpIcon,
+    ChevronRightIcon,
+    PencilIcon,
+    TrashIcon,
+} from './icons';
 import { planSiblingMove } from './move';
 import { Menu } from './Menu';
 import type { FolderNode } from './queries';
-import { useReorderFolders, useSetFolderColor } from './queries';
-import { useRail } from './store';
+import { useReorderFolders, useSetFolderColor, useSetFolderSort } from './queries';
+import { SORT_LABELS, isSortOrder, useRail, type SortOrder } from './store';
 import { useAnchoredPanel } from './useAnchoredPanel';
 import { can } from '../../lib/can';
 import { SWATCHES, isSwatch, swatchLabel, type Swatch } from '../../lib/swatches';
 import { t } from '../../core/api';
+
+type Scope = 'folders' | 'files';
+
+/**
+ * What a folder's files can be ordered by.
+ *
+ * The same four, without Custom — `FolderSorts::FILE_ORDERS` says why on the
+ * server, and this is the client's half of that agreement: manual file order
+ * is tier 2, and an option that cannot be chosen is an advertisement.
+ */
+const FILE_ORDERS: readonly SortOrder[] = ['name-asc', 'name-desc', 'newest', 'oldest'];
 
 interface FolderMenuProps {
     folder: FolderNode;
@@ -53,22 +71,55 @@ interface FolderMenuProps {
     onClose: () => void;
 }
 
-/**
- * The items. Rendered inside whichever container opened them.
- *
- * Every one of them closes the menu after acting. A menu that stays open
- * after a destructive or navigational command is a menu you have to dismiss
- * twice, and the one case for staying open — picking several colours in a
- * row — is not a thing anybody does.
- */
+function orderLabel(order: string | null): string {
+    if (!isSortOrder(order)) {
+        return t('sortSameAsEverywhere', 'Same as everywhere');
+    }
+
+    const found = SORT_LABELS.find((option) => option.value === order);
+
+    return found ? t(found.label, found.fallback) : order;
+}
+
 function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps) {
     const setColor = useSetFolderColor();
+    const setSort = useSetFolderSort();
     const reorder = useReorderFolders();
-    const setSort = useRail((s) => s.setSort);
+    const setGlobalSort = useRail((s) => s.setSort);
     const edit = useRail((s) => s.edit);
     const levelId = useRail((s) => s.levelId);
     const openLevel = useRail((s) => s.openLevel);
     const current = isSwatch(folder.color) ? folder.color : null;
+
+    const [step, setStep] = useState<Scope | null>(null);
+    const backRef = useRef<HTMLButtonElement>(null);
+    const foldersRef = useRef<HTMLButtonElement>(null);
+    const filesRef = useRef<HTMLButtonElement>(null);
+
+    /*
+     * Focus follows the step.
+     *
+     * `Menu` focuses the first button when it opens and puts focus back on
+     * the trigger when Escape closes it — but neither covers a panel that
+     * replaces its own contents. Without this, choosing a scope removes the
+     * button that had focus and drops it on <body>, which is the exact
+     * failure the note in Menu.tsx was written about.
+     */
+    useEffect(() => {
+        if (step !== null) {
+            backRef.current?.focus();
+        }
+    }, [step]);
+
+    function leaveStep(from: Scope) {
+        setStep(null);
+
+        // After paint, because the row being focused does not exist until
+        // this step has been replaced by the main list.
+        requestAnimationFrame(() => {
+            (from === 'files' ? filesRef : foldersRef).current?.focus();
+        });
+    }
 
     // Asked here rather than inside the click, so an item that is enabled and
     // an action that does nothing cannot disagree. A folder alone on its
@@ -102,13 +153,88 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
 
         // Same as a drop and as Alt+Arrow: the arrangement is only visible
         // under Custom, and the person has just made one.
-        setSort('custom');
+        setGlobalSort('custom');
         reorder.mutate(plan);
         onClose();
     }
 
     const organise = can('rename');
 
+    // ------------------------------------------------------------ step two
+    if (step !== null) {
+        const orders: readonly SortOrder[] =
+            step === 'files' ? FILE_ORDERS : SORT_LABELS.map((option) => option.value);
+        const chosen = step === 'files' ? folder.sort_files : folder.sort_folders;
+
+        return (
+            <>
+                <button
+                    ref={backRef}
+                    type="button"
+                    role="menuitem"
+                    className="folderfolio-menu__back"
+                    onClick={() => leaveStep(step)}
+                >
+                    <span className="folderfolio-menu__back-icon" aria-hidden="true">
+                        <ChevronRightIcon size={12} />
+                    </span>
+                    {step === 'files'
+                        ? t('sortFiles', 'Files')
+                        : t('sortSubfolders', 'Subfolders')}
+                </button>
+
+                {/*
+                  "Same as everywhere" first, and a real choice rather than an
+                  absence: it is the state every folder starts in, and the one
+                  a person needs to get back to after trying an order they did
+                  not want. Clearing is a DELETE on the server, not a stored
+                  default — see FolderSorts::set.
+                */}
+                <button
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={!isSortOrder(chosen)}
+                    className="folderfolio-menu__item"
+                    onClick={() => {
+                        setSort.mutate({ id: folder.id, scope: step, order: null });
+                        onClose();
+                    }}
+                >
+                    <span className="folderfolio-menu__tick" aria-hidden="true">
+                        {!isSortOrder(chosen) ? '✓' : ''}
+                    </span>
+                    {t('sortSameAsEverywhere', 'Same as everywhere')}
+                </button>
+
+                <div className="folderfolio-menu__rule" role="separator" />
+
+                {orders.map((value) => {
+                    const option = SORT_LABELS.find((o) => o.value === value);
+
+                    return (
+                        <button
+                            key={value}
+                            type="button"
+                            role="menuitemradio"
+                            aria-checked={chosen === value}
+                            className="folderfolio-menu__item"
+                            onClick={() => {
+                                setSort.mutate({ id: folder.id, scope: step, order: value });
+                                onClose();
+                            }}
+                        >
+                            <span className="folderfolio-menu__tick" aria-hidden="true">
+                                {chosen === value ? '✓' : ''}
+                            </span>
+                            {option ? t(option.label, option.fallback) : value}
+                        </button>
+                    );
+                })}
+            </>
+        );
+    }
+
+    // ------------------------------------------------------------ step one
     return (
         <>
             {organise ? (
@@ -151,6 +277,48 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
                     >
                         <ArrowDownIcon size={13} />
                         {t('moveDown', 'Move down')}
+                    </button>
+
+                    <div className="folderfolio-menu__rule" role="separator" />
+
+                    {/*
+                      Each row says what it is set to without being opened,
+                      which is the whole reason a two-step panel is bearable:
+                      the answer is on the first screen, and only changing it
+                      costs a second.
+                    */}
+                    <p className="folderfolio-menu__label">
+                        {t('sortInside', 'Sort inside')}
+                    </p>
+
+                    <button
+                        ref={foldersRef}
+                        type="button"
+                        role="menuitem"
+                        className="folderfolio-menu__item folderfolio-menu__item--step"
+                        aria-haspopup="menu"
+                        onClick={() => setStep('folders')}
+                    >
+                        {t('sortSubfolders', 'Subfolders')}
+                        <span className="folderfolio-menu__value">
+                            {orderLabel(folder.sort_folders)}
+                        </span>
+                        <ChevronRightIcon size={12} />
+                    </button>
+
+                    <button
+                        ref={filesRef}
+                        type="button"
+                        role="menuitem"
+                        className="folderfolio-menu__item folderfolio-menu__item--step"
+                        aria-haspopup="menu"
+                        onClick={() => setStep('files')}
+                    >
+                        {t('sortFiles', 'Files')}
+                        <span className="folderfolio-menu__value">
+                            {orderLabel(folder.sort_files)}
+                        </span>
+                        <ChevronRightIcon size={12} />
                     </button>
 
                     <div className="folderfolio-menu__rule" role="separator" />
@@ -225,12 +393,12 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
 }
 
 /**
- * The toolbar's door — below 782px, where there is no ⋮.
+ * The control line's door — below 782px, where there is no ⋮.
  *
- * Absolutely positioned inside the tool's wrapper and right-aligned, because
- * More is the last tool in a 300px rail and a 240px panel opening from its
- * left edge would hang off the rail entirely. `Menu` supplies Escape, the
- * outside click, and focus returning to the button.
+ * Absolutely positioned inside the control's wrapper and right-aligned,
+ * because it is the last control in a 300px rail and a 240px panel opening
+ * from its left edge would hang off the rail entirely. `Menu` supplies
+ * Escape, the outside click, and focus returning to the button.
  */
 export function FolderMenu(props: FolderMenuProps) {
     return (

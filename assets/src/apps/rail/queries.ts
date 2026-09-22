@@ -40,6 +40,19 @@ export interface FolderNode {
      * hand it over as a string and "10" sorts before "9".
      */
     sort_order: number;
+    /**
+     * How this folder shows what is inside it, or null for "follow whatever
+     * the person is looking at".
+     *
+     * Plain strings, not `SortOrder`: they came off the wire. `isSortOrder`
+     * in store.ts is what narrows them, and a value it does not recognise
+     * falls back to the global order rather than leaving a level unsorted.
+     *
+     * `sort_files` is applied server-side — see MediaLibraryFilter — so the
+     * client only ever reads it to show which one is ticked.
+     */
+    sort_folders: string | null;
+    sort_files: string | null;
 }
 
 export interface LibraryCounts {
@@ -142,6 +155,67 @@ export function useRenameFolder() {
  *
  * `color` is a swatch name and never a hex. See lib/swatches.ts.
  */
+/**
+ * How one folder shows what is inside it.
+ *
+ * Two scopes, one route. The folder half is applied by `sortTree`, so its
+ * optimistic write is the whole of the change the person sees; the file half
+ * is applied server-side by `MediaLibraryFilter`, so the optimistic write
+ * only moves the tick and the library catches up when it next queries.
+ *
+ * Invalidates the tree and nothing else. Counts do not move, and the library
+ * is WordPress's own query rather than one of ours to invalidate.
+ */
+export function useSetFolderSort() {
+    const client = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (input: {
+            id: number;
+            scope: 'folders' | 'files';
+            order: string | null;
+        }) => {
+            const response = await apiFetch<ApiEnvelope<{ tree: FolderNode[] }>>(
+                `/folders/${input.id}/sort`,
+                {
+                    method: 'POST',
+                    // '' and not null, for the reason the colour mutation
+                    // gives: the REST field is typed, and the server reads an
+                    // empty string as "clear it".
+                    data: { scope: input.scope, order: input.order ?? '' },
+                }
+            );
+
+            return response.data;
+        },
+
+        onMutate: async (input) => {
+            await client.cancelQueries({ queryKey: treeKey });
+
+            const previous = client.getQueryData<FolderNode[]>(treeKey);
+            const field = input.scope === 'files' ? 'sort_files' : 'sort_folders';
+
+            client.setQueryData<FolderNode[]>(treeKey, (nodes) =>
+                mapTree(nodes ?? [], (node) =>
+                    node.id === input.id ? { ...node, [field]: input.order } : node
+                )
+            );
+
+            return { previous };
+        },
+
+        onError: (_error, _input, context) => {
+            if (context?.previous) {
+                client.setQueryData(treeKey, context.previous);
+            }
+        },
+
+        onSettled: () => {
+            void client.invalidateQueries({ queryKey: treeKey });
+        },
+    });
+}
+
 export function useSetFolderColor() {
     const client = useQueryClient();
 
