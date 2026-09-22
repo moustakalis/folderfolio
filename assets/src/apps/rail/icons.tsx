@@ -177,6 +177,28 @@ export function ArrowDownIcon(props: IconProps) {
     );
 }
 
+/**
+ * Chevrons apart and chevrons together — expand all and collapse all.
+ *
+ * One control shows one of them at a time, so the pair reads as a state
+ * rather than as two buttons that happen to be adjacent.
+ */
+export function ChevronsUpDownIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <path d="m7 15 5 5 5-5M7 9l5-5 5 5" />
+        </Svg>
+    );
+}
+
+export function ChevronsDownUpIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <path d="m7 20 5-5 5 5M7 4l5 5 5-5" />
+        </Svg>
+    );
+}
+
 export function FilterIcon(props: IconProps) {
     return (
         <Svg {...props}>

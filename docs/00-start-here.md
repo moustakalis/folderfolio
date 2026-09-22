@@ -1694,6 +1694,17 @@ rendered in `--ff-ink`). **Out-specify, do not match** — and none of the three
 showed up as an error anywhere, only as a measurement that disagreed with the
 stylesheet.
 
+**`requestAnimationFrame` never fires in a backgrounded tab, and a probe that
+awaits one reads as a frozen renderer.** Comet is backgrounded for most of a
+session — `document.hidden` is true — so `await new Promise(r =>
+requestAnimationFrame(r))` hangs forever, CDP times out at 45 seconds, and the
+tool reports *the renderer may be frozen or unresponsive*. That is the
+instrument, not the page: three separate measurements of expand-all read as
+45-second freezes and the real number was **620ms**. Measure a React render
+with a `MutationObserver` on the container instead — and note that a discrete
+click is **not** flushed synchronously, so the timestamp after `.click()` is
+before the render, not after it.
+
 **When the window will not resize, an iframe is a real viewport.** A
 full-screen macOS window ignores the extension's resize — it reports success
 and nothing moves — which blocks every narrow check. An iframe of the same

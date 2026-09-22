@@ -86,6 +86,18 @@ export interface RailState {
     toggle: (id: number) => void;
     expand: (id: number) => void;
     collapse: (id: number) => void;
+    /**
+     * Every parent at once, and nothing at once.
+     *
+     * One `set` each, like `reveal` — which matters more here than anywhere
+     * else in this store. `Tree` subscribes to `expandedIds` and re-renders
+     * every Row when it changes, so expanding folders one at a time would be
+     * one full-tree render per folder. Measured on the dev site by clicking
+     * 42 switchers in a loop: the renderer stopped answering for 45 seconds.
+     * The same 42 as a single set is one render.
+     */
+    expandAll: (ids: number[]) => void;
+    collapseAll: () => void;
     /** Open every ancestor of a folder, so a deep link can reveal its row. */
     reveal: (ancestorIds: number[]) => void;
     /** Move the narrow-width sheet to a folder's children. `null` is the top. */
@@ -227,6 +239,18 @@ export const useRail = create<RailState>((set) => ({
 
             return { expandedIds: next };
         }),
+
+    // Replaces rather than unions: "everything" is the whole answer, and the
+    // caller has just computed the whole list.
+    expandAll: (ids) => set({ expandedIds: new Set(ids) }),
+
+    // Returning `state` when there is nothing to collapse is not a
+    // micro-optimisation — Zustand compares by reference, so a fresh empty
+    // Set would re-render the tree to change nothing.
+    collapseAll: () =>
+        set((state) =>
+            state.expandedIds.size === 0 ? state : { expandedIds: new Set<number>() }
+        ),
 
     openLevel: (id) => set({ levelId: id }),
 

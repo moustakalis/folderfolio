@@ -33,7 +33,12 @@
 import { useMemo, useState } from 'react';
 
 import { FolderMenu } from './FolderMenu';
-import { ArrowUpDownIcon, EllipsisIcon } from './icons';
+import {
+    ArrowUpDownIcon,
+    ChevronsDownUpIcon,
+    ChevronsUpDownIcon,
+    EllipsisIcon,
+} from './icons';
 import { Menu } from './Menu';
 import type { FolderNode } from './queries';
 import { Search } from './Search';
@@ -54,6 +59,9 @@ export function RailControls({
     const narrow = useIsNarrow();
     const sort = useRail((s) => s.sort);
     const setSort = useRail((s) => s.setSort);
+    const expandedIds = useRail((s) => s.expandedIds);
+    const expandAll = useRail((s) => s.expandAll);
+    const collapseAll = useRail((s) => s.collapseAll);
     const [sortOpen, setSortOpen] = useState(false);
     const [moreOpen, setMoreOpen] = useState(false);
 
@@ -73,9 +81,64 @@ export function RailControls({
     // for its copy would tie this to whichever is mounted.
     const ordered = useMemo(() => sortTree(nodes, sort), [nodes, sort]);
 
+    /*
+     * Every folder that has children — the argument to expandAll.
+     *
+     * Walked from `nodes` rather than `ordered`, because which folders have
+     * children does not depend on what order anything is in, and pinning it
+     * to the raw tree keeps this out of the way of every sort change.
+     */
+    const parentIds = useMemo(() => {
+        const out: number[] = [];
+
+        (function walk(list: FolderNode[]) {
+            for (const node of list) {
+                if (node.children.length > 0) {
+                    out.push(node.id);
+                    walk(node.children);
+                }
+            }
+        })(nodes);
+
+        return out;
+    }, [nodes]);
+
+    /*
+     * One button, and `anything` rather than `everything` decides which way
+     * it points.
+     *
+     * After expanding, one press puts it back — which is the press that
+     * matters, because expanding 1,053 folders is the thing a person most
+     * wants to undo. Two manually opened folders also collapse, and that is
+     * the same intent: "put the tree away".
+     */
+    const anyExpanded = expandedIds.size > 0;
+
     return (
         <div className="folderfolio-rail__controls">
             <Search />
+
+            {/*
+              Wide only. `Levels` is a drill-down with no expanded-node state
+              — there is nothing below 782px for this to expand — so it is
+              absent there rather than disabled, the same way the ⋮ is.
+
+              No permission and never disabled, like Sort: what is folded up
+              is a view, not a property of anybody's folders.
+            */}
+            {!narrow && parentIds.length > 0 ? (
+                <button
+                    type="button"
+                    className="folderfolio-rail__control"
+                    title={anyExpanded ? t('collapseAll', 'Collapse all') : t('expandAll', 'Expand all')}
+                    aria-label={
+                        anyExpanded ? t('collapseAll', 'Collapse all') : t('expandAll', 'Expand all')
+                    }
+                    onClick={() => (anyExpanded ? collapseAll() : expandAll(parentIds))}
+                >
+                    {anyExpanded ? <ChevronsDownUpIcon size={14} /> : <ChevronsUpDownIcon size={14} />}
+                </button>
+            ) : null}
 
             {/* Sort is about the view, not the selection, so it is never
                 disabled and carries no permission. */}
