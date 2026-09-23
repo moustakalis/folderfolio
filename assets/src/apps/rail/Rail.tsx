@@ -138,7 +138,7 @@ export function Rail({
             setPendingUndo({
                 folderId: node.id,
                 name: node.name,
-                fileCount: node.count,
+                unassigned: node.only_here ?? 0,
                 deadline: Date.now() + UNDO_WINDOW,
             });
 

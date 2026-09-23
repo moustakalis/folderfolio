@@ -213,8 +213,13 @@ export interface Editing {
 export interface PendingUndo {
     folderId: number;
     name: string;
-    /** Files that will be left unassigned — what the toast promises. */
-    fileCount: number;
+    /**
+     * Files that will be left in no folder — what the toast promises.
+     *
+     * The folder's `only_here`, not its `count`: a file also filed somewhere
+     * else keeps that folder and does not move to Unassigned.
+     */
+    unassigned: number;
     /** When the delete becomes permanent, in ms. Moved forward while hovered. */
     deadline: number;
 }

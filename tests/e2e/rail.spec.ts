@@ -768,3 +768,50 @@ test.describe('what the rail says after a write', () => {
         expect(counts).toBe(1);
     });
 });
+
+test.describe('the undo toast', () => {
+    test('counts only the files that end up in no folder, in the right form', async ({ page }) => {
+        await page.goto('/wp-admin/upload.php');
+        await page.locator('#folderfolio-rail').waitFor();
+        await resetFolders(page);
+
+        const media = await page.evaluate(async () =>
+            (await window.wp.apiFetch({ path: '/wp/v2/media?per_page=2&_fields=id' })).map((m: any) => m.id)
+        );
+        test.skip(media.length < 2, 'the rig needs two media items');
+
+        const one = await createFolder(page, 'One');
+        const two = await createFolder(page, 'Two');
+        await page.evaluate(
+            async ([a, b, ids]) => {
+                const file = (folder: number, list: number[]) =>
+                    window.wp.apiFetch({
+                        path: '/folderfolio/v1/assignments',
+                        method: 'POST',
+                        data: { folder_id: folder, attachment_ids: list, mode: 'add' },
+                    });
+                await file(a, ids);
+                await file(b, [ids[0]]);
+            },
+            [one.id, two.id, media] as const
+        );
+
+        await page.reload();
+        await waitForTree(page, 'One');
+
+        const toastText = () => page.locator('.folderfolio-toast:not(.folderfolio-toast--notice) .folderfolio-toast__text');
+
+        // Two's only file is also in One: nothing moves to Unassigned.
+        await page.locator('.folderfolio-tree .folderfolio-row', { hasText: /^Two/ }).first().click();
+        await page.locator('.folderfolio-row__menu').click();
+        await page.getByRole('menuitem', { name: 'Delete' }).click();
+        await expect(toastText()).toHaveText('Deleted “Two”');
+        await page.getByRole('button', { name: 'Undo' }).click();
+
+        // One holds two files, one of them also in Two: exactly one moves, singular.
+        await page.locator('.folderfolio-tree .folderfolio-row', { hasText: /^One/ }).first().click();
+        await page.locator('.folderfolio-row__menu').click();
+        await page.getByRole('menuitem', { name: 'Delete' }).click();
+        await expect(toastText()).toHaveText('Deleted “One” — 1 file moved to Unassigned');
+    });
+});

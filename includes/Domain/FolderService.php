@@ -108,8 +108,12 @@ class FolderService
 
         $inherited = $mode !== 'direct';
 
-        // Only the inherited total can count a file twice, so only it pays
-        // for the question.
+        // Files filed in more than one folder: the input to both corrections
+        // below, asked once. Empty — and one GROUP BY — on a library filed one
+        // file to one folder.
+        $multiFiled = $this->assignments->multiFiled();
+
+        // Only the inherited total can count a file twice.
         $overcount = [];
 
         if ($inherited) {
@@ -119,14 +123,15 @@ class FolderService
                 $paths[(int) $row['id']] = (string) $row['path'];
             }
 
-            $overcount = FolderTree::overcount($this->assignments->multiFiled(), $paths);
+            $overcount = FolderTree::overcount($multiFiled, $paths);
         }
 
         return FolderTree::withCounts(
             $nodes,
             $this->assignments->directCounts(),
             $inherited,
-            $overcount
+            $overcount,
+            FolderTree::shared($multiFiled)
         );
     }
 

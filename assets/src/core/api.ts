@@ -91,3 +91,20 @@ export function tn(
   // there half the time.
   return count === 1 ? t(one, fallbackOne, ...values) : t(many, fallbackMany, ...values);
 }
+
+/**
+ * The server's own sentence, whichever shape it arrived in.
+ *
+ * Our routes answer `{success: false, error: {code, message}}`; core's own
+ * refusals — a 403 from a permission callback, a missing argument — answer
+ * `{code, message, data}`. `wp.apiFetch` rejects with the body as it came, not
+ * with an `Error`, so there is no `.message` on the first shape at all.
+ */
+export function errorMessage(error: unknown): string {
+  const body = error as { error?: { message?: unknown }; message?: unknown } | null;
+  const message = body?.error?.message ?? body?.message;
+
+  return typeof message === 'string' && message.trim() !== ''
+    ? message
+    : t('actionFailed', 'That could not be done.');
+}

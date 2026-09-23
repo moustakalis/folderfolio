@@ -187,9 +187,21 @@ final class MediaModalIntegration
                 'undo' => __('Undo', 'folderfolio'),
                 /* translators: %s is the folder name. */
                 'deleted' => __('Deleted “%s”', 'folderfolio'),
+                /*
+                 * Two forms, chosen by the count (`tn()`), and the count is of
+                 * the files that are filed nowhere else — a file still in
+                 * another folder does not move to Unassigned, and the toast
+                 * used to say it did.
+                 *
+                 * translators: 1: folder name, 2: number of files, always 1.
+                 */
+                'deletedWithFile' => __(
+                    'Deleted “%1$s” — %2$s file moved to Unassigned',
+                    'folderfolio'
+                ),
                 /* translators: 1: folder name, 2: number of files. */
                 'deletedWithFiles' => __(
-                    'Deleted “%s” — %s files moved to Unassigned',
+                    'Deleted “%1$s” — %2$s files moved to Unassigned',
                     'folderfolio'
                 ),
                 'treeFailed' => __('Could not load your folders.', 'folderfolio'),

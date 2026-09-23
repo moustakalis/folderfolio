@@ -13,7 +13,7 @@ import { createRoot } from 'react-dom/client';
 import { Rail } from './rail/Rail';
 import { useRail } from './rail/store';
 import { watchUploadTarget } from '../core/upload-target';
-import { t } from '../core/api';
+import { errorMessage } from '../core/api';
 
 /**
  * Where the breadcrumb and the drill-down cards go.
@@ -99,23 +99,6 @@ watchUploadTarget(
     useRail.getState().selectedId
 );
 
-/**
- * The server's own sentence, whichever shape it arrived in.
- *
- * Our routes answer `{success: false, error: {code, message}}`; core's own
- * refusals — a 403 from a permission callback, a missing argument — answer
- * `{code, message, data}`. `wp.apiFetch` rejects with the body as it came, not
- * with an `Error`, so there is no `.message` on the first shape at all.
- */
-function messageOf(error: unknown): string {
-    const body = error as { error?: { message?: unknown }; message?: unknown } | null;
-    const message = body?.error?.message ?? body?.message;
-
-    return typeof message === 'string' && message.trim() !== ''
-        ? message
-        : t('actionFailed', 'That could not be done.');
-}
-
 const mount = document.getElementById('folderfolio-rail-app');
 
 if (mount) {
@@ -135,7 +118,7 @@ if (mount) {
          */
         mutationCache: new MutationCache({
             onMutate: () => useRail.getState().dismissNotice(),
-            onError: (error) => useRail.getState().showNotice(messageOf(error)),
+            onError: (error) => useRail.getState().showNotice(errorMessage(error)),
         }),
         defaultOptions: {
             queries: {

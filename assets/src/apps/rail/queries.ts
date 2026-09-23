@@ -9,7 +9,8 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { apiFetch, ApiEnvelope } from '../../core/api';
+import { apiFetch, ApiEnvelope, errorMessage } from '../../core/api';
+import { useRail } from './store';
 import type { Swatch } from '../../lib/swatches';
 
 export interface FolderNode {
@@ -31,6 +32,11 @@ export interface FolderNode {
     count: number;
     /** Files anywhere in its subtree — what the badge shows by default. */
     total_count: number;
+    /**
+     * Its own files that are filed in no other folder — what deleting it
+     * (subfolders kept) leaves Unassigned. Absent when counts are off.
+     */
+    only_here?: number;
     /**
      * Where the folder sits among its siblings.
      *
@@ -301,6 +307,16 @@ export function useDeleteFolder() {
                 commit: async () => {
                     try {
                         await commit(id);
+                    } catch (error) {
+                        /*
+                         * Not a mutation — the delete is deferred behind the
+                         * undo window and committed by hand — so the rail's
+                         * MutationCache never sees it fail. Said here instead,
+                         * the same way: the invalidation below puts the folder
+                         * back in the tree, and without this it would simply
+                         * reappear with no reason given.
+                         */
+                        useRail.getState().showNotice(errorMessage(error));
                     } finally {
                         void client.invalidateQueries({ queryKey: treeKey });
                         void client.invalidateQueries({ queryKey: countsKey });

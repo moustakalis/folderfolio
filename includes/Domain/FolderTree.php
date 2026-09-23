@@ -130,16 +130,53 @@ final class FolderTree
      *
      * @param list<array<string, mixed>> $nodes
      * @param array<int, int>            $directCounts folder id => attachment count
+     * `only_here` is the folder's own files that are filed **nowhere else** —
+     * what becomes Unassigned if the folder is deleted with its subfolders
+     * kept, which is the only delete the rail and the picker offer. The undo
+     * toast says that number and no other: before 23 Sep it said the folder's
+     * whole count had "moved to Unassigned", which was untrue of every file
+     * that was also in another folder.
+     *
      * @param array<int, int>            $overcount    folder id => files counted twice or more
+     * @param array<int, int>            $shared       folder id => its files also filed elsewhere
      * @return list<array<string, mixed>>
      */
     public static function withCounts(
         array $nodes,
         array $directCounts,
         bool $inherited = true,
-        array $overcount = []
+        array $overcount = [],
+        array $shared = []
     ): array {
-        return self::countLevel($nodes, $directCounts, $inherited, $overcount)[0];
+        return self::countLevel($nodes, $directCounts, $inherited, $overcount, $shared)[0];
+    }
+
+    /**
+     * For each folder, how many of its own files are also filed in another.
+     *
+     * Every folder a multi-filed file sits in holds one such file: the file's
+     * other folder is, by definition, somewhere else.
+     *
+     * @param array<int, list<int>> $foldersByAttachment attachment id => its folders; only files filed 2+ times
+     * @return array<int, int> folder id => shared files
+     */
+    public static function shared(array $foldersByAttachment): array
+    {
+        $shared = [];
+
+        foreach ($foldersByAttachment as $folderIds) {
+            $distinct = array_unique($folderIds);
+
+            if (count($distinct) < 2) {
+                continue;
+            }
+
+            foreach ($distinct as $folderId) {
+                $shared[$folderId] = ($shared[$folderId] ?? 0) + 1;
+            }
+        }
+
+        return $shared;
     }
 
     /**
@@ -201,13 +238,15 @@ final class FolderTree
      * @param list<array<string, mixed>> $nodes
      * @param array<int, int>            $directCounts
      * @param array<int, int>            $overcount
+     * @param array<int, int>            $shared
      * @return array{0: list<array<string, mixed>>, 1: int}
      */
     private static function countLevel(
         array $nodes,
         array $directCounts,
         bool $inherited,
-        array $overcount
+        array $overcount,
+        array $shared
     ): array {
         $levelSum = 0;
 
@@ -219,12 +258,14 @@ final class FolderTree
                 $node['children'] ?? [],
                 $directCounts,
                 $inherited,
-                $overcount
+                $overcount,
+                $shared
             );
 
             $sum = $own + $below;
 
             $node['count'] = $own;
+            $node['only_here'] = max(0, $own - ($shared[$id] ?? 0));
             $node['total_count'] = $inherited ? $sum - ($overcount[$id] ?? 0) : $own;
 
             $levelSum += $sum;

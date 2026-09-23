@@ -16,7 +16,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { AlertIcon, UndoIcon } from './icons';
 import { useRail } from './store';
-import { t } from '../../core/api';
+import { t, tn } from '../../core/api';
 
 /**
  * The grace period, in ms.
@@ -133,12 +133,15 @@ export function Toast({ onUndo, onExpire }: { onUndo: () => void; onExpire: () =
 
             <div className="folderfolio-toast__body">
                 <p className="folderfolio-toast__text">
-                    {pending.fileCount > 0
-                        ? t(
+                    {pending.unassigned > 0
+                        ? tn(
+                              'deletedWithFile',
                               'deletedWithFiles',
-                              'Deleted “%s” — %s files moved to Unassigned',
+                              pending.unassigned,
+                              'Deleted “%1$s” — %2$s file moved to Unassigned',
+                              'Deleted “%1$s” — %2$s files moved to Unassigned',
                               pending.name,
-                              pending.fileCount
+                              pending.unassigned
                           )
                         : t('deleted', 'Deleted “%s”', pending.name)}
                 </p>

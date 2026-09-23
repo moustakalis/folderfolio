@@ -295,4 +295,24 @@ final class FolderTreeTest extends TestCase
         self::assertSame(0, $tree[0]['total_count']);
         self::assertSame(1, $tree[0]['children'][0]['total_count']);
     }
+
+    public function test_only_here_is_a_folders_files_that_are_filed_nowhere_else(): void
+    {
+        // Logos holds 500 (also in Print) and 501 (only here); Print holds 500.
+        $shared = FolderTree::shared([500 => [7, 8]]);
+
+        self::assertSame([7 => 1, 8 => 1], $shared);
+
+        $tree = FolderTree::withCounts(
+            FolderTree::fromRows(self::branchRows()),
+            [7 => 2, 8 => 1],
+            false,
+            [],
+            $shared
+        );
+
+        self::assertSame(1, $tree[0]['children'][0]['only_here'], 'Deleting Logos unassigns 501 alone');
+        self::assertSame(0, $tree[0]['children'][1]['only_here'], 'Deleting Print unassigns nothing');
+        self::assertSame(0, $tree[0]['only_here']);
+    }
 }
