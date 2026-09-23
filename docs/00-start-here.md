@@ -1647,7 +1647,8 @@ import creates folders here, so the gate closes before the cache is read.
 **What is left.** 1.0 grew on 22 Sep from a finished release into a
 fourteen-feature list — the Claude project's `plan-1.0-features.md` is the
 authority, and `plan-1.0-tier-1.md` is the detail for the seven the tree
-needs. **All seven are built** — six on 22 Sep, the last on 23 Sep:
+needs. **All seven are built, and tier 1 is done** — six on 22 Sep, the last
+and 6b on 23 Sep:
 
 | | |
 |---|---|
@@ -1659,6 +1660,7 @@ needs. **All seven are built** — six on 22 Sep, the last on 23 Sep:
 | 6 · Export the folder structure | `0888ee5` — `Domain\FolderExport`, format 1, assignments opt-in |
 | 7 · Startup / default folder | `e9ea158` — `Admin\StartupFolder`, a redirect and not a default, and it says so |
 | 7b · A startup folder of your own | `720ae7f` — `RailPreferences::startup`, a toggle on the breadcrumb row; yours beats the site's |
+| 6b · Reading the export back in | `8f5eb69` — `Modules\Import\JsonSource`, found by `Catalog::find()` and never detected; keyed by origin site; files only from the same site |
 | 5 · Cut / copy / paste | `cdf932f` — `FolderService::duplicate()` (Duplicate folder, brought forward from tier 2), `Domain\FolderCopy`, a clipboard in `useRail`; *Copy* and *Copy with files* are two rows, Nick's call on board `AU6ezv9WsPVHVk7UmzHNGJ` |
 
 Every folder action now lives in `FolderMenu`, opened from a ⋮ on the
@@ -1668,8 +1670,8 @@ clipboard group: Cut, Copy, Copy with files, and while something is held,
 *Inside this folder* / *Beside this folder*. **Cut is `/move`, or `/reorder`
 when the destination level is in Custom order; copy is `POST
 /folders/{id}/duplicate`**, one transaction, everything that can refuse asked
-before it opens. **Left: reading the export back in (6b)**, then tier 2, tier 3,
-the readme's two claims, and **then phase 5**, the release track.
+before it opens. **Left: tier 2** (manual file order first), tier 3, the readme's two claims,
+and **then phase 5**, the release track.
 
 **Numbers not to re-derive:** FileBird silently hides **28 of 47 files** when
 active; our `posts_clauses` bail is **load-bearing** and three of four rivals
@@ -1708,6 +1710,12 @@ in `rail.tsx`, a notice sheet in the undo toast's corner. Do not add a per-hook
 not a mutation escapes it**: the deferred delete was silent on failure until
 `1ffcd89`, and now calls `showNotice(errorMessage(e))` itself. The media picker
 has its own client and no notice sheet yet.
+
+**An id is only an id where it was issued.** An export's folder ids key
+provenance by the origin site (`ff-file-<hash>`), and its attachment ids are
+applied nowhere but that site — the same number elsewhere is a different file.
+And **the file source is not a catalog entry**: `Catalog::all()` is what gets
+*detected*; `JsonSource` is found by `Catalog::find()` as a fallback.
 
 **Count what the sentence claims.** The undo toast said a folder's `count` had
 "moved to Unassigned"; under many-to-many only `only_here` — its files filed
