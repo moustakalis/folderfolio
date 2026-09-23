@@ -1454,7 +1454,13 @@ extension and the iframe rig, and why the e2e suite brings its own WordPress.
 
 ### Running the browser suite in the container
 
-**It runs there since 23 Sep (`dab8a6a`), 87 / 87** — the first run against
+**Re-running `setup.sh` over a live rig breaks it**: it copies core over the
+directory the old `php -S` is still serving, and every page answers 500. Kill
+the old servers by PID first — `ps -eo pid,args`, then `kill` — never
+`pkill -f router.php`, which matches the shell running it.
+
+**It runs there since 23 Sep (`dab8a6a`), 87 / 87, 95 / 95 at `cfba873`** —
+the first run against
 tier 1, and the first anywhere since `9cff4ad`. Playground's CLI does not
 install in the container and Playwright cannot run on the device VM, so
 `tests/e2e/rig/setup.sh` builds a native WordPress instead: MariaDB,
@@ -1500,6 +1506,43 @@ gallery has *Folder order*. Three things it found, all fixed with it:
   dragover**, over the rail too, so a tile dropped on a folder in grid mode
   filed nothing. Hidden while one of our drags is on.
 
+### Upload a folder structure (tier 2 item 9, `cfba873`)
+
+Drop a directory from the desktop on the media grid (or a picker) and its
+folders are made under the selected folder, each file filed into the one it
+sat in. **The drop is core's**: `moxie.js` walks `webkitGetAsEntry()`
+recursively and puts each file's place on `relativePath`; WordPress used to
+upload the lot flat. `core/folder-upload.ts` adds the structure, from inside
+the `wp.Uploader.prototype.init` wrapper `core/upload-target.ts` already has.
+
+- **An id on the upload, never a path** — `Support\UploadTarget` still
+  refuses a path. The folders are made first through `POST /folders/bulk`
+  (`create`), whose rows now carry `folder_id`, and each upload names its
+  folder's id.
+- **Planned before anything is written**: `/folders/bulk/plan` for every turn
+  of 500 paths first, so a drop too deep writes nothing and the notice says
+  *why* (the create route's own refusal was written for the Tools preview).
+- **The queue is held** by a `BeforeUpload` at priority 100 that returns
+  `false` until the folders exist, then `stop()` + `start()`.
+- **Litter stays behind** inside a dropped directory — dotfiles, `__MACOSX`,
+  `Thumbs.db`, `desktop.ini` (`lib/structure.ts`, JS-unit tested). Most of it
+  is refused by plupload's `mime_types` filter *before* `FilesAdded`, so an
+  `Error` handler keeps core from listing `.DS_Store` as a failed upload.
+- **When the folders cannot be made the files still upload**, into the
+  selected folder, and the rail's notice sheet says why. No `create` ability is
+  known up front and says so without a request.
+- **`getOrCreateByPath()` is idempotent now for a name the sanitiser changes**
+  — `splitPath()` sanitises, and a segment that sanitises to nothing is
+  refused rather than dropped.
+
+**Found with it, older than it: an upload made while a folder is selected never
+appeared in the grid.** `wp.media.model.Query` watches `wp.Uploader.queue` only
+when every query arg is one of seven it knows, and `folderfolio_folder` is not
+one — present from the first selection on, `''` included. `showUpload()` and
+`redrawUpload()` in `lib/filter.ts` put each upload in the grid it was made in,
+and rebuild its tile when it finishes (core builds the tile's `aria-label` once,
+as "uploading…").
+
 ### Stress tests
 
 `tests/stress/import.php` and `tests/stress/ops.php`, run with `wp
@@ -1512,8 +1555,9 @@ large for `max_allowed_packet` used to be reported as read and is now refused
 with a reason (`5f9ca0d`); the attachment guard did a query per file and a
 2,001-folder copy with 36,000 files took 7.7s, now 3.8s (`9ba3754`);
 `tree()`, a 1,000-sibling reorder and the export need nothing. Integration is
-76 / 76 — an earlier "75" counted a stray copy of `JsonSourceTest` that
-existed only in the rig.
+89 / 89 since `cfba873` (76 at the stress tests — an earlier "75" counted a
+stray copy of `JsonSourceTest` that existed only in the rig); e2e 95 / 95; JS
+unit 52.
 
 ### Running the integration suite
 
@@ -1753,6 +1797,20 @@ active; our `posts_clauses` bail is **load-bearing** and three of four rivals
 lack it; **FolderFolio + Real Media Library is the only clean pair of ten**.
 
 ## Things that will bite you
+
+**Core's media Query does not show uploads for a query it cannot filter.**
+`media-models.js` observes `wp.Uploader.queue` only when every arg is one of
+`s, order, orderby, posts_per_page, post_mime_type, post_parent, author`. Our
+folder parameter is not, so a grid on a folder never showed an upload until
+`lib/filter.ts`'s `showUpload()` (tier 2 item 9).
+
+**On the block editor, the gallery block's config wins `window.folderFolio`.**
+`Blocks\Gallery` writes `can: {create, rename, delete: false}` with
+`window.folderFolio = window.folderFolio || …` and is enqueued first, so the
+media picker on the same screen — `MediaModalIntegration::config()` — loses:
+its folder column is read-only for an administrator there, its strings fall
+back to English, and a dropped directory uploads flat. Found 23 Sep, **not
+fixed** — the inspector's read-only tree should be a prop, not a global lie.
 
 **`window.folderFolio` and `window.folderFolioRail` are different objects.**
 `Rail::config()` writes the second — the chrome script's own globals, width
