@@ -78,6 +78,14 @@ const QUERY_VAR = 'folderfolio_folder';
  * `#the-list` stays, because the rows *are* the answer to the question the
  * user asked. Nobody's row decorations can survive a different set of rows;
  * what they can have is the event at the end of `refreshListTable()`.
+ *
+ * **Measured against the two rivals that do post-type folders (24 Sep):**
+ * FileBird makes every row a jQuery UI draggable, and Premio its
+ * `.wcp-move-file` handle, once, on load. Neither listens for the event, so
+ * after a folder change their per-row drag does not work until a reload.
+ * Left as it is, on Nick's word: the alternative — navigating instead of
+ * swapping when another plugin's row drag is present — would bend the rule
+ * that nothing reloads the page, for plugins a site is meant to retire.
  */
 const REGIONS = [
     '#the-list',

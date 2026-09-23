@@ -1728,7 +1728,7 @@ Board `KZsHhrffzKQYqUjTvdFszK`; Nick took all ten recommendations. This is
   our in-place filter, Quick Edit and the crumb work; a rival's own folder
   filter **composes** with ours (FileBird submits the form, which carries our
   select; Premio keeps our parameter) and the crumb still names ours.
-  **Found and not fixed — Nick's call:** a rival's per-row drag does not
+  **Found, and left as it is — Nick's call, 24 Sep:** a rival's per-row drag does not
   survive our in-place filter. FileBird makes each row a jQuery UI draggable
   and Premio its `.wcp-move-file` handle, once, on load; the rows we swap in
   are new elements. A reload restores both. CatFolders and Real Media Library
