@@ -1453,6 +1453,17 @@ extension and the iframe rig, and why the e2e suite brings its own WordPress.
 
 ### Running the integration suite
 
+**It runs in the cloud container since 23 Sep (`500f065`), 75 / 75.**
+`apt-get update && apt-get install -y mariadb-server subversion`; start
+`mariadbd --user=root &`; create `wp_tests` and a `wp`/`wp` user; `svn export`
+`https://develop.svn.wordpress.org/tags/6.8.2/tests/phpunit/{includes,data}`
+into one directory, WordPress 6.8.2 from wordpress.org into another, a
+`wp-tests-config.php` pointing at both, then
+`WP_TESTS_DIR=… php vendor/bin/phpunit -c phpunit.xml.dist`. The first run
+failed three tests written that day and never run — all three the test's
+fault. The rest of this section is the older route.
+
+
 **It has not been run since 18 Sep.** The 19 Sep drill-down step left it
 unrun: it needs a MySQL as well as the test library, and the session's
 Composer could not complete at all (above). The PHP touched that day is four
