@@ -8,6 +8,9 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+use FolderFolio\Domain\FolderKinds;
+use FolderFolio\Domain\FolderRepository;
+
 /**
  * The folder a request says its uploads belong in.
  *
@@ -70,6 +73,57 @@ final class UploadTarget
          * it.
          */
         add_filter('folderfolio_default_folder_for_upload', [$this, 'fromRequest'], 5, 2);
+
+        // Tier 3 item 14: a file that is not an image, uploaded into a
+        // gallery, is refused before it is stored — so core's uploader shows
+        // the reason on the file that failed. Filing it anyway into no folder
+        // would leave a file the person believes is in the gallery.
+        add_filter('wp_handle_upload_prefilter', [$this, 'refuseIntoGallery']);
+    }
+
+    /**
+     * `wp_handle_upload_prefilter`: set `error` when the request names a
+     * gallery and this file is not an image.
+     *
+     * The type is WordPress's own reading of the file — its name checked
+     * against the site's allowed types and, for images, its contents — not
+     * the type the browser claimed.
+     *
+     * @param mixed $file
+     * @return mixed
+     */
+    public function refuseIntoGallery(mixed $file): mixed
+    {
+        if (!is_array($file) || !empty($file['error'])) {
+            return $file;
+        }
+
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only: which folder the upload names; core has authorised the upload itself.
+        $folderId = self::read($_REQUEST);
+
+        if ($folderId === null) {
+            return $file;
+        }
+
+        $kinds = new FolderKinds();
+
+        if (!$kinds->isGallery($folderId)) {
+            return $file;
+        }
+
+        $name = is_string($file['name'] ?? null) ? $file['name'] : '';
+        $path = is_string($file['tmp_name'] ?? null) ? $file['tmp_name'] : '';
+        $checked = $path !== '' ? wp_check_filetype_and_ext($path, $name) : wp_check_filetype($name);
+        $mime = is_string($checked['type'] ?? null) ? $checked['type'] : '';
+
+        if (FolderKinds::isImageMime($mime)) {
+            return $file;
+        }
+
+        $folder = (new FolderRepository())->find($folderId);
+        $file['error'] = FolderKinds::refusal((string) ($folder['name'] ?? ''), 1, 1)->get_error_message();
+
+        return $file;
     }
 
     /**

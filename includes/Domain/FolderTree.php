@@ -114,6 +114,27 @@ final class FolderTree
     }
 
     /**
+     * Each node's kind — `folder` or `gallery` (tier 3 item 14). On every
+     * node, for the reason the sorts are: a key that is sometimes absent is
+     * one the client has to guess about.
+     *
+     * @param list<array<string, mixed>> $nodes
+     * @param array<int, true>           $galleries
+     * @return list<array<string, mixed>>
+     */
+    public static function withKinds(array $nodes, array $galleries): array
+    {
+        foreach ($nodes as &$node) {
+            $node['kind'] = isset($galleries[(int) $node['id']]) ? FolderKinds::GALLERY : FolderKinds::FOLDER;
+            $node['children'] = self::withKinds($node['children'] ?? [], $galleries);
+        }
+
+        unset($node);
+
+        return $nodes;
+    }
+
+    /**
      * The per-folder orders, onto every node.
      *
      * Every node gets both keys whether or not it has a row, because null

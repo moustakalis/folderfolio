@@ -15,6 +15,7 @@ use FolderFolio\Domain\AttachmentFolderRepository;
 use FolderFolio\Domain\Folder;
 use FolderFolio\Domain\FolderBulk;
 use FolderFolio\Domain\FolderLocks;
+use FolderFolio\Domain\FolderKinds;
 use FolderFolio\Domain\FolderService;
 use FolderFolio\Domain\FolderSorts;
 use FolderFolio\Domain\FolderTree;
@@ -239,6 +240,17 @@ class FolderController
             'callback' => [$this, 'star'],
             'permission_callback' => [$this, 'canUseFolders'],
             'args' => ['starred' => ['type' => 'boolean', 'required' => true]],
+        ]);
+
+        // A folder's kind — tier 3 item 14. Organise, like pin and colour:
+        // it is the site's, and it changes what everyone may file there.
+        register_rest_route($ns, '/folders/(?P<id>\\d+)/kind', [
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => [$this, 'kind'],
+            'permission_callback' => [$this, 'canRenameFolders'],
+            'args' => [
+                'kind' => ['type' => 'string', 'required' => true, 'enum' => FolderKinds::KINDS],
+            ],
         ]);
 
         register_rest_route($ns, '/folders/(?P<id>\\d+)/pin', [
@@ -690,6 +702,15 @@ class FolderController
     {
         return $this->result(
             $this->folders->mark((int) $request['id'], FolderLocks::PINNED, (bool) $request->get_param('pinned')),
+            200,
+            fn (): array => ['tree' => $this->treeFor($request)]
+        );
+    }
+
+    public function kind(WP_REST_Request $request): WP_REST_Response
+    {
+        return $this->result(
+            $this->folders->setKind((int) $request['id'], (string) $request->get_param('kind')),
             200,
             fn (): array => ['tree' => $this->treeFor($request)]
         );

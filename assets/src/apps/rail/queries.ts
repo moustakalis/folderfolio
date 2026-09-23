@@ -68,6 +68,11 @@ export interface FolderNode {
     locked?: boolean;
     locked_by?: number | null;
     pinned?: boolean;
+    /**
+     * Tier 3 item 14: a gallery holds images only (`Domain\FolderKinds`).
+     * Optional for the reason the marks are.
+     */
+    kind?: 'folder' | 'gallery';
 }
 
 export interface LibraryCounts {
@@ -806,6 +811,31 @@ export function useSetFolderMark() {
                     method: 'POST',
                     data: input.mark === 'lock' ? { locked: input.on } : { pinned: input.on },
                 }
+            );
+
+            return response.data;
+        },
+
+        onSuccess: (data) => {
+            client.setQueryData(treeKey, data.tree);
+        },
+    });
+}
+
+/**
+ * Make a folder a gallery, or a folder again — tier 3 item 14. Answered with
+ * the tree, like a mark: becoming a gallery can also set the folder's file
+ * order. A refusal (a file in it that is not an image, a lock) is the
+ * MutationCache's notice sheet.
+ */
+export function useSetFolderKind() {
+    const client = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (input: { id: number; kind: 'folder' | 'gallery' }) => {
+            const response = await apiFetch<ApiEnvelope<{ tree: FolderNode[] }>>(
+                `/folders/${input.id}/kind`,
+                { method: 'POST', data: { kind: input.kind } }
             );
 
             return response.data;

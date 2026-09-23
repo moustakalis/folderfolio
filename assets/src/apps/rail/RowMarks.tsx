@@ -1,5 +1,11 @@
 /**
- * A row's pin, star and lock — tier 2 item 10, board 3ZU8VGkJemznTvKp8tNnvY.
+ * A row's gallery, pin, star and lock — tier 2 item 10, board
+ * 3ZU8VGkJemznTvKp8tNnvY; the gallery mark tier 3 item 14.
+ *
+ * The gallery is first: it is what the folder is, where the other three are
+ * how it is kept. A picture glyph rather than the board's word tag — the tag
+ * is ~50px in a name track that is 111px at depth 3, and the marks were
+ * placed beside the count precisely so that nothing takes the name's room.
  *
  * Beside the count, not after the name (answer 2): the name is the one track
  * that may be clipped, and a mark clipped with it would say nothing. Here the
@@ -13,7 +19,7 @@
  * Used by both renderers — `Row` above 782px and `LevelRow` below.
  */
 
-import { LockIcon, PinIcon, StarIcon } from './icons';
+import { ImageIcon, LockIcon, PinIcon, StarIcon } from './icons';
 import { useRail } from './store';
 import { t } from '../../core/api';
 
@@ -22,9 +28,10 @@ import { t } from '../../core/api';
  * name is an aria-label, which replaces the hidden run below rather than
  * adding to it. Empty when the row carries none.
  */
-export function useMarkWords(id: number, pinned?: boolean, lockedBy?: number | null): string {
+export function useMarkWords(id: number, pinned?: boolean, lockedBy?: number | null, gallery?: boolean): string {
     const starred = useRail((s) => s.stars.includes(id));
     const words = [
+        gallery ? t('galleryWord', 'gallery') : null,
         pinned ? t('pinned', 'pinned') : null,
         starred ? t('starred', 'starred') : null,
         lockedBy != null ? t('locked', 'locked') : null,
@@ -37,26 +44,29 @@ export function RowMarks({
     id,
     pinned,
     lockedBy,
+    gallery = false,
     labelled = false,
 }: {
     id: number;
     pinned?: boolean;
     lockedBy?: number | null;
+    gallery?: boolean;
     /** The row names itself with an aria-label that already says the words. */
     labelled?: boolean;
 }) {
     // One boolean, like selection and focus: starring a folder re-renders the
     // row that changed and nothing else.
     const starred = useRail((s) => s.stars.includes(id));
-    const words = useMarkWords(id, pinned, lockedBy);
+    const words = useMarkWords(id, pinned, lockedBy, gallery);
     const locked = lockedBy != null;
 
-    if (!pinned && !starred && !locked) {
+    if (!pinned && !starred && !locked && !gallery) {
         return null;
     }
 
     return (
         <span className="folderfolio-row__marks">
+            {gallery ? <ImageIcon size={12} className="folderfolio-row__gallery" /> : null}
             {pinned ? <PinIcon size={12} filled /> : null}
             {starred ? <StarIcon size={12} filled className="folderfolio-row__star" /> : null}
             {locked ? (

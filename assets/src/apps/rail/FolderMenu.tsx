@@ -41,6 +41,7 @@ import {
     ChevronRightIcon,
     CopyIcon,
     DownloadIcon,
+    ImageIcon,
     LockIcon,
     PasteIcon,
     PinIcon,
@@ -54,7 +55,7 @@ import { planSiblingMove } from './move';
 import { heldLabel, mayPaste, planPaste, stillThere, usePaste, type Where } from './paste';
 import { Menu } from './Menu';
 import type { FolderNode } from './queries';
-import { useReorderFolders, useSetFolderColor, useSetFolderMark, useSetFolderSort } from './queries';
+import { useReorderFolders, useSetFolderColor, useSetFolderKind, useSetFolderMark, useSetFolderSort } from './queries';
 import { hasLockInside, isBlocked, lockingName } from './locks';
 import { SORT_LABELS, isSortOrder, useRail, type SortOrder } from './store';
 import { useAnchoredPanel } from './useAnchoredPanel';
@@ -188,6 +189,8 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
     const parentBlocked = blocked && folder.locked_by !== folder.id;
     const lockedInside = hasLockInside(folder);
     const mark = useSetFolderMark();
+    const kind = useSetFolderKind();
+    const gallery = folder.kind === 'gallery';
     const starred = useRail((s) => s.stars.includes(folder.id));
     const toggleStar = useRail((s) => s.toggleStar);
 
@@ -553,6 +556,45 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
                         </>
                     ) : null}
 
+                    {/*
+                      The kind — tier 3 item 14. One checkbox row rather than
+                      the board's two radios under a label: the menu is 497px
+                      already, and "a gallery, or not" is one question. Among
+                      the action rows, with their icon column, because a
+                      tick slot among the Sort inside rows indented its label
+                      18px past theirs (seen on the dev site). The label
+                      never changes when pressed (the rule Start here set);
+                      aria-checked and the tick beside the value carry the
+                      state. Under a lock it is disabled like the other rows
+                      that change what a folder is.
+                    */}
+                    {isMedia() ? (
+                        <button
+                            type="button"
+                            role="menuitemcheckbox"
+                            aria-checked={gallery}
+                            className="folderfolio-menu__item"
+                            disabled={blocked}
+                            onClick={() => {
+                                void kind
+                                    .mutateAsync({ id: folder.id, kind: gallery ? 'folder' : 'gallery' })
+                                    .catch(() => undefined);
+                                onClose();
+                            }}
+                        >
+                            <ImageIcon size={13} />
+                            {t('galleryKind', 'Gallery')}
+                            <span className="folderfolio-menu__value">
+                                {gallery ? (
+                                    <span className="folderfolio-menu__on" aria-hidden="true">
+                                        ✓{' '}
+                                    </span>
+                                ) : null}
+                                {t('galleryImagesOnly', 'images only')}
+                            </span>
+                        </button>
+                    ) : null}
+
                     <div className="folderfolio-menu__rule" role="separator" />
 
                     {/*
@@ -598,6 +640,7 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
                             <ChevronRightIcon size={12} />
                         </button>
                     ) : null}
+
 
                     <div className="folderfolio-menu__rule" role="separator" />
 

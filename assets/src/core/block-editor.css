@@ -71,3 +71,63 @@
   max-width: 268px;
   text-align: left;
 }
+
+/* ---------------------------------------- galleries first — tier 3 item 14 */
+
+/**
+ * The block's own folders above the tree: every gallery, flat, as buttons
+ * drawn as rows. Their icon lines up with a top-level folder's — the
+ * switcher's width plus the row's gap stand in for the chevron they do not
+ * have.
+ */
+.folderfolio-inspector__galleries {
+  display: grid;
+}
+
+.folderfolio-inspector__label {
+  margin: 0;
+  padding: 6px 12px 2px;
+  font-size: 11px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ff-muted);
+}
+
+.folderfolio-inspector__label + .folderfolio-inspector__gallery {
+  margin-top: 2px;
+}
+
+.folderfolio-inspector .folderfolio-inspector__gallery {
+  width: 100%;
+  padding-left: calc(12px + var(--ff-switcher) + 5px);
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-size: inherit;
+  text-align: left;
+}
+
+.folderfolio-inspector .folderfolio-inspector__gallery[aria-selected='true'] {
+  background: var(--ff-wash);
+}
+
+.folderfolio-inspector__gallery:hover {
+  background: var(--ff-hover);
+}
+
+.folderfolio-inspector__gallery:focus-visible {
+  outline: 2px solid var(--ff-sel);
+  outline-offset: -2px;
+}
+
+.folderfolio-inspector__parent {
+  color: var(--ff-muted);
+  font-weight: 400;
+}
+
+/* The last label sits under the rule, as the tree's heading. */
+.folderfolio-inspector__galleries > .folderfolio-inspector__label:last-child {
+  border-top: 1px solid var(--ff-line);
+  margin-top: 4px;
+  padding-top: 6px;
+}

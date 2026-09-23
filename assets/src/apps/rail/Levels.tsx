@@ -322,7 +322,7 @@ function LevelHeader({
                     <FolderOpenIcon />
                 </span>
                 <span className="folderfolio-row__name">{node.name}</span>
-                <RowMarks id={node.id} pinned={node.pinned} lockedBy={node.locked_by} />
+                <RowMarks id={node.id} pinned={node.pinned} lockedBy={node.locked_by} gallery={node.kind === 'gallery'} />
                 <span className="folderfolio-row__count">{node.total_count}</span>
             </button>
         </div>
@@ -342,7 +342,7 @@ function LevelRow({
 }) {
     const inside = node.children.length;
     const cut = useRail((s) => s.clipboard?.verb === 'cut' && s.clipboard.id === node.id);
-    const marks = useMarkWords(node.id, node.pinned, node.locked_by);
+    const marks = useMarkWords(node.id, node.pinned, node.locked_by, node.kind === 'gallery');
 
     if (renaming) {
         return (
@@ -386,7 +386,7 @@ function LevelRow({
                     <FolderIcon />
                 </span>
                 <span className="folderfolio-row__name">{node.name}</span>
-                <RowMarks id={node.id} pinned={node.pinned} lockedBy={node.locked_by} labelled />
+                <RowMarks id={node.id} pinned={node.pinned} lockedBy={node.locked_by} gallery={node.kind === 'gallery'} labelled />
                 <span className="folderfolio-row__count">{node.total_count}</span>
 
                 {/* An affordance, not a second target: the whole row walks in.

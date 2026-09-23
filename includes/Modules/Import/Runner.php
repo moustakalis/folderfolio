@@ -11,6 +11,7 @@ if (!defined('ABSPATH')) {
 use FolderFolio\Domain\AttachmentFolderRepository;
 use FolderFolio\Domain\FolderRepository;
 use FolderFolio\Domain\FolderService;
+use FolderFolio\Domain\FolderKinds;
 use FolderFolio\Domain\FolderSorts;
 use WP_Error;
 
@@ -399,6 +400,13 @@ final class Runner
                     if ($order !== null) {
                         $this->sorts->set($folderId, $scope, $order);
                     }
+                }
+
+                // A gallery comes back a gallery, before its files are
+                // filed, so the files meet its rule. Like an order, a kind
+                // that cannot be written costs the kind and not the folder.
+                if ($folder->gallery) {
+                    $this->service->setKind($folderId, FolderKinds::GALLERY);
                 }
                 $run->createdFolderIds[] = $folderId;
                 ++$run->foldersCreated;

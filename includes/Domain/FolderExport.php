@@ -58,7 +58,8 @@ final class FolderExport
     public function __construct(
         private readonly FolderRepository $folders = new FolderRepository(),
         private readonly AttachmentFolderRepository $assignments = new AttachmentFolderRepository(),
-        private readonly FolderSorts $sorts = new FolderSorts()
+        private readonly FolderSorts $sorts = new FolderSorts(),
+        private readonly FolderKinds $kinds = new FolderKinds()
     ) {
     }
 
@@ -86,6 +87,9 @@ final class FolderExport
                 'sort_order' => (int) $row['sort_order'],
                 'sort_folders' => $own['folders'],
                 'sort_files' => $own['files'],
+                // Tier 3 item 14. Absent from files written before it, which
+                // read as plain folders.
+                'kind' => $this->kinds->kindOf($id),
             ];
         }
 

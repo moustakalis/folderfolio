@@ -9,6 +9,7 @@ if (!defined('ABSPATH')) {
 }
 
 use FolderFolio\Domain\FolderExport;
+use FolderFolio\Domain\FolderKinds;
 use FolderFolio\Domain\FolderSorts;
 use FolderFolio\Support\Swatches;
 use WP_Error;
@@ -377,7 +378,8 @@ final class JsonSource extends Source
             $color !== null && Swatches::isKey($color) ? $color : null,
             $icon !== '' ? $icon : null,
             self::order($row['sort_folders'] ?? null, FolderSorts::FOLDER_ORDERS),
-            self::order($row['sort_files'] ?? null, FolderSorts::FILE_ORDERS)
+            self::order($row['sort_files'] ?? null, FolderSorts::FILE_ORDERS),
+            ($row['kind'] ?? null) === FolderKinds::GALLERY
         );
     }
 

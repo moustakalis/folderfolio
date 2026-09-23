@@ -356,6 +356,21 @@ export function StarIcon({ filled, ...props }: IconProps & { filled?: boolean })
     );
 }
 
+/**
+ * A gallery — tier 3 item 14. Lucide's picture: a frame, a sun, a hill. A
+ * mark beside the count like pin, star and lock, not a new folder icon: the
+ * folder icon already carries the folder's colour and its open state.
+ */
+export function ImageIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <circle cx="9" cy="9" r="2" />
+            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+        </Svg>
+    );
+}
+
 export function LockIcon({ filled, ...props }: IconProps & { filled?: boolean }) {
     return (
         <Svg {...props}>

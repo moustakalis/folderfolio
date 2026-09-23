@@ -5,6 +5,7 @@ namespace FolderFolio\Tests\Integration\Modules\Import;
 use FolderFolio\Database\Schema;
 use FolderFolio\Domain\FolderExport;
 use FolderFolio\Domain\FolderService;
+use FolderFolio\Domain\FolderKinds;
 use FolderFolio\Domain\FolderSorts;
 use FolderFolio\Modules\Import\Catalog;
 use FolderFolio\Modules\Import\JsonSource;
@@ -42,7 +43,7 @@ class JsonSourceTest extends WP_UnitTestCase
                 ['id' => 10, 'parent_id' => null, 'name' => 'Brand', 'color' => 'red', 'sort_order' => 0,
                  'sort_folders' => null, 'sort_files' => null],
                 ['id' => 11, 'parent_id' => 10, 'name' => 'Logos', 'color' => 'moss', 'sort_order' => 2,
-                 'sort_folders' => null, 'sort_files' => 'name-desc'],
+                 'sort_folders' => null, 'sort_files' => 'name-desc', 'kind' => 'gallery'],
             ],
             'assignments' => [['folder' => 11, 'attachments' => [999999]]],
         ];
@@ -116,6 +117,10 @@ class JsonSourceTest extends WP_UnitTestCase
         $this->assertSame('red', $brand->color);
         $this->assertSame('moss', $logos->color);
         $this->assertSame('name-desc', (new FolderSorts())->for($logos->id)['files']);
+        // Tier 3 item 14: a gallery comes back a gallery, and keeps the file
+        // order the file carried rather than taking a new gallery's Custom.
+        $this->assertTrue((new FolderKinds())->isGallery($logos->id));
+        $this->assertFalse((new FolderKinds())->isGallery($brand->id));
         $this->assertFalse(get_option(JsonSource::OPTION, false), 'the stored file goes once the run is over');
     }
 

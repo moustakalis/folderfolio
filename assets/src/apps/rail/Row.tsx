@@ -240,7 +240,7 @@ export function Row({
                     <>
                         <span className="folderfolio-row__name">{node.name}</span>
 
-                        <RowMarks id={node.id} pinned={node.pinned} lockedBy={node.locked_by} />
+                        <RowMarks id={node.id} pinned={node.pinned} lockedBy={node.locked_by} gallery={node.kind === 'gallery'} />
 
                         {/*
                           The subtree total, not the folder's own count. A

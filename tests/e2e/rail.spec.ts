@@ -487,9 +487,11 @@ test.describe('a folder sorts what is inside it', () => {
 
         await expect(panel.locator('.folderfolio-menu__label')).toHaveText(/sort inside/i);
 
-        // Both rows, both unset — which is a value, not an absence.
-        await expect(panel.locator('.folderfolio-menu__value')).toHaveCount(2);
-        await expect(panel.locator('.folderfolio-menu__value').first()).toHaveText(
+        // Both rows, both unset — which is a value, not an absence. The
+        // step rows only: the Gallery row (tier 3 item 14) has a value too.
+        const values = panel.locator('.folderfolio-menu__item--step .folderfolio-menu__value');
+        await expect(values).toHaveCount(2);
+        await expect(values.first()).toHaveText(
             /same as everywhere/i
         );
     });

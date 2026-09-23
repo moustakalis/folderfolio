@@ -880,6 +880,10 @@ final class Rail
             'pinned' => __('pinned', 'folderfolio'),
             'starred' => __('starred', 'folderfolio'),
             'locked' => __('locked', 'folderfolio'),
+            'galleryWord' => __('gallery', 'folderfolio'),
+            // A folder's kind — tier 3 item 14.
+            'galleryKind' => __('Gallery', 'folderfolio'),
+            'galleryImagesOnly' => __('images only', 'folderfolio'),
             /* translators: %s is the name of the locked folder. */
             'lockedBy' => __('“%s” is locked. Someone who can lock folders can unlock it.', 'folderfolio'),
             'starredGroup' => __('Starred', 'folderfolio'),

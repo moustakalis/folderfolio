@@ -72,7 +72,8 @@ class FolderService
         private readonly FolderRepository $folders = new FolderRepository(),
         private readonly AttachmentFolderRepository $assignments = new AttachmentFolderRepository(),
         private readonly FolderSorts $sorts = new FolderSorts(),
-        private readonly FolderLocks $locks = new FolderLocks()
+        private readonly FolderLocks $locks = new FolderLocks(),
+        private readonly FolderKinds $kinds = new FolderKinds()
     ) {
     }
 
@@ -152,6 +153,129 @@ class FolderService
     }
 
     /**
+     * Make a folder a gallery, or a plain folder again — tier 3 item 14.
+     *
+     * Media only: a gallery is a folder of images, and a post tree has none.
+     * Refused on a locked folder unless this person may lock — a lock keeps
+     * what a folder *is*, and the kind is that, where colour and *Sort
+     * inside* are only how it is shown (answer 6 on board
+     * 3ZU8VGkJemznTvKp8tNnvY).
+     *
+     * Refused while the folder holds a file that is not an image, with the
+     * count: a gallery that already broke its own rule would be a mark that
+     * says nothing. The person moves them out first.
+     *
+     * A folder that becomes a gallery with no file order of its own opens in
+     * Custom — the order somebody arranged by hand, which is the one a
+     * gallery on a page most often means (tier 2 item 8). An order already
+     * chosen for it is kept.
+     */
+    public function setKind(int $id, string $kind): Folder|WP_Error
+    {
+        $folder = $this->get($id);
+
+        if ($folder === null) {
+            return new WP_Error(
+                'folderfolio_folder_not_found',
+                __('Folder not found.', 'folderfolio')
+            );
+        }
+
+        if (!in_array($kind, FolderKinds::KINDS, true)) {
+            return new WP_Error(
+                'folderfolio_kind_unknown',
+                __('A folder is either a folder or a gallery.', 'folderfolio'),
+                ['status' => 400]
+            );
+        }
+
+        if ($kind === FolderKinds::GALLERY && $folder->objectType !== FolderRepository::DEFAULT_OBJECT_TYPE) {
+            return new WP_Error(
+                'folderfolio_kind_media_only',
+                __('Only a media folder can be a gallery.', 'folderfolio'),
+                ['status' => 400]
+            );
+        }
+
+        if ($this->kinds->kindOf($id) === $kind) {
+            return $folder;
+        }
+
+        $locked = $this->locks->guard($folder->path, $this->nameOf());
+
+        if ($locked !== null) {
+            return $locked;
+        }
+
+        if ($kind === FolderKinds::GALLERY) {
+            $others = FolderKinds::notImages($this->assignments->attachmentIdsForFolder($id));
+
+            if ($others !== []) {
+                return new WP_Error(
+                    'folderfolio_gallery_has_files',
+                    sprintf(
+                        /* translators: 1: the folder's name, 2: how many of its files are not images. */
+                        _n(
+                            '“%1$s” holds %2$d file that is not an image. Move it out first, then make the folder a gallery.',
+                            '“%1$s” holds %2$d files that are not images. Move them out first, then make the folder a gallery.',
+                            count($others),
+                            'folderfolio'
+                        ),
+                        $folder->name,
+                        count($others)
+                    ),
+                    ['status' => 400]
+                );
+            }
+        }
+
+        $written = Transaction::run(function () use ($id, $kind): bool|WP_Error {
+            $set = $this->kinds->set($id, $kind);
+
+            if (is_wp_error($set)) {
+                return $set;
+            }
+
+            if ($kind === FolderKinds::GALLERY && ($this->sorts->for($id)['files'] ?? null) === null) {
+                $sorted = $this->sorts->set($id, 'files', 'custom');
+
+                if (is_wp_error($sorted)) {
+                    return $sorted;
+                }
+            }
+
+            return true;
+        });
+
+        if (is_wp_error($written)) {
+            return $written;
+        }
+
+        do_action('folderfolio_folder_kind_changed', $folder, $kind);
+
+        return $folder;
+    }
+
+    /**
+     * Refuse files that are not images for a gallery; null otherwise.
+     *
+     * @param array<string, mixed> $folder A row from the repository.
+     * @param list<int>            $ids
+     */
+    private function guardGallery(array $folder, array $ids): ?WP_Error
+    {
+        if ($ids === [] || !$this->kinds->isGallery((int) $folder['id'])) {
+            return null;
+        }
+
+        $others = FolderKinds::notImages($ids);
+
+        return $others === []
+            ? null
+            : FolderKinds::refusal((string) $folder['name'], count($others), count($ids));
+    }
+
+    /**
      * The folder tree, with counts.
      *
      * Three queries: the folders, one GROUP BY for the counts, and — for the
@@ -171,10 +295,13 @@ class FolderService
         // without it would hand the client a tree whose nodes are missing two
         // keys depending on a setting.
         $rows = $this->folders->all($objectType);
-        $nodes = FolderTree::withMarks(
-            FolderTree::withSorts(FolderTree::fromRows($rows), $this->sorts->all()),
-            $this->locks->locked(),
-            $this->locks->pinned()
+        $nodes = FolderTree::withKinds(
+            FolderTree::withMarks(
+                FolderTree::withSorts(FolderTree::fromRows($rows), $this->sorts->all()),
+                $this->locks->locked(),
+                $this->locks->pinned()
+            ),
+            $this->kinds->galleries()
         );
 
         // No argument means "whatever the site is set to". The literal
@@ -920,6 +1047,18 @@ class FolderService
                     }
                 }
 
+                // A copy of a gallery is a gallery: the kind is what the
+                // folder is, like its colour — unlike a lock, which is a
+                // permission on the original. Its files, if any come with
+                // it, are images already.
+                if ($this->kinds->isGallery($oldId)) {
+                    $kind = $this->kinds->set($created->id, FolderKinds::GALLERY);
+
+                    if (is_wp_error($kind)) {
+                        return $kind;
+                    }
+                }
+
                 if ($withFiles && ($files[$oldId] ?? []) !== []) {
                     $copied = $this->assignments->copyFolder($oldId, $created->id);
 
@@ -1155,6 +1294,17 @@ class FolderService
 
         if (is_wp_error($permitted)) {
             return $permitted;
+        }
+
+        // Every way a file reaches a folder ends here — a drag, Add to
+        // folder, an upload (UploadRouter), a delete's reassignment, an
+        // import — so a gallery's rule is asked once, in one place. The
+        // upload is also refused before it is stored (UploadTarget), so the
+        // person sees the reason where the upload failed.
+        $gallery = $this->guardGallery($folder, $ids);
+
+        if ($gallery !== null) {
+            return $gallery;
         }
 
         if ($ids === []) {

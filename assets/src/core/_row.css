@@ -844,3 +844,10 @@
 .folderfolio-rail__starred-row .folderfolio-row__star {
   color: var(--ff-accent-text);
 }
+
+/* The Gallery row's state, beside its value — tier 3 item 14. The tick is
+   the accent, the way the step panels' ticks are (.folderfolio-menu__tick). */
+.folderfolio-menu__on {
+  color: var(--ff-sel);
+  font-weight: 600;
+}

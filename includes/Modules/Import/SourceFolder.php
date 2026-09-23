@@ -29,7 +29,7 @@ final class SourceFolder
      * @param string   $name      Raw, as stored. Sanitised when written.
      * @param int      $sortOrder The source's own ordering, where it had one.
      *
-     * The four below are carried by one source only — a FolderFolio export
+     * The five below are carried by one source only — a FolderFolio export
      * file (`JsonSource`), which knows what no other plugin stores in our
      * vocabulary. Null everywhere else, and applied only to a folder the
      * import *creates*: a folder merged into one of yours keeps your colour
@@ -39,6 +39,7 @@ final class SourceFolder
      * @param string|null $icon        An icon key, already sanitised.
      * @param string|null $sortFolders A per-folder order for its subfolders.
      * @param string|null $sortFiles   A per-folder order for its files.
+     * @param bool        $gallery     A gallery (tier 3 item 14), not a folder.
      */
     public function __construct(
         public readonly int $id,
@@ -48,7 +49,8 @@ final class SourceFolder
         public readonly ?string $color = null,
         public readonly ?string $icon = null,
         public readonly ?string $sortFolders = null,
-        public readonly ?string $sortFiles = null
+        public readonly ?string $sortFiles = null,
+        public readonly bool $gallery = false
     ) {
     }
 }

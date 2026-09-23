@@ -154,6 +154,13 @@ final class Gallery
                 /* translators: %s is the search term that matched nothing. */
                 'noMatch' => __('No folder matches “%s”.', 'folderfolio'),
 
+                // Galleries first — tier 3 item 14.
+                'galleriesGroup' => __('Galleries', 'folderfolio'),
+                'allFoldersGroup' => __('All folders', 'folderfolio'),
+                /* translators: 1: a gallery's name, 2: its parent folder's name. */
+                'galleryIn' => __('%1$s in %2$s', 'folderfolio'),
+                'galleryWord' => __('gallery', 'folderfolio'),
+
                 // Screen 09.
                 'galleryTitle' => __('Folder gallery', 'folderfolio'),
                 'galleryPrompt' => __(

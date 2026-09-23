@@ -116,7 +116,7 @@ $news = FolderFolio::getOrCreateByPath( 'Newsroom/2026', 'post' );
 
 Nested arrays. Each node carries the folder's columns plus `children`, `count` (the folder's
 own items) and `total_count` (its subtree), and `sort_folders`, `sort_files`, `locked`,
-`locked_by` and `pinned`. With a `$rootId`, the root's own tree. A post folder counts what
+`locked_by`, `pinned` and `kind` (`folder` or `gallery`). With a `$rootId`, the root's own tree. A post folder counts what
 its list screen calls *All* — not the trash, not auto-drafts.
 
 #### `getChildren( int $id ): Folder[]`
@@ -213,6 +213,7 @@ do_action( 'folderfolio_attachments_unassigned', array $ids, ?int $folderId );
 do_action( 'folderfolio_folder_duplicated',      Folder $copy, Folder $source, array $idMap, bool $withFiles );
 do_action( 'folderfolio_folders_reordered',      array $ids, ?int $parentId );
 do_action( 'folderfolio_folder_marked',          Folder $folder, string $mark, bool $on );  // 'state:locked' | 'state:pinned'
+do_action( 'folderfolio_folder_kind_changed',    Folder $folder, string $kind );            // 'folder' | 'gallery'
 ```
 
 These fire from the domain layer, not from the REST controllers, so a folder created through
@@ -332,6 +333,7 @@ made at the top.
 | `POST` | `/folders/{id}/files/order` — `{ids, place, anchor?}` | rename |
 | `POST` | `/folders/{id}/lock` — `{locked}` | lock |
 | `POST` | `/folders/{id}/pin` — `{pinned}` | rename |
+| `POST` | `/folders/{id}/kind` — `{kind: folder\|gallery}`; a gallery holds images only (media folders; refused while the folder holds a non-image) | rename |
 | `POST` | `/folders/{id}/star` — `{starred}`, the person's own | use |
 | `GET` | `/folders/{id}/zip` — what the ZIP would hold, and its URL; media folders only | download |
 | `POST` | `/folders/bulk/plan` — `{text, parent_id?, object_type?}`, writes nothing | create |
