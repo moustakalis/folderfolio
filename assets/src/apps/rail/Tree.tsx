@@ -19,6 +19,7 @@ import { sortTree, useRail } from './store';
 import { can } from '../../lib/can';
 import { t } from '../../core/api';
 import { EmptyTree } from './EmptyTree';
+import { hasLockInside, isBlocked } from './locks';
 
 /**
  * The type-ahead buffer: 1s, as the handoff specifies.
@@ -205,7 +206,9 @@ export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: Tre
             if (event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
                 event.preventDefault();
 
-                if (!can('rename')) {
+                // A locked folder does not move (tier 2 item 10); the ⋮
+                // menu's Move rows say so, this key just does nothing.
+                if (!can('rename') || isBlocked(current.node)) {
                     return;
                 }
 
@@ -244,7 +247,7 @@ export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: Tre
             if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey) {
                 const key = event.key.toLowerCase();
 
-                if (key === 'x' && can('rename')) {
+                if (key === 'x' && can('rename') && !isBlocked(current.node)) {
                     event.preventDefault();
                     clipboard.take(current.node, 'cut');
 
@@ -260,6 +263,11 @@ export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: Tre
 
                 if (key === 'v') {
                     event.preventDefault();
+
+                    if (isBlocked(current.node)) {
+                        return;
+                    }
+
                     clipboard.paste(ordered, current.node.id, 'inside');
 
                     return;
@@ -346,7 +354,7 @@ export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: Tre
                     // request 403s, but the row is already gone from the tree
                     // optimistically, and the block inspector renders this
                     // same component with every ability but `assign` off.
-                    if (!can('rename')) {
+                    if (!can('rename') || isBlocked(current.node)) {
                         return;
                     }
 
@@ -361,7 +369,9 @@ export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: Tre
                 case 'Backspace':
                     event.preventDefault();
 
-                    if (!can('delete')) {
+                    // The delete is optimistic — the row goes at once — so a
+                    // lock has to stop it here, not as a refusal afterwards.
+                    if (!can('delete') || isBlocked(current.node) || hasLockInside(current.node)) {
                         return;
                     }
 

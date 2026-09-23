@@ -60,6 +60,7 @@ import { sortTree, useRail } from './store';
 import { t } from '../../core/api';
 import { swatchStyle } from '../../lib/swatches';
 import { EmptyTree } from './EmptyTree';
+import { RowMarks, useMarkWords } from './RowMarks';
 
 export interface LevelsProps {
     nodes: FolderNode[];
@@ -321,6 +322,7 @@ function LevelHeader({
                     <FolderOpenIcon />
                 </span>
                 <span className="folderfolio-row__name">{node.name}</span>
+                <RowMarks id={node.id} pinned={node.pinned} lockedBy={node.locked_by} />
                 <span className="folderfolio-row__count">{node.total_count}</span>
             </button>
         </div>
@@ -340,6 +342,7 @@ function LevelRow({
 }) {
     const inside = node.children.length;
     const cut = useRail((s) => s.clipboard?.verb === 'cut' && s.clipboard.id === node.id);
+    const marks = useMarkWords(node.id, node.pinned, node.locked_by);
 
     if (renaming) {
         return (
@@ -366,7 +369,7 @@ function LevelRow({
                  * whether tapping this goes anywhere.
                  */
                 aria-label={
-                    inside === 0
+                    (inside === 0
                         ? `${node.name}, ${node.total_count}`
                         : t(
                               'folderWithSubfolders',
@@ -374,7 +377,7 @@ function LevelRow({
                               node.name,
                               String(node.total_count),
                               String(inside)
-                          )
+                          )) + marks
                 }
                 onClick={onOpen}
                 style={swatchStyle(node.color)}
@@ -383,6 +386,7 @@ function LevelRow({
                     <FolderIcon />
                 </span>
                 <span className="folderfolio-row__name">{node.name}</span>
+                <RowMarks id={node.id} pinned={node.pinned} lockedBy={node.locked_by} labelled />
                 <span className="folderfolio-row__count">{node.total_count}</span>
 
                 {/* An affordance, not a second target: the whole row walks in.

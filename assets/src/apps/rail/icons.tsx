@@ -301,3 +301,41 @@ export function AlertIcon(props: IconProps) {
         </Svg>
     );
 }
+
+/*
+ * Lock, pin and star — tier 2 item 10. Lucide's `pin`, `star` and `lock`,
+ * stroked like the rest of the set. `filled` fills the shape for the pressed
+ * state of the ⋮ menu's toggles and for a mark on a row, so "on" is a shape
+ * change as well as a colour one (board 3ZU8VGkJemznTvKp8tNnvY).
+ */
+export function PinIcon({ filled, ...props }: IconProps & { filled?: boolean }) {
+    return (
+        <Svg {...props}>
+            <path d="M12 17v5" />
+            <path
+                d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"
+                fill={filled ? 'currentColor' : 'none'}
+            />
+        </Svg>
+    );
+}
+
+export function StarIcon({ filled, ...props }: IconProps & { filled?: boolean }) {
+    return (
+        <Svg {...props}>
+            <path
+                d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"
+                fill={filled ? 'currentColor' : 'none'}
+            />
+        </Svg>
+    );
+}
+
+export function LockIcon({ filled, ...props }: IconProps & { filled?: boolean }) {
+    return (
+        <Svg {...props}>
+            <rect x="3" y="11" width="18" height="11" rx="2" fill={filled ? 'currentColor' : 'none'} />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </Svg>
+    );
+}

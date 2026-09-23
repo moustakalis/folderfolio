@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { planSiblingMove } from '../../../assets/src/apps/rail/move';
+import { clampToPinGroup, planSiblingMove } from '../../../assets/src/apps/rail/move';
 import { f } from './tree';
 
 /**
@@ -71,5 +71,31 @@ describe('planSiblingMove', () => {
         planSiblingMove(given, 22, 1);
 
         assert.equal(JSON.stringify(given), before);
+    });
+});
+
+describe('pinned folders keep to their group (tier 2 item 10)', () => {
+    // As sortTree draws it: the pinned first.
+    const level = () => [f(5, 'P1', [], { pinned: true }), f(6, 'P2', [], { pinned: true }), f(7, 'U1'), f(8, 'U2')];
+
+    it('will not step an unpinned folder above the last pinned one, or a pinned one below', () => {
+        assert.equal(planSiblingMove(level(), 7, -1), null);
+        assert.equal(planSiblingMove(level(), 6, 1), null);
+    });
+
+    it('still steps within a group', () => {
+        assert.deepEqual(planSiblingMove(level(), 6, -1), { parentId: null, ids: [6, 5, 7, 8] });
+        assert.deepEqual(planSiblingMove(level(), 7, 1), { parentId: null, ids: [5, 6, 8, 7] });
+    });
+
+    it('lands a drop at the nearest place it will be seen', () => {
+        // An unpinned folder dropped at the top goes after the pinned.
+        assert.equal(clampToPinGroup(level(), { id: 8 }, 0), 2);
+        // A pinned folder dropped among the unpinned goes last of the pinned.
+        assert.equal(clampToPinGroup(level(), { id: 5, pinned: true }, 3), 1);
+        // A pinned folder from elsewhere, dropped at the end of this level.
+        assert.equal(clampToPinGroup(level(), { id: 99, pinned: true }, 4), 2);
+        // Inside its group, where it was aimed.
+        assert.equal(clampToPinGroup(level(), { id: 8 }, 3), 3);
     });
 });

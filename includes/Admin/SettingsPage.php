@@ -451,6 +451,8 @@ final class SettingsPage
             'rename' => __('Organise', 'folderfolio'),
             'delete' => __('Delete', 'folderfolio'),
             'assign' => __('Assign files', 'folderfolio'),
+            // Tier 2 item 10: lock and unlock, and not be stopped by a lock.
+            'lock' => __('Lock', 'folderfolio'),
         ];
     }
 

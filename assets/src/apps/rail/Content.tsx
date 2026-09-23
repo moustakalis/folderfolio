@@ -16,14 +16,14 @@
  * toolbar because that is where there happened to be a seam.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Breadcrumb, ClearFilter, type Crumb } from './Breadcrumb';
 import { Cards } from './Cards';
 import { CloseIcon } from './icons';
 import type { FolderNode } from './queries';
 import { StartHere } from './StartHere';
-import { useRail } from './store';
+import { sortTree, useRail } from './store';
 import { arrivedFromStartupFolder, folderFromUrl } from '../../lib/filter';
 import { hasListTable } from '../../lib/list-refresh';
 import { t, tn } from '../../core/api';
@@ -161,8 +161,13 @@ function useFolderContent(nodes: FolderNode[]): {
     label: string;
 } {
     const selectedId = useRail((s) => s.selectedId);
+    const sort = useRail((s) => s.sort);
 
-    const trail = selectedId === null || selectedId <= 0 ? [] : trailTo(nodes, selectedId) ?? [];
+    // The rail's order, not the wire's: until tier 2 item 10 these cards came
+    // out in the server's order whatever the rail showed beside them, and a
+    // pinned folder has to lead here as it does there.
+    const sorted = useMemo(() => sortTree(nodes, sort), [nodes, sort]);
+    const trail = selectedId === null || selectedId <= 0 ? [] : trailTo(sorted, selectedId) ?? [];
 
     const crumbs: Crumb[] = [
         { id: null, label: t('allMedia', 'All media') },

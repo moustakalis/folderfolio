@@ -89,12 +89,14 @@ final class RailPreferencesTest extends TestCase
                 'width' => RailPreferences::DEFAULT_WIDTH,
                 // Nobody has a startup folder until they press Start here.
                 'startup' => null,
+                // Nor a star until they star something (tier 2 item 10).
+                'stars' => [],
             ],
             RailPreferences::sanitize([])
         );
     }
 
-    public function test_sanitize_returns_only_the_three_keys_it_owns(): void
+    public function test_sanitize_returns_only_the_keys_it_owns(): void
     {
         $clean = RailPreferences::sanitize([
             'open' => false,
@@ -104,7 +106,18 @@ final class RailPreferencesTest extends TestCase
             'user_id' => 1,
         ]);
 
-        self::assertSame(['open' => false, 'width' => 400, 'startup' => 12], $clean);
+        self::assertSame(['open' => false, 'width' => 400, 'startup' => 12, 'stars' => []], $clean);
+    }
+
+    /**
+     * Stars: positive ids, each once, in the order given — anything else is
+     * dropped rather than refusing the whole preference.
+     */
+    public function test_stars_keep_positive_ids_once_in_order(): void
+    {
+        self::assertSame([7, 3, 12], RailPreferences::stars([7, '3', 0, -2, 'x', 7, 12, null]));
+        self::assertSame([], RailPreferences::stars('7'));
+        self::assertCount(RailPreferences::MAX_STARS, RailPreferences::stars(range(1, 500)));
     }
 
     /**

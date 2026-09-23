@@ -155,6 +155,7 @@ final class MediaLibraryIntegration
                 'rename' => Capabilities::can('rename'),
                 'delete' => Capabilities::can('delete'),
                 'assign' => Capabilities::can('assign'),
+                'lock' => Capabilities::can('lock'),
             ],
 
             /*

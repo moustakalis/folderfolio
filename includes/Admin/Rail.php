@@ -651,6 +651,7 @@ final class Rail
                 'rename' => Capabilities::can('rename'),
                 'delete' => Capabilities::can('delete'),
                 'assign' => Capabilities::can('assign'),
+                'lock' => Capabilities::can('lock'),
             ],
 
             /*
@@ -689,6 +690,14 @@ final class Rail
              * app reads is here.
              */
             'startupFolder' => RailPreferences::forUser(get_current_user_id())['startup'],
+
+            /*
+             * This person's starred folders, for the Starred group above the
+             * tree — tier 2 item 10. Printed rather than fetched for the same
+             * reason as the startup folder: the group is on screen at first
+             * paint, not a moment later.
+             */
+            'stars' => RailPreferences::forUser(get_current_user_id())['stars'],
 
             /*
              * What another folder plugin is holding, when this library holds
@@ -754,6 +763,20 @@ final class Rail
                 'sortSameAsEverywhere' => __('Same as everywhere', 'folderfolio'),
                 'expandAll' => __('Expand all', 'folderfolio'),
                 'collapseAll' => __('Collapse all', 'folderfolio'),
+                // Lock, pin and star (tier 2 item 10).
+                'folderMarks' => __('Pin, star and lock', 'folderfolio'),
+                'pin' => __('Pin', 'folderfolio'),
+                'star' => __('Star', 'folderfolio'),
+                'lock' => __('Lock', 'folderfolio'),
+                // Read after the folder name by a screen reader.
+                'pinned' => __('pinned', 'folderfolio'),
+                'starred' => __('starred', 'folderfolio'),
+                'locked' => __('locked', 'folderfolio'),
+                /* translators: %s is the name of the locked folder. */
+                'lockedBy' => __('“%s” is locked. Someone who can lock folders can unlock it.', 'folderfolio'),
+                'starredGroup' => __('Starred', 'folderfolio'),
+                /* translators: 1: folder name, 2: its parent folder's name, 3: number of files. */
+                'starredIn' => __('%1$s in %2$s, %3$s', 'folderfolio'),
                 'breadcrumb' => __('Folder path', 'folderfolio'),
                 'showHiddenLevels' => __('Show the levels in between', 'folderfolio'),
 

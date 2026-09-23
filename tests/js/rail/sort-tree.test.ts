@@ -108,3 +108,19 @@ describe('sortTree — a folder’s own order', () => {
         assert.deepEqual(names(sorted[1].children), ['A2', 'A1']);
     });
 });
+
+describe('sortTree — pinned folders (tier 2 item 10)', () => {
+    it('puts the pinned first in their level, whatever the order', () => {
+        const level = [f(1, 'Apple'), f(2, 'Mango', [], { pinned: true }), f(3, 'Zebra', [], { pinned: true })];
+
+        assert.deepEqual(names(sortTree(level, 'name-asc')), ['Mango', 'Zebra', 'Apple']);
+        assert.deepEqual(names(sortTree(level, 'name-desc')), ['Zebra', 'Mango', 'Apple']);
+        assert.deepEqual(names(sortTree(level, 'oldest')), ['Mango', 'Zebra', 'Apple']);
+    });
+
+    it('lifts a pinned child only within its own parent', () => {
+        const tree = [f(1, 'A', [f(11, 'a1'), f(12, 'a2', [], { pinned: true })]), f(2, 'B')];
+
+        assert.deepEqual(outline(sortTree(tree, 'name-asc')), ['A', '  a2', '  a1', 'B']);
+    });
+});

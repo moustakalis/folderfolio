@@ -14,6 +14,7 @@
 import { create } from 'zustand';
 
 import { folderFromUrl } from '../../lib/filter';
+import { apiFetch, errorMessage } from '../../core/api';
 
 export interface RailState {
     /**
@@ -43,6 +44,13 @@ export interface RailState {
      * paint, then owned here.
      */
     startupFolderId: number | null;
+
+    /**
+     * This person's starred folders, in the order they were starred — tier 2
+     * item 10. Seeded from the server on the first paint like the startup
+     * folder, then owned here; `toggleStar()` writes it back.
+     */
+    stars: number[];
 
     expandedIds: Set<number>;
 
@@ -147,6 +155,8 @@ export interface RailState {
     hold: (clipboard: Clipboard | null) => void;
     showNotice: (message: string) => void;
     dismissNotice: () => void;
+    /** Star or unstar a folder, and save the list. */
+    toggleStar: (id: number) => void;
 }
 
 export type SortOrder = 'name-asc' | 'name-desc' | 'newest' | 'oldest' | 'custom';
@@ -250,6 +260,7 @@ export const useRail = create<RailState>((set) => ({
     selectedId: folderFromUrl(),
     focusedId: folderFromUrl(),
     startupFolderId: window.folderFolio?.startupFolder ?? null,
+    stars: window.folderFolio?.stars ?? [],
     expandedIds: new Set<number>(),
     /*
      * The sheet opens at the top level even when a folder is selected.
@@ -269,6 +280,29 @@ export const useRail = create<RailState>((set) => ({
     select: (id) => set({ selectedId: id, focusedId: id }),
 
     setStartupFolder: (id) => set({ startupFolderId: id }),
+
+    /*
+     * Optimistic, like the startup toggle: the press is the answer. The whole
+     * list is sent — the preference route merges keys, not lists — and a
+     * failure puts the list back and says so, because a star that silently
+     * did not stick is a shortcut that is not there tomorrow.
+     */
+    toggleStar: (id) =>
+        set((state) => {
+            const previous = state.stars;
+            const stars = previous.includes(id)
+                ? previous.filter((star) => star !== id)
+                : [...previous, id];
+
+            void apiFetch('/preferences', { method: 'POST', data: { rail: { stars } } }).catch(
+                (error: unknown) => {
+                    useRail.setState({ stars: previous });
+                    useRail.getState().showNotice(errorMessage(error));
+                }
+            );
+
+            return { stars };
+        }),
     focus: (id) => set({ focusedId: id }),
 
     // A new Set each time rather than mutating: Zustand compares by reference,
@@ -352,10 +386,19 @@ export function sortTree<
         id: number;
         sort_order: number;
         sort_folders?: string | null;
+        pinned?: boolean;
         children: T[];
     },
 >(nodes: T[], global: SortOrder, level: SortOrder = global): T[] {
     const sorted = [...nodes].sort((a, b) => {
+        // A pinned folder goes first in its level, whatever the sort — tier 2
+        // item 10. Among the pinned, and among the rest, the level's own order.
+        const pin = Number(Boolean(b.pinned)) - Number(Boolean(a.pinned));
+
+        if (pin !== 0) {
+            return pin;
+        }
+
         switch (level) {
             case 'name-desc':
                 return b.name.localeCompare(a.name, undefined, { numeric: true });

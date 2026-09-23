@@ -129,6 +129,13 @@ final class Capabilities
             return true;
         }
 
+        // A role the matrix has never heard of does not hold a lock that
+        // exists to stop exactly such roles. Administrators have it anyway,
+        // by rule 2.
+        if ('lock' === $ability) {
+            return false;
+        }
+
         return current_user_can('edit_others_posts');
     }
 

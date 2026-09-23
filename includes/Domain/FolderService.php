@@ -70,8 +70,60 @@ class FolderService
     public function __construct(
         private readonly FolderRepository $folders = new FolderRepository(),
         private readonly AttachmentFolderRepository $assignments = new AttachmentFolderRepository(),
-        private readonly FolderSorts $sorts = new FolderSorts()
+        private readonly FolderSorts $sorts = new FolderSorts(),
+        private readonly FolderLocks $locks = new FolderLocks()
     ) {
+    }
+
+    /**
+     * A folder's name for a lock's refusal — `FolderLocks::guard()` asks.
+     *
+     * @return callable(int): ?string
+     */
+    private function nameOf(): callable
+    {
+        return function (int $id): ?string {
+            $row = $this->folders->find($id);
+
+            return $row === null ? null : (string) $row['name'];
+        };
+    }
+
+    /**
+     * Mark a folder locked or pinned — tier 2 item 10.
+     *
+     * Locking needs the `lock` ability, which the route asks. Pinning moves a
+     * folder within its level, so on a locked folder it is refused like any
+     * other move unless this person may lock (`FolderLocks::guard()`).
+     */
+    public function mark(int $id, string $mark, bool $on): Folder|WP_Error
+    {
+        $folder = $this->get($id);
+
+        if ($folder === null) {
+            return new WP_Error(
+                'folderfolio_folder_not_found',
+                __('Folder not found.', 'folderfolio')
+            );
+        }
+
+        if ($mark === FolderLocks::PINNED) {
+            $locked = $this->locks->guard($folder->path, $this->nameOf());
+
+            if ($locked !== null) {
+                return $locked;
+            }
+        }
+
+        $written = $this->locks->set($id, $mark, $on);
+
+        if (is_wp_error($written)) {
+            return $written;
+        }
+
+        do_action('folderfolio_folder_marked', $folder, $mark, $on);
+
+        return $folder;
     }
 
     /**
@@ -94,7 +146,11 @@ class FolderService
         // without it would hand the client a tree whose nodes are missing two
         // keys depending on a setting.
         $rows = $this->folders->all($objectType);
-        $nodes = FolderTree::withSorts(FolderTree::fromRows($rows), $this->sorts->all());
+        $nodes = FolderTree::withMarks(
+            FolderTree::withSorts(FolderTree::fromRows($rows), $this->sorts->all()),
+            $this->locks->locked(),
+            $this->locks->pinned()
+        );
 
         // No argument means "whatever the site is set to". The literal
         // default used to live here, which made the setting unreachable from
@@ -210,6 +266,15 @@ class FolderService
 
             $parentPath = (string) $parent['path'];
 
+            // Nothing is made inside a locked folder — tier 2 item 10. Here,
+            // so the rail, paste, bulk-create, the importer, a dropped
+            // directory and the CLI are all refused by the same sentence.
+            $locked = $this->locks->guard($parentPath, $this->nameOf());
+
+            if ($locked !== null) {
+                return $locked;
+            }
+
             $tooDeep = $this->guardDepth(FolderPath::depth($parentPath) + 1);
 
             if (is_wp_error($tooDeep)) {
@@ -270,6 +335,16 @@ class FolderService
 
         if (is_wp_error($validation)) {
             return $validation;
+        }
+
+        // A rename changes a locked folder's shape; a colour or an icon does
+        // not, and stays allowed (Nick's answer 6, board 3ZU8VGkJemznTvKp8tNnvY).
+        if (isset($data['name']) && $data['name'] !== $existing->name) {
+            $locked = $this->locks->guard($existing->path, $this->nameOf());
+
+            if ($locked !== null) {
+                return $locked;
+            }
         }
 
         if (
@@ -334,6 +409,13 @@ class FolderService
             return $folder;
         }
 
+        // Out of a locked folder, or a locked folder itself.
+        $locked = $this->locks->guard($folder->path, $this->nameOf());
+
+        if ($locked !== null) {
+            return $locked;
+        }
+
         $parentPath = null;
         $newDepth = 0;
 
@@ -348,6 +430,13 @@ class FolderService
             }
 
             $parentPath = (string) $parent['path'];
+
+            // And into one.
+            $locked = $this->locks->guard($parentPath, $this->nameOf());
+
+            if ($locked !== null) {
+                return $locked;
+            }
 
             // The whole cycle check: is the proposed parent inside the subtree
             // we are about to move? One prefix comparison, no queries.
@@ -487,6 +576,13 @@ class FolderService
             }
 
             $objectType = (string) $parent['object_type'];
+
+            // Arranging a locked folder's children rearranges its shape.
+            $locked = $this->locks->guard((string) $parent['path'], $this->nameOf());
+
+            if ($locked !== null) {
+                return $locked;
+            }
         }
 
         foreach ($folders as $folder) {
@@ -515,6 +611,12 @@ class FolderService
 
         $incoming = array_values(array_diff($ids, $existing));
 
+        $moved = $this->lockedFolderMoved($existing, $ids);
+
+        if ($moved !== null) {
+            return $moved;
+        }
+
         return Transaction::run(function () use ($ids, $parentId, $incoming): int|WP_Error {
             foreach ($incoming as $id) {
                 $moved = $this->move($id, $parentId);
@@ -536,6 +638,44 @@ class FolderService
 
             return $written;
         });
+    }
+
+    /**
+     * A reorder whose one change is a locked folder changing place.
+     *
+     * The client sends a whole level, never a delta, so which folder moved is
+     * read back: for each locked folder in the level, take it out of both the
+     * stored order and the requested one — if what is left is identical and
+     * its own place differs, it is the folder that moved. Another folder
+     * moving past it shifts its index but is not it moving, and stays
+     * allowed. The rail never offers the move (its rows are disabled); this
+     * is the rule for a request that did not come from the rail.
+     *
+     * @param list<int> $existing The level as stored.
+     * @param list<int> $requested The level as asked for.
+     */
+    private function lockedFolderMoved(array $existing, array $requested): ?WP_Error
+    {
+        if ($this->locks->exempt()) {
+            return null;
+        }
+
+        $locked = $this->locks->locked();
+
+        foreach ($existing as $index => $id) {
+            if (!isset($locked[$id])) {
+                continue;
+            }
+
+            $without = static fn (array $list): array => array_values(array_diff($list, [$id]));
+            $newIndex = array_search($id, $requested, true);
+
+            if ($newIndex !== false && $newIndex !== $index && $without($existing) === $without($requested)) {
+                return FolderLocks::refusal((string) ($this->folders->find($id)['name'] ?? ''));
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -595,6 +735,15 @@ class FolderService
             }
 
             $parentPath = (string) $parent['path'];
+
+            // A copy is made inside its destination, and nothing is made
+            // inside a locked folder. The source may be locked — copying
+            // changes nothing about it — and the copy comes out unlocked.
+            $locked = $this->locks->guard($parentPath, $this->nameOf());
+
+            if ($locked !== null) {
+                return $locked;
+            }
 
             // Finder refuses this too. A copy taken as a snapshot could be
             // pasted inside itself, but "Brand inside Brand/Logos" is almost
@@ -814,6 +963,15 @@ class FolderService
                 'folderfolio_invalid_children_strategy',
                 __('Choose whether subfolders are kept or deleted.', 'folderfolio')
             );
+        }
+
+        // Inside a locked folder, or with one inside it: a cascade would
+        // delete it and a reparent would move it.
+        $locked = $this->locks->guard($folder->path, $this->nameOf())
+            ?? $this->locks->guardSubtree($this->folders->subtreeIds($folder->path), $this->nameOf());
+
+        if ($locked !== null) {
+            return $locked;
         }
 
         // Validated before the transaction opens: nothing here writes, and a

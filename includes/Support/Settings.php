@@ -74,7 +74,13 @@ final class Settings
     public const SORTS = ['name-asc', 'name-desc', 'newest', 'oldest', 'custom'];
 
     /**
-     * The four columns of the roles matrix, in the order screen 08 draws them.
+     * The columns of the roles matrix, in the order screen 08 draws them.
+     *
+     * `lock` is the fifth, since tier 2 item 10: who may lock and unlock a
+     * folder and is not stopped by a lock (`Domain\FolderLocks`). It is not in
+     * any stored role option, so on a site that saved the matrix before, no
+     * role has it and only administrators — who pass every ability,
+     * `Capabilities` rule 2 — can lock. That is also the default below.
      *
      * `rename` covers moving a folder as well: both edit a folder that already
      * exists, and a fifth column for "move" would be a distinction the person
@@ -85,7 +91,7 @@ final class Settings
      * every stored role option holds, and renaming it would be a migration
      * bought for a word.
      */
-    public const ABILITIES = ['create', 'rename', 'delete', 'assign'];
+    public const ABILITIES = ['create', 'rename', 'delete', 'assign', 'lock'];
 
     /**
      * The folder the media library opens in — tier 1 item 7.
@@ -153,7 +159,11 @@ final class Settings
     {
         return [
             'administrator' => self::ABILITIES,
-            'editor' => self::ABILITIES,
+            // Everything but `lock` (Nick's answer 5, board
+            // 3ZU8VGkJemznTvKp8tNnvY). Authors and Contributors cannot
+            // rename or delete out of the box, so a lock only means something
+            // if it stops the people who otherwise could — Editors.
+            'editor' => ['create', 'rename', 'delete', 'assign'],
             'author' => ['create', 'assign'],
             'contributor' => ['assign'],
             'subscriber' => [],

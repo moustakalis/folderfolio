@@ -82,6 +82,38 @@ final class FolderTree
     }
 
     /**
+     * Lock and pin, on every node — tier 2 item 10.
+     *
+     * `locked` is the folder's **own** mark; `locked_by` is the folder whose
+     * lock covers it — itself, or the topmost locked ancestor, because a lock
+     * covers the whole subtree and that is the folder somebody would have to
+     * unlock. The server works it out once, from the tree it already has,
+     * so every renderer reads one answer rather than each walking upwards.
+     * `FolderLocks::guard()` asks the same question of a path for writes.
+     *
+     * @param list<array<string, mixed>> $nodes
+     * @param array<int, true> $locked
+     * @param array<int, true> $pinned
+     * @return list<array<string, mixed>>
+     */
+    public static function withMarks(array $nodes, array $locked, array $pinned, ?int $lockedBy = null): array
+    {
+        foreach ($nodes as &$node) {
+            $id = (int) $node['id'];
+            $by = $lockedBy ?? (isset($locked[$id]) ? $id : null);
+
+            $node['locked'] = isset($locked[$id]);
+            $node['locked_by'] = $by;
+            $node['pinned'] = isset($pinned[$id]);
+            $node['children'] = self::withMarks($node['children'] ?? [], $locked, $pinned, $by);
+        }
+
+        unset($node);
+
+        return $nodes;
+    }
+
+    /**
      * The per-folder orders, onto every node.
      *
      * Every node gets both keys whether or not it has a row, because null

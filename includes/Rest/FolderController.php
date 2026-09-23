@@ -11,6 +11,7 @@ if (!defined('ABSPATH')) {
 use FolderFolio\Domain\AttachmentFolderRepository;
 use FolderFolio\Domain\Folder;
 use FolderFolio\Domain\FolderBulk;
+use FolderFolio\Domain\FolderLocks;
 use FolderFolio\Domain\FolderRepository;
 use FolderFolio\Domain\FolderService;
 use FolderFolio\Domain\FolderSorts;
@@ -204,6 +205,24 @@ class FolderController
                     'required' => true,
                 ],
             ],
+        ]);
+
+        // Lock and pin — tier 2 item 10. Two routes because they are two
+        // abilities: locking is `lock`; pinning is a shared change to the
+        // order everyone sees, so `rename` (Organise), and on a locked folder
+        // FolderService refuses it unless this person may lock.
+        register_rest_route($ns, '/folders/(?P<id>\\d+)/lock', [
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => [$this, 'lock'],
+            'permission_callback' => [$this, 'canLockFolders'],
+            'args' => ['locked' => ['type' => 'boolean', 'required' => true]],
+        ]);
+
+        register_rest_route($ns, '/folders/(?P<id>\\d+)/pin', [
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => [$this, 'pin'],
+            'permission_callback' => [$this, 'canRenameFolders'],
+            'args' => ['pinned' => ['type' => 'boolean', 'required' => true]],
         ]);
 
         // Files placed in a folder — tier 2 item 8. The files and where they
@@ -449,6 +468,11 @@ class FolderController
         return Capabilities::can('delete');
     }
 
+    public function canLockFolders(): bool
+    {
+        return Capabilities::can('lock');
+    }
+
     /**
      * Filing media into folders, and taking it out again.
      *
@@ -540,6 +564,24 @@ class FolderController
 
         return $this->result(
             $result,
+            200,
+            fn (): array => ['tree' => $this->folders->tree()]
+        );
+    }
+
+    public function lock(WP_REST_Request $request): WP_REST_Response
+    {
+        return $this->result(
+            $this->folders->mark((int) $request['id'], FolderLocks::LOCKED, (bool) $request->get_param('locked')),
+            200,
+            fn (): array => ['tree' => $this->folders->tree()]
+        );
+    }
+
+    public function pin(WP_REST_Request $request): WP_REST_Response
+    {
+        return $this->result(
+            $this->folders->mark((int) $request['id'], FolderLocks::PINNED, (bool) $request->get_param('pinned')),
             200,
             fn (): array => ['tree' => $this->folders->tree()]
         );

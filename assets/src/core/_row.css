@@ -816,3 +816,31 @@
     background: Highlight;
   }
 }
+
+/* ------------------------------------ lock, pin and star — tier 2 item 10 */
+
+/**
+ * A row's marks, beside the count (answer 2): the name is the one track that
+ * clips, so the marks sit after it and keep their place from row to row.
+ * 12px glyphs, 3px apart; the name gives up 15px per mark.
+ */
+.folderfolio-row__marks {
+  flex: 0 0 auto;
+  display: inline-grid;
+  grid-auto-flow: column;
+  gap: 3px;
+  align-items: center;
+  color: var(--ff-muted);
+}
+
+/* A lock that covers the folder from an ancestor: the same shape, fainter —
+   an icon, so 3:1 is the bar, and --ff-dim clears it on the panel. */
+.folderfolio-row__marks .folderfolio-row__inherited {
+  color: var(--ff-dim);
+  opacity: 0.7;
+}
+
+.folderfolio-row__marks .folderfolio-row__star,
+.folderfolio-rail__starred-row .folderfolio-row__star {
+  color: var(--ff-accent-text);
+}

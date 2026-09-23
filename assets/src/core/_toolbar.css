@@ -1883,3 +1883,86 @@ body.folderfolio-has-rail #wpbody-content .wp-filter {
     max-width: none;
   }
 }
+
+/* ------------------------------------ lock, pin and star — tier 2 item 10 */
+
+/**
+ * One strip of three labelled toggles in the ⋮ menu (answer 1 on board
+ * 3ZU8VGkJemznTvKp8tNnvY): +46px on a 448px menu where three rows would be
+ * +90. Grid, one track per toggle present — a role without Organise or Lock
+ * sees fewer, and they share the width rather than leaving a hole.
+ *
+ * Here, in the last of admin.css's three partials, and on classes of their
+ * own: nothing in _row.css or _rail-chrome.css can tie with them.
+ */
+.folderfolio-marks {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 6px;
+  padding: 6px 10px;
+}
+
+.folderfolio-marks__toggle {
+  display: grid;
+  grid-auto-flow: column;
+  place-content: center;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  height: 30px;
+  padding: 0 6px;
+  border: 1px solid var(--ff-line);
+  border-radius: 0;
+  background: none;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--ff-ink);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.folderfolio-marks__toggle:hover {
+  background: var(--ff-hover);
+}
+
+.folderfolio-marks__toggle:focus-visible {
+  outline: 2px solid var(--ff-sel);
+  outline-offset: -2px;
+}
+
+/* Pressed: the accent wash and edge, the ink stays full — the label is the
+   same word either way, and aria-checked says which. */
+.folderfolio-marks__toggle[aria-checked='true'] {
+  background: var(--ff-wash);
+  border-color: var(--ff-sel);
+  color: var(--ff-accent-text);
+}
+
+.folderfolio-marks__toggle:disabled {
+  color: var(--ff-off);
+  cursor: default;
+}
+
+.folderfolio-marks__toggle:disabled:hover {
+  background: none;
+}
+
+/**
+ * Why the rows below are disabled — the first thing in a locked folder's menu,
+ * in the same words the server refuses with.
+ */
+.folderfolio-menu .folderfolio-menu__why {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px;
+  align-items: start;
+  margin: 0;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--ff-line);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ff-muted);
+  white-space: normal;
+}

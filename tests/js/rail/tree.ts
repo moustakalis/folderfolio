@@ -12,6 +12,9 @@ export interface TestNode {
     name: string;
     sort_order: number;
     sort_folders: string | null;
+    pinned?: boolean;
+    locked?: boolean;
+    locked_by?: number | null;
     children: TestNode[];
 }
 
@@ -19,7 +22,7 @@ export function f(
     id: number,
     name: string,
     children: TestNode[] = [],
-    extra: Partial<Pick<TestNode, 'sort_order' | 'sort_folders'>> = {}
+    extra: Partial<Pick<TestNode, 'sort_order' | 'sort_folders' | 'pinned' | 'locked' | 'locked_by'>> = {}
 ): TestNode {
     return { id, name, sort_order: 0, sort_folders: null, children, ...extra };
 }

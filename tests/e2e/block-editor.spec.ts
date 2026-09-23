@@ -37,7 +37,7 @@ test.describe('the block editor', () => {
             };
         });
 
-        expect(config.can).toEqual({ create: true, rename: true, delete: true, assign: true });
+        expect(config.can).toEqual({ create: true, rename: true, delete: true, assign: true, lock: true });
         expect(config.picker).toBe(true);
         expect(config.gallery).toBe(true);
     });

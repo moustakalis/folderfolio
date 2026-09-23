@@ -146,6 +146,7 @@ final class MediaModalIntegration
                 'rename' => Capabilities::can('rename'),
                 'delete' => Capabilities::can('delete'),
                 'assign' => Capabilities::can('assign'),
+                'lock' => Capabilities::can('lock'),
             ],
             /*
              * The same key the rail's own writer carries, for the reason that

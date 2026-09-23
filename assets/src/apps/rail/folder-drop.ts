@@ -29,6 +29,7 @@
 import { useCallback, useRef } from 'react';
 
 import { draggedFolder } from './drag';
+import { clampToPinGroup } from './move';
 import { useReorderFolders, type FolderNode } from './queries';
 import { useRail } from './store';
 
@@ -149,7 +150,10 @@ export function useFolderDrop(visible: Visible[], roots: FolderNode[]) {
             }).length;
 
             const ids = siblings.map((s) => s.id).filter((id) => id !== draggedId);
-            ids.splice(before, 0, draggedId);
+            // The dragged node from the tree, not the list it lands in: a pinned
+            // folder dropped under another parent is still pinned there.
+            const dragged = visible.find((v) => v.node.id === draggedId)?.node ?? { id: draggedId };
+            ids.splice(clampToPinGroup(siblings, dragged, before), 0, draggedId);
 
             return { parentId: parent ? parent.id : null, ids, siblings };
         },

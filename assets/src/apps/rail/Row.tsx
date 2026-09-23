@@ -16,6 +16,8 @@ import {
     FolderOpenIcon,
 } from './icons';
 import { RowMenu } from './FolderMenu';
+import { RowMarks } from './RowMarks';
+import { isBlocked } from './locks';
 import type { FolderNode } from './queries';
 import { useDropTarget } from './useDropTarget';
 import { useRail } from './store';
@@ -167,7 +169,7 @@ export function Row({
                   either — the server would refuse the reorder, and a gesture
                   that only ever fails is worse than one that is absent.
                 */
-                draggable={!renaming && can('rename')}
+                draggable={!renaming && can('rename') && !isBlocked(node)}
                 data-folderfolio-folder={node.id}
                 data-folderfolio-parent={node.parent_id ?? ''}
                 data-folderfolio-depth={depth}
@@ -237,6 +239,8 @@ export function Row({
                 ) : (
                     <>
                         <span className="folderfolio-row__name">{node.name}</span>
+
+                        <RowMarks id={node.id} pinned={node.pinned} lockedBy={node.locked_by} />
 
                         {/*
                           The subtree total, not the folder's own count. A

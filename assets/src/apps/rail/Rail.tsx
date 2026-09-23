@@ -11,6 +11,7 @@ import { createPortal } from 'react-dom';
 
 import { Content, ContentCards } from './Content';
 import { FixedRows } from './FixedRows';
+import { Starred } from './Starred';
 import { Header } from './Header';
 import { Levels } from './Levels';
 import { LibraryToolbar } from './LibraryToolbar';
@@ -367,6 +368,8 @@ export function Rail({
             <div className="folderfolio-rail__app">
                 <Header />
                 <FixedRows />
+                {/* This person's shortcuts — tier 2 item 10. Nothing without a star. */}
+                {isError ? null : <Starred nodes={nodes} />}
                 <RailControls
                     selected={selectedNode}
                     nodes={nodes}

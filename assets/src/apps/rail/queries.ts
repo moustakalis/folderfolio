@@ -59,6 +59,15 @@ export interface FolderNode {
      */
     sort_folders: string | null;
     sort_files: string | null;
+    /**
+     * Tier 2 item 10. `locked` is the folder's own mark; `locked_by` is the
+     * folder whose lock covers it — itself or the topmost locked ancestor,
+     * worked out on the server (`FolderTree::withMarks()`), null when free.
+     * Optional so a tree cached from before the field existed still reads.
+     */
+    locked?: boolean;
+    locked_by?: number | null;
+    pinned?: boolean;
 }
 
 export interface LibraryCounts {
@@ -772,4 +781,35 @@ export function searchTree(
     }
 
     return out;
+}
+
+/**
+ * Lock or pin a folder — tier 2 item 10.
+ *
+ * Not optimistic, unlike the colour: a lock changes `locked_by` on a whole
+ * subtree, and a pin moves the folder in its level, and both are answered by
+ * the tree the route sends back rather than re-derived here. The refusal —
+ * a locked folder pinned by someone who may not lock — is the MutationCache's
+ * notice sheet.
+ */
+export function useSetFolderMark() {
+    const client = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (input: { id: number; mark: 'lock' | 'pin'; on: boolean }) => {
+            const response = await apiFetch<ApiEnvelope<{ tree: FolderNode[] }>>(
+                `/folders/${input.id}/${input.mark}`,
+                {
+                    method: 'POST',
+                    data: input.mark === 'lock' ? { locked: input.on } : { pinned: input.on },
+                }
+            );
+
+            return response.data;
+        },
+
+        onSuccess: (data) => {
+            client.setQueryData(treeKey, data.tree);
+        },
+    });
 }

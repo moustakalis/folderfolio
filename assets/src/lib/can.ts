@@ -12,7 +12,7 @@
  * failure than showing a button that the server will refuse.
  */
 
-export type Ability = 'create' | 'rename' | 'delete' | 'assign';
+export type Ability = 'create' | 'rename' | 'delete' | 'assign' | 'lock';
 
 /**
  * Abilities this bundle has chosen not to offer, whatever the user may do.
@@ -27,7 +27,7 @@ export type Ability = 'create' | 'rename' | 'delete' | 'assign';
 let withheld: ReadonlySet<Ability> = new Set();
 
 export function restrictAbilities(allowed: readonly Ability[]): void {
-    const all: Ability[] = ['create', 'rename', 'delete', 'assign'];
+    const all: Ability[] = ['create', 'rename', 'delete', 'assign', 'lock'];
 
     withheld = new Set(all.filter((ability) => !allowed.includes(ability)));
 }

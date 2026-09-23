@@ -21,6 +21,7 @@
 
 interface Node {
     id: number;
+    pinned?: boolean;
     children: Node[];
 }
 
@@ -45,6 +46,13 @@ export function planSiblingMove<T extends Node>(
     const to = from + direction;
 
     if (from === -1 || to < 0 || to >= level.siblings.length) {
+        return null;
+    }
+
+    // Pinned folders sit first in their level whatever the order (tier 2
+    // item 10), so a step across that line would be saved and not seen: the
+    // first unpinned folder cannot go above the last pinned one.
+    if (Boolean(level.siblings[to].pinned) !== Boolean(level.siblings[from].pinned)) {
         return null;
     }
 
@@ -79,4 +87,21 @@ function levelOf<T extends Node>(
     }
 
     return null;
+}
+
+/**
+ * Where a dropped folder may land among `siblings` (sorted, pinned first),
+ * given the slot the pointer named: inside its own group — among the pinned
+ * if it is pinned, after them if it is not. A drop across the line would be
+ * saved and then drawn somewhere else, so it lands at the nearest place it
+ * will actually be seen.
+ */
+export function clampToPinGroup(
+    siblings: readonly { id: number; pinned?: boolean }[],
+    dragged: { id: number; pinned?: boolean },
+    before: number
+): number {
+    const pinned = siblings.filter((s) => s.id !== dragged.id && s.pinned).length;
+
+    return dragged.pinned ? Math.min(before, pinned) : Math.max(before, pinned);
 }

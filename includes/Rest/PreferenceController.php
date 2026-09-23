@@ -57,6 +57,10 @@ final class PreferenceController
                             // a key left out changes nothing and a key sent
                             // null clears it.
                             'startup' => ['type' => ['integer', 'null']],
+                            // Stars are sent whole, the list after the click:
+                            // write() merges keys, not lists, so this is how
+                            // one is taken away.
+                            'stars' => ['type' => 'array', 'items' => ['type' => 'integer']],
                         ],
                     ],
                 ],

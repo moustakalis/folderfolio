@@ -169,7 +169,9 @@ final class SettingsTest extends TestCase
         // and this test have to change together.
         $this->assertSame(
             [
-                'administrator' => ['create', 'rename', 'delete', 'assign'],
+                // Lock is the fifth column, Administrator only (tier 2 item
+                // 10, Nick's answer 5).
+                'administrator' => ['create', 'rename', 'delete', 'assign', 'lock'],
                 'editor' => ['create', 'rename', 'delete', 'assign'],
                 'author' => ['create', 'assign'],
                 'contributor' => ['assign'],

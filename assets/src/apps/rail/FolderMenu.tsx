@@ -40,7 +40,10 @@ import {
     ArrowUpIcon,
     ChevronRightIcon,
     CopyIcon,
+    LockIcon,
     PasteIcon,
+    PinIcon,
+    StarIcon,
     ScissorsIcon,
     PencilIcon,
     TrashIcon,
@@ -49,7 +52,8 @@ import { planSiblingMove } from './move';
 import { heldLabel, mayPaste, planPaste, stillThere, usePaste, type Where } from './paste';
 import { Menu } from './Menu';
 import type { FolderNode } from './queries';
-import { useReorderFolders, useSetFolderColor, useSetFolderSort } from './queries';
+import { useReorderFolders, useSetFolderColor, useSetFolderMark, useSetFolderSort } from './queries';
+import { hasLockInside, isBlocked, lockingName } from './locks';
 import { SORT_LABELS, isSortOrder, useRail, type SortOrder } from './store';
 import { useAnchoredPanel } from './useAnchoredPanel';
 import { can } from '../../lib/can';
@@ -169,14 +173,91 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
     const copying = organise && can('create');
 
     /*
+     * Lock, pin and star — tier 2 item 10, board 3ZU8VGkJemznTvKp8tNnvY.
+     *
+     * `blocked`: a lock covers this folder (its own or an ancestor's) and
+     * this person may not pass it. Everything that changes the folder's shape
+     * is disabled rather than hidden — the menu keeps its shape, and the line
+     * at the top says why. Copy, colour and Sort inside stay (answer 6).
+     * `parentBlocked`: the lock is an ancestor's, so the level this folder
+     * sits in is locked too — a paste *beside* it would be made inside it.
+     */
+    const blocked = isBlocked(folder);
+    const parentBlocked = blocked && folder.locked_by !== folder.id;
+    const lockedInside = hasLockInside(folder);
+    const mark = useSetFolderMark();
+    const starred = useRail((s) => s.stars.includes(folder.id));
+    const toggleStar = useRail((s) => s.toggleStar);
+
+    // mutateAsync, not mutate: this menu unmounts on press, and TanStack drops
+    // a mutate() callback for an unmounted observer (trap 78). The refusal is
+    // the MutationCache's notice sheet, so the promise's own is swallowed.
+    function setMark(which: 'lock' | 'pin', on: boolean) {
+        void mark.mutateAsync({ id: folder.id, mark: which, on }).catch(() => undefined);
+        onClose();
+    }
+
+    /*
+     * One strip of three labelled toggles (answer 1): each keeps its label
+     * whether pressed or not — the rule Start here set — and aria-pressed,
+     * the filled glyph and the accent wash carry the state.
+     */
+    const marks = (
+        <div className="folderfolio-marks" role="group" aria-label={t('folderMarks', 'Pin, star and lock')}>
+            {organise ? (
+                <button
+                    type="button"
+                    role="menuitemcheckbox"
+                    aria-checked={Boolean(folder.pinned)}
+                    className="folderfolio-marks__toggle"
+                    disabled={blocked}
+                    onClick={() => setMark('pin', !folder.pinned)}
+                >
+                    <PinIcon size={13} filled={Boolean(folder.pinned)} />
+                    {t('pin', 'Pin')}
+                </button>
+            ) : null}
+
+            <button
+                type="button"
+                role="menuitemcheckbox"
+                aria-checked={starred}
+                className="folderfolio-marks__toggle"
+                onClick={() => {
+                    toggleStar(folder.id);
+                    onClose();
+                }}
+            >
+                <StarIcon size={13} filled={starred} />
+                {t('star', 'Star')}
+            </button>
+
+            {can('lock') ? (
+                <button
+                    type="button"
+                    role="menuitemcheckbox"
+                    aria-checked={Boolean(folder.locked)}
+                    className="folderfolio-marks__toggle"
+                    onClick={() => setMark('lock', !folder.locked)}
+                >
+                    <LockIcon size={13} filled={Boolean(folder.locked)} />
+                    {t('lock', 'Lock')}
+                </button>
+            ) : null}
+        </div>
+    );
+
+    /*
      * Each paste row is asked the same question the paste itself will be, so
      * a row that is enabled and a paste that does nothing cannot disagree —
      * the rule Move up and Move down already follow. Inside itself, past the
      * depth limit, or a cut that would land exactly where it is: disabled.
      */
     const pastable = held !== null && mayPaste(held) && stillThere(ordered, held);
-    const canPasteInside = pastable && planPaste(ordered, held, folder.id, 'inside', globalSort) !== null;
-    const canPasteBeside = pastable && planPaste(ordered, held, folder.id, 'beside', globalSort) !== null;
+    const canPasteInside =
+        pastable && !blocked && planPaste(ordered, held, folder.id, 'inside', globalSort) !== null;
+    const canPasteBeside =
+        pastable && !parentBlocked && planPaste(ordered, held, folder.id, 'beside', globalSort) !== null;
 
     function paste(where: Where) {
         // Step out first when standing inside the folder being pasted beside,
@@ -267,12 +348,26 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
     // ------------------------------------------------------------ step one
     return (
         <>
+            {blocked ? (
+                <p className="folderfolio-menu__why" role="note">
+                    <LockIcon size={13} />
+                    {t(
+                        'lockedBy',
+                        '“%s” is locked. Someone who can lock folders can unlock it.',
+                        lockingName(ordered, folder)
+                    )}
+                </p>
+            ) : null}
+
+            {organise ? null : marks}
+
             {organise ? (
                 <>
                     <button
                         type="button"
                         role="menuitem"
                         className="folderfolio-menu__item"
+                        disabled={blocked}
                         onClick={() => {
                             edit({
                                 mode: 'rename',
@@ -291,7 +386,7 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
                         type="button"
                         role="menuitem"
                         className="folderfolio-menu__item"
-                        disabled={up === null}
+                        disabled={up === null || blocked}
                         onClick={() => move(up)}
                     >
                         <ArrowUpIcon size={13} />
@@ -302,12 +397,16 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
                         type="button"
                         role="menuitem"
                         className="folderfolio-menu__item"
-                        disabled={down === null}
+                        disabled={down === null || blocked}
                         onClick={() => move(down)}
                     >
                         <ArrowDownIcon size={13} />
                         {t('moveDown', 'Move down')}
                     </button>
+
+                    <div className="folderfolio-menu__rule" role="separator" />
+
+                    {marks}
 
                     <div className="folderfolio-menu__rule" role="separator" />
 
@@ -328,6 +427,7 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
                         type="button"
                         role="menuitem"
                         className="folderfolio-menu__item"
+                        disabled={blocked}
                         onClick={() => {
                             clipboard.take(folder, 'cut');
                             onClose();
@@ -506,6 +606,7 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
                         type="button"
                         role="menuitem"
                         className="folderfolio-menu__item folderfolio-menu__item--danger"
+                        disabled={blocked || lockedInside}
                         onClick={() => {
                             onDelete();
                             onClose();

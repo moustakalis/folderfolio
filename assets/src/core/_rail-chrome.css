@@ -472,3 +472,35 @@
   font-size: 11px;
   color: var(--ff-muted);
 }
+
+/* ------------------------------------------- the Starred group — item 10 */
+
+/**
+ * This person's shortcuts, between Unassigned and the search — shown only once
+ * they have a star. Five rows, then it scrolls: a list that grew without end
+ * would push the tree off the rail.
+ */
+.folderfolio-rail__starred {
+  display: grid;
+  border-bottom: 1px solid var(--ff-line);
+}
+
+.folderfolio-rail__starred-label {
+  margin: 0;
+  padding: 8px 14px 2px;
+  font-size: 11px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ff-muted);
+}
+
+.folderfolio-rail__starred-list {
+  display: grid;
+  max-height: calc(var(--ff-row-h) * 5);
+  overflow-y: auto;
+}
+
+.folderfolio-rail__starred-parent {
+  color: var(--ff-muted);
+  font-weight: 400;
+}

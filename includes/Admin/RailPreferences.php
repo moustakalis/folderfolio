@@ -87,7 +87,7 @@ final class RailPreferences
     /**
      * @param array<string, mixed> $raw
      *
-     * @return array{open: bool, width: int, startup: ?int}
+     * @return array{open: bool, width: int, startup: ?int, stars: list<int>}
      */
     public static function sanitize(array $raw): array
     {
@@ -97,6 +97,7 @@ final class RailPreferences
             // `??` on purpose: an absent key and a stored null both mean no
             // personal startup folder, and nothing needs to tell them apart.
             'startup' => self::startupFolder($raw['startup'] ?? null),
+            'stars' => self::stars($raw['stars'] ?? []),
         ];
     }
 
@@ -121,6 +122,37 @@ final class RailPreferences
 
         return max(0, (int) $value);
     }
+
+    /**
+     * The folders this person has starred — tier 2 item 10.
+     *
+     * A star is a person's own (Nick's answer), so it lives with their rail
+     * rather than on the folder. Positive ids, each once, in the order given,
+     * capped: the Starred group scrolls after five, and a list with no end
+     * would be a preference that grows with every click. A star on a folder
+     * since deleted is dropped by the client, which has the tree.
+     *
+     * @param mixed $value
+     * @return list<int>
+     */
+    public static function stars($value): array
+    {
+        if (!is_array($value)) {
+            return [];
+        }
+
+        $out = [];
+
+        foreach ($value as $id) {
+            if (is_numeric($id) && (int) $id > 0 && !in_array((int) $id, $out, true)) {
+                $out[] = (int) $id;
+            }
+        }
+
+        return array_slice($out, 0, self::MAX_STARS);
+    }
+
+    public const MAX_STARS = 100;
 
     /**
      * @param mixed $value
@@ -155,7 +187,7 @@ final class RailPreferences
     }
 
     /**
-     * @return array{open: bool, width: int, startup: ?int}
+     * @return array{open: bool, width: int, startup: ?int, stars: list<int>}
      */
     public static function forUser(int $userId): array
     {
@@ -172,7 +204,7 @@ final class RailPreferences
     /**
      * @param array<string, mixed> $raw
      *
-     * @return array{open: bool, width: int, startup: ?int}
+     * @return array{open: bool, width: int, startup: ?int, stars: list<int>}
      */
     public static function save(int $userId, array $raw): array
     {

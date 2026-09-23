@@ -598,6 +598,23 @@
     letter-spacing: 0.02em;
   }
 
+  /*
+   * Sentence case on a phone, since tier 2 item 10's fifth ability column
+   * (Lock). It took the matrix's floor on a Mac from 272 to 303.8px — 29.8px
+   * past the 274px content box at 320, and the page 6px wide — and to 313.8px
+   * against 315 at 361, which a Linux sans (about 4px wider here) would not
+   * fit. A head's min-content is its longest word, and in capitals each is
+   * 6–8px wider (ORGANISE 58, Organise 50). Measured after, with the 9.5px
+   * heads in the 360px block: 267.8px at 320, 283.6 at 361, and every role
+   * row still 43px.
+   *
+   * The role column's 6.4em minimum was the other lever and it was worse:
+   * 5em saved 17px and made every two-word role a 54px row.
+   */
+  .folderfolio-matrix thead th {
+    text-transform: none;
+  }
+
   /* (0,2,1), so it beats the rule above and the base role rule's padding
      shorthand — which is why the left inset has to be restated here. */
   .folderfolio-matrix th.folderfolio-matrix__role {
@@ -668,6 +685,15 @@
 @media screen and (max-width: 360px) {
   .folderfolio-matrix th {
     letter-spacing: 0;
+  }
+
+  /* The other half of the fifth column's fix; see the sentence-case heads
+     in the 520px block. Half a pixel off the heads rather than a pixel off
+     every cell's inset: at 1px the heads ran together — "CreateOrganise
+     Delete" — with 2px between words. Measured together at 320: a 267.8px
+     floor in a 274px box, 4px between heads as before the fifth column. */
+  .folderfolio-matrix thead th {
+    font-size: 9.5px;
   }
 
   .folderfolio-matrix th.folderfolio-matrix__role {

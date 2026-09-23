@@ -593,6 +593,9 @@ test.describe('the settings screen', () => {
                         headFont: getComputedStyle(
                             matrix.querySelector('thead th') as HTMLElement
                         ).fontSize,
+                        headCase: getComputedStyle(
+                            matrix.querySelector('thead th:nth-child(2)') as HTMLElement
+                        ).textTransform,
                     };
                 }, width)
             );
@@ -600,10 +603,11 @@ test.describe('the settings screen', () => {
 
         console.table(rows);
 
-        // The precondition: five roles against four abilities, plus the role
-        // column. An empty table would satisfy everything below.
+        // The precondition: five roles against five abilities (Lock since
+        // tier 2 item 10), plus the role column. An empty table would satisfy
+        // everything below.
         for (const row of rows) {
-            expect(row.columns, `${row.width}px: the matrix did not render its heads`).toBe(5);
+            expect(row.columns, `${row.width}px: the matrix did not render its heads`).toBe(6);
             expect(row.roles, `${row.width}px: the matrix did not render its roles`).toBe(5);
         }
 
@@ -631,7 +635,14 @@ test.describe('the settings screen', () => {
         expect(at(1280).headFont, 'the wide metrics are untouched').toBe('11px');
         expect(at(521).headFont, '521 is above the breakpoint').toBe('11px');
         expect(at(520).headFont, '520 is where the narrow metrics start').toBe('10px');
-        expect(at(320).headFont).toBe('10px');
+        expect(at(390).headFont).toBe('10px');
+        // …and half a pixel less at 360 and below, for the fifth column.
+        expect(at(360).headFont).toBe('9.5px');
+        expect(at(320).headFont).toBe('9.5px');
+
+        // Sentence case on a phone — what makes room for the fifth column.
+        expect(at(521).headCase).toBe('uppercase');
+        expect(at(520).headCase).toBe('none');
     });
 
 
