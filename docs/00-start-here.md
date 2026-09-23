@@ -1459,7 +1459,7 @@ directory the old `php -S` is still serving, and every page answers 500. Kill
 the old servers by PID first — `ps -eo pid,args`, then `kill` — never
 `pkill -f router.php`, which matches the shell running it.
 
-**It runs there since 23 Sep (`dab8a6a`), 87 / 87, 101 / 101 at `581ea30`** —
+**It runs there since 23 Sep (`dab8a6a`), 87 / 87, 102 / 102 at `04c4c7b`** —
 the first run against
 tier 1, and the first anywhere since `9cff4ad`. Playground's CLI does not
 install in the container and Playwright cannot run on the device VM, so
@@ -1599,7 +1599,16 @@ Board `3ZU8VGkJemznTvKp8tNnvY`; Nick took all six recommendations.
 - **The matrix with a fifth column** floored at 303.8px in a 274px box at 320.
   Phone heads are sentence case below 520 and 9.5px at 360 and below: 267.8px.
 
-**Known limits**: an Author (create + assign) has no ⋮, so cannot star; a
+**The ⋮ is for every role since `04c4c7b`** (Nick: each action gated inside
+it, and one the role does not hold is hidden, not greyed). `hasFolderMenu()`
+in `lib/can.ts` is the one question the row and the narrow control ask; every
+rail user can star, so an Author's menu holds Star alone. `star` is a
+client-only ability a bundle can withhold — the gallery inspector's tree still
+has no ⋮. **Star writes one folder** (`POST /folders/{id}/star`,
+`RailPreferences::star()`): the picker's config never carried the stars, and a
+Star pressed there had sent a one-item list that replaced all of them.
+
+**Known limits**: a
 folder dropped into a locked one by someone without Lock is refused by the
 server and the notice says so, with no drop-time affordance; an import into a
 locked folder stops at that folder; meta rows outlive a deleted folder
@@ -1619,7 +1628,7 @@ with a reason (`5f9ca0d`); the attachment guard did a query per file and a
 `tree()`, a 1,000-sibling reorder and the export need nothing. Integration is
 89 / 89 since `cfba873` (76 at the stress tests — an earlier "75" counted a
 stray copy of `JsonSourceTest` that existed only in the rig), **98 / 98 at
-`581ea30`** (FolderLocksTest); e2e 101 / 101; unit 153; JS unit 61.
+`581ea30`** (FolderLocksTest), 99 at `04c4c7b`; e2e 102 / 102; unit 153; JS unit 61.
 
 ### Running the integration suite
 
