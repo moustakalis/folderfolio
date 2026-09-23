@@ -394,4 +394,43 @@ class FolderServiceIntegrationTest extends WP_UnitTestCase
         $this->assertSame(1, $clients['total_count']);
         $this->assertSame($this->service->countAttachments($parent->id), $clients['total_count']);
     }
+
+    /**
+     * The attachment guard, which since 23 Sep reads its posts from a primed
+     * cache rather than one query each. Priming must change the cost and
+     * nothing else: a post that is not an attachment, and someone else's
+     * file for an author, are still refused — as a whole, among real ones.
+     *
+     * @test
+     */
+    public function assigning_refuses_what_is_not_an_attachment_or_not_yours_among_many(): void
+    {
+        $service = new FolderService();
+        $folder = $service->create(['name' => 'Guarded']);
+        $this->assertInstanceOf(Folder::class, $folder);
+
+        $author = self::factory()->user->create(['role' => 'author']);
+        $other = self::factory()->user->create(['role' => 'author']);
+
+        $mine = [];
+        for ($i = 0; $i < 5; $i++) {
+            $mine[] = self::factory()->attachment->create(['post_author' => $author]);
+        }
+        $theirs = self::factory()->attachment->create(['post_author' => $other]);
+        $page = self::factory()->post->create(['post_type' => 'page', 'post_author' => $author]);
+
+        wp_set_current_user($author);
+        wp_cache_flush();
+
+        $notAttachment = $service->assignAttachments($folder->id, [...$mine, $page]);
+        $this->assertWPError($notAttachment);
+        $this->assertSame('folderfolio_invalid_attachment', $notAttachment->get_error_code());
+
+        wp_cache_flush();
+        $notYours = $service->assignAttachments($folder->id, [...$mine, $theirs]);
+        $this->assertWPError($notYours);
+        $this->assertSame('folderfolio_attachment_forbidden', $notYours->get_error_code());
+
+        $this->assertSame(5, $service->assignAttachments($folder->id, $mine), 'and their own go in');
+    }
 }
