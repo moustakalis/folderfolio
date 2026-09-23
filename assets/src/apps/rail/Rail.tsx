@@ -34,6 +34,7 @@ import { can } from '../../lib/can';
 import { useIsNarrow } from '../../lib/narrow';
 import { applyFolderFilter, FOLDER_QUERY_VAR, keepServerOrder, showUploads, watchFolderLinks } from '../../lib/filter';
 import { isMedia, t } from '../../core/api';
+import { watchListWidth } from '../../lib/list-width';
 
 export function Rail({
     contentMount,
@@ -178,6 +179,10 @@ export function Rail({
     selectedRef.current = selectedId;
 
     useEffect(() => watchDrags(() => selectedRef.current), []);
+
+    // Core's narrow list table when the rail leaves the table narrow
+    // (lib/list-width.ts). Both list screens; nothing on the grid.
+    useEffect(() => watchListWidth(), []);
 
     // Between two tiles of the folder being viewed, the same drag places
     // files instead of filing them (file-order.ts). Through a ref, so the

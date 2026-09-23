@@ -88,6 +88,20 @@ test.describe('folders for posts', () => {
             expect(await page.evaluate(() => (window as any).__ffSamePage)).toBe(true);
             expect(new URL(page.url()).searchParams.get('folderfolio_folder')).toBe(String(news.id));
 
+            // The title link is the drag handle; the row is not made draggable,
+            // so its text still selects and another plugin's handle in it
+            // still starts that plugin's drag.
+            expect(await page.locator(`#post-${inside}`).getAttribute('draggable')).toBeNull();
+            const dragging = await page.evaluate((id) => {
+                const link = document.querySelector(`#post-${id} a.row-title`)!;
+                link.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: new DataTransfer() }));
+                const on = document.body.classList.contains('folderfolio-dragging');
+                link.dispatchEvent(new DragEvent('dragend', { bubbles: true }));
+
+                return on;
+            }, inside);
+            expect(dragging).toBe(true);
+
             // Unassigned is the posts in no folder.
             await page.locator('.folderfolio-rail .folderfolio-row', { hasText: 'Unassigned' }).first().click();
             await expect.poll(async () => (await rowIds(page)).includes(inside)).toBe(false);
@@ -220,6 +234,38 @@ test.describe('folders for posts', () => {
 
             await resetFolders(page, 'page');
         }
+    });
+
+    test('beside the rail a narrow table takes core’s narrow shape, and a wide one keeps its columns', async ({ page }) => {
+        // Measured 23 Sep: at a 1000px window the Posts table was 493px wide,
+        // and Title and Folders were one letter wide. Core folds a table at a
+        // 782px *window*; beside a 300px rail it has to fold by its own width.
+        const measure = () =>
+            page.evaluate(() => {
+                const title = document.querySelector<HTMLElement>('#the-list tr[id^="post-"] .column-title');
+                const author = document.querySelector<HTMLElement>('#the-list tr[id^="post-"] .column-author');
+
+                return {
+                    title: title?.getBoundingClientRect().width ?? 0,
+                    authorShown: author ? getComputedStyle(author).display !== 'none' : false,
+                    toggle: getComputedStyle(document.querySelector('#the-list .toggle-row')!).display,
+                };
+            });
+
+        await page.setViewportSize({ width: 1000, height: 900 });
+        await page.goto('/wp-admin/edit.php');
+        await page.locator('#folderfolio-rail').waitFor();
+        await expect(page.locator('#posts-filter')).toHaveClass(/folderfolio-list--narrow/);
+        const narrow = await measure();
+        expect(narrow.title).toBeGreaterThan(300);
+        expect(narrow.authorShown).toBe(false);
+        expect(narrow.toggle).toBe('block');
+
+        await page.setViewportSize({ width: 1440, height: 900 });
+        await expect(page.locator('#posts-filter')).not.toHaveClass(/folderfolio-list--narrow/);
+        const wide = await measure();
+        expect(wide.authorShown).toBe(true);
+        expect(wide.toggle).toBe('none');
     });
 
     test('settings list the post types, media always on', async ({ page }) => {

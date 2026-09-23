@@ -266,4 +266,29 @@ class PostFoldersTest extends WP_UnitTestCase
         wp_set_current_user(self::factory()->user->create(['role' => 'administrator']));
         $this->assertNotSame(200, rest_do_request(new WP_REST_Request('GET', "/folderfolio/v1/folders/{$legal}/zip"))->get_status());
     }
+
+    /** @test */
+    public function the_facade_names_a_tree_and_a_parent_decides_it(): void
+    {
+        \FolderFolio::setService($this->service);
+
+        $legal = \FolderFolio::createFolder('Legal', null, 'page');
+        $this->assertInstanceOf(Folder::class, $legal);
+        $this->assertSame('page', $legal->objectType);
+
+        // Under a parent, the parent's tree whatever is asked.
+        $terms = \FolderFolio::createFolder('Terms', $legal->id, 'attachment');
+        $this->assertSame('page', $terms->objectType);
+
+        $news = \FolderFolio::getOrCreateByPath('Newsroom/2026', 'post');
+        $this->assertSame('post', $news->objectType);
+        $this->assertSame($news->id, \FolderFolio::findFolderByPath('Newsroom/2026', 'post')?->id);
+        $this->assertNull(\FolderFolio::findFolderByPath('Newsroom/2026'), 'not in the media tree');
+
+        $this->assertSame(['Legal'], array_column(\FolderFolio::getTree(null, 'page'), 'name'));
+        $this->assertSame(['Terms'], array_column(\FolderFolio::getTree($legal->id)[0]['children'] ?? [], 'name'));
+        $this->assertSame([], \FolderFolio::getTree(), 'media has none of them');
+
+        \FolderFolio::setService(null);
+    }
 }

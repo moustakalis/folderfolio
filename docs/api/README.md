@@ -29,18 +29,31 @@ Guard with `class_exists()` — your code should not fatal when the plugin is de
 Anything that can fail returns a `WP_Error` rather than throwing, matching WordPress
 convention. Check with `is_wp_error()`.
 
+### One tree per kind of content
+
+Folders belong to one **object type**: `attachment` for the media library, or a post type —
+`post`, `page`, `product` — whose folders are switched on under *Settings → Folders for*
+(Posts and Pages by default). Each type has its own tree; a post is never filed in a media
+folder, and a folder never sits inside another type's. Every method below that names no
+folder takes an optional `$objectType`, defaulting to `'attachment'` — which is also what
+every method did before post-type folders existed. A method that names a folder works in
+that folder's tree. Crossing trees is refused with `folderfolio_wrong_type`.
+
 ### Folders
 
-#### `createFolder( string $name, ?int $parent = null ): Folder|WP_Error`
+#### `createFolder( string $name, ?int $parent = null, ?string $objectType = null ): Folder|WP_Error`
 
 ```php
 $brand = FolderFolio::createFolder( 'Brand' );
 $logos = FolderFolio::createFolder( 'Logos', $brand->id );
+$legal = FolderFolio::createFolder( 'Legal', null, 'page' );   // the Pages tree
 ```
 
+Under a parent, the folder joins the parent's tree whatever `$objectType` says.
+
 Errors: `folderfolio_name_required`, `folderfolio_name_too_long`,
-`folderfolio_duplicate_name`, `folderfolio_invalid_parent`,
-`folderfolio_max_depth_exceeded`.
+`folderfolio_duplicate_name`, `folderfolio_invalid_parent`, `folderfolio_wrong_type`,
+`folderfolio_max_depth_exceeded`, `folderfolio_locked`.
 
 #### `renameFolder( int $id, string $name ): Folder|WP_Error`
 
@@ -53,7 +66,8 @@ FolderFolio::moveFolder( $logos->id, null );   // Logos becomes a root folder
 ```
 
 Errors: `folderfolio_circular_parent` (a folder cannot move inside its own descendant),
-`folderfolio_invalid_parent`, `folderfolio_duplicate_name`, `folderfolio_max_depth_exceeded`.
+`folderfolio_invalid_parent`, `folderfolio_wrong_type`, `folderfolio_duplicate_name`,
+`folderfolio_max_depth_exceeded`, `folderfolio_locked`.
 
 #### `deleteFolder( int $id, string $children = 'reparent' ): int|WP_Error`
 
@@ -76,7 +90,7 @@ FolderFolio::deleteFolder( $id, 'cascade' );
 
 #### `getFolder( int $id ): ?Folder`
 
-#### `findFolderByPath( string $path ): ?Folder`
+#### `findFolderByPath( string $path, string $objectType = 'attachment' ): ?Folder`
 
 Human path, not the internal id path. Separator is `/`, matching is case-insensitive on names.
 
@@ -84,7 +98,7 @@ Human path, not the internal id path. Separator is `/`, matching is case-insensi
 $folder = FolderFolio::findFolderByPath( 'Brand/Logos/Primary' );
 ```
 
-#### `getOrCreateByPath( string $path ): Folder|WP_Error`
+#### `getOrCreateByPath( string $path, string $objectType = 'attachment' ): Folder|WP_Error`
 
 Resolves as far as it can and creates the rest. This is the method most integrations want —
 importers, upload rules, migration scripts — and it is idempotent, so calling it on every
@@ -93,12 +107,17 @@ upload is fine.
 ```php
 // Creates Brand, then Logos inside it, then Primary inside that, as needed.
 $folder = FolderFolio::getOrCreateByPath( 'Brand/Logos/Primary' );
+
+// The same in the Posts tree.
+$news = FolderFolio::getOrCreateByPath( 'Newsroom/2026', 'post' );
 ```
 
-#### `getTree( ?int $rootId = null ): array`
+#### `getTree( ?int $rootId = null, string $objectType = 'attachment' ): array`
 
 Nested arrays. Each node carries the folder's columns plus `children`, `count` (the folder's
-own attachments) and `total_count` (its subtree).
+own items) and `total_count` (its subtree), and `sort_folders`, `sort_files`, `locked`,
+`locked_by` and `pinned`. With a `$rootId`, the root's own tree. A post folder counts what
+its list screen calls *All* — not the trash, not auto-drafts.
 
 #### `getChildren( int $id ): Folder[]`
 
@@ -116,7 +135,10 @@ echo implode( ' / ', array_map( fn ( $f ) => $f->name, $crumbs ) );
 
 The folder's own id included. One indexed query, however deep the subtree.
 
-### Media
+### Media — and posts
+
+The methods say *attachment* because media came first; each one takes post ids too, filed
+into that post type's folders.
 
 #### `assign( array $attachmentIds, int $folderId, string $mode = 'add' ): int|WP_Error`
 
@@ -133,9 +155,11 @@ FolderFolio::assign( [ 12, 13, 14 ], $folder->id );            // add
 FolderFolio::assign( [ 12 ], $folder->id, 'move' );            // move
 ```
 
-Each attachment is checked with `current_user_can( 'edit_post', $id )`, so this respects the
-current user even when called from your own code. Errors: `folderfolio_invalid_attachment`,
-`folderfolio_attachment_forbidden`, `folderfolio_folder_not_found`, `folderfolio_invalid_mode`.
+Each item is checked with `current_user_can( 'edit_post', $id )`, so this respects the
+current user even when called from your own code, and must be the folder's own kind — an
+image into a Posts folder is `folderfolio_invalid_attachment`. Errors:
+`folderfolio_invalid_attachment`, `folderfolio_attachment_forbidden`,
+`folderfolio_folder_not_found`, `folderfolio_invalid_mode`.
 
 #### `unassign( array $attachmentIds, ?int $folderId = null ): int|WP_Error`
 
@@ -161,9 +185,9 @@ $folder->name;        // string
 $folder->parentId;    // ?int
 $folder->path;        // string  '/1/7/12/' — internal id path
 $folder->depth;       // int     0 for a root folder
-$folder->objectType;  // string  'attachment'
+$folder->objectType;  // string  'attachment', or a post type such as 'page'
 $folder->slug;        // ?string
-$folder->color;       // ?string '#3047a8'
+$folder->color;       // ?string a swatch name — 'steel', 'plum' — not a hex
 $folder->icon;        // ?string
 $folder->sortOrder;   // int
 $folder->createdBy;   // ?int
@@ -186,6 +210,9 @@ do_action( 'folderfolio_folder_moved',           Folder $folder, ?int $previousP
 do_action( 'folderfolio_folder_deleted',         int $id, string $children, array $deletedIds );
 do_action( 'folderfolio_attachments_assigned',   array $ids, int $folderId, string $mode );
 do_action( 'folderfolio_attachments_unassigned', array $ids, ?int $folderId );
+do_action( 'folderfolio_folder_duplicated',      Folder $copy, Folder $source, array $idMap, bool $withFiles );
+do_action( 'folderfolio_folders_reordered',      array $ids, ?int $parentId );
+do_action( 'folderfolio_folder_marked',          Folder $folder, string $mark, bool $on );  // 'state:locked' | 'state:pinned'
 ```
 
 These fire from the domain layer, not from the REST controllers, so a folder created through
@@ -222,22 +249,46 @@ a clear error rather than a silent truncation.
 `'inherited'` (default), `'direct'` or `'none'`. Inherited is the default because a parent
 folder reading `0` while its children hold a hundred files is worse than no badge at all.
 
+#### `folderfolio_object_types( array $types ): array`
+
+The object types with folders: `attachment`, then the post types ticked under *Folders
+for* that are registered right now. `attachment` is put back if a filter removes it.
+
 #### Capabilities
 
+Who may do what comes from the **roles matrix** on the settings screen — six abilities,
+`create`, `rename` (headed *Organise*), `delete`, `assign`, `lock` and `download` — and two
+rules the matrix cannot override:
+
+1. **The content's own capability first.** `upload_files` for media; for a post type, that
+   type's `edit_posts` (`edit_pages` for Pages). The matrix narrows, it never widens.
+2. **Administrators hold everything**, and so does anyone given
+   `folderfolio_manage_folders`.
+
+A role the matrix has never heard of keeps what the route asked before the matrix existed:
+`assign` and `download` by rule 1, the rest by `edit_others_posts`, never `lock`.
+
 ```php
-folderfolio_can_use_folders( bool $can ): bool         // default: upload_files
-folderfolio_can_manage_folders( bool $can ): bool      // default: the custom cap, else edit_others_posts
-folderfolio_can_edit_attachment( bool $can, int $id )  // default: edit_post on that attachment
+folderfolio_user_can_use_folders( bool $can, string $objectType ): bool
+folderfolio_user_can( bool $allowed, string $ability, string $objectType ): bool
+folderfolio_user_can_manage_folders( bool $can ): bool      // create, rename or delete — "show the controls"
+folderfolio_user_can_edit_attachment( bool $can, int $id )  // default: edit_post on that item
 ```
 
-Reading and filing use `upload_files`; creating, renaming, moving and deleting folders need
-`folderfolio_manage_folders`, falling back to `edit_others_posts`. That is deliberately
-tighter than the market — FileBird and CatFolders both allow folder *deletion* on
-`upload_files`, which every Author and Contributor holds.
+```php
+// Let Authors organise folders too, on every tree.
+add_filter( 'folderfolio_user_can', fn ( $allowed, $ability ) => $allowed || ( 'rename' === $ability && current_user_can( 'publish_posts' ) ), 10, 2 );
+```
+
+#### Everything else
 
 ```php
-// Let Authors manage folders too.
-add_filter( 'folderfolio_can_manage_folders', fn ( $can ) => $can || current_user_can( 'publish_posts' ) );
+folderfolio_settings( array $settings ): array               // the site settings, sanitised
+folderfolio_zip_confirm_bytes( int $bytes ): int             // ask before a ZIP this large — 1 GB
+folderfolio_zip_max_bytes( int $bytes ): int                 // refuse a ZIP larger — 0, no limit
+folderfolio_media_frame_screens( array $hookSuffixes ): array // where the media picker gets folders
+folderfolio_import_sources( array $sources ): array          // the importer's sources
+folderfolio_import_file_batch_seconds( float $seconds ): float
 ```
 
 ---
@@ -261,23 +312,40 @@ offer one each store a single long-lived secret in `wp_options`, unscoped, unrot
 unattributable to a person — anyone holding that string acts with unbounded rights. Core's
 mechanism is better in every respect and already there.
 
-| Method | Route | Capability |
+**Which tree.** A route that names a folder — `{id}`, `folder_id`, a `parent_id`, the first
+of a level's `ids` — is answered for **that folder's** object type, and its permission is
+asked for that type; an `object_type` sent alongside is ignored. Only a request that names no
+folder reads `object_type` (default `attachment`): the tree, the counts, a folder or a list
+made at the top.
+
+| Method | Route | Ability |
 |---|---|---|
-| `GET` | `/folders` — `?counts=inherited\|direct\|none` | use |
-| `POST` | `/folders` | manage |
+| `GET` | `/folders` — `?counts=inherited\|direct\|none&object_type=` | use |
+| `POST` | `/folders` — `{name, parent_id?, color?, icon?, object_type?}` | create |
 | `GET` | `/folders/{id}` | use |
-| `PATCH` | `/folders/{id}` | manage |
-| `POST` | `/folders/{id}/move` | manage |
-| `DELETE` | `/folders/{id}?children=reparent\|cascade` | manage |
+| `PATCH` | `/folders/{id}` — name, colour, icon | rename |
+| `POST` | `/folders/{id}/move` — `{parent_id}` | rename |
+| `DELETE` | `/folders/{id}?children=reparent\|cascade&reassign_to=` | delete |
+| `POST` | `/folders/reorder` — `{parent_id?, ids}`, the whole level in order | rename |
+| `POST` | `/folders/{id}/duplicate` — `{parent_id?, with_files?, order?}` | create + rename (+ assign with files) |
+| `POST` | `/folders/{id}/sort` — `{scope: folders\|files, order}` | rename |
+| `POST` | `/folders/{id}/files/order` — `{ids, place, anchor?}` | rename |
+| `POST` | `/folders/{id}/lock` — `{locked}` | lock |
+| `POST` | `/folders/{id}/pin` — `{pinned}` | rename |
+| `POST` | `/folders/{id}/star` — `{starred}`, the person's own | use |
+| `GET` | `/folders/{id}/zip` — what the ZIP would hold, and its URL; media folders only | download |
+| `POST` | `/folders/bulk/plan` — `{text, parent_id?, object_type?}`, writes nothing | create |
+| `POST` | `/folders/bulk` — the same, all or nothing | create |
 | `GET` | `/folders/{id}/ancestors` | use |
 | `GET` | `/folders/{id}/attachments` — `?include_descendants=1` | use |
-| `GET` | `/counts` | use |
-| `POST` | `/assignments` — `{attachment_ids, folder_id, mode}` | `edit_post` per attachment |
-| `DELETE` | `/assignments` — `{attachment_ids, folder_id?}` | `edit_post` per attachment |
-| `GET` | `/attachments/{id}/folders` | use |
+| `GET` | `/counts` — `?object_type=`; every folder's counts and the fixed rows' | use |
+| `POST` | `/assignments` — `{attachment_ids, folder_id, mode}` | assign, and `edit_post` per item |
+| `DELETE` | `/assignments` — `{attachment_ids, folder_id?}` | assign, and `edit_post` per item |
+| `GET` | `/attachments/{id}/folders` — an item's folders, a file's or a post's | use, for the item's type |
 
-Every mutation returns the affected folders **with fresh counts**, so a client can update its
-badges from the response instead of re-fetching the tree.
+*Use* is rule 1 for the type — see Capabilities. Every folder write returns the whole tree
+it touched, with fresh counts, so a client redraws from the response instead of fetching
+again; `/folders/bulk` is the exception, returning its plan.
 
 Browser requests from the admin screens use the `wp_rest` nonce as usual; Application
 Passwords are for everything outside the browser.

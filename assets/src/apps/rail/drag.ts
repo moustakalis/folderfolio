@@ -225,24 +225,26 @@ export function watchDrags(currentFolder: () => number | null): () => void {
     // Tiles with no <img> of their own — audio, some documents — are not
     // draggable until told. Re-applied on every grid re-render.
     //
-    // A post list's rows (tier 3 item 12) have no thumbnail to start a drag
-    // from — only the title link, which drags its URL — so the row itself is
-    // made draggable, the way the media list's image makes its row. Not the
-    // inline-edit row (`tr#edit-123`), which holds a form.
+    // Not a post list's rows (tier 3 item 12). A row made draggable steals
+    // every press in it: its text can no longer be selected, and another
+    // plugin's own drag handle in the row — Premio's `.wcp-move-file`, a
+    // jQuery UI draggable — starts our native drag instead of its own. The
+    // row's title link is natively draggable already, and a drag started
+    // from it reaches the listener above like any other; that is the handle.
     const markDraggable = () => {
         document
-            .querySelectorAll<HTMLElement>(
-                isMedia() ? 'li.attachment:not([draggable])' : '#the-list > tr[id^="post-"]:not([draggable])'
-            )
+            .querySelectorAll<HTMLElement>('li.attachment:not([draggable])')
             .forEach((tile) => {
                 tile.draggable = true;
             });
     };
 
-    markDraggable();
-
     const observer = new MutationObserver(markDraggable);
-    observer.observe(document.body, { childList: true, subtree: true });
+
+    if (isMedia()) {
+        markDraggable();
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
 
     return () => {
         document.removeEventListener('dragstart', onDragStart, true);

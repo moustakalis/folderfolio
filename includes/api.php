@@ -66,14 +66,21 @@ final class FolderFolio
     /**
      * Create a folder.
      *
+     * Media's tree unless told otherwise. Under a parent the folder joins the
+     * parent's tree whatever `$objectType` says — one tree per type.
+     *
      * @since 1.0.0
+     * @param string|null $objectType `attachment`, or a post type with folders (since 1.0.0, tier 3).
      * @return Folder|WP_Error
      */
-    public static function createFolder(string $name, ?int $parent = null): Folder|WP_Error
+    public static function createFolder(string $name, ?int $parent = null, ?string $objectType = null): Folder|WP_Error
     {
+        $parentFolder = $parent === null ? null : self::service()->get($parent);
+
         return self::service()->create([
-            'name'      => $name,
-            'parent_id' => $parent,
+            'name'        => $name,
+            'parent_id'   => $parent,
+            'object_type' => $parentFolder->objectType ?? $objectType ?? 'attachment',
         ]);
     }
 
@@ -128,9 +135,9 @@ final class FolderFolio
      *
      * @since 1.0.0
      */
-    public static function findFolderByPath(string $path): ?Folder
+    public static function findFolderByPath(string $path, string $objectType = 'attachment'): ?Folder
     {
-        return self::service()->findByPath($path);
+        return self::service()->findByPath($path, $objectType);
     }
 
     /**
@@ -141,9 +148,9 @@ final class FolderFolio
      * @since 1.0.0
      * @return Folder|WP_Error
      */
-    public static function getOrCreateByPath(string $path): Folder|WP_Error
+    public static function getOrCreateByPath(string $path, string $objectType = 'attachment'): Folder|WP_Error
     {
-        return self::service()->getOrCreateByPath($path);
+        return self::service()->getOrCreateByPath($path, $objectType);
     }
 
     /**
@@ -152,11 +159,16 @@ final class FolderFolio
      * @since 1.0.0
      * @return list<array<string, mixed>>
      */
-    public static function getTree(?int $rootId = null): array
+    public static function getTree(?int $rootId = null, string $objectType = 'attachment'): array
     {
-        return $rootId === null
-            ? self::service()->tree()
-            : self::service()->subtree($rootId);
+        if ($rootId === null) {
+            return self::service()->tree($objectType);
+        }
+
+        // A subtree is in its root's tree, whatever was asked.
+        $root = self::service()->get($rootId);
+
+        return $root === null ? [] : self::service()->subtree($rootId, $root->objectType);
     }
 
     /**

@@ -627,3 +627,124 @@ body.folderfolio-dragging .folderfolio-row {
     border-width: 2px;
   }
 }
+
+/* ------------------------------------------------ the list table beside a rail */
+
+/**
+ * Core's narrow list table, when the table is narrow — not only the window.
+ *
+ * WordPress switches a list table to its phone shape at a *viewport* of 782px:
+ * one primary column, the rest folded under a toggle with their names
+ * printed beside them. Until then the table keeps every column at its
+ * declared width, and core never has to lay one out much under ~700px —
+ * at 783 the admin menu has folded to 36px and the table is about that wide.
+ *
+ * The rail takes 300px of that. Measured on 23 Sep in the e2e rig at a
+ * 1000px window: the Posts table was 492px wide with seven columns, the
+ * percentages core declares for Author, Categories, Tags and Date took what
+ * there was, and Title and Folders were left one letter wide — "F / i / l /
+ * e / d". The media list has the same arithmetic with one column fewer.
+ *
+ * So the switch follows the room the table has: `lib/list-width.ts` watches
+ * `#posts-filter` — the form both list screens wrap their table in — and sets
+ * `folderfolio-list--narrow` on it below 700px. A class and not a container
+ * query, measured: `container-type` makes the form its own formatting
+ * context, and a formatting context does not flow past a float — it sat
+ * beside core's floated `.subsubsub` and every row moved 134px right at
+ * 1440. The rules are core's own from list-tables.css's 782 block — the
+ * table's shape, the toggle, the column names, the expanded row — and the
+ * toggle's script is core's too: common.js delegates `.toggle-row` from the
+ * tbody, which the list refresh keeps (lib/list-refresh.ts). Only with the
+ * rail, so a screen without one is core's to lay out. The column-name label
+ * skips the primary cell: WordPress 7.1 prints it as a `<th>`, which core's
+ * `td::before` misses; 6.4–6.8 print a `<td>`, and without the `:not()` the
+ * word "Title" sat over every title in the rig.
+ */
+@media screen {
+  body.folderfolio-has-rail #posts-filter.folderfolio-list--narrow .wp-list-table th.column-primary ~ th,
+  body.folderfolio-has-rail #posts-filter.folderfolio-list--narrow .wp-list-table tr:not(.inline-edit-row):not(.no-items) td.column-primary ~ td:not(.check-column),
+  body.folderfolio-has-rail #posts-filter.folderfolio-list--narrow .wp-list-table tr:not(.inline-edit-row):not(.no-items) th.column-primary ~ td:not(.check-column) {
+    display: none;
+  }
+
+  body.folderfolio-has-rail #posts-filter.folderfolio-list--narrow .wp-list-table tr {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  body.folderfolio-has-rail #posts-filter.folderfolio-list--narrow .wp-list-table thead th {
+    align-content: center;
+  }
+
+  body.folderfolio-has-rail #posts-filter.folderfolio-list--narrow .wp-list-table td.check-column,
+  body.folderfolio-has-rail #posts-filter.folderfolio-list--narrow .wp-list-table th.check-column {
+    flex: 0 0 2.5em;
+    width: 2.5em;
+  }
+
+  body.folderfolio-has-rail #posts-filter.folderfolio-list--narrow .wp-list-table .column-primary a {
+    text-wrap: wrap;
+  }
+
+  body.folderfolio-has-rail #posts-filter.folderfolio-list--narrow .wp-list-table td.column-primary,
+  body.folderfolio-has-rail #posts-filter.folderfolio-list--narrow .wp-list-table th.column-primary {
+    flex: 1 1 0;
+  }
+
+  body.folderfolio-has-rail #posts-filter.folderfolio-list--narrow .wp-list-table tr td:nth-child(n + 3) {
+    flex: 0 1 100%;
+  }
+
+  body.folderfolio-has-rail #posts-filter.folderfolio-list--narrow .wp-list-table .column-primary .toggle-row {
+    display: block;
+  }
+
+  body.folderfolio-has-rail #posts-filter.folderfolio-list--narrow .wp-list-table tbody th,
+  body.folderfolio-has-rail #posts-filter.folderfolio-list--narrow .wp-list-table tr:not(.inline-edit-row):not(.no-items) td:not(.check-column) {
+    position: relative;
+  }
+
+  body.folderfolio-has-rail #posts-filter.folderfolio-list--narrow .wp-list-table td.column-primary,
+  body.folderfolio-has-rail #posts-filter.folderfolio-list--narrow .wp-list-table tbody th.column-primary {
+    padding-inline-end: 50px;
+  }
+
+  body.folderfolio-has-rail #posts-filter.folderfolio-list--narrow .wp-list-table tr:not(.inline-edit-row):not(.no-items) td.column-primary ~ td:not(.check-column),
+  body.folderfolio-has-rail #posts-filter.folderfolio-list--narrow .wp-list-table tr:not(.inline-edit-row):not(.no-items) th.column-primary ~ td:not(.check-column) {
+    padding-block: 3px;
+    padding-inline: 35% 8px;
+  }
+
+  body.folderfolio-has-rail #posts-filter.folderfolio-list--narrow .wp-list-table tr:not(.inline-edit-row):not(.no-items) td:not(.check-column):not(.column-primary)::before {
+    position: absolute;
+    inset-inline-start: 10px;
+    display: block;
+    overflow: hidden;
+    width: 32%;
+    content: attr(data-colname);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  body.folderfolio-has-rail #posts-filter.folderfolio-list--narrow .wp-list-table .is-expanded th:not(.hidden),
+  body.folderfolio-has-rail #posts-filter.folderfolio-list--narrow .wp-list-table .is-expanded td:not(.hidden) {
+    display: block !important;
+    overflow: hidden;
+  }
+
+  /* The comment count as words, as core's narrow table shows it. */
+  body.folderfolio-has-rail #posts-filter.folderfolio-list--narrow .column-comments .post-com-count .screen-reader-text {
+    position: static;
+    clip-path: none;
+    width: auto;
+    height: auto;
+    margin: 0;
+  }
+
+  body.folderfolio-has-rail #posts-filter.folderfolio-list--narrow .column-comments .post-com-count [aria-hidden='true'],
+  body.folderfolio-has-rail #posts-filter.folderfolio-list--narrow .column-comments .post-com-count-no-comments::after,
+  body.folderfolio-has-rail #posts-filter.folderfolio-list--narrow .column-comments .post-com-count-approved::after {
+    display: none;
+    content: none;
+  }
+}
