@@ -1797,10 +1797,16 @@ only, marked, listed first by the gallery block. No *Collection* kind.
   with its parent's name; choosing one reveals and selects it in the tree,
   which sets the block's folder.
 
-**The group rows' inset (`47f1d5a`).** Starred and Smart share
-`.folderfolio-rail__starred-list`, which had no inset while the fixed rows sit
-in `.folderfolio-rail__fixed`'s 12px — every group icon was 12px left of All
-media's. Fixed with the same inset; both specs assert the icon line.
+**One selected state (`47f1d5a`, then `87d71a1`).** Starred and Smart rows
+sat 12px left of All media (their shared list had no inset; the fixed rows'
+inset was on their container). Then Nick saw three selected patterns: a tree
+row full width with its ⋮ in the ring, All media inset 12px, a smart row
+whose ring stopped short of its pencil. The handoff's Selected is a
+**flush-left** 3px bar, which only the tree honoured. Now every rail row is
+full width with the gutter inside it (`.folderfolio-rail__fixed-row`, 20px);
+a selected smart item puts its count and pencil where a tree row's count
+and ⋮ are, and its ring is an `::after` layer over both buttons. The picker
+keeps its own 8px rows.
 
 ### Stress tests
 
@@ -3020,6 +3026,17 @@ the inspector even when the markup is there. `gallery-kind.spec.ts` and
 **Never commit a patch to the device in the same batch of calls that writes
 it.** The calls run together; on 24 Sep the device received the previous
 version of `item14-b.patch` and `git apply` refused it. Write, then send.
+
+**An outline on a parent is painted under a positioned child.** The smart
+item's outline computed as solid and showed only round the pencil: the row
+button is `position: relative`. Draw a ring that has to cover children as a
+positioned `::after` above them — and look at the screen, not the computed
+style.
+
+**`device_commit_files` can report "written" and leave the old file.** A
+forced re-send of `selected-state.patch` on 24 Sep kept the 154-line version.
+Send a changed file under a new name, and check its checksum on the device
+before applying it.
 
 **A test that counts a class across a whole menu breaks when the menu gains
 a row that is not in its section.** `rail.spec`'s sort-panel test counted
