@@ -1459,7 +1459,7 @@ directory the old `php -S` is still serving, and every page answers 500. Kill
 the old servers by PID first — `ps -eo pid,args`, then `kill` — never
 `pkill -f router.php`, which matches the shell running it.
 
-**It runs there since 23 Sep (`dab8a6a`), 87 / 87, 102 / 102 at `04c4c7b`** —
+**It runs there since 23 Sep (`dab8a6a`), 87 / 87, 106 / 106 at `a6712eb`** —
 the first run against
 tier 1, and the first anywhere since `9cff4ad`. Playground's CLI does not
 install in the container and Playwright cannot run on the device VM, so
@@ -1614,6 +1614,54 @@ server and the notice says so, with no drop-time affordance; an import into a
 locked folder stops at that folder; meta rows outlive a deleted folder
 (harmless, never read).
 
+### Download a folder as ZIP (tier 2 item 11, `a6712eb`)
+
+Boards `PpiAmXsixk3sG9yygJQnw5` (five decisions) and `XdRT8n1BYg2Pam9uWnLQ5y`
+(stream or build, measured both ways — Nick pushed back on 1 and chose
+**stream** after the measurements).
+
+- **`Support\ZipWriter`** writes a Stored ZIP to a callable: each file's CRC
+  just before its header (first byte in ms), `length()` exact before a byte is
+  written, `$skip` for a range, ZIP64 only when needed, UTF-8 names, directory
+  entries. Pure; `ZipWriterTest` reads it back with libzip (the CI job now
+  asks setup-php for `zip` — the plugin itself needs no zip extension).
+- **`Domain\FolderArchive`** — the manifest: directories for every folder
+  (empty ones too, parents first from `FolderRepository::subtree()`), files in
+  each folder's own order, a file filed twice appears twice,
+  `Domain\ArchiveNames` makes every segment safe to extract (no `/`, no `..`,
+  nothing Windows refuses, `(2)` on a case-insensitive clash), paths confined
+  to `uploads/` by `realpath`, `read_post` per file, the original upload via
+  `wp_get_original_image_path()`, and `not-included.txt` naming what could not
+  go in (a file the person may not read is counted, not named). CRCs are kept
+  in postmeta `_folderfolio_crc32` as `size:mtime:crc` (deleted on uninstall).
+- **`Admin\FolderDownload`** — `admin-post.php?action=folderfolio_zip`, a
+  **GET** so a browser's Resume can re-send it with `Range`; nonce per folder.
+  Clears every output buffer, `zlib.output_compression` off,
+  `X-Accel-Buffering: no`, `set_time_limit(0)` where allowed, `ETag`,
+  `Accept-Ranges`, one range (`N-`, `N-M`, `-N`), `If-Range` mismatch → whole.
+- **`GET /folders/{id}/zip`** — the summary the rail asks first: files, bytes,
+  `confirm` (≥ `folderfolio_zip_confirm_bytes`, 1 GB), `refused` (>
+  `folderfolio_zip_max_bytes`, 0 = none), `url`.
+- **Client**: `apps/rail/download.ts` — summary, then the notice sheet (which
+  can now carry one **action**) above the threshold, then a hidden
+  `a[download]` click, so a refused response is a failed download in the
+  browser's list, never an error page over the library.
+- **Download is the sixth ability** (Administrator, Editor, Author).
+  `Settings::withNewAbilities()` gives a matrix saved before it existed the
+  default; `save()` stores `abilities` — the columns the form showed.
+
+**Found with it:** the roles matrix with six columns overflowed at every phone
+width and at 521–590 — **below 782 it stacks**, one role to a block with each
+ability named beside its box (`.folderfolio-matrix__ability`), ability columns
+74px above (647.7px table, 45px from name to first tick); **the picker's
+config carried ~60 fewer strings than the menus it renders** —
+`Rail::strings()` is shared now; **the picker had no notice sheet and its undo
+toast opened under the media modal** (z-index 100000 < 160000) — the corner
+stack is 170000 in `_frame.css`.
+
+**Not verified:** macOS Archive Utility and Windows Explorer (unzip, 7-Zip,
+Python, bsdtar and libzip all read it).
+
 ### Stress tests
 
 `tests/stress/import.php` and `tests/stress/ops.php`, run with `wp
@@ -1628,7 +1676,7 @@ with a reason (`5f9ca0d`); the attachment guard did a query per file and a
 `tree()`, a 1,000-sibling reorder and the export need nothing. Integration is
 89 / 89 since `cfba873` (76 at the stress tests — an earlier "75" counted a
 stray copy of `JsonSourceTest` that existed only in the rig), **98 / 98 at
-`581ea30`** (FolderLocksTest), 99 at `04c4c7b`; e2e 102 / 102; unit 153; JS unit 61.
+`581ea30`** (FolderLocksTest), 99 at `04c4c7b`, 105 at `a6712eb`; e2e 106 / 106; unit 164; JS unit 61.
 
 ### Running the integration suite
 
