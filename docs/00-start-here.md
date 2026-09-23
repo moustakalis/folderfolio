@@ -1451,6 +1451,31 @@ resolves only on Nick's Mac. The device VM's shell cannot see it and neither
 can the container — which is why live verification goes through the browser
 extension and the iframe rig, and why the e2e suite brings its own WordPress.
 
+### Running the browser suite in the container
+
+**It runs there since 23 Sep (`dab8a6a`), 87 / 87** — the first run against
+tier 1, and the first anywhere since `9cff4ad`. Playground's CLI does not
+install in the container and Playwright cannot run on the device VM, so
+`tests/e2e/rig/setup.sh` builds a native WordPress instead: MariaDB,
+WordPress 6.8.2, `php -S` with four workers and `tests/e2e/rig/router.php`,
+the staged plugin symlinked in, an auto-login mu-plugin
+(`tests/e2e/rig/e2e-login.php`, what Playground's `--login` does, with one
+session token so the first page's nonces verify) and four PNGs. Then:
+
+```bash
+yarn install && node tools/esbuild.mjs
+WP_CORE=/path/to/wordpress bash tests/e2e/rig/setup.sh
+WP_BASE_URL=http://127.0.0.1:9411 \
+  CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome npx playwright test
+```
+
+About five minutes. Its first run found two product bugs — the roles matrix
+had zero slack at 320 and ran 3.5px over on Linux fonts, and the export-file
+row had a third child — and a dozen tests that were stale since the toolbar
+went or wrong from the start, among them a bad-neighbour helper that had
+never claimed anything and a collapse spec that left the rail closed for the
+rest of the run. Record: `claude/progress-2026-09-23e-the-browser-suite.md`.
+
 ### Running the integration suite
 
 **It runs in the cloud container since 23 Sep (`500f065`), 75 / 75.**
