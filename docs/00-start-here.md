@@ -1704,7 +1704,19 @@ when they differ.
 
 **Every refused rail write is on screen** since `d0f617d`: one `MutationCache`
 in `rail.tsx`, a notice sheet in the undo toast's corner. Do not add a per-hook
-`onError` to display a failure — the cache already does.
+`onError` to display a failure — the cache already does. **But a write that is
+not a mutation escapes it**: the deferred delete was silent on failure until
+`1ffcd89`, and now calls `showNotice(errorMessage(e))` itself. The media picker
+has its own client and no notice sheet yet.
+
+**Count what the sentence claims.** The undo toast said a folder's `count` had
+"moved to Unassigned"; under many-to-many only `only_here` — its files filed
+nowhere else — does (`1ffcd89`).
+
+**`jsxs` is not `jsx`.** The compiler packs static siblings into one
+`props.children` array; `createElement` validates only children passed as
+arguments, so `shims/jsx-runtime.ts` spreads them — otherwise every static
+sibling list warns as an unkeyed one under `SCRIPT_DEBUG`.
 
 **The inherited badge counts files, not assignments** (`d0f617d`,
 `FolderTree::overcount()`), and the plain sum travels up separately: correcting
