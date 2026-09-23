@@ -1477,6 +1477,20 @@ went or wrong from the start, among them a bad-neighbour helper that had
 never claimed anything and a collapse spec that left the rail closed for the
 rest of the run. Record: `claude/progress-2026-09-23e-the-browser-suite.md`.
 
+### Stress tests
+
+`tests/stress/import.php` and `tests/stress/ops.php`, run with `wp
+--user=admin eval-file` against the e2e rig. **They empty every FolderFolio
+table** and refuse to run without `FOLDERFOLIO_STRESS=rig`. Results of 23 Sep
+(`claude/progress-2026-09-23f-the-stress-tests.md`): the import at its
+20,000-folder ceiling runs correctly in 800 batches and 5 minutes; a file too
+large for `max_allowed_packet` used to be reported as read and is now refused
+with a reason (`5f9ca0d`); the attachment guard did a query per file and a
+2,001-folder copy with 36,000 files took 7.7s, now 3.8s (`9ba3754`);
+`tree()`, a 1,000-sibling reorder and the export need nothing. Integration is
+74 / 74 — an earlier "75" counted a stray copy of `JsonSourceTest` that
+existed only in the rig.
+
 ### Running the integration suite
 
 **It runs in the cloud container since 23 Sep (`500f065`), 75 / 75.**
