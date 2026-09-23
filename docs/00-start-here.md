@@ -1768,6 +1768,40 @@ them), a *Smart* group under Starred, never a drop target, media first.
   effect), as a deleted folder's link does. The editor's users list is
   `/wp/v2/users`, so it needs `list_users` to name anyone but *me*.
 
+### A Gallery folder kind (tier 3 item 14, `f08cad9`)
+
+Board `KZsHhrffzKQYqUjTvdFszK`, 14a: a folder can be a **gallery** — images
+only, marked, listed first by the gallery block. No *Collection* kind.
+
+- **Stored** as one `kind` row in `folderfolio_folder_meta`
+  (`Domain\FolderKinds`); a plain folder has none. "An image" is a
+  `post_mime_type` under `image/` — the smart folders' *Type* test.
+- **`FolderService::setKind()`**: media folders only; refused under a lock
+  unless the person may lock; refused while the folder holds a non-image
+  (the sentence gives the count); a new gallery with no file order of its own
+  opens in Custom. Route `POST /folders/{id}/kind` (Organise).
+- **The rule lives in `assignAttachments()`**, which every filing path ends
+  in — drag, Add to folder, move, a delete's reassignment, `UploadRouter`, an
+  import. All or nothing, like every batch. **An upload is also refused
+  before it is stored** (`UploadTarget::refuseIntoGallery()` on
+  `wp_handle_upload_prefilter`), so core's uploader shows the reason on the
+  file; the type is WordPress's own reading of the file, not the browser's.
+- A copy of a gallery is a gallery (unlike a lock); the export carries
+  `kind`, and an import of it sets it on folders the run creates, before
+  their files are filed.
+- **Rail**: the ⋮ has a *Gallery* checkbox row among the icon rows (a tick
+  beside "images only"); the row carries a picture glyph in `RowMarks`, first
+  of the marks, and "gallery" in its accessible name. **A glyph, not the
+  board's word tag** — ~50px in a name track 111px wide at depth 3.
+- **The gallery block's picker** lists every gallery above its tree, flat,
+  with its parent's name; choosing one reveals and selects it in the tree,
+  which sets the block's folder.
+
+**The group rows' inset (`47f1d5a`).** Starred and Smart share
+`.folderfolio-rail__starred-list`, which had no inset while the fixed rows sit
+in `.folderfolio-rail__fixed`'s 12px — every group icon was 12px left of All
+media's. Fixed with the same inset; both specs assert the icon line.
+
 ### Stress tests
 
 `tests/stress/import.php` and `tests/stress/ops.php`, run with `wp
@@ -2977,6 +3011,20 @@ there, a fresh save would be selected and dropped in the same frame.
 **The rig's attachments have `post_author` 0.** A rule on *uploaded by me*
 matches nothing in the container suite; `smart-folders.spec.ts` filters by
 name and type instead. The author rule is covered in `SmartFoldersTest`.
+
+**A role query skips what is hidden.** On a fresh user the block editor's
+sidebar sits behind its welcome guide, so `getByRole()` finds nothing inside
+the inspector even when the markup is there. `gallery-kind.spec.ts` and
+`block-editor.spec.ts` use CSS locators and dispatched clicks there.
+
+**Never commit a patch to the device in the same batch of calls that writes
+it.** The calls run together; on 24 Sep the device received the previous
+version of `item14-b.patch` and `git apply` refused it. Write, then send.
+
+**A test that counts a class across a whole menu breaks when the menu gains
+a row that is not in its section.** `rail.spec`'s sort-panel test counted
+every `.folderfolio-menu__value`; the Gallery row has one too. Scope a count
+to the rows it means.
 
 ## Which document is which
 
