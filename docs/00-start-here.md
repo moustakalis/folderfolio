@@ -1477,6 +1477,29 @@ went or wrong from the start, among them a bad-neighbour helper that had
 never claimed anything and a collapse spec that left the rail closed for the
 rest of the run. Record: `claude/progress-2026-09-23e-the-browser-suite.md`.
 
+### Manual file order (tier 2 item 8, `06eeb7f`)
+
+Custom is a file order: `sort_order` on each assignment, an `ORDER BY` on the
+folder join (`folderfolio_order`), written by `FolderService::moveFiles()` /
+`POST /folders/{id}/files/order`. Placed by a drop between two tiles of the
+folder being viewed (`apps/rail/file-order.ts`, on the existing tile drag) or
+by *Move to start / Move to end* in the *Add to folder…* panel; either makes
+the folder Custom. New files go first; a filed file keeps its place. The
+gallery has *Folder order*. Three things it found, all fixed with it:
+
+- **Core's media collections re-sort in the browser.** The grid's `date`
+  comparator undid every folder order the server applied — a folder's own
+  file order never showed in grid mode. `keepServerOrder()` (lib/filter.ts)
+  stamps each model with its place in the server's answer and sorts a folder
+  view by it; the picker too.
+- **WP_Query caches ids under its SQL and the posts' last-changed**, and a
+  filing touches neither; nothing bumped the `folderfolio` last-changed the
+  gallery keyed on. Every write to our tables now bumps it and the folder
+  join carries it in its SQL.
+- **`wp-plupload.js` opens its "Drop files to upload" sheet on any
+  dragover**, over the rail too, so a tile dropped on a folder in grid mode
+  filed nothing. Hidden while one of our drags is on.
+
 ### Stress tests
 
 `tests/stress/import.php` and `tests/stress/ops.php`, run with `wp
