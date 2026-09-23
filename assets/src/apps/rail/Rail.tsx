@@ -31,7 +31,7 @@ import {
 import { useRail } from './store';
 import { can } from '../../lib/can';
 import { useIsNarrow } from '../../lib/narrow';
-import { applyFolderFilter, keepServerOrder, watchFolderLinks } from '../../lib/filter';
+import { applyFolderFilter, keepServerOrder, showUploads, watchFolderLinks } from '../../lib/filter';
 import { t } from '../../core/api';
 
 export function Rail({
@@ -255,6 +255,9 @@ export function Rail({
 
             if (collection?.props) {
                 keepServerOrder(collection as Parameters<typeof keepServerOrder>[0]);
+                // And an upload made in a folder shows while it uploads —
+                // showUploads() has why core does not.
+                showUploads(collection as Parameters<typeof showUploads>[0]);
 
                 return;
             }

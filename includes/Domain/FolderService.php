@@ -1519,8 +1519,16 @@ class FolderService
     ): ?Folder {
         $parentId = null;
         $found = null;
+        $segments = $this->splitPath($path);
 
-        foreach ($this->splitPath($path) as $segment) {
+        // A segment that was typed and sanitises to nothing names no folder
+        // that can exist, so the path finds nothing — rather than the path
+        // with that segment left out, which is a different folder.
+        if ($segments === null) {
+            return null;
+        }
+
+        foreach ($segments as $segment) {
             $row = $this->folders->findByName($segment, $parentId, $objectType);
 
             if ($row === null) {
@@ -1540,6 +1548,15 @@ class FolderService
      * Idempotent, so calling it on every upload is fine. This is the method
      * most integrations actually want.
      *
+     * Idempotent for every name, including one `sanitize_text_field()`
+     * changes — "Brand  Assets", "Logos <b>2024". Until tier 2 item 9
+     * this looked a segment up **raw** and `create()` stored it
+     * **sanitised**, so the second call searched under one spelling, found
+     * nothing, and was refused as a duplicate of the folder the first call
+     * made. `splitPath()` now sanitises, so the lookup and the write use the
+     * same name. A segment that sanitises to nothing is refused rather than
+     * dropped: "a/<b>/c" is not a request for "a/c".
+     *
      * `$parentId` is where the path starts, and it defaults to the top level,
      * which is what every caller before `Domain\FolderBulk` wanted. It is a
      * seed for the same walk rather than a mode: with it set, "Logos/Primary"
@@ -1556,7 +1573,7 @@ class FolderService
     ): Folder|WP_Error {
         $segments = $this->splitPath($path);
 
-        if ($segments === []) {
+        if ($segments === null || $segments === []) {
             return new WP_Error(
                 'folderfolio_name_required',
                 __('A folder name is required.', 'folderfolio')
@@ -1594,23 +1611,38 @@ class FolderService
     }
 
     /**
-     * Split a human path into its non-empty segments.
+     * Split a human path into its segments, each as it would be stored.
      *
      * Tolerates leading, trailing and doubled separators, so "/a//b/" and
      * "a/b" mean the same thing.
      *
-     * @return list<string>
+     * Each segment goes through `sanitize_text_field()` — the same call
+     * `create()` makes on the way in — because a lookup has to use the name
+     * the database holds. Looking up the raw segment is what made
+     * `getOrCreateByPath()` fail on its own second call (see its docblock).
+     *
+     * Null when a segment had text and the sanitiser left nothing of it:
+     * that segment names no folder, and quietly dropping it would resolve a
+     * different path from the one written.
+     *
+     * @return list<string>|null
      */
-    private function splitPath(string $path): array
+    private function splitPath(string $path): ?array
     {
         $segments = [];
 
         foreach (explode('/', $path) as $segment) {
-            $segment = trim($segment);
-
-            if ($segment !== '') {
-                $segments[] = $segment;
+            if (trim($segment) === '') {
+                continue;
             }
+
+            $segment = sanitize_text_field($segment);
+
+            if ($segment === '') {
+                return null;
+            }
+
+            $segments[] = $segment;
         }
 
         return $segments;

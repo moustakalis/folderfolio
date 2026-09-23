@@ -11,6 +11,7 @@ import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react
 import { createRoot } from 'react-dom/client';
 
 import { Rail } from './rail/Rail';
+import { countsKey, treeKey } from './rail/queries';
 import { useRail } from './rail/store';
 import { watchUploadTarget } from '../core/upload-target';
 import { errorMessage } from '../core/api';
@@ -87,51 +88,63 @@ export function cardsMount(): HTMLElement | null {
     return el;
 }
 
+const client = new QueryClient({
+    /*
+     * Every write the rail makes, refused or failed, says so on screen.
+     *
+     * Until 23 Sep none of them did: an optimistic mutation rolled back
+     * and a plain one did nothing, and the only trace was a request in the
+     * network panel — a duplicate name, a stale reorder, a paste of a file
+     * this person may not organise, a drop the server refused. One place,
+     * here, rather than an onError on each hook: the next mutation added
+     * cannot forget it.
+     *
+     * A new write clears the last notice, so what is on screen is always
+     * about the most recent thing the person tried.
+     */
+    mutationCache: new MutationCache({
+        onMutate: () => useRail.getState().dismissNotice(),
+        onError: (error) => useRail.getState().showNotice(errorMessage(error)),
+    }),
+    defaultOptions: {
+        queries: {
+            // One retry, not three. A failed folder request on wp-admin is
+            // almost always a permission or a plugin conflict, and three
+            // rounds of exponential backoff just delay the error message
+            // that would have told someone what was wrong.
+            retry: 1,
+            refetchOnWindowFocus: false,
+        },
+    },
+});
+
 /**
  * Uploads follow the folder — screen 10's footer line, made true.
  *
  * Here rather than inside a component: it is not rendering anything, it has
  * to be running before a frame is opened, and it is the same two lines in
  * both entries. See core/upload-target.ts.
+ *
+ * A dropped directory's folders (core/folder-upload.ts) are made outside
+ * React, so the tree is told from here, and a folder that could not be made
+ * is said on the same notice sheet as a refused rail write — which is why the
+ * client is built first.
  */
 watchUploadTarget(
     (listener) => useRail.subscribe((state) => listener(state.selectedId)),
-    useRail.getState().selectedId
+    useRail.getState().selectedId,
+    {
+        changed: () => {
+            void client.invalidateQueries({ queryKey: treeKey });
+            void client.invalidateQueries({ queryKey: countsKey });
+        },
+        notice: (message) => useRail.getState().showNotice(message),
+    }
 );
 
 const mount = document.getElementById('folderfolio-rail-app');
 
 if (mount) {
-    const client = new QueryClient({
-        /*
-         * Every write the rail makes, refused or failed, says so on screen.
-         *
-         * Until 23 Sep none of them did: an optimistic mutation rolled back
-         * and a plain one did nothing, and the only trace was a request in the
-         * network panel — a duplicate name, a stale reorder, a paste of a file
-         * this person may not organise, a drop the server refused. One place,
-         * here, rather than an onError on each hook: the next mutation added
-         * cannot forget it.
-         *
-         * A new write clears the last notice, so what is on screen is always
-         * about the most recent thing the person tried.
-         */
-        mutationCache: new MutationCache({
-            onMutate: () => useRail.getState().dismissNotice(),
-            onError: (error) => useRail.getState().showNotice(errorMessage(error)),
-        }),
-        defaultOptions: {
-            queries: {
-                // One retry, not three. A failed folder request on wp-admin is
-                // almost always a permission or a plugin conflict, and three
-                // rounds of exponential backoff just delay the error message
-                // that would have told someone what was wrong.
-                retry: 1,
-                refetchOnWindowFocus: false,
-            },
-        },
-    });
-
     createRoot(mount).render(
         <QueryClientProvider client={client}>
             <Rail contentMount={contentMount()} findCardsMount={cardsMount} />

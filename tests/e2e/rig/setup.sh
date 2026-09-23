@@ -75,7 +75,19 @@ foreach (["#d63638", "#00a32a", "#2271b1", "#dba617"] as $i => $hex) {
     imagefill($im, 0, 0, imagecolorallocate($im, $r, $g, $b));
     imagepng($im, sys_get_temp_dir() . "/rig-$i.png");
 }'
-$WP media import "$(php -r 'echo sys_get_temp_dir();')"/rig-*.png --porcelain >/dev/null
+IDS=$($WP media import "$(php -r 'echo sys_get_temp_dir();')"/rig-*.png --porcelain)
+
+# A minute apart, rig-0 oldest. Imported in one second they share a
+# post_date, and "newest first" is then decided by whichever tie-break the
+# query happens to use — file-order.spec.ts read [4, 5, 6, 7] where it
+# expected [7, 6, 5, 4] on a fast run (23 Sep), with or without the change
+# under test.
+i=0
+for id in $IDS; do
+  when=$(date -u -d "-$((10 - i)) minutes" '+%Y-%m-%d %H:%M:%S')
+  $WP post update "$id" --post_date="$when" --post_date_gmt="$when" >/dev/null
+  i=$((i + 1))
+done
 
 # Detached, with every descriptor pointed away: a server that inherits this
 # script's stdout keeps a caller's pipe (`setup.sh | tail`) open for ever.

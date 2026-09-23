@@ -32,7 +32,7 @@
  */
 
 import type { Place } from './toolbar-slot';
-import { keepServerOrder } from './filter';
+import { keepServerOrder, showUploads } from './filter';
 
 /** Our reference, parked on the browser view's own element. */
 interface BrowserElement extends HTMLElement {
@@ -81,6 +81,8 @@ export function publishBrowsers(): boolean {
 
         if (collection?.props) {
             keepServerOrder(collection);
+            // An upload made in a folder shows while it uploads — showUploads().
+            showUploads(collection);
         }
 
         return result;

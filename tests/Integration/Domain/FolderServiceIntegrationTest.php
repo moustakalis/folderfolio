@@ -433,4 +433,53 @@ class FolderServiceIntegrationTest extends WP_UnitTestCase
 
         $this->assertSame(5, $service->assignAttachments($folder->id, $mine), 'and their own go in');
     }
+    /**
+     * `getOrCreateByPath()` is idempotent for a name the sanitiser changes.
+     *
+     * It looked each segment up raw and `create()` stored it sanitised, so
+     * the second call searched for "Brand  Assets" (two spaces), found
+     * nothing — the row says "Brand Assets" — and was refused as a duplicate
+     * of the folder the first call made. Folder upload (tier 2 item 9) calls
+     * it with directory names off a disk, where that is ordinary.
+     *
+     * Reverting `splitPath()`'s sanitise fails the second call and the
+     * `findByPath()` assertion — three assertions, one fix.
+     *
+     * @test
+     */
+    public function get_or_create_by_path_is_idempotent_for_a_name_the_sanitiser_changes(): void
+    {
+        $first = $this->service->getOrCreateByPath('Brand  Assets/Logos <b>2024');
+        $this->assertInstanceOf(Folder::class, $first);
+        $this->assertSame('Logos 2024', $first->name);
+
+        $second = $this->service->getOrCreateByPath('Brand  Assets/Logos <b>2024');
+        $this->assertInstanceOf(Folder::class, $second, 'the second call finds what the first made');
+        $this->assertSame($first->id, $second->id);
+
+        $found = $this->service->findByPath('Brand  Assets/Logos <b>2024');
+        $this->assertInstanceOf(Folder::class, $found);
+        $this->assertSame($first->id, $found->id);
+
+        $this->assertCount(1, $this->service->tree(), 'one Brand Assets, not two');
+    }
+
+    /**
+     * A segment that sanitises to nothing is refused, not dropped.
+     *
+     * "a/<b>/c" named three folders — a closing tag cannot be in a segment at
+     * all, its slash is a separator —; making "a/c" would be a different
+     * one, created silently.
+     *
+     * @test
+     */
+    public function a_segment_that_sanitises_to_nothing_is_refused(): void
+    {
+        $result = $this->service->getOrCreateByPath('Alpha/<b>/Gamma');
+        $this->assertWPError($result);
+        $this->assertSame([], $this->service->tree(), 'and nothing was written');
+
+        $this->service->getOrCreateByPath('Alpha/Gamma');
+        $this->assertNull($this->service->findByPath('Alpha/<b>/Gamma'));
+    }
 }

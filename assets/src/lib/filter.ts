@@ -197,6 +197,88 @@ export function keepServerOrder(collection: MediaCollection): void {
     sync();
 }
 
+interface UploadView extends MediaCollection {
+    add?: (model: unknown) => unknown;
+    remove?: (model: unknown) => unknown;
+    get?: (model: unknown) => unknown;
+    validator?: (model: unknown) => boolean;
+}
+
+/** Every grid collection on the page — the library's, or each picker's. */
+const uploadViews = new Set<UploadView>();
+
+/**
+ * A grid that should show uploads made while it is on screen.
+ *
+ * Found verifying tier 2 item 9, and older than it: **a file uploaded while a
+ * folder is selected never appeared in the grid** — no tile, no progress —
+ * until the next re-query. `wp.media.model.Query` watches `wp.Uploader.queue`
+ * only when every query arg is one of seven core knows (`media-models.js`:
+ * "There are no filters for other properties"), and `folderfolio_folder` is
+ * not one of them. It is in the props from the first selection on, `''`
+ * included, so once a folder had been chosen no grid showed an upload at all.
+ */
+export function showUploads(collection: UploadView): void {
+    uploadViews.add(collection);
+}
+
+/**
+ * Put an upload in the grid it was made in — called as each file is queued.
+ *
+ * `folder` is what the upload parameter said when the file was added: an id,
+ * or `''` for none. A grid on that folder shows it; All media and Unassigned
+ * show an unfiled one; a grid on any other folder does not. Files from a
+ * dropped directory show in the folder they were dropped on while they
+ * upload — they are what the person just dropped — and in their own folders
+ * from the next query on, which is the server's answer, not this one.
+ *
+ * A plain `add()`, not `observe()`: an observed collection re-judges a model
+ * on every change, and the finished upload is the same model a later query
+ * returns — so a filter keyed to where it was dropped hid it from the very
+ * folder it had been filed in. Added once, here, it stays until the grid next
+ * re-queries, when what the server says replaces it. Core's own `validator` is
+ * still asked, so an image does not appear under a *Video* filter.
+ */
+export function showUpload(model: unknown, folder: string): void {
+    for (const view of uploadViews) {
+        const raw = view.props.get(FOLDER_QUERY_VAR);
+        const viewing = raw === '' || raw === null || raw === undefined ? '' : String(raw);
+        // All media holds every file; Unassigned, the unfiled ones.
+        const shows = viewing === '' ? true : viewing === '0' ? folder === '' : viewing === folder;
+
+        if (!shows || typeof view.add !== 'function') {
+            continue;
+        }
+
+        if (typeof view.validator === 'function' && !view.validator(model)) {
+            continue;
+        }
+
+        view.add(model);
+    }
+}
+
+/**
+ * Draw a finished upload's tile again — called once each file is up.
+ *
+ * Core's tile takes its `aria-label` from the title when the view is *built*
+ * (`media-views.js`, `attributes()`), and an upload has no title yet, so it is
+ * built as "uploading…" and stays that way: `render()` refreshes the inside of
+ * the tile, not its attributes. Core's own uploads escape it because their
+ * query re-adds the model; one put in a grid by `showUpload()` does not. On
+ * the dev site the label is also the caption under the thumbnail, so it read
+ * "uploading…" under a finished file. Taking the model out and putting it
+ * back builds the tile from the finished model.
+ */
+export function redrawUpload(model: unknown): void {
+    for (const view of uploadViews) {
+        if (typeof view.get === 'function' && view.get(model) && view.remove && view.add) {
+            view.remove(model);
+            view.add(model);
+        }
+    }
+}
+
 /**
  * Filter the library, and put the folder in the address bar.
  *

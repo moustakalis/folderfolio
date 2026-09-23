@@ -164,6 +164,13 @@ final class MediaModalIntegration
                 // Screen 10's footer line. Only this screen renders it: the
                 // rail has no Select button to sit beside.
                 'uploadsGoToFolder' => __('Uploads go to the selected folder.', 'folderfolio'),
+
+                // Folder upload — tier 2 item 9 (core/folder-upload.ts). The
+                // rail says these on its notice sheet; the picker has none yet
+                // and carries them so the day it does they are translated.
+                'uploadNoFolders' => __('You can upload these files but not make folders, so they are uploading without their folders.', 'folderfolio'),
+                /* translators: %s: the reason, a sentence from the server. */
+                'uploadFoldersFailed' => __('The folders in this upload could not be made, so its files are uploading without them. %s', 'folderfolio'),
                 'newFolder' => __('New folder', 'folderfolio'),
                 'rename' => __('Rename', 'folderfolio'),
                 'renameFolder' => __('Rename folder', 'folderfolio'),

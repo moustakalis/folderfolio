@@ -16,6 +16,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createRoot } from 'react-dom/client';
 
 import { Frame } from './modal/Frame';
+import { treeKey } from './rail/queries';
 import { useRail } from './rail/store';
 import { publishBrowsers } from '../lib/media-frame';
 import { watchUploadTarget } from '../core/upload-target';
@@ -42,21 +43,29 @@ if (!publishBrowsers()) {
  * to be running before a frame is opened, and it is the same two lines in
  * both entries. See core/upload-target.ts.
  */
+const client = new QueryClient({
+    defaultOptions: {
+        queries: { retry: 1, refetchOnWindowFocus: false },
+    },
+});
+
+// A dropped directory's new folders are drawn in the picker's column. The
+// picker has no notice sheet (a standing debt), so a folder that could not be
+// made is not said here; the files still upload.
 watchUploadTarget(
     (listener) => useRail.subscribe((state) => listener(state.selectedId)),
-    useRail.getState().selectedId
+    useRail.getState().selectedId,
+    {
+        changed: () => {
+            void client.invalidateQueries({ queryKey: treeKey });
+        },
+    }
 );
 
 const host = document.createElement('div');
 host.className = 'folderfolio-frame-host';
 host.hidden = true;
 document.body.appendChild(host);
-
-const client = new QueryClient({
-    defaultOptions: {
-        queries: { retry: 1, refetchOnWindowFocus: false },
-    },
-});
 
 createRoot(host).render(
     <QueryClientProvider client={client}>

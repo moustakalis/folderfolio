@@ -53,6 +53,8 @@
  * newly selected folder.
  */
 
+import { setStructureHooks, watchStructure, type StructureHooks } from './folder-upload';
+
 const PARAM = 'folderfolio_folder';
 
 const live = new Set<WpUploader>();
@@ -132,6 +134,11 @@ function watchUploaders(): void {
         } catch {
             // As above.
         }
+
+        // A dropped directory's folders — tier 2 item 9. Here because this is
+        // the one moment every uploader is seen, and it needs the same
+        // "which folder" answer the parameter above carries.
+        watchStructure(this, value);
 
         return result;
     };
@@ -238,8 +245,10 @@ function reassertAfterReady(): void {
  */
 export function watchUploadTarget(
     subscribe: (listener: (selectedId: number | null) => void) => void,
-    initial: number | null
+    initial: number | null,
+    structure: StructureHooks = {}
 ): void {
+    setStructureHooks(structure);
     watchUploaders();
     reassertAfterReady();
 

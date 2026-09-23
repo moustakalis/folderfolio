@@ -247,7 +247,7 @@ final class FolderBulk
             /** @var list<array{segments: list<string>, new_from: ?int}> $rows */
             $rows = $plan['rows'];
 
-            foreach ($rows as $row) {
+            foreach ($rows as $index => $row) {
                 // Lines that create nothing are still walked: `getOrCreateByPath()`
                 // is where the collation actually decides, and skipping the
                 // ones PHP thought were complete would make that decision in
@@ -265,7 +265,16 @@ final class FolderBulk
                 if (is_wp_error($folder)) {
                     return $folder;
                 }
+
+                // The folder the line ends at, created or found. Folder upload
+                // (tier 2 item 9) files each dropped file by this id, so its
+                // upload request carries an id and never a path — see
+                // Support\UploadTarget. One row per line, in the order sent,
+                // blank lines excepted.
+                $rows[$index]['folder_id'] = $folder->id;
             }
+
+            $plan['rows'] = $rows;
 
             return $plan;
         });
@@ -278,10 +287,10 @@ final class FolderBulk
      *
      * Names are put through `sanitize_text_field()` here rather than left for
      * `FolderService::create()` to do on the way in, so that the name in the
-     * preview is the name in the database. It matters for more than honesty:
-     * `getOrCreateByPath()` looks a segment up raw and stores it sanitised, so
-     * a name the sanitiser changes would be looked up under one spelling and
-     * written under another — and found missing on the second run.
+     * preview is the name in the database. Until tier 2 item 9 it mattered
+     * for more than honesty — `getOrCreateByPath()` looked a segment up raw
+     * and stored it sanitised — and it still keeps `plan()`'s index lookups
+     * in the same spelling as the rows they are matched against.
      *
      * @return list<array{text: string, segments: list<string>, error: ?string}>|WP_Error
      */

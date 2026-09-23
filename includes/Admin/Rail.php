@@ -757,6 +757,13 @@ final class Rail
                 'showHiddenLevels' => __('Show the levels in between', 'folderfolio'),
 
                 // Cut, copy and paste — tier 1 item 5.
+                // Folder upload — tier 2 item 9 (core/folder-upload.ts). The
+                // rail says these on its notice sheet; the picker has none yet
+                // and carries them so the day it does they are translated.
+                'uploadNoFolders' => __('You can upload these files but not make folders, so they are uploading without their folders.', 'folderfolio'),
+                /* translators: %s: the reason, a sentence from the server. */
+                'uploadFoldersFailed' => __('The folders in this upload could not be made, so its files are uploading without them. %s', 'folderfolio'),
+
                 'cut' => __('Cut', 'folderfolio'),
                 'copy' => __('Copy', 'folderfolio'),
                 'copyWithFiles' => __('Copy with files', 'folderfolio'),

@@ -187,6 +187,48 @@ interface WpUploader {
   /** Sets one multipart parameter on this uploader. */
   param(key: string, value: string): void;
   init(): void;
+  /**
+   * The plupload instance underneath. Built in wp.Uploader's constructor, so
+   * it exists by the time `init()` is called — from plupload's `postinit`.
+   */
+  uploader?: PlUploader;
+}
+
+/**
+ * The slice of plupload 2.1 that folder upload touches (core/folder-upload.ts).
+ * Read from wp-includes/js/plupload/plupload.js on WP 7.1.
+ */
+interface PlUploader {
+  /** plupload.STOPPED 1, plupload.STARTED 2. */
+  state: number;
+  settings: { multipart_params: Record<string, string> };
+  /**
+   * Handlers run highest priority first; one that returns `false` stops the
+   * rest. `wp-plupload.js` binds at the default, 0.
+   */
+  bind(
+    name: string,
+    fn: (up: PlUploader, ...args: never[]) => unknown,
+    scope?: unknown,
+    priority?: number
+  ): void;
+  removeFile(file: PlFile): void;
+  start(): void;
+  stop(): void;
+}
+
+interface PlFile {
+  id: string;
+  name: string;
+  /** plupload.QUEUED 1, UPLOADING 2, FAILED 4, DONE 5. */
+  status: number;
+  /**
+   * The mOxie file. `relativePath` is where a file sat in a dropped
+   * directory — `/Brand/Logos/a.png` — and `''` for a loose one.
+   */
+  getSource?: () => { relativePath?: string } | null;
+  /** The Backbone model wp-plupload.js makes for it in its FilesAdded. */
+  attachment?: unknown;
 }
 
 /**
