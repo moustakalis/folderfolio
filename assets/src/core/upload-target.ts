@@ -54,6 +54,7 @@
  */
 
 import { setStructureHooks, watchStructure, type StructureHooks } from './folder-upload';
+import { installSelectFolder } from './select-folder';
 
 const PARAM = 'folderfolio_folder';
 
@@ -250,6 +251,19 @@ export function watchUploadTarget(
 ): void {
     setStructureHooks(structure);
     watchUploaders();
+
+    // "or select a folder" under core's Select Files — core/select-folder.ts.
+    // It finds its uploader among the live ones by the button it was built
+    // around.
+    installSelectFolder((browser) => {
+        for (const uploader of live) {
+            if (uploader.browser?.[0] === browser) {
+                return uploader;
+            }
+        }
+
+        return undefined;
+    });
     reassertAfterReady();
 
     // `0` is Unassigned and `null` is All media. Neither is a folder, and an

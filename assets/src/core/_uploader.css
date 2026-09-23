@@ -1,0 +1,24 @@
+/**
+ * Core's upload panel — the one line FolderFolio adds to it.
+ *
+ * "or select a folder" under *Select Files* (core/select-folder.ts), in the
+ * library grid's panel and the picker's *Upload files* tab: the same view,
+ * so one rule. Core's `.button-link` gives it its reset and focus ring.
+ *
+ * The ink is --ff-accent-text, not core's link colour. The panel sits on
+ * wp-admin's #f0f0f0, and core's link colour is the scheme's own: Modern's
+ * #3858e9 is 4.93:1 there, but core's link colour is the scheme's to choose and
+ * nothing promises AA on that grey; -darker-20 is 5.72:1 at worst on it
+ * (Midnight), asserted in TokensTest. The `<p>` carries `.folderfolio` so the token resolves —
+ * tokens are scoped to that class.
+ */
+
+.uploader-inline .folderfolio-select-folder {
+    margin: 12px 0 0;
+}
+
+.uploader-inline .folderfolio-select-folder .button-link {
+    font-size: 14px;
+    text-decoration: underline;
+    color: var(--ff-accent-text);
+}

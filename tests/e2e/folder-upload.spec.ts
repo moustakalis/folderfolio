@@ -220,4 +220,32 @@ test.describe('uploading a folder structure', () => {
             .poll(() => filed(page, root), { timeout: 120_000 })
             .toEqual({ '.': ['ff9e2e-bottom', 'ff9e2e-top'] });
     });
+
+    // Board UzMC1qdGkxa2JQckXu65tW, option B: a link under core's Select
+    // Files. The system's folder chooser cannot be driven, so the chooser's
+    // answer is put on the input — Files carrying webkitRelativePath, as a
+    // chooser returns them — and its `change` is what runs.
+    test('“or select a folder” sits under Select Files and uploads a structure', async ({ page }) => {
+        await page.locator('.page-title-action').click();
+
+        const link = page.locator('.uploader-inline .upload-ui .browser + .folderfolio-select-folder button');
+        await expect(link).toHaveText('or select a folder');
+
+        await page.evaluate((png) => {
+            const bytes = Uint8Array.from(atob(png), (c) => c.charCodeAt(0));
+            const input = document.querySelector('.uploader-inline .folderfolio-select-folder input') as HTMLInputElement;
+            const file = (name: string, rel: string) =>
+                Object.defineProperty(new File([bytes], name, { type: 'image/png' }), 'webkitRelativePath', { value: rel });
+
+            Object.defineProperty(input, 'files', {
+                configurable: true,
+                value: [file('ff9e2e-chosen.png', 'Chosen/ff9e2e-chosen.png'), file('ff9e2e-deeper.png', 'Chosen/Deeper/ff9e2e-deeper.png')],
+            });
+            input.dispatchEvent(new Event('change'));
+        }, PNG);
+
+        await expect
+            .poll(() => filed(page, root), { timeout: 120_000 })
+            .toEqual({ '.': [], Chosen: ['ff9e2e-chosen'], 'Chosen/Deeper': ['ff9e2e-deeper'] });
+    });
 });

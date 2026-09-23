@@ -24,7 +24,10 @@ const PNG =
     'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAF0lEQVQIHWNkYGD4z8DAwMgAAkAWGAAAIAUBAWtL1p0AAAAASUVORK5CYII=';
 
 async function uploadThroughTheMediaGrid(page: import('@playwright/test').Page, name: string) {
-    const input = page.locator('input[type="file"]').first();
+    // plupload's own input, in moxie's shim — not merely the first file input
+    // on the page: since the "or select a folder" link (core/select-folder.ts)
+    // there is a directory input in core's panel too, and it comes first.
+    const input = page.locator('.moxie-shim input[type="file"]').first();
     await input.waitFor({ state: 'attached' });
 
     await input.setInputFiles({

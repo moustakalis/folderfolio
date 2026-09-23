@@ -169,6 +169,9 @@ final class MediaModalIntegration
                 // Folder upload — tier 2 item 9 (core/folder-upload.ts). The
                 // rail says these on its notice sheet; the picker has none yet
                 // and carries them so the day it does they are translated.
+                // The link under core's Select Files (core/select-folder.ts),
+                // board UzMC1qdGkxa2JQckXu65tW option B.
+                'selectFolder' => __('or select a folder', 'folderfolio'),
                 'uploadNoFolders' => __('You can upload these files but not make folders, so they are uploading without their folders.', 'folderfolio'),
                 /* translators: %s: the reason, a sentence from the server. */
                 'uploadFoldersFailed' => __('The folders in this upload could not be made, so its files are uploading without them. %s', 'folderfolio'),

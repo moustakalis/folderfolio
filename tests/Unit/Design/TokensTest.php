@@ -285,6 +285,39 @@ final class TokensTest extends TestCase
     }
 
     /**
+     * The one piece of our text on core's own ground: "or select a folder",
+     * under *Select Files* in core's upload panel (_uploader.css).
+     *
+     * That panel has no background of its own; it sits on wp-admin's body,
+     * #f0f0f0 in seven schemes and #f5f5f5 in Light — darker than the panel
+     * every other rule here is measured against. --ff-accent-text is 5.72:1
+     * at worst there (Midnight). Core's scheme link colour would not have
+     * been AA in every scheme, which is why the link does not use it.
+     *
+     * The rule is asserted to exist and to paint --ff-accent-text, so this
+     * cannot keep passing after the link moves to another colour.
+     */
+    public function test_the_select_folder_link_clears_aa_on_the_admin_grey_in_every_scheme(): void
+    {
+        self::assertMatchesRegularExpression(
+            '/\\.folderfolio-select-folder\\s+\\.button-link\\s*\\{[^}]*color:\\s*var\\(--ff-accent-text\\)/',
+            (string) file_get_contents(dirname(__DIR__, 3) . '/assets/src/core/_uploader.css'),
+            'The select-folder link no longer paints --ff-accent-text.'
+        );
+
+        foreach (self::SCHEME_ACCENTS as $scheme => [$_, $darker20]) {
+            $ground = $scheme === 'Light' ? '#f5f5f5' : '#f0f0f0';
+            $ratio = self::contrast($darker20, $ground);
+
+            self::assertGreaterThanOrEqual(
+                self::AA,
+                $ratio,
+                sprintf('%s: the select-folder link (%s) on %s is %.2f:1.', $scheme, $darker20, $ground, $ratio)
+            );
+        }
+    }
+
+    /**
      * Every token painted as text, found in the stylesheets rather than listed
      * here, and checked against the ground it actually lands on.
      *

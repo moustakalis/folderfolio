@@ -192,6 +192,8 @@ interface WpUploader {
    * it exists by the time `init()` is called — from plupload's `postinit`.
    */
   uploader?: PlUploader;
+  /** The jQuery-wrapped *Select Files* button this uploader was built around. */
+  browser?: ArrayLike<Element>;
 }
 
 /**
