@@ -295,9 +295,15 @@
  * instead of what it is given — 593.5px of the 832 available, which brings the
  * first tick to 70px from the name.
  *
- * The declared width has to come off below 520, where the table is instead
- * being squeezed to fit a phone: a specified column width is a *minimum* in
- * auto table layout, so leaving it on would put the floor back above 500px.
+ * Below 782 the matrix stacks (see the end of this file), so the declared
+ * width never has to squeeze.
+ *
+ * 74px since the sixth column (Download, tier 2 item 11). At 108 six columns
+ * took 744px of the 832 and left the role column 88–102px: a long role name
+ * — the Greek *Αρχισυντάκτης*, Editor — broke mid-word into a 53px row at
+ * every width from 641 to 1024. At 74 (90 with its padding, DOWNLOAD the
+ * widest head at ~70) the six take 540, the table shrinks to its own
+ * max-content again, and the role column is the role's full name.
  */
 .folderfolio-matrix {
   width: auto;
@@ -305,7 +311,7 @@
 }
 
 .folderfolio-matrix thead th:not(:first-child) {
-  width: 108px;
+  width: 74px;
 }
 
 .folderfolio-matrix th {
@@ -550,89 +556,16 @@
 }
 
 /*
- * Below 520px the roles matrix is the widest thing on this screen, and it has
- * a floor: five columns whose heads have already wrapped to three lines,
- * 361.8px, against a 318px content box at a 390px viewport. Left alone the
- * *page* scrolls sideways — .folderfolio-matrix-wrap is overflow-x: visible,
- * so there is no scroller to absorb it: 7px at 390, 37px at 360, 77px at 320.
- *
- * Trimming the column padding and the head type takes the floor to 277.2px,
- * which clears every phone down to 320 with the table's shape intact, once the
- * card's own side padding comes down with it. Measured after: the table is
- * sized by the content box at 342/312/272 for 390/360/320, sits 13px inside
- * the card's border at each, and scrollWidth === clientWidth at every width
- * from 320 to 1500.
- *
- * Measuring this the first time, the table was declared to "fit" at 320 on a
- * clientWidth reading — which includes the card's padding. It did not: it ran
- * 29.2px past the content box and 4.2px past the card's border, with the page
- * still not scrolling because the padding absorbed it. Compare the table
- * against the *content* box, not the client box.
- *
- * A scroll container on the wrap was the alternative, with the role column
- * sticky. It also reaches zero page overflow, and it was rejected: it hides
- * 44px of ticks at 390 and 114px at 320 behind a horizontal swipe, inside a
- * form that scrolls vertically. Padding-only, keeping the heads at 11px,
- * holds 390 but overflows 320 by 29px — 320 is a supported width, so the
- * heads come down a step too.
+ * Below 520px: the card's own side padding comes down, and the status table
+ * stacks. The roles matrix has its own breakpoint, 640 — below.
  */
 @media screen and (max-width: 520px) {
-  /* 24px of side padding is 15% of a 320px screen, and it is what pushed the
-     table past the card's own border there: the matrix floors at 272px and the
-     content box was 248. Halving it gives 272 exactly, and the card reads
-     better on a phone for it. */
+  /* 24px of side padding is 15% of a 320px screen; halved, the card reads
+     better on a phone. */
   .folderfolio-settings__head,
   .folderfolio-settings__body {
     padding-left: 12px;
     padding-right: 12px;
-  }
-
-  .folderfolio-matrix th,
-  .folderfolio-matrix td {
-    padding-left: 2px;
-    padding-right: 2px;
-  }
-
-  .folderfolio-matrix th {
-    font-size: 10px;
-    letter-spacing: 0.02em;
-  }
-
-  /*
-   * Sentence case on a phone, since tier 2 item 10's fifth ability column
-   * (Lock). It took the matrix's floor on a Mac from 272 to 303.8px — 29.8px
-   * past the 274px content box at 320, and the page 6px wide — and to 313.8px
-   * against 315 at 361, which a Linux sans (about 4px wider here) would not
-   * fit. A head's min-content is its longest word, and in capitals each is
-   * 6–8px wider (ORGANISE 58, Organise 50). Measured after, with the 9.5px
-   * heads in the 360px block: 267.8px at 320, 283.6 at 361, and every role
-   * row still 43px.
-   *
-   * The role column's 6.4em minimum was the other lever and it was worse:
-   * 5em saved 17px and made every two-word role a 54px row.
-   */
-  .folderfolio-matrix thead th {
-    text-transform: none;
-  }
-
-  /* (0,2,1), so it beats the rule above and the base role rule's padding
-     shorthand — which is why the left inset has to be restated here. */
-  .folderfolio-matrix th.folderfolio-matrix__role {
-    padding-inline-start: 0;
-    font-size: 12px;
-  }
-
-  /* A specified column width is a minimum in auto table layout, so the
-     108px that evens the columns on a desktop would hold the floor above
-     500px here. And the table fills the card again rather than shrinking to
-     its own content: with both off, it sat at 301.8px in a 472px box just
-     under the breakpoint, which reads as the table losing its nerve. */
-  .folderfolio-matrix {
-    width: 100%;
-  }
-
-  .folderfolio-matrix thead th:not(:first-child) {
-    width: auto;
   }
 
   /* The status table stacks, key over value. */
@@ -670,33 +603,88 @@
 }
 
 /*
- * At 360 and below, some slack for a font that is not Apple's.
+ * The roles matrix below 782px: one role to a block, its abilities as
+ * labelled checkboxes — tier 2 item 11.
  *
- * The 520px rules above were measured on a Mac, where the matrix floors at
- * 272px against a 272px content box at 320 — fit with nothing to spare. The
- * e2e suite's first run (23 Sep, headless Chromium on Linux, where
- * -apple-system falls back to a wider sans) measured 277.5px in a 274px box:
- * 3.5px past it. CI runs on Linux too, so this is not only a rig reading.
+ * A sixth ability column (Download) took the table's floor past every phone:
+ * 320.2px in a 274px content box at 320 (the page 22px wide), 339.9 in 315 at
+ * 361, and 517.6 in 451 at 521 — where the desktop heads apply and the page
+ * scrolled 30px; and 653px wide with a long role name kept whole, which the
+ * 657px box at 783 — the admin menu folded — just holds. Five columns had
+ * already needed sentence-case 9.5px heads
+ * and 2px insets to fit 320 (`…-23k`); a sixth has nowhere left to come from.
+ * A horizontal scroller was measured and rejected for this matrix on 21 Sep
+ * (it hides ticks behind a swipe inside a form that scrolls the other way).
  *
- * The heads lose their 0.02em tracking (ORGANISE, the widest, is 1.6px of it)
- * and the role cell its 8px inline-end padding comes down to 4. About 9px of
- * slack on either system, and nothing a person could tell apart at that size.
+ * So the table stops being a table where it cannot be one. Each checkbox
+ * carries its ability's name beside it (`.folderfolio-matrix__ability`,
+ * hidden above 782 where the column head says it), the role heads its block,
+ * and the abilities sit three to a line, two at 360 and below, so a seventh
+ * ability costs a line, not a width. 782 is also where wp-admin's own
+ * layout and this screen's fields go to one column.
+ *
+ * Every input keeps its aria-label ("Create — Editor"), so the heads being
+ * hidden costs a screen reader nothing.
  */
+.folderfolio-matrix__ability {
+  display: none;
+}
+
+@media screen and (max-width: 782px) {
+  .folderfolio-matrix,
+  .folderfolio-matrix tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .folderfolio-matrix thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* Three to a line, or two on the narrowest phones: six abilities fill
+     both exactly, where auto-fill left five and an orphan at 640. */
+  .folderfolio-matrix tbody tr {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 2px 12px;
+    padding: 10px 0;
+  }
+
+  /* (0,2,1): the base role rule's padding and min-width are for a column. */
+  .folderfolio-matrix tbody th.folderfolio-matrix__role {
+    grid-column: 1 / -1;
+    min-width: 0;
+    padding: 0 0 4px;
+    font-weight: 600;
+  }
+
+  .folderfolio-matrix tbody td {
+    display: block;
+    padding: 0;
+    text-align: start;
+  }
+
+  .folderfolio-matrix__cell {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+    min-height: 32px;
+  }
+
+  .folderfolio-matrix__ability {
+    display: block;
+    overflow-wrap: anywhere;
+  }
+}
+
 @media screen and (max-width: 360px) {
-  .folderfolio-matrix th {
-    letter-spacing: 0;
-  }
-
-  /* The other half of the fifth column's fix; see the sentence-case heads
-     in the 520px block. Half a pixel off the heads rather than a pixel off
-     every cell's inset: at 1px the heads ran together — "CreateOrganise
-     Delete" — with 2px between words. Measured together at 320: a 267.8px
-     floor in a 274px box, 4px between heads as before the fifth column. */
-  .folderfolio-matrix thead th {
-    font-size: 9.5px;
-  }
-
-  .folderfolio-matrix th.folderfolio-matrix__role {
-    padding-inline-end: 4px;
+  .folderfolio-matrix tbody tr {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

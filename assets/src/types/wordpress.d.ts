@@ -249,7 +249,7 @@ interface FolderFolioConfig {
    * The four abilities of the roles matrix, resolved for this user. Optional
    * for the same reason the settings below are.
    */
-  can?: Record<'create' | 'rename' | 'delete' | 'assign' | 'lock', boolean>;
+  can?: Record<'create' | 'rename' | 'delete' | 'assign' | 'lock' | 'download', boolean>;
   /** This person's starred folders — Admin\\Rail::appConfig(), tier 2 item 10. */
   stars?: number[];
   i18n: Record<string, string>;

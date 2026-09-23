@@ -652,6 +652,7 @@ final class Rail
                 'delete' => Capabilities::can('delete'),
                 'assign' => Capabilities::can('assign'),
                 'lock' => Capabilities::can('lock'),
+                'download' => Capabilities::can('download'),
             ],
 
             /*
@@ -710,295 +711,324 @@ final class Rail
              * COUNT to find that out; Modules\Import\Elsewhere has the rest.
              */
             'elsewhere' => Elsewhere::forConfig(),
-            'i18n' => [
-                'folders' => __('Folders', 'folderfolio'),
-                'newFolder' => __('New folder', 'folderfolio'),
-                'save' => __('Save', 'folderfolio'),
-                'cancel' => __('Cancel', 'folderfolio'),
-                'retry' => __('Retry', 'folderfolio'),
-                'allMedia' => __('All media', 'folderfolio'),
-                'unassigned' => __('Unassigned', 'folderfolio'),
-                'atTopLevel' => __('Top level', 'folderfolio'),
+            'i18n' => self::strings(),
+        ];
+    }
 
-                /*
-                 * The narrow-width level view — one folder's children at a
-                 * time, with the way out named after where it goes rather
-                 * than called "Back". On a sheet with no history stack, the
-                 * useful word is the destination.
-                 *
-                 * translators: %s is the parent folder's name, or "Top level".
-                 */
-                'upToFolder' => __('Up to %s', 'folderfolio'),
-                'noSubfolders' => __('Nothing inside this folder', 'folderfolio'),
-                /*
-                 * The row's whole sentence for assistive tech. The chevron
-                 * that says "this goes somewhere" is decorative, so the words
-                 * have to carry it.
-                 *
-                 * translators: 1: folder name, 2: how many files, 3: how many
-                 * folders are inside it.
-                 */
-                'folderWithSubfolders' => __(
-                    '%1$s, %2$s files, %3$s folders inside',
-                    'folderfolio'
-                ),
-                'createAtRoot' => __('New folder at the top level', 'folderfolio'),
-                'createInFolder' => __('New folder inside the selected folder', 'folderfolio'),
-                'searchPlaceholder' => __('Search folders', 'folderfolio'),
-                'folderActions' => __('Folder actions', 'folderfolio'),
-                'rename' => __('Rename', 'folderfolio'),
-                'renameFolder' => __('Rename folder', 'folderfolio'),
-                'newFolderName' => __('Name for the new folder', 'folderfolio'),
-                'delete' => __('Delete', 'folderfolio'),
+    /**
+     * Every string the rail's React app says, keyed as `t()` asks for it.
+     *
+     * Public and static because the media picker renders the same components
+     * — the ⋮ menu, the marks, the paste rows, the notice sheet — and until
+     * 23 Sep its config carried only the few strings it had been given by
+     * hand: sixty-odd of these reached a picker in English whatever the
+     * site's language. `MediaModalIntegration::config()` merges this map
+     * under its own now. Found while adding the ZIP download's strings.
+     *
+     * @return array<string, string>
+     */
+    public static function strings(): array
+    {
+        return [
+            'folders' => __('Folders', 'folderfolio'),
+            'newFolder' => __('New folder', 'folderfolio'),
+            'save' => __('Save', 'folderfolio'),
+            'cancel' => __('Cancel', 'folderfolio'),
+            'retry' => __('Retry', 'folderfolio'),
+            'allMedia' => __('All media', 'folderfolio'),
+            'unassigned' => __('Unassigned', 'folderfolio'),
+            'atTopLevel' => __('Top level', 'folderfolio'),
 
-                // Ten strings the rail drew from t()'s English fallbacks since
-                // they shipped — reordering, Sort inside, expand / collapse
-                // all and the crumb row's collapse — found on 23 Sep by
-                // diffing every t() key under apps/rail against this map.
-                'moveUp' => __('Move up', 'folderfolio'),
-                'moveDown' => __('Move down', 'folderfolio'),
-                'sortInside' => __('Sort inside', 'folderfolio'),
-                'sortSubfolders' => __('Subfolders', 'folderfolio'),
-                'sortFiles' => __('Files', 'folderfolio'),
-                'sortSameAsEverywhere' => __('Same as everywhere', 'folderfolio'),
-                'expandAll' => __('Expand all', 'folderfolio'),
-                'collapseAll' => __('Collapse all', 'folderfolio'),
-                // Lock, pin and star (tier 2 item 10).
-                'folderMarks' => __('Pin, star and lock', 'folderfolio'),
-                'pin' => __('Pin', 'folderfolio'),
-                'star' => __('Star', 'folderfolio'),
-                'lock' => __('Lock', 'folderfolio'),
-                // Read after the folder name by a screen reader.
-                'pinned' => __('pinned', 'folderfolio'),
-                'starred' => __('starred', 'folderfolio'),
-                'locked' => __('locked', 'folderfolio'),
-                /* translators: %s is the name of the locked folder. */
-                'lockedBy' => __('“%s” is locked. Someone who can lock folders can unlock it.', 'folderfolio'),
-                'starredGroup' => __('Starred', 'folderfolio'),
-                /* translators: 1: folder name, 2: its parent folder's name, 3: number of files. */
-                'starredIn' => __('%1$s in %2$s, %3$s', 'folderfolio'),
-                'breadcrumb' => __('Folder path', 'folderfolio'),
-                'showHiddenLevels' => __('Show the levels in between', 'folderfolio'),
+            /*
+             * The narrow-width level view — one folder's children at a
+             * time, with the way out named after where it goes rather
+             * than called "Back". On a sheet with no history stack, the
+             * useful word is the destination.
+             *
+             * translators: %s is the parent folder's name, or "Top level".
+             */
+            'upToFolder' => __('Up to %s', 'folderfolio'),
+            'noSubfolders' => __('Nothing inside this folder', 'folderfolio'),
+            /*
+             * The row's whole sentence for assistive tech. The chevron
+             * that says "this goes somewhere" is decorative, so the words
+             * have to carry it.
+             *
+             * translators: 1: folder name, 2: how many files, 3: how many
+             * folders are inside it.
+             */
+            'folderWithSubfolders' => __(
+                '%1$s, %2$s files, %3$s folders inside',
+                'folderfolio'
+            ),
+            'createAtRoot' => __('New folder at the top level', 'folderfolio'),
+            'createInFolder' => __('New folder inside the selected folder', 'folderfolio'),
+            'searchPlaceholder' => __('Search folders', 'folderfolio'),
+            'folderActions' => __('Folder actions', 'folderfolio'),
+            'rename' => __('Rename', 'folderfolio'),
+            'renameFolder' => __('Rename folder', 'folderfolio'),
+            'newFolderName' => __('Name for the new folder', 'folderfolio'),
+            'delete' => __('Delete', 'folderfolio'),
 
-                // Cut, copy and paste — tier 1 item 5.
-                // Folder upload — tier 2 item 9 (core/folder-upload.ts). The
-                // rail says these on its notice sheet; the picker has none yet
-                // and carries them so the day it does they are translated.
-                // The link under core's Select Files (core/select-folder.ts),
-                // board UzMC1qdGkxa2JQckXu65tW option B.
-                'selectFolder' => __('or select a folder', 'folderfolio'),
-                'uploadNoFolders' => __('You can upload these files but not make folders, so they are uploading without their folders.', 'folderfolio'),
-                /* translators: %s: the reason, a sentence from the server. */
-                'uploadFoldersFailed' => __('The folders in this upload could not be made, so its files are uploading without them. %s', 'folderfolio'),
+            // Ten strings the rail drew from t()'s English fallbacks since
+            // they shipped — reordering, Sort inside, expand / collapse
+            // all and the crumb row's collapse — found on 23 Sep by
+            // diffing every t() key under apps/rail against this map.
+            'moveUp' => __('Move up', 'folderfolio'),
+            'moveDown' => __('Move down', 'folderfolio'),
+            'sortInside' => __('Sort inside', 'folderfolio'),
+            'sortSubfolders' => __('Subfolders', 'folderfolio'),
+            'sortFiles' => __('Files', 'folderfolio'),
+            'sortSameAsEverywhere' => __('Same as everywhere', 'folderfolio'),
+            'expandAll' => __('Expand all', 'folderfolio'),
+            'collapseAll' => __('Collapse all', 'folderfolio'),
+            // Lock, pin and star (tier 2 item 10).
+            'folderMarks' => __('Pin, star and lock', 'folderfolio'),
+            'pin' => __('Pin', 'folderfolio'),
+            'star' => __('Star', 'folderfolio'),
+            'lock' => __('Lock', 'folderfolio'),
+            // Read after the folder name by a screen reader.
+            'pinned' => __('pinned', 'folderfolio'),
+            'starred' => __('starred', 'folderfolio'),
+            'locked' => __('locked', 'folderfolio'),
+            /* translators: %s is the name of the locked folder. */
+            'lockedBy' => __('“%s” is locked. Someone who can lock folders can unlock it.', 'folderfolio'),
+            'starredGroup' => __('Starred', 'folderfolio'),
+            /* translators: 1: folder name, 2: its parent folder's name, 3: number of files. */
+            'starredIn' => __('%1$s in %2$s, %3$s', 'folderfolio'),
+            'breadcrumb' => __('Folder path', 'folderfolio'),
+            'showHiddenLevels' => __('Show the levels in between', 'folderfolio'),
 
-                'cut' => __('Cut', 'folderfolio'),
-                'copy' => __('Copy', 'folderfolio'),
-                'copyWithFiles' => __('Copy with files', 'folderfolio'),
-                /* translators: %s is the name of the folder waiting to be pasted. */
-                'pasteHeldCut' => __('Paste “%s” · cut', 'folderfolio'),
-                /* translators: %s is the name of the folder waiting to be pasted. */
-                'pasteHeldCopy' => __('Paste “%s” · copy', 'folderfolio'),
-                /* translators: %s is the name of the folder waiting to be pasted, with its files. */
-                'pasteHeldCopyFiles' => __('Paste “%s” · with files', 'folderfolio'),
-                'pasteInside' => __('Inside this folder', 'folderfolio'),
-                'pasteBeside' => __('Beside this folder', 'folderfolio'),
-                /* translators: %s is a folder name. */
-                'cutAnnounce' => __('Cut “%s”. Paste it inside or beside another folder.', 'folderfolio'),
-                /* translators: %s is a folder name. */
-                'copyAnnounce' => __('Copied “%s”. Paste it inside or beside another folder.', 'folderfolio'),
-                /* translators: %s is a folder name. */
-                'pasted' => __('Pasted “%s”', 'folderfolio'),
-                // The notice sheet — any write the server refuses.
-                // `dismiss` is further down, with the startup-folder sentence
-                // that uses it too.
-                'actionFailed' => __('That could not be done.', 'folderfolio'),
-                'sort' => __('Sort', 'folderfolio'),
-                'sortNameAsc' => __('Name, A to Z', 'folderfolio'),
-                'sortNameDesc' => __('Name, Z to A', 'folderfolio'),
-                'sortNewest' => __('Newest first', 'folderfolio'),
-                'sortOldest' => __('Oldest first', 'folderfolio'),
-                'sortCustom' => __('Custom order', 'folderfolio'),
-                'undo' => __('Undo', 'folderfolio'),
-                /* translators: %s is the folder name. */
-                'deleted' => __('Deleted “%s”', 'folderfolio'),
-                /*
-                 * Two forms, chosen by the count (`tn()`), and the count is of
-                 * the files that are filed nowhere else — a file still in
-                 * another folder does not move to Unassigned, and the toast
-                 * used to say it did.
-                 *
-                 * translators: 1: folder name, 2: number of files, always 1.
-                 */
-                'deletedWithFile' => __(
-                    'Deleted “%1$s” — %2$s file moved to Unassigned',
-                    'folderfolio'
-                ),
-                /* translators: 1: folder name, 2: number of files. */
-                'deletedWithFiles' => __(
-                    'Deleted “%1$s” — %2$s files moved to Unassigned',
-                    'folderfolio'
-                ),
-                'emptyTree' => __('No folders yet', 'folderfolio'),
+            // Cut, copy and paste — tier 1 item 5.
+            // Folder upload — tier 2 item 9 (core/folder-upload.ts). The
+            // rail says these on its notice sheet; the picker has none yet
+            // and carries them so the day it does they are translated.
+            // The link under core's Select Files (core/select-folder.ts),
+            // board UzMC1qdGkxa2JQckXu65tW option B.
+            'selectFolder' => __('or select a folder', 'folderfolio'),
+            'uploadNoFolders' => __('You can upload these files but not make folders, so they are uploading without their folders.', 'folderfolio'),
+            /* translators: %s: the reason, a sentence from the server. */
+            'uploadFoldersFailed' => __('The folders in this upload could not be made, so its files are uploading without them. %s', 'folderfolio'),
 
-                /*
-                 * The other empty library: one that has been filed, somewhere
-                 * else. The counts are phrased separately and placed into the
-                 * body, because a template with "%s folders" baked into it
-                 * cannot be made singular by any translator.
-                 *
-                 * translators: 1: the other plugin's name, 2: a folder count
-                 * already phrased, 3: a file count already phrased.
-                 */
-                'emptyElsewhereTitle' => __(
-                    'Your media is already filed — just not here.',
-                    'folderfolio'
-                ),
-                'emptyElsewhereBody' => __(
-                    '%1$s has %2$s holding %3$s. Bringing them over adds them to FolderFolio — nothing is moved, and nothing is removed from where it is now.',
-                    'folderfolio'
-                ),
-                /* translators: %s is a number of folders. */
-                'emptyElsewhereFolderOne' => __('%s folder', 'folderfolio'),
-                /* translators: %s is a number of folders. */
-                'emptyElsewhereFolderMany' => __('%s folders', 'folderfolio'),
-                /* translators: %s is a number of files. */
-                'emptyElsewhereFileOne' => __('%s file', 'folderfolio'),
-                /* translators: %s is a number of files. */
-                'emptyElsewhereFileMany' => __('%s files', 'folderfolio'),
-                /* translators: %s is a number of other plugins. */
-                'emptyElsewhereOtherOne' => __(
-                    '%s other plugin has folders here too.',
-                    'folderfolio'
-                ),
-                /* translators: %s is a number of other plugins. */
-                'emptyElsewhereOtherMany' => __(
-                    '%s other plugins have folders here too.',
-                    'folderfolio'
-                ),
-                'emptyElsewhereAction' => __('Review the import', 'folderfolio'),
-                /* translators: %s is the number of folders. */
-                'folderTotal' => __('%s folders', 'folderfolio'),
-                'folderTotalOne' => __('1 folder', 'folderfolio'),
+            'cut' => __('Cut', 'folderfolio'),
+            'copy' => __('Copy', 'folderfolio'),
+            'copyWithFiles' => __('Copy with files', 'folderfolio'),
+            /* translators: %s is the name of the folder waiting to be pasted. */
+            'pasteHeldCut' => __('Paste “%s” · cut', 'folderfolio'),
+            /* translators: %s is the name of the folder waiting to be pasted. */
+            'pasteHeldCopy' => __('Paste “%s” · copy', 'folderfolio'),
+            /* translators: %s is the name of the folder waiting to be pasted, with its files. */
+            'pasteHeldCopyFiles' => __('Paste “%s” · with files', 'folderfolio'),
+            'pasteInside' => __('Inside this folder', 'folderfolio'),
+            'pasteBeside' => __('Beside this folder', 'folderfolio'),
+            /* translators: %s is a folder name. */
+            'cutAnnounce' => __('Cut “%s”. Paste it inside or beside another folder.', 'folderfolio'),
+            /* translators: %s is a folder name. */
+            'copyAnnounce' => __('Copied “%s”. Paste it inside or beside another folder.', 'folderfolio'),
+            /* translators: %s is a folder name. */
+            'pasted' => __('Pasted “%s”', 'folderfolio'),
+            // The notice sheet — any write the server refuses.
+            // `dismiss` is further down, with the startup-folder sentence
+            // that uses it too.
+            'actionFailed' => __('That could not be done.', 'folderfolio'),
+            'sort' => __('Sort', 'folderfolio'),
+            'sortNameAsc' => __('Name, A to Z', 'folderfolio'),
+            'sortNameDesc' => __('Name, Z to A', 'folderfolio'),
+            'sortNewest' => __('Newest first', 'folderfolio'),
+            'sortOldest' => __('Oldest first', 'folderfolio'),
+            'sortCustom' => __('Custom order', 'folderfolio'),
+            'undo' => __('Undo', 'folderfolio'),
+            /* translators: %s is the folder name. */
+            'deleted' => __('Deleted “%s”', 'folderfolio'),
+            /*
+             * Two forms, chosen by the count (`tn()`), and the count is of
+             * the files that are filed nowhere else — a file still in
+             * another folder does not move to Unassigned, and the toast
+             * used to say it did.
+             *
+             * translators: 1: folder name, 2: number of files, always 1.
+             */
+            'deletedWithFile' => __(
+                'Deleted “%1$s” — %2$s file moved to Unassigned',
+                'folderfolio'
+            ),
+            /* translators: 1: folder name, 2: number of files. */
+            'deletedWithFiles' => __(
+                'Deleted “%1$s” — %2$s files moved to Unassigned',
+                'folderfolio'
+            ),
+            'emptyTree' => __('No folders yet', 'folderfolio'),
 
-                // The colour picker behind More — screen 11, §9.8. The ten
-                // names are labels for a swatch, not colour codes: they are
-                // what a screen reader announces and what the tooltip shows,
-                // so they are translated like any other visible word.
-                'more' => __('More', 'folderfolio'),
-                'folderColor' => __('Folder colour', 'folderfolio'),
-                /* translators: %s is the folder name. */
-                'colorFor' => __('Colour for %s', 'folderfolio'),
-                'noColor' => __('No colour', 'folderfolio'),
-                'swatchSlate' => __('Slate', 'folderfolio'),
-                'swatchRed' => __('Red', 'folderfolio'),
-                'swatchClay' => __('Clay', 'folderfolio'),
-                'swatchOchre' => __('Ochre', 'folderfolio'),
-                'swatchMoss' => __('Moss', 'folderfolio'),
-                'swatchTeal' => __('Teal', 'folderfolio'),
-                'swatchSteel' => __('Steel', 'folderfolio'),
-                'swatchIndigo' => __('Indigo', 'folderfolio'),
-                'swatchPlum' => __('Plum', 'folderfolio'),
-                'swatchInk' => __('Ink', 'folderfolio'),
+            /*
+             * The other empty library: one that has been filed, somewhere
+             * else. The counts are phrased separately and placed into the
+             * body, because a template with "%s folders" baked into it
+             * cannot be made singular by any translator.
+             *
+             * translators: 1: the other plugin's name, 2: a folder count
+             * already phrased, 3: a file count already phrased.
+             */
+            'emptyElsewhereTitle' => __(
+                'Your media is already filed — just not here.',
+                'folderfolio'
+            ),
+            'emptyElsewhereBody' => __(
+                '%1$s has %2$s holding %3$s. Bringing them over adds them to FolderFolio — nothing is moved, and nothing is removed from where it is now.',
+                'folderfolio'
+            ),
+            /* translators: %s is a number of folders. */
+            'emptyElsewhereFolderOne' => __('%s folder', 'folderfolio'),
+            /* translators: %s is a number of folders. */
+            'emptyElsewhereFolderMany' => __('%s folders', 'folderfolio'),
+            /* translators: %s is a number of files. */
+            'emptyElsewhereFileOne' => __('%s file', 'folderfolio'),
+            /* translators: %s is a number of files. */
+            'emptyElsewhereFileMany' => __('%s files', 'folderfolio'),
+            /* translators: %s is a number of other plugins. */
+            'emptyElsewhereOtherOne' => __(
+                '%s other plugin has folders here too.',
+                'folderfolio'
+            ),
+            /* translators: %s is a number of other plugins. */
+            'emptyElsewhereOtherMany' => __(
+                '%s other plugins have folders here too.',
+                'folderfolio'
+            ),
+            'emptyElsewhereAction' => __('Review the import', 'folderfolio'),
+            /* translators: %s is the number of folders. */
+            'folderTotal' => __('%s folders', 'folderfolio'),
+            'folderTotalOne' => __('1 folder', 'folderfolio'),
 
-                // The filter-row controls — screens 03, 06 and 11.
-                'filterByFolder' => __('Filter by folder', 'folderfolio'),
-                'addToFolder' => __('Add to folder', 'folderfolio'),
-                /*
-                 * The toolbar trigger, separate from the label above because
-                 * only this one opens something. The ellipsis is the
-                 * convention for "asks before it acts" — `Apply` sits next to
-                 * it in list mode and does not ask. Translators: keep or drop
-                 * the ellipsis to match your language's own convention for a
-                 * command that opens a dialog.
-                 */
-                'addToFolderOpens' => __('Add to folder…', 'folderfolio'),
-                'moveToFolder' => __('Move to folder', 'folderfolio'),
-                // The verb switch inside the flyout. Short, because they sit
-                // in a segmented pair reading "Add to | Move to" above a list
-                // of folders that completes the sentence.
-                'folderAction' => __('What to do with the selection', 'folderfolio'),
-                // Core's own wording for the same field, so the placeholder and
-                // the screen-reader label do not disagree.
-                'searchMedia' => __('Search media', 'folderfolio'),
-                /*
-                 * The narrow-width disclosure that stands for media type,
-                 * date and folder once they no longer fit on one line.
-                 *
-                 * Plural. It opens three of them, and the singular also
-                 * collided with core's own `Filter` submit button in list
-                 * mode, which sits a few pixels away inside the same form —
-                 * two adjacent controls with the same word on them, one
-                 * disclosing and one submitting.
-                 */
-                'filters' => __('Filters', 'folderfolio'),
-                /*
-                 * The badge's sentence, which is the only form of it assistive
-                 * tech gets — the number beside the button is aria-hidden,
-                 * because "2" on its own is not a sentence. A plural pair
-                 * rather than one string: with one filter set it announced
-                 * "1 filters active", which is the count at which this badge
-                 * appears most often.
-                 *
-                 * translators: %s is how many filters are currently set.
-                 */
-                'filterActive' => __('%s filter active', 'folderfolio'),
-                'filtersActive' => __('%s filters active', 'folderfolio'),
-                'verbAdd' => __('Add to', 'folderfolio'),
-                'verbMove' => __('Move to', 'folderfolio'),
-                'moveNeedsFolder' => __(
-                    'Open a folder first — a move needs a folder to move out of.',
-                    'folderfolio'
-                ),
-                /* translators: %s is the folder the files are being moved out of. */
-                'movesOutOf' => __('Moves them out of “%s”', 'folderfolio'),
-                'moveFailed' => __('Could not move those files.', 'folderfolio'),
-                /* translators: 1: number of files, 2: the destination folder name. */
-                'movedFile' => __('Moved %s file to %s', 'folderfolio'),
-                /* translators: 1: number of files, 2: the destination folder name. */
-                'movedFiles' => __('Moved %s files to %s', 'folderfolio'),
-                /* translators: %s: the name of the folder being viewed. */
-                'arrangeIn' => __('In %s', 'folderfolio'),
-                'moveToStart' => __('Move to start', 'folderfolio'),
-                'moveToEnd' => __('Move to end', 'folderfolio'),
-                /* translators: 1: number of files, 2: the folder they were placed in. */
-                'placedFileStart' => __('Moved %s file to the start of %s', 'folderfolio'),
-                /* translators: 1: number of files, 2: the folder they were placed in. */
-                'placedFilesStart' => __('Moved %s files to the start of %s', 'folderfolio'),
-                /* translators: 1: number of files, 2: the folder they were placed in. */
-                'placedFileEnd' => __('Moved %s file to the end of %s', 'folderfolio'),
-                /* translators: 1: number of files, 2: the folder they were placed in. */
-                'placedFilesEnd' => __('Moved %s files to the end of %s', 'folderfolio'),
-                'findFolder' => __('Find a folder', 'folderfolio'),
-                'addsACopy' => __('Adds a copy of the membership', 'folderfolio'),
-                /* translators: %s is the number of folders not shown. */
-                'andMoreFolders' => __('%s more — keep typing to narrow', 'folderfolio'),
-                'addFailed' => __('Could not file those files.', 'folderfolio'),
-                /* translators: %s is the number of selected media files. */
-                'fileSelected' => __('%s file selected', 'folderfolio'),
-                /* translators: %s is the number of selected media files. */
-                'filesSelected' => __('%s files selected', 'folderfolio'),
-                /* translators: 1: number of files, 2: a comma-separated list of folder names. */
-                'addedFile' => __('Added %s file to %s', 'folderfolio'),
-                /* translators: 1: number of files, 2: a comma-separated list of folder names. */
-                'addedFiles' => __('Added %s files to %s', 'folderfolio'),
-                'createFailed' => __('Could not create that folder.', 'folderfolio'),
-                'treeFailed' => __('Could not load your folders.', 'folderfolio'),
-                'treeFailedWhere' => __(
-                    'The request to /folderfolio/v1/folders did not succeed.',
-                    'folderfolio'
-                ),
-                /* translators: %s is the search term that matched nothing. */
-                'noMatch' => __('No folder matches “%s”.', 'folderfolio'),
-                'clearFilter' => __('Clear filter', 'folderfolio'),
-                'startHere' => __('Start here', 'folderfolio'),
-                'startHereHint' => __('Open the media library in this folder', 'folderfolio'),
-                'dismiss' => __('Dismiss', 'folderfolio'),
-                'startupFolderNote' => __('The media library opens in this folder. Clear the filter in the path above to see everything.', 'folderfolio'),
-                /* translators: 1: number of folders, 2: the folder they are in. */
-                'folderIn' => __('%1$s folder in %2$s', 'folderfolio'),
-                /* translators: 1: number of folders, 2: the folder they are in. */
-                'foldersIn' => __('%1$s folders in %2$s', 'folderfolio'),
-            ],
+            // The colour picker behind More — screen 11, §9.8. The ten
+            // names are labels for a swatch, not colour codes: they are
+            // what a screen reader announces and what the tooltip shows,
+            // so they are translated like any other visible word.
+            'more' => __('More', 'folderfolio'),
+            'folderColor' => __('Folder colour', 'folderfolio'),
+            /* translators: %s is the folder name. */
+            'colorFor' => __('Colour for %s', 'folderfolio'),
+            'noColor' => __('No colour', 'folderfolio'),
+            'swatchSlate' => __('Slate', 'folderfolio'),
+            'swatchRed' => __('Red', 'folderfolio'),
+            'swatchClay' => __('Clay', 'folderfolio'),
+            'swatchOchre' => __('Ochre', 'folderfolio'),
+            'swatchMoss' => __('Moss', 'folderfolio'),
+            'swatchTeal' => __('Teal', 'folderfolio'),
+            'swatchSteel' => __('Steel', 'folderfolio'),
+            'swatchIndigo' => __('Indigo', 'folderfolio'),
+            'swatchPlum' => __('Plum', 'folderfolio'),
+            'swatchInk' => __('Ink', 'folderfolio'),
+
+            // The filter-row controls — screens 03, 06 and 11.
+            'filterByFolder' => __('Filter by folder', 'folderfolio'),
+            'addToFolder' => __('Add to folder', 'folderfolio'),
+            /*
+             * The toolbar trigger, separate from the label above because
+             * only this one opens something. The ellipsis is the
+             * convention for "asks before it acts" — `Apply` sits next to
+             * it in list mode and does not ask. Translators: keep or drop
+             * the ellipsis to match your language's own convention for a
+             * command that opens a dialog.
+             */
+            'addToFolderOpens' => __('Add to folder…', 'folderfolio'),
+            'moveToFolder' => __('Move to folder', 'folderfolio'),
+            // The verb switch inside the flyout. Short, because they sit
+            // in a segmented pair reading "Add to | Move to" above a list
+            // of folders that completes the sentence.
+            'folderAction' => __('What to do with the selection', 'folderfolio'),
+            // Core's own wording for the same field, so the placeholder and
+            // the screen-reader label do not disagree.
+            'searchMedia' => __('Search media', 'folderfolio'),
+            /*
+             * The narrow-width disclosure that stands for media type,
+             * date and folder once they no longer fit on one line.
+             *
+             * Plural. It opens three of them, and the singular also
+             * collided with core's own `Filter` submit button in list
+             * mode, which sits a few pixels away inside the same form —
+             * two adjacent controls with the same word on them, one
+             * disclosing and one submitting.
+             */
+            'filters' => __('Filters', 'folderfolio'),
+            /*
+             * The badge's sentence, which is the only form of it assistive
+             * tech gets — the number beside the button is aria-hidden,
+             * because "2" on its own is not a sentence. A plural pair
+             * rather than one string: with one filter set it announced
+             * "1 filters active", which is the count at which this badge
+             * appears most often.
+             *
+             * translators: %s is how many filters are currently set.
+             */
+            'filterActive' => __('%s filter active', 'folderfolio'),
+            'filtersActive' => __('%s filters active', 'folderfolio'),
+            'verbAdd' => __('Add to', 'folderfolio'),
+            'verbMove' => __('Move to', 'folderfolio'),
+            'moveNeedsFolder' => __(
+                'Open a folder first — a move needs a folder to move out of.',
+                'folderfolio'
+            ),
+            /* translators: %s is the folder the files are being moved out of. */
+            'movesOutOf' => __('Moves them out of “%s”', 'folderfolio'),
+            'moveFailed' => __('Could not move those files.', 'folderfolio'),
+            /* translators: 1: number of files, 2: the destination folder name. */
+            'movedFile' => __('Moved %s file to %s', 'folderfolio'),
+            /* translators: 1: number of files, 2: the destination folder name. */
+            'movedFiles' => __('Moved %s files to %s', 'folderfolio'),
+            /* translators: %s: the name of the folder being viewed. */
+            'arrangeIn' => __('In %s', 'folderfolio'),
+            'moveToStart' => __('Move to start', 'folderfolio'),
+            'moveToEnd' => __('Move to end', 'folderfolio'),
+            /* translators: 1: number of files, 2: the folder they were placed in. */
+            'placedFileStart' => __('Moved %s file to the start of %s', 'folderfolio'),
+            /* translators: 1: number of files, 2: the folder they were placed in. */
+            'placedFilesStart' => __('Moved %s files to the start of %s', 'folderfolio'),
+            /* translators: 1: number of files, 2: the folder they were placed in. */
+            'placedFileEnd' => __('Moved %s file to the end of %s', 'folderfolio'),
+            /* translators: 1: number of files, 2: the folder they were placed in. */
+            'placedFilesEnd' => __('Moved %s files to the end of %s', 'folderfolio'),
+            'findFolder' => __('Find a folder', 'folderfolio'),
+            'addsACopy' => __('Adds a copy of the membership', 'folderfolio'),
+            /* translators: %s is the number of folders not shown. */
+            'andMoreFolders' => __('%s more — keep typing to narrow', 'folderfolio'),
+            'addFailed' => __('Could not file those files.', 'folderfolio'),
+            /* translators: %s is the number of selected media files. */
+            'fileSelected' => __('%s file selected', 'folderfolio'),
+            /* translators: %s is the number of selected media files. */
+            'filesSelected' => __('%s files selected', 'folderfolio'),
+            /* translators: 1: number of files, 2: a comma-separated list of folder names. */
+            'addedFile' => __('Added %s file to %s', 'folderfolio'),
+            /* translators: 1: number of files, 2: a comma-separated list of folder names. */
+            'addedFiles' => __('Added %s files to %s', 'folderfolio'),
+            'createFailed' => __('Could not create that folder.', 'folderfolio'),
+            'treeFailed' => __('Could not load your folders.', 'folderfolio'),
+            'treeFailedWhere' => __(
+                'The request to /folderfolio/v1/folders did not succeed.',
+                'folderfolio'
+            ),
+            /* translators: %s is the search term that matched nothing. */
+            'noMatch' => __('No folder matches “%s”.', 'folderfolio'),
+            'clearFilter' => __('Clear filter', 'folderfolio'),
+            'startHere' => __('Start here', 'folderfolio'),
+            'startHereHint' => __('Open the media library in this folder', 'folderfolio'),
+            'dismiss' => __('Dismiss', 'folderfolio'),
+            'startupFolderNote' => __('The media library opens in this folder. Clear the filter in the path above to see everything.', 'folderfolio'),
+            /* translators: 1: number of folders, 2: the folder they are in. */
+            'folderIn' => __('%1$s folder in %2$s', 'folderfolio'),
+            /* translators: 1: number of folders, 2: the folder they are in. */
+            'foldersIn' => __('%1$s folders in %2$s', 'folderfolio'),
+            // Download a folder as a ZIP — tier 2 item 11 (apps/rail/download.ts).
+            'downloadZip' => __('Download as ZIP', 'folderfolio'),
+            'download' => __('Download', 'folderfolio'),
+            /* translators: %s: folder name. */
+            'zipEmpty' => __('“%s” has no files to download.', 'folderfolio'),
+            /* translators: %s: folder name. */
+            'zipNoneReadable' => __('None of the files in “%s” can be downloaded.', 'folderfolio'),
+            'zipRefused' => __('This folder cannot be downloaded.', 'folderfolio'),
+            /* translators: 1: folder name, 2: a size such as "1.3 GB", 3: number of files. */
+            'zipConfirmOne' => __('“%1$s” is %2$s, %3$s file. A download this large can stop partway on some hosts — your browser’s Resume continues it.', 'folderfolio'),
+            /* translators: 1: folder name, 2: a size such as "1.3 GB", 3: number of files. */
+            'zipConfirmMany' => __('“%1$s” is %2$s in %3$s files. A download this large can stop partway on some hosts — your browser’s Resume continues it.', 'folderfolio'),
         ];
     }
 

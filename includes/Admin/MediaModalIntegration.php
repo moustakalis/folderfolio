@@ -147,6 +147,7 @@ final class MediaModalIntegration
                 'delete' => Capabilities::can('delete'),
                 'assign' => Capabilities::can('assign'),
                 'lock' => Capabilities::can('lock'),
+                'download' => Capabilities::can('download'),
             ],
             // The person's stars, so the picker's ⋮ shows Star pressed where it
             // is — the same key the rail's writer carries.
@@ -163,7 +164,9 @@ final class MediaModalIntegration
             'countMode' => $settings['count_mode'],
             'defaultSort' => $settings['default_sort'],
             'undoWindow' => $settings['undo_window'],
-            'i18n' => [
+            // The rail's strings first — the picker renders the same menu,
+            // marks and sheets — and the picker's own over them.
+            'i18n' => array_merge(Rail::strings(), [
                 'folders' => __('Folders', 'folderfolio'),
                 'folderActions' => __('Folder actions', 'folderfolio'),
                 // Screen 10's footer line. Only this screen renders it: the
@@ -222,7 +225,7 @@ final class MediaModalIntegration
                 'treeFailed' => __('Could not load your folders.', 'folderfolio'),
                 /* translators: %s is the search term that matched nothing. */
                 'noMatch' => __('No folder matches “%s”.', 'folderfolio'),
-            ],
+            ]),
         ];
     }
 }

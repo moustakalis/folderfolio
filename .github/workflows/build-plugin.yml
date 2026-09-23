@@ -159,6 +159,9 @@ jobs:
           php-version: ${{ matrix.php }}
           tools: composer:v2
           coverage: none
+          # The ZIP writer's tests read its archives back with ZipArchive.
+          # The plugin itself needs no zip extension — it writes ZIPs itself.
+          extensions: zip
 
       - name: Install PHP dependencies
         run: composer install --prefer-dist --no-interaction

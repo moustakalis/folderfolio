@@ -36,6 +36,9 @@ function folderfolio_uninstall_site(): void
         $wpdb->query("DROP TABLE IF EXISTS {$name}");
     }
 
+    // The ZIP download's cache of each file's checksum (FolderArchive).
+    delete_post_meta_by_key('_folderfolio_crc32');
+
     delete_option('folderfolio_db_version');
     delete_transient('folderfolio_upgrading');
 }

@@ -153,7 +153,7 @@ export interface RailState {
     setPendingUndo: (undo: PendingUndo | null) => void;
     /** Take a folder onto the clipboard, or clear it with `null`. */
     hold: (clipboard: Clipboard | null) => void;
-    showNotice: (message: string) => void;
+    showNotice: (message: string, action?: Notice['action']) => void;
     dismissNotice: () => void;
     /** Star or unstar a folder, and save the list. */
     toggleStar: (id: number) => void;
@@ -252,6 +252,11 @@ export interface Clipboard {
 export interface Notice {
     id: number;
     message: string;
+    /**
+     * One thing the sheet can do besides go away — the ZIP download's
+     * "Download" after it has said the size. Dismiss is always there.
+     */
+    action?: { label: string; run: () => void };
 }
 
 let noticeId = 0;
@@ -374,7 +379,7 @@ export const useRail = create<RailState>((set) => ({
     setSort: (sort) => set({ sort }),
     setPendingUndo: (pendingUndo) => set({ pendingUndo }),
     hold: (clipboard) => set({ clipboard }),
-    showNotice: (message) => set({ notice: { id: ++noticeId, message } }),
+    showNotice: (message, action) => set({ notice: { id: ++noticeId, message, action } }),
     // Returning `state` when there is nothing to dismiss, so the MutationCache
     // clearing it at the start of every write is not a render per write.
     dismissNotice: () => set((state) => (state.notice === null ? state : { notice: null })),

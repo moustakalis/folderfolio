@@ -24,7 +24,7 @@ import { Breadcrumb, ClearFilter, type Crumb } from '../rail/Breadcrumb';
 import { FixedRows } from '../rail/FixedRows';
 import { Results } from '../rail/Results';
 import { Search } from '../rail/Search';
-import { Toast, UNDO_WINDOW } from '../rail/Toast';
+import { Notice, Toast, UNDO_WINDOW } from '../rail/Toast';
 import { Tree } from '../rail/Tree';
 import {
     useCreateFolder,
@@ -70,6 +70,7 @@ function FrameBody({ column }: { column: HTMLElement }) {
     const select = useRail((s) => s.select);
     const reveal = useRail((s) => s.reveal);
     const pendingUndo = useRail((s) => s.pendingUndo);
+    const notice = useRail((s) => s.notice);
     const setPendingUndo = useRail((s) => s.setPendingUndo);
 
     const create = useCreateFolder();
@@ -287,20 +288,30 @@ function FrameBody({ column }: { column: HTMLElement }) {
                 column
             )}
 
-            {pendingUndo
+            {/*
+              The rail's corner stack, here too: the notice sheet above the
+              undo toast. The picker had no notice sheet until the ZIP
+              download needed one to say a size and ask (tier 2 item 11).
+            */}
+            {pendingUndo || notice
                 ? createPortal(
-                      <Toast
-                          onUndo={() => {
-                              deferred.current?.restore();
-                              deferred.current = null;
-                              setPendingUndo(null);
-                          }}
-                          onExpire={() => {
-                              void deferred.current?.commit();
-                              deferred.current = null;
-                              setPendingUndo(null);
-                          }}
-                      />,
+                      <div className="folderfolio folderfolio-toasts">
+                          <Notice />
+                          {pendingUndo ? (
+                              <Toast
+                                  onUndo={() => {
+                                      deferred.current?.restore();
+                                      deferred.current = null;
+                                      setPendingUndo(null);
+                                  }}
+                                  onExpire={() => {
+                                      void deferred.current?.commit();
+                                      deferred.current = null;
+                                      setPendingUndo(null);
+                                  }}
+                              />
+                          ) : null}
+                      </div>,
                       document.body
                   )
                 : null}

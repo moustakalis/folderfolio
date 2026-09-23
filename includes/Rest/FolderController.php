@@ -8,7 +8,9 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+use FolderFolio\Admin\FolderDownload;
 use FolderFolio\Admin\RailPreferences;
+use FolderFolio\Domain\FolderArchive;
 use FolderFolio\Domain\AttachmentFolderRepository;
 use FolderFolio\Domain\Folder;
 use FolderFolio\Domain\FolderBulk;
@@ -222,6 +224,15 @@ class FolderController
         // Star — the person's own, so no ability beyond seeing folders at
         // all. One folder at a time; the list is the server's to change
         // (RailPreferences::star() says why).
+        // What a folder's ZIP would hold — the rail asks before it starts a
+        // download, so it can say the size above a threshold and refuse
+        // above a limit without the browser ever opening the response.
+        register_rest_route($ns, '/folders/(?P<id>\\d+)/zip', [
+            'methods' => WP_REST_Server::READABLE,
+            'callback' => [$this, 'zip'],
+            'permission_callback' => [$this, 'canDownloadFolders'],
+        ]);
+
         register_rest_route($ns, '/folders/(?P<id>\\d+)/star', [
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => [$this, 'star'],
@@ -430,6 +441,11 @@ class FolderController
     /**
      * Reading folders, and filing media into them.
      */
+    public function canDownloadFolders(): bool
+    {
+        return FolderDownload::allowed();
+    }
+
     public function canUseFolders(): bool
     {
         return Capabilities::canUseFolders();
@@ -596,6 +612,40 @@ class FolderController
             200,
             fn (): array => ['tree' => $this->folders->tree()]
         );
+    }
+
+    public function zip(WP_REST_Request $request): WP_REST_Response
+    {
+        $manifest = (new FolderArchive())->manifest((int) $request['id']);
+
+        if (null === $manifest) {
+            return $this->result(
+                new WP_Error('folderfolio_folder_not_found', __('Folder not found.', 'folderfolio')),
+                404,
+                static fn (): array => []
+            );
+        }
+
+        $max = FolderDownload::maxBytes();
+        $refused = $max > 0 && $manifest['bytes'] > $max;
+
+        return $this->success([
+            'name' => $manifest['folder']->name,
+            'files' => $manifest['files'],
+            'bytes' => $manifest['bytes'],
+            'size' => size_format($manifest['bytes'], 1) ?: '0 B',
+            'left_out' => $manifest['left_out'],
+            'confirm' => $manifest['bytes'] >= FolderDownload::confirmBytes() && FolderDownload::confirmBytes() > 0,
+            'refused' => $refused
+                ? sprintf(
+                    /* translators: 1: folder name, 2: a size such as "2 GB". */
+                    __('“%1$s” is larger than this site allows in one download (%2$s). Download a subfolder at a time instead.', 'folderfolio'),
+                    $manifest['folder']->name,
+                    size_format($max)
+                )
+                : null,
+            'url' => $refused ? null : FolderDownload::url((int) $request['id']),
+        ]);
     }
 
     public function star(WP_REST_Request $request): WP_REST_Response

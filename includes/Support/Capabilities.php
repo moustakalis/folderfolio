@@ -136,6 +136,12 @@ final class Capabilities
             return false;
         }
 
+        // Downloading a folder is reading files this person can already open
+        // one at a time — upload_files, which rule 1 has established.
+        if ('download' === $ability) {
+            return true;
+        }
+
         return current_user_can('edit_others_posts');
     }
 

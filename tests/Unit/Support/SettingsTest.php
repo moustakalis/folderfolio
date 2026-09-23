@@ -171,9 +171,11 @@ final class SettingsTest extends TestCase
             [
                 // Lock is the fifth column, Administrator only (tier 2 item
                 // 10, Nick's answer 5).
-                'administrator' => ['create', 'rename', 'delete', 'assign', 'lock'],
-                'editor' => ['create', 'rename', 'delete', 'assign'],
-                'author' => ['create', 'assign'],
+                // Download the sixth, for everyone who sees the rail (tier 2
+                // item 11, Nick's answer 2).
+                'administrator' => ['create', 'rename', 'delete', 'assign', 'lock', 'download'],
+                'editor' => ['create', 'rename', 'delete', 'assign', 'download'],
+                'author' => ['create', 'assign', 'download'],
                 'contributor' => ['assign'],
                 'subscriber' => [],
             ],
@@ -190,5 +192,37 @@ final class SettingsTest extends TestCase
         ]);
 
         $this->assertSame([], $roles['editor']);
+    }
+
+    /**
+     * A matrix saved before Download existed lists what each role was given,
+     * so Download is absent from every row — which would read as "nobody but
+     * administrators" the day it shipped. It takes its default instead, and a
+     * matrix saved with the column showing is left exactly as saved.
+     */
+    public function test_a_matrix_saved_before_download_takes_its_default(): void
+    {
+        $saved = [
+            'administrator' => ['create', 'rename', 'delete', 'assign', 'lock'],
+            'editor' => ['create' => '1', 'assign' => '1'],
+            'author' => ['assign'],
+            'contributor' => ['assign'],
+            // A plugin's role with assign, and one without.
+            'shop_manager' => ['assign', 'create'],
+            'translator' => ['create'],
+        ];
+
+        $roles = Settings::withNewAbilities($saved, ['create', 'rename', 'delete', 'assign', 'lock']);
+
+        $this->assertContains('download', $roles['editor']);
+        $this->assertContains('download', $roles['author']);
+        $this->assertNotContains('download', $roles['contributor'], 'The default row for a contributor has no Download.');
+        $this->assertContains('download', $roles['shop_manager']);
+        $this->assertNotContains('download', $roles['translator']);
+        // The form's shape comes back as a list of what was ticked.
+        $this->assertSame(['create', 'assign', 'download'], $roles['editor']);
+
+        // Saved with the column showing: an unticked Download stays unticked.
+        $this->assertSame($saved, Settings::withNewAbilities($saved, Settings::ABILITIES));
     }
 }

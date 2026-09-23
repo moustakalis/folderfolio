@@ -139,6 +139,7 @@ final class Gallery
                 'delete' => Capabilities::can('delete'),
                 'assign' => Capabilities::can('assign'),
                 'lock' => Capabilities::can('lock'),
+                'download' => Capabilities::can('download'),
             ],
             'countMode' => $settings['count_mode'],
             'defaultSort' => $settings['default_sort'],

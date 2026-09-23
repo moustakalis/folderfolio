@@ -217,3 +217,18 @@
   font-size: 12px;
   color: var(--ff-muted);
 }
+
+/*
+ * The corner stack above the media modal.
+ *
+ * `.folderfolio-toasts` is z-index 100000 — above wp-admin's chrome — and the
+ * media modal is 160000, so in the picker the undo toast has always opened
+ * *under* the modal it belonged to, invisible (found 23 Sep with the ZIP
+ * download's size sheet, which the picker now shows: `elementFromPoint` at
+ * the sheet answered `.media-toolbar`). Above the modal here; on upload.php
+ * nothing sits between the two numbers. Two classes, so it wins over
+ * _toolbar.css's rule whichever of admin.css and frame.css loads last.
+ */
+.folderfolio.folderfolio-toasts {
+  z-index: 170000;
+}

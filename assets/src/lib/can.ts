@@ -12,7 +12,7 @@
  * failure than showing a button that the server will refuse.
  */
 
-export type Ability = 'create' | 'rename' | 'delete' | 'assign' | 'lock' | 'star';
+export type Ability = 'create' | 'rename' | 'delete' | 'assign' | 'lock' | 'download' | 'star';
 
 /*
  * `star` is not a column in the roles matrix: everyone who can see folders can
@@ -35,7 +35,7 @@ export type Ability = 'create' | 'rename' | 'delete' | 'assign' | 'lock' | 'star
 let withheld: ReadonlySet<Ability> = new Set();
 
 export function restrictAbilities(allowed: readonly Ability[]): void {
-    const all: Ability[] = ['create', 'rename', 'delete', 'assign', 'lock', 'star'];
+    const all: Ability[] = ['create', 'rename', 'delete', 'assign', 'lock', 'download', 'star'];
 
     withheld = new Set(all.filter((ability) => !allowed.includes(ability)));
 }
@@ -58,5 +58,5 @@ export function can(ability: Ability): boolean {
  * only where a bundle has withheld everything, as the gallery inspector does.
  */
 export function hasFolderMenu(): boolean {
-    return can('rename') || can('delete') || can('star');
+    return can('rename') || can('delete') || can('download') || can('star');
 }

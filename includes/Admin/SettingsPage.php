@@ -453,6 +453,7 @@ final class SettingsPage
             'assign' => __('Assign files', 'folderfolio'),
             // Tier 2 item 10: lock and unlock, and not be stopped by a lock.
             'lock' => __('Lock', 'folderfolio'),
+            'download' => __('Download', 'folderfolio'),
         ];
     }
 
@@ -489,6 +490,8 @@ final class SettingsPage
                             <th scope="row" class="folderfolio-matrix__role"><?php echo esc_html($name); ?></th>
                             <?php foreach ($abilities as $ability => $label) : ?>
                                 <td>
+                                    <?php // A label, so the checkbox has a visible name where the matrix stacks below 640px and the column heads are gone. ?>
+                                    <label class="folderfolio-matrix__cell">
                                     <input
                                         type="checkbox"
                                         name="roles[<?php echo esc_attr($role); ?>][<?php echo esc_attr($ability); ?>]"
@@ -504,6 +507,8 @@ final class SettingsPage
                                             ));
                                         ?>"
                                     >
+                                    <span class="folderfolio-matrix__ability" aria-hidden="true"><?php echo esc_html($label); ?></span>
+                                    </label>
                                     <?php if ($pinned) : ?>
                                         <?php // Disabled inputs post nothing, and a matrix that lost its administrator row on save would lock the site out of this screen. ?>
                                         <input type="hidden" name="roles[<?php echo esc_attr($role); ?>][<?php echo esc_attr($ability); ?>]" value="1">

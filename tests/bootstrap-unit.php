@@ -40,6 +40,11 @@ require_once $root . '/includes/Domain/FolderTree.php';
 require_once $root . '/includes/Admin/RailPreferences.php';
 require_once $root . '/includes/Support/Settings.php';
 
+// The ZIP download's two pure halves: the writer, read back by libzip, and
+// the names inside the archive.
+require_once $root . '/includes/Support/ZipWriter.php';
+require_once $root . '/includes/Domain/ArchiveNames.php';
+
 // The import module's walk. Pure, and the place where the shapes nobody can
 // arrange on purpose live: a source folder whose parent was deleted, a cycle,
 // a branch deeper than the path column holds.

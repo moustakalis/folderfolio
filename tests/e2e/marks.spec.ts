@@ -193,7 +193,9 @@ test.describe('lock, pin and star', () => {
 
         await page.evaluate(() => {
             const config = (window as unknown as { folderFolio: { can: Record<string, boolean> } }).folderFolio;
-            config.can = { create: true, rename: false, delete: false, assign: true, lock: false };
+            // Download withheld here, so the menu is Star alone — the
+            // Author's default Download row is download.spec.ts's.
+            config.can = { create: true, rename: false, delete: false, assign: true, lock: false, download: false };
         });
 
         await openMenu(page, 'Charlie');

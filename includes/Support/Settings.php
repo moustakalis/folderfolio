@@ -91,7 +91,18 @@ final class Settings
      * every stored role option holds, and renaming it would be a migration
      * bought for a word.
      */
-    public const ABILITIES = ['create', 'rename', 'delete', 'assign', 'lock'];
+    public const ABILITIES = ['create', 'rename', 'delete', 'assign', 'lock', 'download'];
+
+    /**
+     * The abilities a matrix saved before 23 Sep 2026 knew about.
+     *
+     * A saved matrix lists what each role was given, not what it was
+     * refused, so an ability added later is absent from every stored row —
+     * which would read as "nobody but administrators" the moment it shipped.
+     * `get()` fills a newer ability in from its default for a matrix saved
+     * before it existed; `save()` records which abilities the form showed.
+     */
+    private const ABILITIES_BEFORE_DOWNLOAD = ['create', 'rename', 'delete', 'assign', 'lock'];
 
     /**
      * The folder the media library opens in — tier 1 item 7.
@@ -163,8 +174,11 @@ final class Settings
             // 3ZU8VGkJemznTvKp8tNnvY). Authors and Contributors cannot
             // rename or delete out of the box, so a lock only means something
             // if it stops the people who otherwise could — Editors.
-            'editor' => ['create', 'rename', 'delete', 'assign'],
-            'author' => ['create', 'assign'],
+            'editor' => ['create', 'rename', 'delete', 'assign', 'download'],
+            // Download goes to everyone who sees the rail (Nick's answer 2,
+            // board PpiAmXsixk3sG9yygJQnw5): every file is already a download
+            // one at a time; the ZIP adds convenience, not access.
+            'author' => ['create', 'assign', 'download'],
             'contributor' => ['assign'],
             'subscriber' => [],
         ];
@@ -338,6 +352,13 @@ final class Settings
         // Merged over the defaults rather than sanitised alone, so that a key
         // added in a later version is present for a site that saved before it
         // existed.
+        if (isset($stored['roles']) && is_array($stored['roles'])) {
+            $seen = isset($stored['abilities']) && is_array($stored['abilities'])
+                ? $stored['abilities']
+                : self::ABILITIES_BEFORE_DOWNLOAD;
+            $stored['roles'] = self::withNewAbilities($stored['roles'], $seen);
+        }
+
         /** @var array<string, mixed> $merged */
         $merged = array_merge(self::defaults(), $stored);
 
@@ -356,8 +377,55 @@ final class Settings
     {
         $clean = self::sanitize($raw);
 
-        update_option(self::OPTION, $clean);
+        update_option(self::OPTION, $clean + ['abilities' => self::ABILITIES]);
 
         return $clean;
+    }
+
+    /**
+     * Give each role an ability the saved matrix never showed, as its default.
+     *
+     * A core role takes the default row's answer. A role the defaults do not
+     * know — Shop Manager, anything a plugin registered — takes `download`
+     * when it was given `assign`, which is the ability that already means
+     * "works with files in folders".
+     *
+     * @param array<mixed>  $roles As stored.
+     * @param array<mixed>  $seen  The abilities the form showed when it was saved.
+     *
+     * @return array<mixed>
+     */
+    public static function withNewAbilities(array $roles, array $seen): array
+    {
+        $new = array_diff(self::ABILITIES, array_filter($seen, 'is_string'));
+
+        if ([] === $new) {
+            return $roles;
+        }
+
+        $defaults = self::defaultRoles();
+
+        foreach ($roles as $role => $abilities) {
+            if (!is_string($role) || !is_array($abilities)) {
+                continue;
+            }
+
+            // The form's shape (['create' => '1']) or a list (['create']).
+            $list = array_is_list($abilities) ? $abilities : array_keys(array_filter($abilities));
+
+            foreach ($new as $ability) {
+                $grant = isset($defaults[$role])
+                    ? in_array($ability, $defaults[$role], true)
+                    : ('download' === $ability && in_array('assign', $list, true));
+
+                if ($grant && !in_array($ability, $list, true)) {
+                    $list[] = $ability;
+                }
+            }
+
+            $roles[$role] = $list;
+        }
+
+        return $roles;
     }
 }

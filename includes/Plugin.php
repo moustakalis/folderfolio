@@ -8,6 +8,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+use FolderFolio\Admin\FolderDownload;
 use FolderFolio\Admin\FolderSelect;
 use FolderFolio\Admin\FoldersColumn;
 use FolderFolio\Admin\ImportPage;
@@ -111,6 +112,10 @@ final class Plugin
             // two are one feature: this puts the folder in the URL, the rail
             // is what says so on the screen.
             (new StartupFolder())->register();
+
+            // Download a folder as a ZIP (tier 2 item 11): admin-post.php is
+            // an admin request, so this is where its handler belongs.
+            (new FolderDownload())->register();
 
             // The folder select in list mode's filter bar. Printed by PHP so
             // that it filters the library with scripts off, and so that a list

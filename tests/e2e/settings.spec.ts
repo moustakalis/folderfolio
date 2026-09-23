@@ -549,13 +549,16 @@ test.describe('the settings screen', () => {
             pastBorder: number;
             pageOverflow: number;
             headFont: string;
+            stacked: boolean;
+            labelsShown: boolean;
         };
 
         const rows: Row[] = [];
 
-        // 783/782 is where wp-admin drops the admin menu; 521/520 is our own
-        // breakpoint; the rest are real phones. 1280 is the control: nothing
-        // below 520 should reach it.
+        // 783/782 is where wp-admin drops the admin menu and — since the
+        // sixth ability column (Download) — where the matrix stacks, one role
+        // to a block; 521/520 was the old squeeze and stays as a width; the
+        // rest are real phones. 1280 is the control.
         for (const width of [1280, 960, 783, 782, 521, 520, 480, 390, 375, 360, 320]) {
             await page.setViewportSize({ width, height: 900 });
             // Let the media query and the table's own layout settle.
@@ -593,9 +596,12 @@ test.describe('the settings screen', () => {
                         headFont: getComputedStyle(
                             matrix.querySelector('thead th') as HTMLElement
                         ).fontSize,
-                        headCase: getComputedStyle(
-                            matrix.querySelector('thead th:nth-child(2)') as HTMLElement
-                        ).textTransform,
+                        stacked:
+                            getComputedStyle(matrix.querySelector('tbody tr') as HTMLElement).display === 'grid',
+                        labelsShown:
+                            getComputedStyle(
+                                matrix.querySelector('.folderfolio-matrix__ability') as HTMLElement
+                            ).display !== 'none',
                     };
                 }, width)
             );
@@ -603,11 +609,11 @@ test.describe('the settings screen', () => {
 
         console.table(rows);
 
-        // The precondition: five roles against five abilities (Lock since
-        // tier 2 item 10), plus the role column. An empty table would satisfy
-        // everything below.
+        // The precondition: five roles against six abilities (Lock since
+        // tier 2 item 10, Download since item 11), plus the role column. An
+        // empty table would satisfy everything below.
         for (const row of rows) {
-            expect(row.columns, `${row.width}px: the matrix did not render its heads`).toBe(6);
+            expect(row.columns, `${row.width}px: the matrix did not render its heads`).toBe(7);
             expect(row.roles, `${row.width}px: the matrix did not render its roles`).toBe(5);
         }
 
@@ -633,16 +639,15 @@ test.describe('the settings screen', () => {
         const at = (w: number) => rows.find((r) => r.width === w)!;
 
         expect(at(1280).headFont, 'the wide metrics are untouched').toBe('11px');
-        expect(at(521).headFont, '521 is above the breakpoint').toBe('11px');
-        expect(at(520).headFont, '520 is where the narrow metrics start').toBe('10px');
-        expect(at(390).headFont).toBe('10px');
-        // …and half a pixel less at 360 and below, for the fifth column.
-        expect(at(360).headFont).toBe('9.5px');
-        expect(at(320).headFont).toBe('9.5px');
 
-        // Sentence case on a phone — what makes room for the fifth column.
-        expect(at(521).headCase).toBe('uppercase');
-        expect(at(520).headCase).toBe('none');
+        // A table above 782; below it, one role to a block, with each
+        // checkbox's ability named beside it — the column heads are gone.
+        for (const row of rows) {
+            const narrow = row.width <= 782;
+
+            expect(row.stacked, `${row.width}px: stacked`).toBe(narrow);
+            expect(row.labelsShown, `${row.width}px: the abilities named beside their boxes`).toBe(narrow);
+        }
     });
 
 

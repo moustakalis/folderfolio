@@ -40,6 +40,7 @@ import {
     ArrowUpIcon,
     ChevronRightIcon,
     CopyIcon,
+    DownloadIcon,
     LockIcon,
     PasteIcon,
     PinIcon,
@@ -48,6 +49,7 @@ import {
     PencilIcon,
     TrashIcon,
 } from './icons';
+import { downloadFolder } from './download';
 import { planSiblingMove } from './move';
 import { heldLabel, mayPaste, planPaste, stillThere, usePaste, type Where } from './paste';
 import { Menu } from './Menu';
@@ -202,6 +204,24 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
      * whether pressed or not — the rule Start here set — and aria-pressed,
      * the filled glyph and the accent wash carry the state.
      */
+    // Download a folder as a ZIP — tier 2 item 11. mutate-free: the request
+    // is a read, and the menu closes first so the notice sheet it may open is
+    // not under it.
+    const download = can('download') ? (
+        <button
+            type="button"
+            role="menuitem"
+            className="folderfolio-menu__item"
+            onClick={() => {
+                onClose();
+                void downloadFolder(folder.id);
+            }}
+        >
+            <DownloadIcon size={13} />
+            {t('downloadZip', 'Download as ZIP')}
+        </button>
+    ) : null;
+
     // Nothing to show is no strip at all, not an empty band with padding.
     const marks = !organise && !can('star') && !can('lock') ? null : (
         <div className="folderfolio-marks" role="group" aria-label={t('folderMarks', 'Pin, star and lock')}>
@@ -364,6 +384,13 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
 
             {organise ? null : marks}
 
+            {organise || !download ? null : (
+                <>
+                    {marks ? <div className="folderfolio-menu__rule" role="separator" /> : null}
+                    {download}
+                </>
+            )}
+
             {organise ? (
                 <>
                     <button
@@ -507,6 +534,19 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
                                 <PasteIcon size={13} />
                                 {t('pasteBeside', 'Beside this folder')}
                             </button>
+                        </>
+                    ) : null}
+
+                    {/*
+                      Download in a group of its own, after the clipboard: Cut,
+                      Copy and Paste change the tree and a download does not.
+                      A lock does not stop it either — a lock protects the
+                      folder's shape, and reading it changes nothing.
+                    */}
+                    {download ? (
+                        <>
+                            <div className="folderfolio-menu__rule" role="separator" />
+                            {download}
                         </>
                     ) : null}
 

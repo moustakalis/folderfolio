@@ -201,6 +201,21 @@ export function Notice() {
                 <p className="folderfolio-toast__text">{notice.message}</p>
             </div>
 
+            {notice.action ? (
+                <button
+                    type="button"
+                    className="folderfolio-toast__undo"
+                    onClick={() => {
+                        const run = notice.action?.run;
+
+                        dismiss();
+                        run?.();
+                    }}
+                >
+                    {notice.action.label}
+                </button>
+            ) : null}
+
             {/* The undo button's class: the same control on the same sheet. */}
             <button type="button" className="folderfolio-toast__undo" onClick={dismiss}>
                 {t('dismiss', 'Dismiss')}
