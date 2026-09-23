@@ -6,6 +6,7 @@
     "typecheck": "tsc --noEmit",
     "build": "yarn typecheck && node tools/esbuild.mjs",
     "dev": "node tools/esbuild.mjs --watch",
+    "test:js": "node tools/test-js.mjs",
     "test:pipeline": "node tools/verify-pipeline.mjs",
     "test:slot": "node tools/verify-toolbar-slot.mjs",
     "test:tree": "node tools/verify-tree.mjs",

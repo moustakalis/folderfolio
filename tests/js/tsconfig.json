@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "../..",
+    "types": ["node"]
+  },
+  "include": ["./**/*", "../../assets/src/**/*"],
+  "exclude": ["../../assets/src/core/media-modal.ts"]
+}

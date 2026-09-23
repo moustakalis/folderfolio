@@ -44,6 +44,12 @@ jobs:
       - name: Build assets
         run: yarn build
 
+      # The rail's decision functions — planPaste, planSiblingMove, sortTree —
+      # decide both whether a menu row is enabled and which request a press
+      # sends. Plain functions over plain trees, so plain Node: no browser.
+      - name: Unit-test the rail's decision functions
+        run: yarn test:js
+
       # The React-onto-wp.element aliasing is the one piece of the build whose
       # failure modes are all silent: a bundled second React works perfectly
       # until it renders inside a core tree, and a jsx runtime that loses
