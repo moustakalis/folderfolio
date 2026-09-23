@@ -187,4 +187,112 @@ final class FolderTreeTest extends TestCase
         self::assertNull($tree[1]['sort_folders']);
         self::assertNull($tree[0]['children'][0]['sort_folders']);
     }
+
+    /**
+     * Brand ─ Logos ─ Primary
+     *       └ Print
+     * Archive
+     *
+     * @return array<int, string> folder id => path
+     */
+    private static function paths(): array
+    {
+        return [1 => '/1/', 7 => '/1/7/', 12 => '/1/7/12/', 8 => '/1/8/', 20 => '/20/'];
+    }
+
+    /** @return list<array<string, mixed>> */
+    private static function branchRows(): array
+    {
+        return [
+            ['id' => 1,  'parent_id' => null, 'name' => 'Brand',   'path' => '/1/',      'depth' => 0],
+            ['id' => 7,  'parent_id' => 1,    'name' => 'Logos',   'path' => '/1/7/',    'depth' => 1],
+            ['id' => 12, 'parent_id' => 7,    'name' => 'Primary', 'path' => '/1/7/12/', 'depth' => 2],
+            ['id' => 8,  'parent_id' => 1,    'name' => 'Print',   'path' => '/1/8/',    'depth' => 1],
+            ['id' => 20, 'parent_id' => null, 'name' => 'Archive', 'path' => '/20/',     'depth' => 0],
+        ];
+    }
+
+    public function test_a_file_in_two_sibling_folders_counts_once_in_their_parent(): void
+    {
+        // File 500 is in Logos and in Print.
+        $over = FolderTree::overcount([500 => [7, 8]], self::paths());
+
+        self::assertSame([1 => 1], $over);
+
+        $tree = FolderTree::withCounts(
+            FolderTree::fromRows(self::branchRows()),
+            [7 => 1, 8 => 1],
+            true,
+            $over
+        );
+
+        self::assertSame(1, $tree[0]['total_count'], 'Brand holds one file, not two');
+        self::assertSame(1, $tree[0]['children'][0]['total_count']);
+    }
+
+    public function test_a_file_in_a_folder_and_its_own_child_counts_once_in_both_above(): void
+    {
+        // File 500 is in Logos and in Primary, which is inside Logos.
+        $over = FolderTree::overcount([500 => [7, 12]], self::paths());
+
+        self::assertSame([1 => 1, 7 => 1], $over);
+
+        $tree = FolderTree::withCounts(
+            FolderTree::fromRows(self::branchRows()),
+            [7 => 1, 12 => 1],
+            true,
+            $over
+        );
+
+        self::assertSame(1, $tree[0]['total_count']);
+        self::assertSame(1, $tree[0]['children'][0]['total_count']);
+        self::assertSame(1, $tree[0]['children'][0]['children'][0]['total_count']);
+    }
+
+    /**
+     * The negative control for the one way to get this wrong: correcting each
+     * folder against its children's *corrected* totals takes the same file off
+     * once per level it overlaps at. Two siblings two levels down overlap at
+     * Logos and again at Brand — Brand would read 0 here, and 1 is right.
+     * (Proved on 23 Sep: this reversion fails this test and the one above.)
+     */
+    public function test_the_correction_is_taken_once_however_deep_the_overlap_sits(): void
+    {
+        $rows = self::branchRows();
+        $rows[] = ['id' => 13, 'parent_id' => 7, 'name' => 'Secondary', 'path' => '/1/7/13/', 'depth' => 2];
+        $paths = self::paths() + [13 => '/1/7/13/'];
+
+        // File 500 is in Primary and in Secondary, both inside Logos.
+        $over = FolderTree::overcount([500 => [12, 13]], $paths);
+
+        self::assertSame([1 => 1, 7 => 1], $over);
+
+        $tree = FolderTree::withCounts(FolderTree::fromRows($rows), [12 => 1, 13 => 1], true, $over);
+
+        self::assertSame(1, $tree[0]['total_count'], 'Brand holds one file');
+        self::assertSame(1, $tree[0]['children'][0]['total_count'], 'Logos holds one file');
+    }
+
+    public function test_a_file_in_two_unrelated_roots_is_not_corrected_anywhere(): void
+    {
+        self::assertSame([], FolderTree::overcount([500 => [7, 20]], self::paths()));
+    }
+
+    public function test_a_folder_outside_this_tree_is_ignored(): void
+    {
+        self::assertSame([], FolderTree::overcount([500 => [7, 999]], self::paths()));
+    }
+
+    public function test_direct_mode_ignores_the_correction(): void
+    {
+        $tree = FolderTree::withCounts(
+            FolderTree::fromRows(self::branchRows()),
+            [7 => 1, 8 => 1],
+            false,
+            [1 => 1]
+        );
+
+        self::assertSame(0, $tree[0]['total_count']);
+        self::assertSame(1, $tree[0]['children'][0]['total_count']);
+    }
 }

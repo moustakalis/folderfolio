@@ -14,7 +14,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { UndoIcon } from './icons';
+import { AlertIcon, UndoIcon } from './icons';
 import { useRail } from './store';
 import { t } from '../../core/api';
 
@@ -159,6 +159,48 @@ export function Toast({ onUndo, onExpire }: { onUndo: () => void; onExpire: () =
 
             <button type="button" className="folderfolio-toast__undo" onClick={onUndo}>
                 {t('undo', 'Undo')}
+            </button>
+        </div>
+    );
+}
+
+/**
+ * What the server refused — the undo toast's sheet, saying something else.
+ *
+ * Same corner, same dark sheet, same type: it is the rail talking about the
+ * last thing the person did, which is exactly what the undo toast is. No clock
+ * and no bar. A sentence explaining why something did not happen is read at
+ * the reader's pace, and one that expired mid-sentence would fail WCAG 2.2.1
+ * for no benefit; it goes when dismissed, or when the next write starts.
+ *
+ * `role="alert"` and a `key` on the id: the same refusal twice is two
+ * announcements, which a live region only makes if the node is new.
+ */
+export function Notice() {
+    const notice = useRail((s) => s.notice);
+    const dismiss = useRail((s) => s.dismissNotice);
+
+    if (!notice) {
+        return null;
+    }
+
+    return (
+        <div
+            key={notice.id}
+            className="folderfolio folderfolio-toast folderfolio-toast--notice"
+            role="alert"
+        >
+            <span className="folderfolio-toast__icon">
+                <AlertIcon size={18} />
+            </span>
+
+            <div className="folderfolio-toast__body">
+                <p className="folderfolio-toast__text">{notice.message}</p>
+            </div>
+
+            {/* The undo button's class: the same control on the same sheet. */}
+            <button type="button" className="folderfolio-toast__undo" onClick={dismiss}>
+                {t('dismiss', 'Dismiss')}
             </button>
         </div>
     );

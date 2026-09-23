@@ -226,8 +226,9 @@ class AttachmentFolderRepository
      * from the result; callers default them to 0.
      *
      * This is the exact, cheap number. FolderTree::withCounts() rolls these up
-     * the tree in PHP for the inherited badge, and subtreeCount() below gives
-     * the exact subtree figure for the one folder in view.
+     * the tree in PHP for the inherited badge, less what multiFiled() says it
+     * would count twice; subtreeCount() below gives the same figure for one
+     * folder.
      *
      * @return array<int, int> folder id => count
      */
@@ -251,10 +252,45 @@ class AttachmentFolderRepository
      * Exact attachment count for a folder and everything beneath it.
      *
      * COUNT(DISTINCT) matters here: a file may be filed in two folders inside
-     * the same subtree, and the roll-up in FolderTree would count it twice.
-     * That roll-up is fast and directionally right for the tree badge; this is
-     * the number shown above the grid, and where they disagree this one wins.
+     * the same subtree. The tree's roll-up agrees with this number since
+     * 23 Sep — `FolderTree::overcount()` takes the second counting off — and
+     * this remains the one-folder way to ask.
      */
+    /**
+     * Every file filed in two or more folders, and those folders.
+     *
+     * The input to `FolderTree::overcount()`. Only the files the plain
+     * roll-up can count twice, so a library where each file sits in one folder
+     * returns nothing and costs one GROUP BY over the `attachment_id` index —
+     * the same order of work `directCounts()` already does.
+     *
+     * @return array<int, list<int>> attachment id => folder ids
+     */
+    public function multiFiled(): array
+    {
+        $table = $this->table();
+
+        // Identifiers only; nothing here comes from a request.
+        $rows = $this->wpdb->get_results(
+            "SELECT a.attachment_id, a.folder_id
+             FROM {$table} AS a
+             INNER JOIN (
+                 SELECT attachment_id FROM {$table}
+                 GROUP BY attachment_id
+                 HAVING COUNT(*) > 1
+             ) AS m ON m.attachment_id = a.attachment_id",
+            ARRAY_A
+        ) ?: [];
+
+        $out = [];
+
+        foreach ($rows as $row) {
+            $out[(int) $row['attachment_id']][] = (int) $row['folder_id'];
+        }
+
+        return $out;
+    }
+
     /**
      * The two counts the rail's fixed rows show.
      *

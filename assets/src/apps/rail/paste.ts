@@ -258,17 +258,6 @@ export function usePaste() {
                 window.wp?.a11y?.speak(t('pasted', 'Pasted “%s”', held.name), 'polite');
             };
 
-            // The server's own sentence, not a fallback — a refused paste has a
-            // reason (a file this person may not organise, a name too long)
-            // and the reason is the useful half.
-            const failed = (error: unknown) => {
-                const message =
-                    (error as { error?: { message?: string } })?.error?.message ??
-                    t('pasteFailed', 'That could not be pasted.');
-
-                window.wp?.a11y?.speak(message, 'assertive');
-            };
-
             /*
              * `mutateAsync` and its promise, not `mutate` with callbacks.
              *
@@ -287,7 +276,10 @@ export function usePaste() {
                       ? reorder.mutateAsync({ parentId: plan.parentId, ids: plan.ids })
                       : duplicate.mutateAsync(plan);
 
-            request.then(done, failed);
+            // A refusal is shown by the rail's MutationCache, the same way
+            // every other write's is (rail.tsx) — so nothing to do here but
+            // keep the rejection from surfacing as an unhandled promise.
+            request.then(done, () => undefined);
 
             return true;
         },

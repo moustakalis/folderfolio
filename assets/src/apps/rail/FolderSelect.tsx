@@ -186,7 +186,7 @@ function setIndentVisible(select: HTMLSelectElement, visible: boolean): void {
  * The listener is delegated on the document rather than bound to the element,
  * because the element is replaced on every one of those refreshes.
  */
-export function useNativeFolderSelect() {
+export function useNativeFolderSelect(nodes: FolderNode[]) {
     const selectedId = useRail((s) => s.selectedId);
     const select = useRail((s) => s.select);
 
@@ -241,17 +241,45 @@ export function useNativeFolderSelect() {
         };
     }, [select]);
 
+    /*
+     * The options follow the tree, not just the value.
+     *
+     * The server printed this select once, at page load, and nothing replaces
+     * it afterwards — `refreshListTable()` leaves `.wp-filter .actions` alone
+     * on purpose, because other plugins put controls there. So a folder
+     * created since (by New folder, bulk-create's rail door, or a paste) had
+     * no option: choosing it in the rail left this showing the previous
+     * folder, and core's Filter button — a plain GET submit of this form —
+     * would have filtered by that previous folder. Renames, deletions, moves
+     * and counts were stale the same way.
+     *
+     * Rebuilt from the same tree, in the same order and with the same labels
+     * the grid-mode select renders, and only when what it should say differs
+     * from what it says: rebuilding options under an open native popup closes
+     * it on some platforms, and a count arriving is not worth that.
+     */
+    const sort = useRail((s) => s.sort);
+    const { data: counts } = useLibraryCounts();
+
     useEffect(() => {
+        const wanted: Array<[string, string]> = flattenTree(sortTree(nodes, sort)).map(
+            ({ node, depth }) => [String(node.id), label(node.name, depth + 1, node.total_count)]
+        );
+
         document
             .querySelectorAll<HTMLSelectElement>(`select[name="${FOLDER_QUERY_VAR}"]`)
             .forEach((el) => {
+                if (nodes.length > 0) {
+                    syncOptions(el, wanted, counts);
+                }
+
                 const value = toValue(selectedId);
 
-                // Only when the option exists: a folder created since the page
-                // was rendered is not in the server's copy yet, and setting a
-                // value a select does not have silently clears it to the first
-                // option — which would read as "All media" for a folder that
-                // is, in fact, being shown.
+                // Still only when the option exists — setting a value a select
+                // does not have silently clears it to the first option, which
+                // would read as "All media". With the options following the
+                // tree, the one case left is a folder the tree has not caught
+                // up with yet, for the length of one request.
                 if ([...el.options].some((option) => option.value === value)) {
                     el.value = value;
                 }
@@ -262,5 +290,67 @@ export function useNativeFolderSelect() {
 
                 el.classList.toggle('is-active', selectedId !== null);
             });
-    }, [selectedId]);
+    }, [nodes, sort, counts, selectedId]);
+}
+
+/**
+ * Make a native select's options say what the tree says.
+ *
+ * All media and Unassigned keep their elements and get their counts; the
+ * folder options are replaced wholesale when their values or labels differ
+ * from `wanted`, and left untouched when they do not. Labels are compared on
+ * `data-folderfolio-indented`, the indented form, because the visible text of
+ * the selected option has had its indent taken off by `setIndentVisible`.
+ */
+function syncOptions(
+    el: HTMLSelectElement,
+    wanted: Array<[string, string]>,
+    counts: { all: number; unassigned: number } | undefined
+): void {
+    const fixed = [...el.options].filter((option) => option.dataset.folderfolioIndented === undefined);
+
+    if (counts) {
+        for (const option of fixed) {
+            const next =
+                option.value === ''
+                    ? label(t('allMedia', 'All media'), 0, counts.all)
+                    : option.value === '0'
+                      ? label(t('unassigned', 'Unassigned'), 0, counts.unassigned)
+                      : null;
+
+            if (next !== null && option.text !== next) {
+                option.text = next;
+            }
+        }
+    }
+
+    const current = [...el.options]
+        .filter((option) => option.dataset.folderfolioIndented !== undefined)
+        .map((option) => `${option.value}\u0000${option.dataset.folderfolioIndented}`)
+        .join('\u0001');
+    const next = wanted.map(([value, text]) => `${value}\u0000${text}`).join('\u0001');
+
+    if (current === next) {
+        return;
+    }
+
+    const keep = el.value;
+
+    for (const option of [...el.options]) {
+        if (option.dataset.folderfolioIndented !== undefined) {
+            option.remove();
+        }
+    }
+
+    for (const [value, text] of wanted) {
+        const option = new Option(text, value);
+        option.dataset.folderfolioIndented = text;
+        el.add(option);
+    }
+
+    // Put the value back if it survived; a deleted folder's value falls to
+    // the caller, which sets the store's selection next.
+    if ([...el.options].some((option) => option.value === keep)) {
+        el.value = keep;
+    }
 }

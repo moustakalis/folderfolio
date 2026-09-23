@@ -77,8 +77,9 @@ class FolderService
     /**
      * The folder tree, with counts.
      *
-     * Two queries: the folders, and one GROUP BY for the counts. The roll-up
-     * happens in PHP. Competitors either omit inherited counts or default to
+     * Three queries: the folders, one GROUP BY for the counts, and — for the
+     * inherited total — the files filed more than once. The roll-up happens in
+     * PHP. Competitors either omit inherited counts or default to
      * direct-only; we default to inherited because a parent reading `0` while
      * holding a hundred files is worse than no badge at all.
      *
@@ -92,10 +93,8 @@ class FolderService
         // own order is not a count mode's business, and returning early
         // without it would hand the client a tree whose nodes are missing two
         // keys depending on a setting.
-        $nodes = FolderTree::withSorts(
-            FolderTree::fromRows($this->folders->all($objectType)),
-            $this->sorts->all()
-        );
+        $rows = $this->folders->all($objectType);
+        $nodes = FolderTree::withSorts(FolderTree::fromRows($rows), $this->sorts->all());
 
         // No argument means "whatever the site is set to". The literal
         // default used to live here, which made the setting unreachable from
@@ -107,10 +106,27 @@ class FolderService
             return $nodes;
         }
 
+        $inherited = $mode !== 'direct';
+
+        // Only the inherited total can count a file twice, so only it pays
+        // for the question.
+        $overcount = [];
+
+        if ($inherited) {
+            $paths = [];
+
+            foreach ($rows as $row) {
+                $paths[(int) $row['id']] = (string) $row['path'];
+            }
+
+            $overcount = FolderTree::overcount($this->assignments->multiFiled(), $paths);
+        }
+
         return FolderTree::withCounts(
             $nodes,
             $this->assignments->directCounts(),
-            $mode !== 'direct'
+            $inherited,
+            $overcount
         );
     }
 

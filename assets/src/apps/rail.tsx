@@ -7,12 +7,13 @@
  * enqueue order is right without anyone maintaining a dependency array.
  */
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createRoot } from 'react-dom/client';
 
 import { Rail } from './rail/Rail';
 import { useRail } from './rail/store';
 import { watchUploadTarget } from '../core/upload-target';
+import { t } from '../core/api';
 
 /**
  * Where the breadcrumb and the drill-down cards go.
@@ -98,10 +99,44 @@ watchUploadTarget(
     useRail.getState().selectedId
 );
 
+/**
+ * The server's own sentence, whichever shape it arrived in.
+ *
+ * Our routes answer `{success: false, error: {code, message}}`; core's own
+ * refusals — a 403 from a permission callback, a missing argument — answer
+ * `{code, message, data}`. `wp.apiFetch` rejects with the body as it came, not
+ * with an `Error`, so there is no `.message` on the first shape at all.
+ */
+function messageOf(error: unknown): string {
+    const body = error as { error?: { message?: unknown }; message?: unknown } | null;
+    const message = body?.error?.message ?? body?.message;
+
+    return typeof message === 'string' && message.trim() !== ''
+        ? message
+        : t('actionFailed', 'That could not be done.');
+}
+
 const mount = document.getElementById('folderfolio-rail-app');
 
 if (mount) {
     const client = new QueryClient({
+        /*
+         * Every write the rail makes, refused or failed, says so on screen.
+         *
+         * Until 23 Sep none of them did: an optimistic mutation rolled back
+         * and a plain one did nothing, and the only trace was a request in the
+         * network panel — a duplicate name, a stale reorder, a paste of a file
+         * this person may not organise, a drop the server refused. One place,
+         * here, rather than an onError on each hook: the next mutation added
+         * cannot forget it.
+         *
+         * A new write clears the last notice, so what is on screen is always
+         * about the most recent thing the person tried.
+         */
+        mutationCache: new MutationCache({
+            onMutate: () => useRail.getState().dismissNotice(),
+            onError: (error) => useRail.getState().showNotice(messageOf(error)),
+        }),
         defaultOptions: {
             queries: {
                 // One retry, not three. A failed folder request on wp-admin is

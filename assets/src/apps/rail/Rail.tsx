@@ -15,7 +15,7 @@ import { Header } from './Header';
 import { Levels } from './Levels';
 import { LibraryToolbar } from './LibraryToolbar';
 import { Results } from './Results';
-import { Toast, UNDO_WINDOW } from './Toast';
+import { Notice, Toast, UNDO_WINDOW } from './Toast';
 import { watchDrags } from './drag';
 import { RailControls } from './RailControls';
 import { Tree } from './Tree';
@@ -50,6 +50,7 @@ export function Rail({
     const edit = useRail((s) => s.edit);
     const select = useRail((s) => s.select);
     const pendingUndo = useRail((s) => s.pendingUndo);
+    const notice = useRail((s) => s.notice);
     const setPendingUndo = useRail((s) => s.setPendingUndo);
 
     /*
@@ -354,8 +355,22 @@ export function Rail({
               the breadcrumb rather than rendered inside the rail, which is a
               300px column with its own overflow and stacking context.
             */}
-            {contentMount && pendingUndo
-                ? createPortal(<Toast onUndo={undoDelete} onExpire={commitDelete} />, document.body)
+            {/*
+              One corner, two sheets. The refusal sits above the undo toast
+              when both are up — a delete that the server then refuses is the
+              case where they are — so the stack is a grid in a fixed box and
+              neither sheet positions itself.
+            */}
+            {(contentMount && pendingUndo) || notice
+                ? createPortal(
+                      <div className="folderfolio folderfolio-toasts">
+                          <Notice />
+                          {contentMount && pendingUndo ? (
+                              <Toast onUndo={undoDelete} onExpire={commitDelete} />
+                          ) : null}
+                      </div>,
+                      document.body
+                  )
                 : null}
         </>
     );

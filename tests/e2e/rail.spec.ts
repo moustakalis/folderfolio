@@ -689,3 +689,82 @@ test.describe('cut, copy and paste', () => {
         expect(geometry.gapAbove).toBeGreaterThanOrEqual(0);
     });
 });
+
+/**
+ * Three gaps closed on 23 Sep, each with the guard that fails if it reopens.
+ */
+test.describe('what the rail says after a write', () => {
+    test.beforeEach(async ({ page }) => {
+        await page.goto('/wp-admin/upload.php?mode=list');
+        await page.locator('#folderfolio-rail').waitFor();
+        await resetFolders(page);
+        await createFolder(page, 'Alpha');
+        await createFolder(page, 'Bravo');
+        await page.reload();
+        await waitForTree(page, 'Alpha');
+    });
+
+    test('a refused write is on screen, in the server\'s own words, until dismissed', async ({ page }) => {
+        await page.locator('.folderfolio-tree .folderfolio-row', { hasText: /^Alpha/ }).first().click();
+        await page.locator('.folderfolio-row__menu').click();
+        await page.getByRole('menuitem', { name: 'Rename' }).click();
+        await page.locator('.folderfolio-row__input').fill('Bravo');
+        await page.keyboard.press('Enter');
+
+        const notice = page.locator('.folderfolio-toast--notice');
+        await expect(notice).toHaveAttribute('role', 'alert');
+        await expect(notice).toContainText('already exists');
+
+        await notice.getByRole('button', { name: 'Dismiss' }).click();
+        await expect(notice).toHaveCount(0);
+    });
+
+    test('the list view\'s folder select learns a folder created after the page loaded', async ({ page }) => {
+        const select = page.locator('select[name="folderfolio_folder"]');
+        await expect(select).toHaveCount(1);
+
+        await page.getByRole('button', { name: /new folder/i }).click();
+        await page.locator('.folderfolio-row__input').fill('Charlie');
+        await page.keyboard.press('Enter');
+
+        await page.locator('.folderfolio-tree .folderfolio-row', { hasText: /^Charlie/ }).first().click();
+
+        // The option exists, it is selected, and the form would submit it —
+        // before, the select kept showing the previous folder and core's
+        // Filter button sent that one.
+        const id = await page.evaluate(() => new URL(location.href).searchParams.get('folderfolio_folder'));
+        await expect(select).toHaveValue(id!);
+        expect(
+            await select.evaluate((el: HTMLSelectElement) => new FormData(el.form!).get('folderfolio_folder'))
+        ).toBe(id);
+    });
+
+    test('a file filed in two sibling folders counts once in their parent', async ({ page }) => {
+        const counts = await page.evaluate(async () => {
+            const make = async (name: string, parent: number | null) =>
+                (await window.wp.apiFetch({ path: '/folderfolio/v1/folders', method: 'POST', data: { name, parent_id: parent } })).data.id;
+            const media = await window.wp.apiFetch({ path: '/wp/v2/media?per_page=1&_fields=id' });
+
+            if (media.length === 0) {
+                return null;
+            }
+
+            const parent = await make('Clients', null);
+            for (const name of ['One', 'Two']) {
+                const id = await make(name, parent);
+                await window.wp.apiFetch({
+                    path: '/folderfolio/v1/assignments',
+                    method: 'POST',
+                    data: { folder_id: id, attachment_ids: [media[0].id], mode: 'add' },
+                });
+            }
+
+            const tree = (await window.wp.apiFetch({ path: '/folderfolio/v1/folders?counts=inherited' })).data;
+
+            return tree.find((n: any) => n.id === parent).total_count;
+        });
+
+        test.skip(counts === null, 'the rig has no media to file');
+        expect(counts).toBe(1);
+    });
+});

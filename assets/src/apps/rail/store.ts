@@ -102,6 +102,17 @@ export interface RailState {
      */
     clipboard: Clipboard | null;
 
+    /**
+     * The last thing the server refused, on screen until dismissed.
+     *
+     * Every write the rail makes goes through one QueryClient, and its
+     * MutationCache sets this on any failure (rail.tsx) — so a refused paste,
+     * a duplicate name, a stale reorder and a file the person may not move all
+     * say so the same way, instead of rolling back in silence. `id` changes
+     * with each failure so the same sentence twice is announced twice.
+     */
+    notice: Notice | null;
+
     select: (id: number | null) => void;
 
     /** Set or clear this user's startup folder. `null` clears it. */
@@ -134,6 +145,8 @@ export interface RailState {
     setPendingUndo: (undo: PendingUndo | null) => void;
     /** Take a folder onto the clipboard, or clear it with `null`. */
     hold: (clipboard: Clipboard | null) => void;
+    showNotice: (message: string) => void;
+    dismissNotice: () => void;
 }
 
 export type SortOrder = 'name-asc' | 'name-desc' | 'newest' | 'oldest' | 'custom';
@@ -221,6 +234,13 @@ export interface Clipboard {
     withFiles: boolean;
 }
 
+export interface Notice {
+    id: number;
+    message: string;
+}
+
+let noticeId = 0;
+
 export const useRail = create<RailState>((set) => ({
     selectedId: folderFromUrl(),
     focusedId: folderFromUrl(),
@@ -239,6 +259,7 @@ export const useRail = create<RailState>((set) => ({
     sort: defaultSort(),
     pendingUndo: null,
     clipboard: null,
+    notice: null,
 
     select: (id) => set({ selectedId: id, focusedId: id }),
 
@@ -307,6 +328,10 @@ export const useRail = create<RailState>((set) => ({
     setSort: (sort) => set({ sort }),
     setPendingUndo: (pendingUndo) => set({ pendingUndo }),
     hold: (clipboard) => set({ clipboard }),
+    showNotice: (message) => set({ notice: { id: ++noticeId, message } }),
+    // Returning `state` when there is nothing to dismiss, so the MutationCache
+    // clearing it at the start of every write is not a render per write.
+    dismissNotice: () => set((state) => (state.notice === null ? state : { notice: null })),
 }));
 
 /**

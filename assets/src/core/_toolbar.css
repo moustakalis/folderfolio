@@ -228,6 +228,33 @@
   }
 }
 
+/**
+ * The corner holds a stack since 23 Sep — a refusal above the undo toast when
+ * both are up. The box is what is fixed; the sheets inside it are placed by
+ * the grid and stop positioning themselves. Two classes on the child, because
+ * `.folderfolio-toast` above is one, and a tie here would lose to nothing but
+ * the order of this file.
+ */
+.folderfolio-toasts {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  z-index: 100000;
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+@media screen and (min-width: 783px) {
+  .folderfolio-toasts {
+    left: 180px;
+  }
+}
+
+.folderfolio-toasts > .folderfolio-toast {
+  position: static;
+}
+
 @keyframes folderfolio-rise {
   from {
     opacity: 0;

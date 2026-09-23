@@ -76,7 +76,7 @@ export function LibraryToolbar({ nodes }: { nodes: FolderNode[] }) {
     // The list-mode select is not ours to render, but it is ours to keep in
     // step. Called unconditionally: in grid mode it finds nothing and costs a
     // querySelectorAll against an empty result.
-    useNativeFolderSelect();
+    useNativeFolderSelect(nodes);
 
     const filterSlot = useToolbarSlot(filterSlotPlace, 'filter');
     const bulkSlot = useToolbarSlot(bulkSlotPlace, 'bulk');

@@ -774,7 +774,10 @@ final class Rail
                 'copyAnnounce' => __('Copied “%s”. Paste it inside or beside another folder.', 'folderfolio'),
                 /* translators: %s is a folder name. */
                 'pasted' => __('Pasted “%s”', 'folderfolio'),
-                'pasteFailed' => __('That could not be pasted.', 'folderfolio'),
+                // The notice sheet — any write the server refuses.
+                // `dismiss` is further down, with the startup-folder sentence
+                // that uses it too.
+                'actionFailed' => __('That could not be done.', 'folderfolio'),
                 'sort' => __('Sort', 'folderfolio'),
                 'sortNameAsc' => __('Name, A to Z', 'folderfolio'),
                 'sortNameDesc' => __('Name, Z to A', 'folderfolio'),

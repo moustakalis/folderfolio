@@ -361,4 +361,26 @@ class FolderServiceIntegrationTest extends WP_UnitTestCase
         $this->assertSame([0, 1, 2], $order);
         $this->assertSame(1, $this->service->get($copy->id)->sortOrder);
     }
+
+    /**
+     * @test
+     *
+     * The rail's inherited badge and the server's own subtree count agree: a
+     * file filed in two sibling folders is one file in their parent.
+     */
+    public function the_inherited_total_counts_a_file_filed_twice_once(): void
+    {
+        $parent = $this->service->create(['name' => 'Clients']);
+        $a = $this->service->create(['name' => 'Brand', 'parent_id' => $parent->id]);
+        $b = $this->service->create(['name' => 'Brand copy', 'parent_id' => $parent->id]);
+        $attachment = self::factory()->attachment->create(['post_mime_type' => 'image/jpeg']);
+        $this->service->assignAttachments($a->id, [$attachment]);
+        $this->service->assignAttachments($b->id, [$attachment]);
+
+        $tree = $this->service->tree(\FolderFolio\Domain\FolderRepository::DEFAULT_OBJECT_TYPE, 'inherited');
+        $clients = array_values(array_filter($tree, static fn (array $n): bool => (int) $n['id'] === $parent->id))[0];
+
+        $this->assertSame(1, $clients['total_count']);
+        $this->assertSame($this->service->countAttachments($parent->id), $clients['total_count']);
+    }
 }
