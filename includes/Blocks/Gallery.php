@@ -169,6 +169,7 @@ final class Gallery
                 'orderOldest' => __('Oldest first', 'folderfolio'),
                 'orderTitle' => __('Title, A to Z', 'folderfolio'),
                 'orderMenu' => __('Media library order', 'folderfolio'),
+                'orderFolder' => __('Folder order', 'folderfolio'),
                 'orderRandom' => __('Random', 'folderfolio'),
                 'limit' => __('Maximum images', 'folderfolio'),
                 'limitAll' => __('All of them', 'folderfolio'),

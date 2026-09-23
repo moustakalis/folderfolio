@@ -32,6 +32,7 @@
  */
 
 import type { Place } from './toolbar-slot';
+import { keepServerOrder } from './filter';
 
 /** Our reference, parked on the browser view's own element. */
 interface BrowserElement extends HTMLElement {
@@ -72,6 +73,14 @@ export function publishBrowsers(): boolean {
 
         if (this.el) {
             this.el.folderfolioBrowser = this as unknown as BrowserElement['folderfolioBrowser'];
+        }
+
+        // The picker's grid re-sorts a folder by date in the browser exactly
+        // as the library's did; keepServerOrder() in lib/filter.ts.
+        const collection = (this as { collection?: Parameters<typeof keepServerOrder>[0] }).collection;
+
+        if (collection?.props) {
+            keepServerOrder(collection);
         }
 
         return result;

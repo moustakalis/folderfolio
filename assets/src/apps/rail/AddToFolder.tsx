@@ -51,10 +51,12 @@ import {
     flattenTree,
     useAddToFolders,
     useMoveAttachments,
+    useOrderFiles,
     type FolderNode,
 } from './queries';
 import { sortTree, useRail } from './store';
 import { useAnchoredPanel } from './useAnchoredPanel';
+import { can } from '../../lib/can';
 import { watchSelection } from '../../lib/selection';
 import { t, tn } from '../../core/api';
 
@@ -205,6 +207,7 @@ function Flyout({ nodes, ids, source, anchor, onClose }: FlyoutProps) {
     const [query, setQuery] = useState('');
     const add = useAddToFolders();
     const move = useMoveAttachments();
+    const order = useOrderFiles();
     const pending = mode === 'move' ? move.isPending : add.isPending;
     const failed = mode === 'move' ? move.isError : add.isError;
 
@@ -403,6 +406,67 @@ function Flyout({ nodes, ids, source, anchor, onClose }: FlyoutProps) {
             <p className="folderfolio-flyout__head">
                 {headParts(ids.length)}
             </p>
+
+            {/*
+              Where the selection sits in the folder being viewed — tier 2
+              item 8. The keyboard's and a phone's way to arrange a folder,
+              and the way to move a file further than a drag can reach. Like
+              the drag, it makes the folder Custom.
+            */}
+            {source !== null && can('rename') ? (
+                <div
+                    className="folderfolio-flyout__arrange"
+                    role="group"
+                    aria-label={t('arrangeIn', 'In %s', sourceName)}
+                >
+                    <span className="folderfolio-flyout__arrange-label" aria-hidden="true">
+                        {t('arrangeIn', 'In %s', sourceName)}
+                    </span>
+                    {(['start', 'end'] as const).map((place) => (
+                        <button
+                            key={place}
+                            type="button"
+                            className="folderfolio-flyout__place"
+                            disabled={order.isPending}
+                            onClick={() => {
+                                void order
+                                    .mutateAsync({ folderId: source, ids, place })
+                                    .then(() => {
+                                        window.wp?.a11y?.speak(
+                                            place === 'start'
+                                                ? tn(
+                                                      'placedFileStart',
+                                                      'placedFilesStart',
+                                                      ids.length,
+                                                      'Moved %s file to the start of %s',
+                                                      'Moved %s files to the start of %s',
+                                                      ids.length,
+                                                      sourceName
+                                                  )
+                                                : tn(
+                                                      'placedFileEnd',
+                                                      'placedFilesEnd',
+                                                      ids.length,
+                                                      'Moved %s file to the end of %s',
+                                                      'Moved %s files to the end of %s',
+                                                      ids.length,
+                                                      sourceName
+                                                  ),
+                                            'polite'
+                                        );
+                                        onClose();
+                                    })
+                                    // Shown by the rail's MutationCache.
+                                    .catch(() => undefined);
+                            }}
+                        >
+                            {place === 'start'
+                                ? t('moveToStart', 'Move to start')
+                                : t('moveToEnd', 'Move to end')}
+                        </button>
+                    ))}
+                </div>
+            ) : null}
 
             {/*
               The verb, where the verb's consequences are.

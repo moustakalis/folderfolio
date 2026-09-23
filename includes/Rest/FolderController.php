@@ -206,6 +206,33 @@ class FolderController
             ],
         ]);
 
+        // Files placed in a folder — tier 2 item 8. The files and where they
+        // go, never the whole folder: a 5,000-file folder is not 5,000 ids on
+        // every drag. `rename` like /sort, because the arrangement is written
+        // down and everyone sees it; `edit_post` on each file is asked by the
+        // service, the way every assign asks it.
+        register_rest_route($ns, '/folders/(?P<id>\\d+)/files/order', [
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => [$this, 'orderFiles'],
+            'permission_callback' => [$this, 'canRenameFolders'],
+            'args' => [
+                'ids' => [
+                    'type' => 'array',
+                    'required' => true,
+                    'items' => ['type' => 'integer'],
+                ],
+                'place' => [
+                    'type' => 'string',
+                    'required' => true,
+                    'enum' => ['start', 'end', 'before', 'after'],
+                ],
+                'anchor' => [
+                    'required' => false,
+                    'sanitize_callback' => [$this, 'nullableInteger'],
+                ],
+            ],
+        ]);
+
         register_rest_route($ns, '/folders/reorder', [
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => [$this, 'reorder'],
@@ -515,6 +542,24 @@ class FolderController
             $result,
             200,
             fn (): array => ['tree' => $this->folders->tree()]
+        );
+    }
+
+    public function orderFiles(WP_REST_Request $request): WP_REST_Response
+    {
+        $result = $this->folders->moveFiles(
+            (int) $request['id'],
+            $this->integerList($request->get_param('ids')),
+            (string) $request->get_param('place'),
+            $this->nullableInteger($request->get_param('anchor'))
+        );
+
+        // The tree comes back because the folder's file sort may just have
+        // become Custom, and the rail's Sort inside says so.
+        return $this->result(
+            $result,
+            200,
+            fn (): array => ['placed' => $result, 'tree' => $this->folders->tree()]
         );
     }
 

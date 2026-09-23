@@ -216,8 +216,60 @@ export function useSetFolderSort() {
             }
         },
 
+        onSuccess: (_data, input) => {
+            // A folder's file order is what the library shows when that folder
+            // is open, and nothing else re-asked it: choosing Name, A to Z
+            // while looking at the folder changed nothing until a reload.
+            if (input.scope === 'files') {
+                window.dispatchEvent(new CustomEvent('folderfolio:library-changed'));
+            }
+        },
+
         onSettled: () => {
             void client.invalidateQueries({ queryKey: treeKey });
+        },
+    });
+}
+
+/**
+ * Files placed in a folder — tier 2 item 8.
+ *
+ * The files and where they go, never the folder's whole list. The server
+ * rewrites the folder from the order it was showing and makes it Custom, so
+ * the tree comes back with `sort_files: 'custom'` and the library is asked
+ * again. Not optimistic: the grid is core's, and redrawing it ahead of the
+ * server would be a second copy of the order to get wrong.
+ */
+export interface FilePlacement {
+    folderId: number;
+    ids: number[];
+    place: 'start' | 'end' | 'before' | 'after';
+    anchor?: number;
+}
+
+export function useOrderFiles() {
+    const client = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (input: FilePlacement) => {
+            const response = await apiFetch<ApiEnvelope<{ placed: number; tree: FolderNode[] }>>(
+                `/folders/${input.folderId}/files/order`,
+                {
+                    method: 'POST',
+                    data: {
+                        ids: input.ids,
+                        place: input.place,
+                        ...(input.anchor !== undefined ? { anchor: input.anchor } : {}),
+                    },
+                }
+            );
+
+            return response.data;
+        },
+
+        onSuccess: (data) => {
+            client.setQueryData(treeKey, data.tree);
+            window.dispatchEvent(new CustomEvent('folderfolio:library-changed'));
         },
     });
 }

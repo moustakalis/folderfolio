@@ -80,6 +80,124 @@ export function urlForFolder(folderId: number | null): string {
 }
 
 /**
+ * A media collection shows a folder in the order the server sent it.
+ *
+ * Core's attachment collections sort themselves in the browser: the grid's
+ * `date` orderby gives its collection a comparator, and every page the server
+ * sends is put back into date order on arrival. So a folder's own file order
+ * (tier 1 item 2) and its Custom positions (tier 2 item 8) reached the grid
+ * correctly ordered and were shown newest first — measured on 23 Sep, a
+ * folder set to Name, A to Z. List mode was right all along; it renders on
+ * the server.
+ *
+ * The fix is a comparator of our own, inside a folder only: each model's
+ * place in the server's answer. Not an orderby change — `post__in`, the one
+ * core leaves unsorted, also removes the comparator that keeps core's jQuery
+ * UI sorting switched off in the grid, and that sorting takes the mouse on
+ * press and would have killed the drag to a folder (found trying it). With a
+ * comparator in place core's sorting stays off, and outside a folder core's
+ * own comparator is put back.
+ */
+const RANK = 'folderfolioRank';
+
+interface RankedModel {
+    get(key: string): unknown;
+    set(key: string, value: unknown, options?: { silent?: boolean }): void;
+}
+
+interface MediaCollection {
+    comparator?: unknown;
+    props: {
+        get(key: string): unknown;
+        on(event: string, callback: () => void): void;
+    };
+}
+
+interface WpMediaModels {
+    Query?: { prototype: { parse: (response: unknown, options: unknown) => RankedModel[]; length?: number } };
+    Attachments?: { comparator?: unknown };
+}
+
+function mediaModels(): WpMediaModels | undefined {
+    return (window.wp as unknown as { media?: { model?: WpMediaModels } } | undefined)?.media?.model;
+}
+
+/**
+ * Each model a query receives is stamped with its place in the answer.
+ *
+ * On the Query's parse, because that is the one point the server's order
+ * still exists: `set()` sorts right after. The offset is how many the query
+ * already holds, so page two starts at 80. Done once per page load.
+ */
+function stampServerOrder(): boolean {
+    const Query = mediaModels()?.Query;
+
+    if (!Query) {
+        return false;
+    }
+
+    const proto = Query.prototype as { parse: (response: unknown, options: unknown) => RankedModel[]; folderfolioRanked?: boolean };
+
+    if (!proto.folderfolioRanked) {
+        const parse = proto.parse;
+
+        proto.parse = function (this: { length?: number }, response: unknown, options: unknown) {
+            const offset = this.length ?? 0;
+            const models = parse.call(this, response, options);
+
+            models.forEach((model, index) => model.set(RANK, offset + index, { silent: true }));
+
+            return models;
+        };
+        proto.folderfolioRanked = true;
+    }
+
+    return true;
+}
+
+/**
+ * By place in the server's answer; a model with none — an upload that has
+ * just finished — first, which is where the server puts a new file too.
+ */
+export function byServerOrder(a: RankedModel, b: RankedModel): number {
+    const ra = a.get(RANK);
+    const rb = b.get(RANK);
+    const x = typeof ra === 'number' ? ra : -Infinity;
+    const y = typeof rb === 'number' ? rb : -Infinity;
+
+    return x === y ? 0 : x < y ? -1 : 1;
+}
+
+/**
+ * Keep a media collection in the server's order whenever it shows a folder.
+ *
+ * Runs on `change:folderfolio_folder`, which Backbone fires before the
+ * `change` that re-queries, so the comparator is in place before the first
+ * model of the new answer arrives.
+ */
+export function keepServerOrder(collection: MediaCollection): void {
+    if (!stampServerOrder()) {
+        return;
+    }
+
+    const coreComparator = mediaModels()?.Attachments?.comparator;
+
+    const sync = () => {
+        const raw = collection.props.get(FOLDER_QUERY_VAR);
+        const folderId = raw === '' || raw === null || raw === undefined ? null : Number(raw);
+
+        if (folderId !== null && folderId > 0) {
+            collection.comparator = byServerOrder;
+        } else if (collection.comparator === byServerOrder) {
+            collection.comparator = coreComparator;
+        }
+    };
+
+    collection.props.on(`change:${FOLDER_QUERY_VAR}`, sync);
+    sync();
+}
+
+/**
  * Filter the library, and put the folder in the address bar.
  *
  * Never navigates in either mode. Grid re-queries the media frame's

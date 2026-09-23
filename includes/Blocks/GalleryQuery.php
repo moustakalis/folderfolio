@@ -44,8 +44,14 @@ final class GalleryQuery
      */
     public const MAX = 500;
 
-    /** @var list<string> */
-    public const ORDER_BY = ['date', 'title', 'menu_order', 'rand'];
+    /**
+     * `folder` since tier 2 item 8: the order the folder shows its files in
+     * the library — its positions when it is in Custom order, its own file
+     * sort when it has one, newest first when it has neither.
+     *
+     * @var list<string>
+     */
+    public const ORDER_BY = ['date', 'title', 'menu_order', 'rand', 'folder'];
 
     private FolderService $folders;
 
@@ -61,18 +67,24 @@ final class GalleryQuery
      */
     public function attachments(array $attributes): array
     {
-        $ids = $this->attachmentIds($attributes);
-
-        if ([] === $ids) {
-            return [];
-        }
-
         $orderBy = is_string($attributes['orderBy'] ?? null) ? $attributes['orderBy'] : 'date';
         $order = 'asc' === ($attributes['order'] ?? 'desc') ? 'ASC' : 'DESC';
         $limit = (int) ($attributes['limit'] ?? 0);
 
         if (!in_array($orderBy, self::ORDER_BY, true)) {
             $orderBy = 'date';
+        }
+
+        $inFolderOrder = 'folder' === $orderBy;
+        $ids = $this->attachmentIds($attributes, $inFolderOrder);
+
+        if ([] === $ids) {
+            return [];
+        }
+
+        if ($inFolderOrder) {
+            // The ids already are the order; post__in keeps it.
+            $orderBy = 'post__in';
         }
 
         $query = new WP_Query([
@@ -148,11 +160,15 @@ final class GalleryQuery
      * persistent object cache this is a per-request cache and still worth
      * having — a page with four galleries on it resolves each folder once.
      *
+     * In folder order the ids come back in the order each folder shows its
+     * files, and the key says so: the same folders in date order are a
+     * different list.
+     *
      * @param array<string, mixed> $attributes
      *
      * @return list<int>
      */
-    private function attachmentIds(array $attributes): array
+    private function attachmentIds(array $attributes, bool $inFolderOrder = false): array
     {
         $folderIds = array_values(array_filter(array_map(
             'intval',
@@ -165,6 +181,7 @@ final class GalleryQuery
 
         $descendants = (bool) ($attributes['includeDescendants'] ?? false);
         $key = 'gallery:' . implode(',', $folderIds) . ':' . ($descendants ? '1' : '0')
+            . ($inFolderOrder ? ':ordered' : '')
             . ':' . wp_cache_get_last_changed('folderfolio');
 
         $cached = wp_cache_get($key, 'folderfolio');
@@ -177,7 +194,13 @@ final class GalleryQuery
         $ids = [];
 
         foreach ($folderIds as $folderId) {
-            foreach ($this->folders->attachmentIds($folderId, $descendants) as $attachmentId) {
+            $inFolder = match (true) {
+                $inFolderOrder && $descendants => $this->folders->orderedSubtreeAttachmentIds($folderId),
+                $inFolderOrder => $this->folders->orderedAttachmentIds($folderId),
+                default => $this->folders->attachmentIds($folderId, $descendants),
+            };
+
+            foreach ($inFolder as $attachmentId) {
                 $ids[] = (int) $attachmentId;
             }
         }

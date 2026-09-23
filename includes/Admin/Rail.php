@@ -922,6 +922,18 @@ final class Rail
                 'movedFile' => __('Moved %s file to %s', 'folderfolio'),
                 /* translators: 1: number of files, 2: the destination folder name. */
                 'movedFiles' => __('Moved %s files to %s', 'folderfolio'),
+                /* translators: %s: the name of the folder being viewed. */
+                'arrangeIn' => __('In %s', 'folderfolio'),
+                'moveToStart' => __('Move to start', 'folderfolio'),
+                'moveToEnd' => __('Move to end', 'folderfolio'),
+                /* translators: 1: number of files, 2: the folder they were placed in. */
+                'placedFileStart' => __('Moved %s file to the start of %s', 'folderfolio'),
+                /* translators: 1: number of files, 2: the folder they were placed in. */
+                'placedFilesStart' => __('Moved %s files to the start of %s', 'folderfolio'),
+                /* translators: 1: number of files, 2: the folder they were placed in. */
+                'placedFileEnd' => __('Moved %s file to the end of %s', 'folderfolio'),
+                /* translators: 1: number of files, 2: the folder they were placed in. */
+                'placedFilesEnd' => __('Moved %s files to the end of %s', 'folderfolio'),
                 'findFolder' => __('Find a folder', 'folderfolio'),
                 'addsACopy' => __('Adds a copy of the membership', 'folderfolio'),
                 /* translators: %s is the number of folders not shown. */

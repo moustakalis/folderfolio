@@ -34,6 +34,15 @@ final class MediaLibraryFilter
      */
     public const QUERY_VAR = 'folderfolio_folder';
 
+    /**
+     * Query var set when the folder being shown is in Custom file order.
+     *
+     * A var of ours rather than an `orderby` value, because WP_Query's
+     * vocabulary has no word for "each file's position in this folder" and
+     * would quietly fall back to the date if given one it did not know.
+     */
+    public const ORDER_VAR = 'folderfolio_order';
+
     public function register(): void
     {
         add_action('pre_get_posts', [$this, 'applyToListMode']);
@@ -70,6 +79,13 @@ final class MediaLibraryFilter
         }
 
         $query->set(self::QUERY_VAR, $folderId);
+
+        // A column header the person clicked is an order they chose on this
+        // screen, and it beats the folder's own. Before tier 2 the folder's
+        // won silently: clicking Title in a folder sorted by date did nothing.
+        if (isset($_GET['orderby'])) {
+            return;
+        }
 
         foreach (self::ordering($folderId) as $key => $value) {
             $query->set($key, $value);
@@ -126,15 +142,27 @@ final class MediaLibraryFilter
      * control asserts the clauses array is byte-identical, and would fail the
      * moment an ORDER BY was appended there.
      *
-     * @return array{orderby?: string, order?: string}
+     * Custom is our own var, not `orderby` — see ORDER_VAR — and it reaches
+     * `posts_clauses` only through the folder join, so the unfiltered library
+     * is still never touched.
+     *
+     * Public because FolderService::orderedAttachmentIds() asks WP_Query for
+     * a folder's files in exactly the order the library shows them, and a
+     * second copy of this mapping would be the one that drifted.
+     *
+     * @return array{orderby?: string, order?: string, folderfolio_order?: string}
      */
-    private static function ordering(int $folderId): array
+    public static function ordering(int $folderId): array
     {
         if ($folderId <= 0) {
             return [];
         }
 
         $order = (new FolderSorts())->for($folderId)['files'];
+
+        if ($order === 'custom') {
+            return [self::ORDER_VAR => 'custom'];
+        }
 
         return $order === null ? [] : FolderSorts::queryArgs($order);
     }
@@ -165,7 +193,7 @@ final class MediaLibraryFilter
         if (0 === $folderId) {
             $clauses['join'] .= " LEFT JOIN {$table} AS folderfolio_assignments"
                 . " ON folderfolio_assignments.attachment_id = {$wpdb->posts}.ID";
-            $clauses['where'] .= ' AND folderfolio_assignments.attachment_id IS NULL';
+            $clauses['where'] .= ' AND folderfolio_assignments.attachment_id IS NULL' . self::cacheVersion();
 
             return $clauses;
         }
@@ -177,7 +205,33 @@ final class MediaLibraryFilter
             $folderId
         );
 
+        // A write to our tables is a new WP_Query cache key; see cacheVersion().
+        $clauses['where'] .= self::cacheVersion();
+
+        // Each file's place in this folder. Newest first breaks a tie, which
+        // only files never arranged share — and it is the order they were
+        // in before anybody arranged anything.
+        if ('custom' === $query->get(self::ORDER_VAR)) {
+            $clauses['orderby'] = "folderfolio_assignments.sort_order ASC, {$wpdb->posts}.post_date DESC, {$wpdb->posts}.ID DESC";
+        }
+
         return $clauses;
+    }
+
+    /**
+     * Our tables' last-changed, as an SQL comment for the cache key.
+     *
+     * WP_Query caches a query's ids under its SQL and the *posts*
+     * last-changed, and filing a file changes neither, so a folder view — or
+     * Unassigned — kept returning the ids it had before the write until some
+     * post changed: for the rest of the request always, and for good on a
+     * site with a persistent object cache. Found on 23 Sep by a test that
+     * arranged a folder twice in one request. Only ever on the folder join:
+     * the unfiltered library's clauses are untouched.
+     */
+    private static function cacheVersion(): string
+    {
+        return ' /* folderfolio ' . preg_replace('/[^0-9. ]/', '', (string) wp_cache_get_last_changed('folderfolio')) . ' */';
     }
 
     /**

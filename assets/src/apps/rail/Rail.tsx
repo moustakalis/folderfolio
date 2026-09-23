@@ -17,18 +17,21 @@ import { LibraryToolbar } from './LibraryToolbar';
 import { Results } from './Results';
 import { Notice, Toast, UNDO_WINDOW } from './Toast';
 import { watchDrags } from './drag';
+import { watchTileDrops } from './file-order';
 import { RailControls } from './RailControls';
 import { Tree } from './Tree';
 import {
     useCreateFolder,
     useDeleteFolder,
+    useOrderFiles,
     useRenameFolder,
     useTree,
     type FolderNode,
 } from './queries';
 import { useRail } from './store';
+import { can } from '../../lib/can';
 import { useIsNarrow } from '../../lib/narrow';
-import { applyFolderFilter, watchFolderLinks } from '../../lib/filter';
+import { applyFolderFilter, keepServerOrder, watchFolderLinks } from '../../lib/filter';
 import { t } from '../../core/api';
 
 export function Rail({
@@ -175,6 +178,26 @@ export function Rail({
 
     useEffect(() => watchDrags(() => selectedRef.current), []);
 
+    // Between two tiles of the folder being viewed, the same drag places
+    // files instead of filing them (file-order.ts). Through a ref, so the
+    // listener is attached once and still sends with the current mutation.
+    const orderFiles = useOrderFiles();
+    const orderRef = useRef(orderFiles.mutateAsync);
+    orderRef.current = orderFiles.mutateAsync;
+
+    useEffect(
+        () =>
+            watchTileDrops({
+                folder: () => selectedRef.current,
+                allowed: () => can('rename'),
+                drop: (placement) => {
+                    // A refusal is shown by the rail's MutationCache.
+                    void orderRef.current(placement).catch(() => undefined);
+                },
+            }),
+        []
+    );
+
     /**
      * The Folders column's paths filter in place rather than navigating.
      *
@@ -212,6 +235,39 @@ export function Rail({
      * server has already filtered, and re-applying would re-query for nothing.
      */
     const applied = useRef(false);
+
+    /**
+     * The grid shows a folder in the server's order, not the date's.
+     *
+     * Core's collection re-sorts every page by its orderby in the browser, so
+     * a folder's own file order and its Custom positions were re-sorted to
+     * newest first on arrival — see keepServerOrder() in lib/filter.ts. Attached
+     * once to the grid's collection; list mode has none and renders on the
+     * server. media-grid.js builds the frame on DOM ready, which is almost
+     * always before this mounts; the short retry is for the rest.
+     */
+    useEffect(() => {
+        let tries = 0;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+
+        const attach = () => {
+            const collection = window.wp?.media?.frame?.content?.get?.()?.collection;
+
+            if (collection?.props) {
+                keepServerOrder(collection as Parameters<typeof keepServerOrder>[0]);
+
+                return;
+            }
+
+            if (++tries < 20 && document.querySelector('.media-frame')) {
+                timer = setTimeout(attach, 250);
+            }
+        };
+
+        attach();
+
+        return () => clearTimeout(timer);
+    }, []);
 
     useEffect(() => {
         // Arriving at ?folderfolio_folder=12 means the server already

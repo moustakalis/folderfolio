@@ -18,7 +18,9 @@ interface WpMediaState {
 }
 
 interface WpMediaCollectionProps {
-  set(key: string, value: string | number): void;
+  set(key: string | Record<string, unknown>, value?: string | number): void;
+  get(key: string): unknown;
+  on(event: string, callback: () => void): void;
 }
 
 interface WpMediaCollection {

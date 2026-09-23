@@ -6,7 +6,7 @@ export interface GalleryAttributes {
     layout: 'grid' | 'masonry';
     columns: number;
     gap: number;
-    orderBy: 'date' | 'title' | 'menu_order' | 'rand';
+    orderBy: 'date' | 'title' | 'menu_order' | 'rand' | 'folder';
     order: 'asc' | 'desc';
     limit: number;
     linkTo: 'none' | 'media' | 'attachment';

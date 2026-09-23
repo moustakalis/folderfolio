@@ -975,10 +975,35 @@ class FolderService
          * the error means nothing was done, which is a sentence the UI can tell
          * the truth with.
          */
-        return Transaction::run(function () use ($ids, $folderId, $mode, $importRun): int|WP_Error {
+        /*
+         * Where each file goes in this folder (tier 2 item 8).
+         *
+         * A file already filed here keeps its place: `assign()` is a REPLACE,
+         * and it used to write the file's index in this batch, so Add to
+         * folder on a file already there moved it — in a folder somebody had
+         * arranged by hand. Read before the transaction's deletes, because a
+         * move deletes the row it is about to re-write.
+         *
+         * A new file goes first, before everything already here, in the order
+         * of the batch. First is where an upload is visible the moment it
+         * finishes, which is the answer Nick chose (board 66d5HKiPtdtNYTf7JWWBG5).
+         */
+        $kept = $this->assignments->positionsIn($folderId, $ids);
+        $newCount = count(array_diff($ids, array_keys($kept)));
+        $next = ($this->assignments->firstPosition($folderId) ?? 0) - $newCount;
+
+        $positions = [];
+
+        foreach ($ids as $attachmentId) {
+            $positions[$attachmentId] = $kept[$attachmentId] ?? $next++;
+        }
+
+        return Transaction::run(function () use ($ids, $folderId, $mode, $importRun, $positions): int|WP_Error {
             $assigned = 0;
 
-            foreach ($ids as $position => $attachmentId) {
+            foreach ($ids as $attachmentId) {
+                $position = $positions[$attachmentId];
+
                 if ($mode === self::MODE_MOVE) {
                     $cleared = $this->assignments->deleteForAttachment($attachmentId);
 
@@ -1001,6 +1026,149 @@ class FolderService
             });
 
             return $assigned;
+        });
+    }
+
+    /**
+     * A folder's files, in the order the library shows them.
+     *
+     * Asked of WP_Query with the library's own filter and ordering rather than
+     * of the assignments table, so "the order you were looking at" is exactly
+     * that — the folder's own file sort, or newest first, or its positions.
+     * Rows the query does not return (a file whose post is gone) follow in
+     * table order, so every row still gets a position when the folder is
+     * rewritten.
+     *
+     * @return list<int>
+     */
+    public function orderedAttachmentIds(int $folderId): array
+    {
+        $query = new \WP_Query([
+            'post_type' => 'attachment',
+            'post_status' => ['inherit', 'private'],
+            'fields' => 'ids',
+            'posts_per_page' => -1,
+            'no_found_rows' => true,
+            'update_post_meta_cache' => false,
+            'update_post_term_cache' => false,
+            'suppress_filters' => false,
+            \FolderFolio\Admin\MediaLibraryFilter::QUERY_VAR => $folderId,
+        ] + \FolderFolio\Admin\MediaLibraryFilter::ordering($folderId));
+
+        $shown = array_map('intval', $query->posts);
+        $filed = $this->assignments->attachmentIdsForFolder($folderId);
+
+        return array_values(array_unique([...array_intersect($shown, $filed), ...$filed]));
+    }
+
+    /**
+     * A folder's files and then its subfolders', each in its own order.
+     *
+     * For the gallery block's Folder order with subfolders included: the
+     * folder first, then each subfolder in the tree's stored order — every
+     * one of them showing its files the way it does in the library.
+     *
+     * @return list<int>
+     */
+    public function orderedSubtreeAttachmentIds(int $folderId): array
+    {
+        $folder = $this->get($folderId);
+
+        if ($folder === null) {
+            return [];
+        }
+
+        $ids = [];
+
+        foreach ($this->folders->subtree($folder->path) as $row) {
+            array_push($ids, ...$this->orderedAttachmentIds((int) $row['id']));
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    /**
+     * Put files where they were dropped — tier 2 item 8.
+     *
+     * `$place` is `start`, `end`, or `before` / `after` the anchor file. The
+     * files keep the order they had among themselves. The folder is rewritten
+     * whole from the order it was showing, so the first move in a folder
+     * sorted by name keeps that name order with the files moved — and the
+     * folder becomes Custom, because that is the only order in which the
+     * arrangement just made is visible. The folder tree does the same on a
+     * drop.
+     *
+     * @param list<int|string> $attachmentIds
+     * @return int|WP_Error How many positions were written.
+     */
+    public function moveFiles(int $folderId, array $attachmentIds, string $place, ?int $anchorId = null): int|WP_Error
+    {
+        if ($this->folders->find($folderId) === null) {
+            return new WP_Error('folderfolio_folder_not_found', __('Folder not found.', 'folderfolio'));
+        }
+
+        if (!in_array($place, ['start', 'end', 'before', 'after'], true)) {
+            return new WP_Error(
+                'folderfolio_order_place',
+                __('Say where the files go: start, end, before or after a file.', 'folderfolio'),
+                ['status' => 400]
+            );
+        }
+
+        $ids = array_values(array_unique(array_map('intval', $attachmentIds)));
+        $current = $this->orderedAttachmentIds($folderId);
+
+        if ($ids === [] || array_diff($ids, $current) !== []) {
+            return new WP_Error(
+                'folderfolio_order_not_here',
+                __('Only files in this folder can be arranged in it. Reload the page and try again.', 'folderfolio'),
+                ['status' => 400]
+            );
+        }
+
+        $anchored = $place === 'before' || $place === 'after';
+
+        if ($anchored && ($anchorId === null || !in_array($anchorId, $current, true) || in_array($anchorId, $ids, true))) {
+            return new WP_Error(
+                'folderfolio_order_anchor',
+                __('The file they were dropped beside is not in this folder any more. Reload the page and try again.', 'folderfolio'),
+                ['status' => 400]
+            );
+        }
+
+        $permitted = $this->guardAttachments($ids);
+
+        if (is_wp_error($permitted)) {
+            return $permitted;
+        }
+
+        // In the order they already had, whatever order they were selected in.
+        $moving = array_values(array_intersect($current, $ids));
+        $rest = array_values(array_diff($current, $ids));
+
+        $at = match ($place) {
+            'start' => 0,
+            'end' => count($rest),
+            'before' => (int) array_search($anchorId, $rest, true),
+            'after' => (int) array_search($anchorId, $rest, true) + 1,
+        };
+
+        array_splice($rest, $at, 0, $moving);
+
+        return Transaction::run(function () use ($folderId, $rest): int|WP_Error {
+            $written = $this->assignments->writePositions($folderId, $rest);
+
+            if (is_wp_error($written)) {
+                return $written;
+            }
+
+            $sorted = $this->sorts->set($folderId, 'files', 'custom');
+
+            if (is_wp_error($sorted)) {
+                return $sorted;
+            }
+
+            return count($rest);
         });
     }
 

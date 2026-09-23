@@ -768,6 +768,111 @@
 }
 
 /**
+ * Move to start / Move to end — tier 2 item 8, Nick's option B.
+ *
+ * The keyboard's and the phone's way to arrange a folder, and the way to move
+ * a file further than a drag can reach (the grid loads 80 at a time). A row
+ * of its own under the count, because it acts on the folder being viewed and
+ * not on the folders listed below: the list is where files go, this is where
+ * they sit. Only in a folder, and only for Organise.
+ *
+ * Grid, not flex: the label takes what is left and truncates, and the two
+ * buttons keep their width — `minmax(0, 1fr)` is what lets a long folder name
+ * give way instead of pushing a button out of the panel.
+ */
+.folderfolio-flyout__arrange {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ff-line);
+}
+
+.folderfolio-flyout__arrange-label {
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--ff-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.folderfolio-flyout__place {
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--ff-field-line);
+  border-radius: 0;
+  background: var(--ff-field);
+  color: var(--ff-ink);
+  font-family: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.folderfolio-flyout__place:not(:disabled):hover {
+  background: var(--ff-hover);
+}
+
+.folderfolio-flyout__place:focus-visible {
+  outline: 2px solid var(--ff-sel);
+  outline-offset: -2px;
+}
+
+.folderfolio-flyout__place:disabled {
+  color: var(--ff-off);
+  cursor: default;
+}
+
+/**
+ * Core's "Drop files to upload" sheet, kept away from our own drags.
+ *
+ * The grid's uploader opens its full-page sheet on *any* dragover —
+ * wp-plupload.js binds `dragover` on its dropzone with no check that files
+ * are coming from the desktop (its comment: 'dragenter' is unreliable, so a
+ * limited 'dragover' stands in). A tile dragged towards a rail folder
+ * therefore raised a sheet over the whole page, rail included, and the drop
+ * landed on the uploader: nothing was filed. Found on 23 Sep driving the
+ * drag in Chromium for the file-order work; list mode has no such sheet.
+ *
+ * `body.folderfolio-dragging` is set only by drag.ts, for drags that start on
+ * a tile, a list row or a folder row — never for files from the desktop, so
+ * uploading by drop is untouched. `!important` because core shows the sheet
+ * with an inline `display: block`.
+ */
+body.folderfolio-dragging .uploader-window {
+  display: none !important;
+}
+
+/**
+ * The gap a dropped file will land in, between two tiles of the folder being
+ * viewed (apps/rail/file-order.ts). A 3px bar in the selection colour, the
+ * folder drag's insertion rule turned on its side. Drawn in the tile's own
+ * padding so nothing in the grid moves while the pointer does.
+ */
+.attachments-browser li.attachment.folderfolio-tile-drop--before::before,
+.attachments-browser li.attachment.folderfolio-tile-drop--after::after {
+  content: "";
+  position: absolute;
+  z-index: 3;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  /* --ff-drop, not --ff-sel: the tiles are core's and sit outside
+     .folderfolio, where --ff-sel is not declared. See _tokens.css. */
+  background: var(--ff-drop);
+  pointer-events: none;
+}
+
+.attachments-browser li.attachment.folderfolio-tile-drop--before::before {
+  left: 1px;
+}
+
+.attachments-browser li.attachment.folderfolio-tile-drop--after::after {
+  right: 1px;
+}
+
+/**
  * Add to / Move to — the verb, inside the panel that carries out the verb.
  *
  * A segmented pair rather than two loose buttons: they are alternatives, and

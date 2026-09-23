@@ -27,6 +27,24 @@ class AttachmentFolderRepository
     }
 
     /**
+     * Every write says it happened, and every read that is cached keys on it.
+     *
+     * Two readers depend on this. GalleryQuery caches a folder's ids under
+     * `wp_cache_get_last_changed('folderfolio')`, and its docblock said every
+     * write bumped it — none did, so with a persistent object cache a gallery
+     * never saw a file filed after its first render. And WP_Query (6.1+)
+     * caches a query's ids under the SQL and the *posts* last-changed, which
+     * a filing never touches: the library's folder view returned the ids it
+     * had before the write. MediaLibraryFilter now puts this value in the
+     * folder join's SQL, so a write here is a new key there. Found on 23 Sep
+     * by a test that arranged a folder twice in one request.
+     */
+    private function changed(): void
+    {
+        wp_cache_set_last_changed('folderfolio');
+    }
+
+    /**
      * Get attachment IDs assigned to a folder.
      *
      * @return list<int>
@@ -42,6 +60,98 @@ class AttachmentFolderRepository
                 )
             ) ?: []
         );
+    }
+
+    /**
+     * Where these files sit in this folder, for the ones filed there.
+     *
+     * @param list<int> $attachmentIds
+     * @return array<int, int> attachment id => sort_order
+     */
+    public function positionsIn(int $folderId, array $attachmentIds): array
+    {
+        if ($attachmentIds === []) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($attachmentIds), '%d'));
+
+        /** @var list<array{attachment_id: string, sort_order: string}> $rows */
+        $rows = $this->wpdb->get_results(
+            $this->wpdb->prepare(
+                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+                "SELECT attachment_id, sort_order FROM {$this->table()} WHERE folder_id = %d AND attachment_id IN ($placeholders)",
+                $folderId,
+                ...$attachmentIds
+            ),
+            ARRAY_A
+        ) ?: [];
+
+        $out = [];
+
+        foreach ($rows as $row) {
+            $out[(int) $row['attachment_id']] = (int) $row['sort_order'];
+        }
+
+        return $out;
+    }
+
+    /** The lowest position in a folder, or null when it holds nothing. */
+    public function firstPosition(int $folderId): ?int
+    {
+        $min = $this->wpdb->get_var(
+            $this->wpdb->prepare(
+                "SELECT MIN(sort_order) FROM {$this->table()} WHERE folder_id = %d",
+                $folderId
+            )
+        );
+
+        return $min === null ? null : (int) $min;
+    }
+
+    /**
+     * Write each file's position in a folder, 0 upwards in the order given.
+     *
+     * One UPDATE per 500 files with a CASE, not one per file: a folder is
+     * rewritten whole on every move, and on the 1,000-file case that is the
+     * difference between two statements and a thousand.
+     *
+     * @param list<int> $attachmentIds The folder's files, in their new order.
+     */
+    public function writePositions(int $folderId, array $attachmentIds): bool|WP_Error
+    {
+        foreach (array_chunk($attachmentIds, 500, true) as $chunk) {
+            $cases = [];
+            $args = [];
+
+            foreach ($chunk as $position => $attachmentId) {
+                $cases[] = 'WHEN %d THEN %d';
+                $args[] = (int) $attachmentId;
+                $args[] = (int) $position;
+            }
+
+            $in = implode(',', array_fill(0, count($chunk), '%d'));
+
+            $result = $this->wpdb->query(
+                $this->wpdb->prepare(
+                    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+                    "UPDATE {$this->table()} SET sort_order = CASE attachment_id " . implode(' ', $cases)
+                        . " ELSE sort_order END WHERE folder_id = %d AND attachment_id IN ($in)",
+                    ...[...$args, $folderId, ...array_map('intval', array_values($chunk))]
+                )
+            );
+
+            if ($result === false) {
+                return new WP_Error(
+                    'folderfolio_order_failed',
+                    __('The new order could not be saved.', 'folderfolio')
+                );
+            }
+        }
+
+        $this->changed();
+
+        return true;
     }
 
     /**
@@ -139,6 +249,8 @@ class AttachmentFolderRepository
             return new WP_Error('folderfolio_assignment_failed', __('Unable to assign media to the folder.', 'folderfolio'));
         }
 
+        $this->changed();
+
         return true;
     }
 
@@ -152,6 +264,8 @@ class AttachmentFolderRepository
         if ($result === false) {
             return new WP_Error('folderfolio_unassignment_failed', __('Unable to remove media from the folder.', 'folderfolio'));
         }
+
+        $this->changed();
 
         return true;
     }
@@ -174,6 +288,8 @@ class AttachmentFolderRepository
             );
         }
 
+        $this->changed();
+
         return true;
     }
 
@@ -184,6 +300,8 @@ class AttachmentFolderRepository
         if ($result === false) {
             return new WP_Error('folderfolio_assignment_cleanup_failed', __('Unable to remove folder assignments.', 'folderfolio'));
         }
+
+        $this->changed();
 
         return true;
     }
@@ -399,6 +517,8 @@ class AttachmentFolderRepository
             );
         }
 
+        $this->changed();
+
         return true;
     }
 
@@ -442,6 +562,8 @@ class AttachmentFolderRepository
             );
         }
 
+        $this->changed();
+
         return true;
     }
 
@@ -473,6 +595,8 @@ class AttachmentFolderRepository
                 $importRun
             )
         );
+
+        $this->changed();
 
         return (int) $deleted;
     }
@@ -513,6 +637,8 @@ class AttachmentFolderRepository
                  SELECT 1 FROM {$this->wpdb->posts} p WHERE p.ID = {$table}.attachment_id
              )"
         );
+
+        $this->changed();
 
         return $removed;
     }

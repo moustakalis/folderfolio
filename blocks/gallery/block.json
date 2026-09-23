@@ -17,7 +17,7 @@
         "layout": { "type": "string", "default": "grid", "enum": ["grid", "masonry"] },
         "columns": { "type": "number", "default": 3 },
         "gap": { "type": "number", "default": 16 },
-        "orderBy": { "type": "string", "default": "date", "enum": ["date", "title", "menu_order", "rand"] },
+        "orderBy": { "type": "string", "default": "date", "enum": ["date", "title", "menu_order", "rand", "folder"] },
         "order": { "type": "string", "default": "desc", "enum": ["asc", "desc"] },
         "limit": { "type": "number", "default": 0 },
         "linkTo": { "type": "string", "default": "none", "enum": ["none", "media", "attachment"] },

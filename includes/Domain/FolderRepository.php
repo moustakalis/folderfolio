@@ -296,6 +296,8 @@ class FolderRepository
             ['id' => $id]
         );
 
+        wp_cache_set_last_changed('folderfolio');
+
         return $id;
     }
 
@@ -329,6 +331,8 @@ class FolderRepository
                 __('Unable to update the folder.', 'folderfolio')
             );
         }
+
+        wp_cache_set_last_changed('folderfolio');
 
         return true;
     }
@@ -397,6 +401,8 @@ class FolderRepository
         // number — and whether one did depends on what the order happened to
         // be beforehand. Measured live: arranging three folders that were all
         // still at the default 0 reported 2.
+        wp_cache_set_last_changed('folderfolio');
+
         return count($idsInOrder);
     }
 
@@ -433,6 +439,8 @@ class FolderRepository
             );
         }
 
+        wp_cache_set_last_changed('folderfolio');
+
         return true;
     }
 
@@ -457,6 +465,8 @@ class FolderRepository
             );
         }
 
+        wp_cache_set_last_changed('folderfolio');
+
         return (int) $deleted;
     }
 
@@ -478,6 +488,8 @@ class FolderRepository
                 __('Unable to delete the folder.', 'folderfolio')
             );
         }
+
+        wp_cache_set_last_changed('folderfolio');
 
         return true;
     }

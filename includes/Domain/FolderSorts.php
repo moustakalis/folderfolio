@@ -59,14 +59,15 @@ final class FolderSorts
     public const FOLDER_ORDERS = Settings::SORTS;
 
     /**
-     * What a folder's files can be ordered by: the same four, without Custom.
+     * What a folder's files can be ordered by: the same five as its folders.
      *
-     * `folderfolio_folder_attachments.sort_order` exists and is already
-     * `ORDER BY`'d, so manual file order is cheap when tier 2 reaches it —
-     * but until something can write it, offering the option would be an
-     * option that cannot be chosen.
+     * Custom since tier 2 item 8: each file's position in this folder, the
+     * assignment row's `sort_order`, written by FolderService::moveFiles().
+     * It is the one order here WP_Query cannot name, so it does not go
+     * through queryArgs() — MediaLibraryFilter turns it into an ORDER BY on
+     * the join it already adds, which exists only when a folder is chosen.
      */
-    public const FILE_ORDERS = ['name-asc', 'name-desc', 'newest', 'oldest'];
+    public const FILE_ORDERS = ['name-asc', 'name-desc', 'newest', 'oldest', 'custom'];
 
     private wpdb $wpdb;
 
@@ -198,6 +199,10 @@ final class FolderSorts
                 )
             );
 
+            // A gallery in Folder order keys on this; see
+            // AttachmentFolderRepository::changed().
+            wp_cache_set_last_changed('folderfolio');
+
             return true;
         }
 
@@ -223,6 +228,10 @@ final class FolderSorts
             );
         }
 
+        // A gallery in Folder order keys on this; see
+        // AttachmentFolderRepository::changed().
+        wp_cache_set_last_changed('folderfolio');
+
         return true;
     }
 
@@ -234,6 +243,10 @@ final class FolderSorts
      * the readme's one claim a competitor cannot match is defended by a
      * negative control asserting the clauses array is byte-identical when no
      * folder is chosen.
+     *
+     * Custom is not one of them and is never passed here; it would read as
+     * the default, newest first. MediaLibraryFilter::ordering() is the caller
+     * that knows the difference.
      *
      * @return array{orderby: string, order: string}
      */

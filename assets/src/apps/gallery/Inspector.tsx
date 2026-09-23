@@ -83,6 +83,10 @@ export function Inspector({ attributes, setAttributes }: InspectorProps) {
                     label={t('orderBy', 'Order by')}
                     value={`${attributes.orderBy}:${attributes.order}`}
                     options={[
+                        // First: the order somebody arranged by hand in the
+                        // library is the one a gallery of that folder most
+                        // often means (tier 2 item 8).
+                        { label: t('orderFolder', 'Folder order'), value: 'folder:asc' },
                         { label: t('orderNewest', 'Newest first'), value: 'date:desc' },
                         { label: t('orderOldest', 'Oldest first'), value: 'date:asc' },
                         { label: t('orderTitle', 'Title, A to Z'), value: 'title:asc' },

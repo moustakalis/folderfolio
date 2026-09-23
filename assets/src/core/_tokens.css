@@ -66,6 +66,15 @@
    * screenshot at 0.66 scale is not able to tell #f0f0f0 from #fff.
    */
   --ff-panel: #fff;
+
+  /*
+   * The file-order drop bar, drawn on core's own grid tiles — outside
+   * .folderfolio, so it cannot read --ff-sel, and on the default Fresh scheme
+   * core declares no --wp-admin-theme-color either: without the fallback the
+   * bar computed to transparent (measured, 23 Sep). The same value --ff-sel
+   * resolves to, declared where the tiles can see it.
+   */
+  --ff-drop: var(--wp-admin-theme-color, #007cba);
 }
 
 .folderfolio {

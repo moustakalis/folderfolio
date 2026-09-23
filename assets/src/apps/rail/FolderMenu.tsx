@@ -59,13 +59,13 @@ import { t } from '../../core/api';
 type Scope = 'folders' | 'files';
 
 /**
- * What a folder's files can be ordered by.
+ * What a folder's files can be ordered by: the same five as its folders.
  *
- * The same four, without Custom — `FolderSorts::FILE_ORDERS` says why on the
- * server, and this is the client's half of that agreement: manual file order
- * is tier 2, and an option that cannot be chosen is an advertisement.
+ * Custom joined on 23 Sep (tier 2 item 8) — it is each file's position in the
+ * folder, set by a drag between tiles or Move to start / end, and the drag
+ * chooses it for you. Kept as its own list so the two steps can part again.
  */
-const FILE_ORDERS: readonly SortOrder[] = ['name-asc', 'name-desc', 'newest', 'oldest'];
+const FILE_ORDERS: readonly SortOrder[] = ['name-asc', 'name-desc', 'newest', 'oldest', 'custom'];
 
 interface FolderMenuProps {
     folder: FolderNode;
