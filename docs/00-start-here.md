@@ -1704,10 +1704,35 @@ Board `KZsHhrffzKQYqUjTvdFszK`; Nick took all ten recommendations. This is
 - **`deleted_post`** removes a deleted post's rows (skipped before the schema
   exists, so the test bootstrap prints no database error).
 
-**Not done yet:** the coexistence pass (FileBird, CatFolders and Premio all
-do post-type folders — ask Nick before activating any), a visual sweep of the
-Posts screen at every width (the Comet window was backgrounded), Greek
-strings for the new sentences, `docs/api/README.md`.
+**Leftovers closed 24 Sep (`cad65cc`):**
+
+- **A list table beside the rail folds into core's narrow shape by its own
+  width** — `lib/list-width.ts` sets `#posts-filter.folderfolio-list--narrow`
+  below 700px, and `_content.css` carries core's 782 rules under that class.
+  Measured: at a 1000px window the Posts table was 493px with seven columns
+  and Title / Folders one letter wide; with a rival's rail as well it is
+  ~680px at 1502. **A class, not a container query**: `container-type` made
+  the form its own formatting context, which stepped past core's floated
+  `.subsubsub` and moved the table 134px right at 1440. The label rule skips
+  the primary cell — a `<td>` before WordPress 7.1, a `<th>` since.
+- **A post list's rows are not made draggable**; the title link is the
+  handle. A draggable row blocked text selection and would have started our
+  drag from Premio's own handle.
+- **The facade names a tree** (`createFolder(…, $objectType)`, a parent's
+  type wins; `findFolderByPath`, `getOrCreateByPath`, `getTree` take one), and
+  `getTree($rootId)` finds a root in any tree. `docs/api/README.md` rewritten
+  for the REST table, the roles matrix and the real filter names.
+- **Coexistence on `edit.php`, measured on the dev site with Nick's OK** —
+  Premio (on for Posts / Pages / Media by default) and FileBird (Pages ticked
+  under its *Which post types*, then unticked). Both rails render beside ours;
+  our in-place filter, Quick Edit and the crumb work; a rival's own folder
+  filter **composes** with ours (FileBird submits the form, which carries our
+  select; Premio keeps our parameter) and the crumb still names ours.
+  **Found and not fixed — Nick's call:** a rival's per-row drag does not
+  survive our in-place filter. FileBird makes each row a jQuery UI draggable
+  and Premio its `.wcp-move-file` handle, once, on load; the rows we swap in
+  are new elements. A reload restores both. CatFolders and Real Media Library
+  touch media only (read from source).
 
 ### Stress tests
 
@@ -1723,7 +1748,7 @@ with a reason (`5f9ca0d`); the attachment guard did a query per file and a
 `tree()`, a 1,000-sibling reorder and the export need nothing. Integration is
 89 / 89 since `cfba873` (76 at the stress tests — an earlier "75" counted a
 stray copy of `JsonSourceTest` that existed only in the rig), **98 / 98 at
-`581ea30`** (FolderLocksTest), 99 at `04c4c7b`, 105 at `a6712eb`, **113 at `cc05f48`**; e2e 111 / 111; unit 167; JS unit 61.
+`581ea30`** (FolderLocksTest), 99 at `04c4c7b`, 105 at `a6712eb`, 113 at `cc05f48`, **114 at `cad65cc`**; e2e 112 / 112; unit 167; JS unit 61.
 
 ### Running the integration suite
 
