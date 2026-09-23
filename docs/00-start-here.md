@@ -1662,6 +1662,53 @@ stack is 170000 in `_frame.css`.
 **Not verified:** macOS Archive Utility and Windows Explorer (unzip, 7-Zip,
 Python, bsdtar and libzip all read it).
 
+### Folders for posts, pages and post types (tier 3 item 12, `cc05f48`)
+
+Board `KZsHhrffzKQYqUjTvdFszK`; Nick took all ten recommendations. This is
+12a–12f; 13 and 14 follow.
+
+- **One tree per object type.** `folderfolio_folders.object_type` was always
+  there; `Support\PostTypes` now says which types have folders — media
+  always, Posts and Pages by default, anything else ticked under **Folders
+  for** (`Settings::post_types`), a type whose plugin is off is kept but not
+  enabled — plus each type's base capability (`upload_files`, or the type's
+  `edit_posts`: `Capabilities` rule 1) and the statuses that count (media
+  `inherit`/`private`; others what `edit.php` calls *All*).
+- **REST answers for the folder's own type.** `FolderController::objectType()`
+  reads the route's folder, then `folder_id`, then `parent_id`, then the first
+  of `ids`; only a request that names no folder reads `object_type` (the tree,
+  `/counts`, a folder or list made at the top). Every permission callback asks
+  about that type, and every write returns that type's tree — a delete asks
+  before the folder is gone.
+- **Nothing crosses between trees.** `folderfolio_wrong_type` from create,
+  move and `FolderBulk::plan()`; paste and a delete's reassignment refuse the
+  other type's folder; `guardAttachments()` takes the folder's type.
+- **Counts join `wp_posts` only for post types** — media's queries are
+  byte-for-byte what they were. `libraryCounts($type)` gives the fixed rows.
+- **edit.php**: `Rail::screenType()` decides for the rail, both bundles'
+  config (`Rail::typeConfig()`), the column (`FoldersColumn`, hooked on
+  `load-edit.php`), the select (`restrict_manage_posts` with `top`) and the
+  list filter. The media picker's bundle stays off a list screen with a rail
+  (two writers of `window.folderFolio`). Rows are made draggable. The ⋮ hides
+  Download as ZIP, Copy with files, Sort inside › Files; the startup toggle
+  and "Move to start / end" are media's. Post screens say "items"
+  (`Rail::itemStrings()`).
+- **`#the-list` keeps its element** — `refreshListTable()` swaps its rows,
+  because `inline-edit-post.js` binds Quick Edit to that element. The media
+  list has no Quick Edit, which is why swapping the element had never
+  mattered; `post-folders.spec.ts` fails without it.
+- **The block editor**: `Admin\PostFolders` + `apps/post-folders.tsx`, a
+  document-sidebar panel of checkboxes with its own global
+  (`folderFolioPost`), many-to-many. **Add New from a folder**: the rail adds
+  `folderfolio_folder` to *Add New*, and `fileNewPost()` files the auto-draft.
+- **`deleted_post`** removes a deleted post's rows (skipped before the schema
+  exists, so the test bootstrap prints no database error).
+
+**Not done yet:** the coexistence pass (FileBird, CatFolders and Premio all
+do post-type folders — ask Nick before activating any), a visual sweep of the
+Posts screen at every width (the Comet window was backgrounded), Greek
+strings for the new sentences, `docs/api/README.md`.
+
 ### Stress tests
 
 `tests/stress/import.php` and `tests/stress/ops.php`, run with `wp
@@ -1676,7 +1723,7 @@ with a reason (`5f9ca0d`); the attachment guard did a query per file and a
 `tree()`, a 1,000-sibling reorder and the export need nothing. Integration is
 89 / 89 since `cfba873` (76 at the stress tests — an earlier "75" counted a
 stray copy of `JsonSourceTest` that existed only in the rig), **98 / 98 at
-`581ea30`** (FolderLocksTest), 99 at `04c4c7b`, 105 at `a6712eb`; e2e 106 / 106; unit 164; JS unit 61.
+`581ea30`** (FolderLocksTest), 99 at `04c4c7b`, 105 at `a6712eb`, **113 at `cc05f48`**; e2e 111 / 111; unit 167; JS unit 61.
 
 ### Running the integration suite
 
