@@ -148,6 +148,9 @@ final class MediaModalIntegration
                 'assign' => Capabilities::can('assign'),
                 'lock' => Capabilities::can('lock'),
             ],
+            // The person's stars, so the picker's ⋮ shows Star pressed where it
+            // is — the same key the rail's writer carries.
+            'stars' => RailPreferences::forUser(get_current_user_id())['stars'],
             /*
              * The same key the rail's own writer carries, for the reason that
              * writer states: whichever bundle is enqueued first wins and the

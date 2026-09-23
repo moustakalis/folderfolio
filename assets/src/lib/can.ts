@@ -12,7 +12,15 @@
  * failure than showing a button that the server will refuse.
  */
 
-export type Ability = 'create' | 'rename' | 'delete' | 'assign' | 'lock';
+export type Ability = 'create' | 'rename' | 'delete' | 'assign' | 'lock' | 'star';
+
+/*
+ * `star` is not a column in the roles matrix: everyone who can see folders can
+ * star one, so the server never sends it and it defaults to true. It is here
+ * so that a bundle that offers less can withhold it like any other — the
+ * gallery inspector's read-only tree has no ⋮ because `restrictAbilities()`
+ * leaves it nothing, star included.
+ */
 
 /**
  * Abilities this bundle has chosen not to offer, whatever the user may do.
@@ -27,7 +35,7 @@ export type Ability = 'create' | 'rename' | 'delete' | 'assign' | 'lock';
 let withheld: ReadonlySet<Ability> = new Set();
 
 export function restrictAbilities(allowed: readonly Ability[]): void {
-    const all: Ability[] = ['create', 'rename', 'delete', 'assign', 'lock'];
+    const all: Ability[] = ['create', 'rename', 'delete', 'assign', 'lock', 'star'];
 
     withheld = new Set(all.filter((ability) => !allowed.includes(ability)));
 }
@@ -37,5 +45,18 @@ export function can(ability: Ability): boolean {
         return false;
     }
 
-    return window.folderFolio?.can?.[ability] ?? true;
+    return (window.folderFolio?.can as Partial<Record<Ability, boolean>> | undefined)?.[ability] ?? true;
+}
+
+/**
+ * Whether this folder menu has anything in it for this person — the ⋮ on the
+ * selected row and the narrow Folder actions control ask the same question.
+ *
+ * Every rail user can star, so in the library this is true for every role
+ * (Nick, 23 Sep: the menu is for everyone, each action gated inside it, and
+ * an action the role does not have is hidden rather than greyed). It is false
+ * only where a bundle has withheld everything, as the gallery inspector does.
+ */
+export function hasFolderMenu(): boolean {
+    return can('rename') || can('delete') || can('star');
 }

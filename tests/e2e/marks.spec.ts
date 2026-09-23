@@ -112,10 +112,14 @@ test.describe('lock, pin and star', () => {
         await expect(page.locator('.folderfolio-rail__starred')).toHaveCount(0);
 
         await openMenu(page, 'Bravo');
+        // The group is drawn before the write lands (optimistic), so wait for
+        // the write itself before reloading — or the reload races it.
+        const written = page.waitForResponse((r) => r.url().includes(`/folders/${f.bravo.id}/star`));
         await page.getByRole('menuitemcheckbox', { name: 'Star' }).click();
 
         const group = page.getByRole('group', { name: 'Starred' });
         await expect(group).toContainText('Bravo');
+        expect((await written).status()).toBe(200);
 
         await page.reload();
         await expect(page.getByRole('group', { name: 'Starred' })).toContainText('Bravo');
@@ -171,5 +175,43 @@ test.describe('lock, pin and star', () => {
         await page.locator('.folderfolio-tree .folderfolio-row', { hasText: 'Bravo inner' }).focus();
         await page.keyboard.press('F2');
         await expect(page.locator('.folderfolio-row__input')).toHaveCount(0);
+    });
+
+    /*
+     * Nick, 23 Sep: the ⋮ is for every role, and each action is gated inside
+     * it — an action the role does not hold is hidden, not greyed. An Author
+     * (create + assign, the default) used to get no ⋮ at all, so could not
+     * star. The config is narrowed the way the server narrows it for an
+     * Author; the rig's one user is an administrator.
+     */
+    test('an Author has the ⋮, with Star and nothing they cannot do', async ({ page }) => {
+        const f = await seed(page);
+
+        await page.goto(`/wp-admin/upload.php?mode=grid&folderfolio_folder=${f.parent.id}`);
+        await waitForTree(page, 'Marked');
+        await expand(page, 'Marked');
+
+        await page.evaluate(() => {
+            const config = (window as unknown as { folderFolio: { can: Record<string, boolean> } }).folderFolio;
+            config.can = { create: true, rename: false, delete: false, assign: true, lock: false };
+        });
+
+        await openMenu(page, 'Charlie');
+
+        const menu = page.locator('.folderfolio-menu--row');
+        await expect(menu.getByRole('menuitemcheckbox', { name: 'Star' })).toBeVisible();
+        // Hidden, not greyed: nothing else is in the menu at all.
+        await expect(menu.locator('[role^="menuitem"]')).toHaveCount(1);
+
+        await menu.getByRole('menuitemcheckbox', { name: 'Star' }).click();
+        await expect(page.getByRole('group', { name: 'Starred' })).toContainText('Charlie');
+
+        // Written through the one-folder route, so the server has it.
+        const stars = await page.evaluate(async () => {
+            const r = await window.wp.apiFetch({ path: '/folderfolio/v1/preferences' });
+
+            return r.data.rail.stars as number[];
+        });
+        expect(stars).toEqual([f.charlie.id]);
     });
 });

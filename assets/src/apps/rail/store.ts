@@ -294,12 +294,19 @@ export const useRail = create<RailState>((set) => ({
                 ? previous.filter((star) => star !== id)
                 : [...previous, id];
 
-            void apiFetch('/preferences', { method: 'POST', data: { rail: { stars } } }).catch(
-                (error: unknown) => {
+            // One folder, not the list: this bundle's copy may be stale (a
+            // second tab), and until 23 Sep the media picker's was never
+            // seeded at all — sending the list from there replaced every star
+            // with the one pressed. The server answers with the whole list.
+            void apiFetch<{ data: { stars: number[] } }>(`/folders/${id}/star`, {
+                method: 'POST',
+                data: { starred: !previous.includes(id) },
+            })
+                .then((response) => useRail.setState({ stars: response.data.stars }))
+                .catch((error: unknown) => {
                     useRail.setState({ stars: previous });
                     useRail.getState().showNotice(errorMessage(error));
-                }
-            );
+                });
 
             return { stars };
         }),

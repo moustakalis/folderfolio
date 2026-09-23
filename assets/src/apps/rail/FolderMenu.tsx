@@ -202,7 +202,8 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
      * whether pressed or not — the rule Start here set — and aria-pressed,
      * the filled glyph and the accent wash carry the state.
      */
-    const marks = (
+    // Nothing to show is no strip at all, not an empty band with padding.
+    const marks = !organise && !can('star') && !can('lock') ? null : (
         <div className="folderfolio-marks" role="group" aria-label={t('folderMarks', 'Pin, star and lock')}>
             {organise ? (
                 <button
@@ -218,19 +219,21 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
                 </button>
             ) : null}
 
-            <button
-                type="button"
-                role="menuitemcheckbox"
-                aria-checked={starred}
-                className="folderfolio-marks__toggle"
-                onClick={() => {
-                    toggleStar(folder.id);
-                    onClose();
-                }}
-            >
-                <StarIcon size={13} filled={starred} />
-                {t('star', 'Star')}
-            </button>
+            {can('star') ? (
+                <button
+                    type="button"
+                    role="menuitemcheckbox"
+                    aria-checked={starred}
+                    className="folderfolio-marks__toggle"
+                    onClick={() => {
+                        toggleStar(folder.id);
+                        onClose();
+                    }}
+                >
+                    <StarIcon size={13} filled={starred} />
+                    {t('star', 'Star')}
+                </button>
+            ) : null}
 
             {can('lock') ? (
                 <button
@@ -595,8 +598,11 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
             {/*
               Delete last and behind its own rule, and gated on `delete`
               rather than on `rename` — the two abilities are separate columns
-              in the roles matrix and a role can hold either one alone. A
-              reader with neither never opens this menu: the ⋮ is not drawn.
+              in the roles matrix and a role can hold either one alone. Since
+              23 Sep every rail user has this menu (anyone can star), and an
+              action the role does not hold is hidden, not greyed — grey here
+              means "not right now" (a lock, the end of the list), never "not
+              for you". Nick's call.
             */}
             {can('delete') ? (
                 <>

@@ -155,6 +155,36 @@ final class RailPreferences
     public const MAX_STARS = 100;
 
     /**
+     * Star or unstar one folder for one person, and return their stars.
+     *
+     * One id rather than the list, and read-modify-write here rather than in
+     * the browser: the list lives in whichever bundle drew the menu, and the
+     * media picker's copy of it was never seeded — a Star pressed there would
+     * have replaced every star the person had with the one they pressed. A
+     * second tab has the same stale copy. The server's is the one to change.
+     *
+     * A new star goes last, so the Starred group grows at its foot. At the cap
+     * the oldest is dropped rather than the new one refused: the press is the
+     * thing the person meant.
+     *
+     * @return list<int>
+     */
+    public static function star(int $userId, int $folderId, bool $on): array
+    {
+        $prefs = self::forUser($userId);
+        $stars = array_values(array_filter($prefs['stars'], static fn (int $id): bool => $id !== $folderId));
+
+        if ($on) {
+            $stars[] = $folderId;
+            $stars = array_slice($stars, -self::MAX_STARS);
+        }
+
+        $prefs['stars'] = $stars;
+
+        return self::save($userId, $prefs)['stars'];
+    }
+
+    /**
      * @param mixed $value
      */
     public static function clampWidth($value): int

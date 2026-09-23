@@ -21,7 +21,7 @@ import { isBlocked } from './locks';
 import type { FolderNode } from './queries';
 import { useDropTarget } from './useDropTarget';
 import { useRail } from './store';
-import { can } from '../../lib/can';
+import { can, hasFolderMenu } from '../../lib/can';
 import { t } from '../../core/api';
 import { swatchStyle } from '../../lib/swatches';
 
@@ -108,7 +108,7 @@ export function Row({
      * `menuOpen` is local state on purpose. Held in `Tree` it would re-render
      * the tree and re-create every Row — the 126ms path above.
      */
-    const canOpenMenu = can('rename') || can('delete');
+    const canOpenMenu = hasFolderMenu();
 
     // The tree is a single tab stop, so focus is moved rather than tabbed to.
     // Only ever when this row is the focused one *and* focus is already inside

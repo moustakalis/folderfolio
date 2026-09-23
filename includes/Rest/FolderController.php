@@ -8,6 +8,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+use FolderFolio\Admin\RailPreferences;
 use FolderFolio\Domain\AttachmentFolderRepository;
 use FolderFolio\Domain\Folder;
 use FolderFolio\Domain\FolderBulk;
@@ -216,6 +217,16 @@ class FolderController
             'callback' => [$this, 'lock'],
             'permission_callback' => [$this, 'canLockFolders'],
             'args' => ['locked' => ['type' => 'boolean', 'required' => true]],
+        ]);
+
+        // Star — the person's own, so no ability beyond seeing folders at
+        // all. One folder at a time; the list is the server's to change
+        // (RailPreferences::star() says why).
+        register_rest_route($ns, '/folders/(?P<id>\\d+)/star', [
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => [$this, 'star'],
+            'permission_callback' => [$this, 'canUseFolders'],
+            'args' => ['starred' => ['type' => 'boolean', 'required' => true]],
         ]);
 
         register_rest_route($ns, '/folders/(?P<id>\\d+)/pin', [
@@ -584,6 +595,24 @@ class FolderController
             $this->folders->mark((int) $request['id'], FolderLocks::PINNED, (bool) $request->get_param('pinned')),
             200,
             fn (): array => ['tree' => $this->folders->tree()]
+        );
+    }
+
+    public function star(WP_REST_Request $request): WP_REST_Response
+    {
+        $id = (int) $request['id'];
+        $on = (bool) $request->get_param('starred');
+
+        // Unstarring a folder that has since gone is still allowed: it is how
+        // a stale star leaves the list.
+        $result = $on && $this->folders->get($id) === null
+            ? new WP_Error('folderfolio_folder_not_found', __('Folder not found.', 'folderfolio'))
+            : true;
+
+        return $this->result(
+            $result,
+            200,
+            fn (): array => ['stars' => RailPreferences::star(get_current_user_id(), $id, $on)]
         );
     }
 

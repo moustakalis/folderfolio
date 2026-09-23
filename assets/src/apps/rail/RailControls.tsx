@@ -43,7 +43,7 @@ import { Menu } from './Menu';
 import type { FolderNode } from './queries';
 import { Search } from './Search';
 import { SORT_LABELS, sortTree, useRail } from './store';
-import { can } from '../../lib/can';
+import { can, hasFolderMenu } from '../../lib/can';
 import { useIsNarrow } from '../../lib/narrow';
 import { t } from '../../core/api';
 
@@ -68,12 +68,11 @@ export function RailControls({
     // Only a real folder has a menu. All media and Unassigned are selections
     // but not folders, which is exactly the case a disabled state is for.
     //
-    // The ability is `rename` OR `delete`, the same pair the row's ⋮ asks:
-    // they are separate columns in the roles matrix and a role can hold
-    // either one alone, so a role with neither gets no menu rather than an
-    // empty one.
+    // Whether there is anything in it is `hasFolderMenu()`, the same question
+    // the row's ⋮ asks. Since 23 Sep that is every rail user — anyone can
+    // star — and each action inside is gated on its own ability.
     const actable = selected !== null;
-    const canOpenMenu = can('rename') || can('delete');
+    const canOpenMenu = hasFolderMenu();
 
     // Sorted here as well as in each renderer, and deliberately: Move up and
     // Move down step through the order on screen, and the two renderers each

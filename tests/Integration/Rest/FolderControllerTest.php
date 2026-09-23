@@ -168,4 +168,43 @@ class FolderControllerTest extends WP_UnitTestCase
         // when files are asked for.
         $this->assertSame(201, $this->post("/folders/{$id}/duplicate", ['with_files' => false]));
     }
+
+    /**
+     * @test
+     *
+     * Star is everyone's who can see folders — an Author, with no Organise
+     * and no Delete, stars — and it changes one id on the server's list,
+     * never the list a bundle happens to hold. The media picker's copy was
+     * never seeded, and sending it replaced every star with the one pressed.
+     */
+    public function star_is_one_folder_at_a_time_and_needs_no_ability(): void
+    {
+        $a = $this->folder('Alpha');
+        $b = $this->folder('Bravo');
+
+        wp_set_current_user($this->factory->user->create(['role' => 'author']));
+
+        $star = function (int $id, bool $on): array {
+            $request = new WP_REST_Request('POST', "/folderfolio/v1/folders/{$id}/star");
+            $request->set_param('starred', $on);
+            $response = rest_do_request($request);
+
+            return [$response->get_status(), $response->get_data()['data']['stars'] ?? null];
+        };
+
+        $this->assertSame([200, [$a]], $star($a, true));
+        $this->assertSame([200, [$a, $b]], $star($b, true));
+        // Again is no duplicate.
+        $this->assertSame([200, [$a, $b]], $star($b, true));
+        $this->assertSame([200, [$b]], $star($a, false));
+
+        // A folder that is not there cannot be starred, and can be unstarred —
+        // which is how a stale star leaves the list.
+        $this->assertSame(400, $star(999999, true)[0]);
+        $this->assertSame([200, [$b]], $star(999999, false));
+
+        // Someone who cannot see folders at all cannot star.
+        wp_set_current_user($this->factory->user->create(['role' => 'subscriber']));
+        $this->assertSame(403, $star($a, true)[0]);
+    }
 }
