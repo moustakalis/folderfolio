@@ -26,6 +26,15 @@ async function mediaIds(page: Page): Promise<number[]> {
     );
 }
 
+/** The left edge of a row's icon, against All media's — a group row is drawn like a fixed row. */
+async function iconLefts(page: Page, rowSelector: string): Promise<[number, number]> {
+    return page.evaluate((selector) => {
+        const left = (s: string) => Math.round(document.querySelector(s)!.getBoundingClientRect().left);
+
+        return [left('.folderfolio-rail__fixed .folderfolio-row__icon'), left(`${selector} .folderfolio-row__icon`)];
+    }, rowSelector) as Promise<[number, number]>;
+}
+
 const tiles = (page: Page) =>
     page.$$eval('.attachments-browser li.attachment[data-id]', (els) => els.map((el) => Number((el as HTMLElement).dataset.id)).sort());
 
@@ -71,6 +80,11 @@ test.describe('smart folders', () => {
             const smartId = new URL(page.url()).searchParams.get('folderfolio_smart');
             expect(smartId).not.toBeNull();
             await expect(page.locator('.folderfolio-crumbs')).toContainText('Unfiled images');
+
+            // Drawn like All media above it: the icon on the same line (Nick,
+            // 24 Sep — the group's list had no inset and sat 12px left).
+            const [fixedIcon, smartIcon] = await iconLefts(page, '.folderfolio-rail__smart-row');
+            expect(smartIcon).toBe(fixedIcon);
 
             // Not a drop target: nothing in it says it takes a drop.
             await expect(row).not.toHaveAttribute('data-folderfolio-folder', /.*/);

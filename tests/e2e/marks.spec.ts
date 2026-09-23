@@ -124,6 +124,14 @@ test.describe('lock, pin and star', () => {
         await page.reload();
         await expect(page.getByRole('group', { name: 'Starred' })).toContainText('Bravo');
 
+        // A shortcut is drawn like All media: its icon on the same line.
+        const [fixedIcon, starIcon] = await page.evaluate(() =>
+            ['.folderfolio-rail__fixed .folderfolio-row__icon', '.folderfolio-rail__starred-row .folderfolio-row__icon'].map((s) =>
+                Math.round(document.querySelector(s)!.getBoundingClientRect().left)
+            )
+        );
+        expect(starIcon).toBe(fixedIcon);
+
         // Choosing it filters to it.
         await page.getByRole('group', { name: 'Starred' }).getByRole('button').first().click();
         await expect(page).toHaveURL(new RegExp(`folderfolio_folder=${f.bravo.id}`));

@@ -490,7 +490,9 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
-  padding-inline-end: 10px;
+  /* The + stands over the selected row's pencil and the counts, which end
+     at 288px: the list's 12px inset plus the row's own 8px. */
+  padding-inline-end: 20px;
 }
 
 .folderfolio-rail__smart-add,
@@ -768,7 +770,9 @@
 
 .folderfolio-rail__starred-label {
   margin: 0;
-  padding: 8px 14px 2px;
+  /* Its text on the rows' icon line: 12px of the fixed block's inset plus
+     the row's own 8px. */
+  padding: 8px 20px 2px;
   font-size: 11px;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -779,6 +783,14 @@
   display: grid;
   max-height: calc(var(--ff-row-h) * 5);
   overflow-y: auto;
+
+  /*
+   * The same inset as `.folderfolio-rail__fixed`, so a Starred or Smart row
+   * is drawn exactly like All media above it — icon at 20px, count ending at
+   * 288px in a 310px rail. Without it the rows started at the rail's edge and
+   * every icon, name and count sat 12px left of All media's (Nick, 24 Sep).
+   */
+  padding-inline: 12px;
 }
 
 .folderfolio-rail__starred-parent {
