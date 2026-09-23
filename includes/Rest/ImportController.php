@@ -203,7 +203,11 @@ class ImportController
         }
 
         /** @var array<string, mixed> $document */
-        JsonSource::store($document);
+        if (!JsonSource::store($document)) {
+            // 507, not 500: the request was fine and the server could not
+            // keep what it was given — which is the one thing a host can fix.
+            return $this->fail(JsonSource::refusal($document), 507);
+        }
 
         return $this->ok([
             'source' => [

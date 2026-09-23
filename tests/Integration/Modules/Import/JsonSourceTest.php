@@ -118,4 +118,62 @@ class JsonSourceTest extends WP_UnitTestCase
         $this->assertSame('name-desc', (new FolderSorts())->for($logos->id)['files']);
         $this->assertFalse(get_option(JsonSource::OPTION, false), 'the stored file goes once the run is over');
     }
+
+    /**
+     * Makes the database refuse the next write of the stored file, the way a
+     * `max_allowed_packet` smaller than the file does.
+     */
+    private function refuseTheWrite(): void
+    {
+        global $wpdb;
+
+        $wpdb->suppress_errors(true);
+
+        add_filter('query', static function (string $query): string {
+            $write = preg_match('/^\s*(INSERT|UPDATE)/i', $query) === 1;
+
+            return $write && str_contains($query, JsonSource::OPTION)
+                ? 'INSERT INTO folderfolio_no_such_table VALUES (1)'
+                : $query;
+        });
+    }
+
+    /**
+     * @test
+     */
+    public function store_says_whether_the_file_was_kept(): void
+    {
+        $document = $this->document(home_url());
+
+        $this->assertTrue(JsonSource::store($document), 'a new file');
+        // update_option() is false for an unchanged value; that is not a refusal.
+        $this->assertTrue(JsonSource::store($document), 'the same file again');
+
+        delete_option(JsonSource::OPTION);
+        $this->refuseTheWrite();
+
+        $this->assertFalse(JsonSource::store($document), 'a write the database refused');
+        $this->assertNull(JsonSource::stored());
+    }
+
+    /**
+     * @test
+     */
+    public function the_route_says_when_the_database_would_not_keep_the_file(): void
+    {
+        wp_set_current_user(self::factory()->user->create(['role' => 'administrator']));
+        do_action('rest_api_init');
+        $this->refuseTheWrite();
+
+        $request = new \WP_REST_Request('POST', '/folderfolio/v1/import/file');
+        $request->set_header('Content-Type', 'application/json');
+        $request->set_body((string) wp_json_encode(['document' => $this->document(home_url())]));
+
+        $response = rest_do_request($request);
+
+        // Not a 200 with a source the next step cannot find — the bug.
+        $this->assertSame(507, $response->get_status());
+        $this->assertStringContainsString('would not keep it', (string) $response->get_data()['error']);
+        $this->assertFalse(get_option(JsonSource::OPTION, false));
+    }
 }

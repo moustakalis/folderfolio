@@ -62,6 +62,9 @@ final class JsonSource extends Source
     /** Well past any real tree; a guard against a file that is not one. */
     public const MAX_FOLDERS = 20000;
 
+    /** The database's reason for the last refused `store()`, or ''. */
+    private static string $refused = '';
+
     /**
      * @param list<SourceFolder>       $folders
      * @param array<int, list<int>>    $files       source folder id => attachment ids, empty when not applied
@@ -212,11 +215,67 @@ final class JsonSource extends Source
      * batch, and re-reading means validating again, which costs one decode of
      * something the size of a tree.
      *
+     * **Whether it was kept**, because a write can be refused and
+     * `update_option()` does not say so. Measured on 23 Sep: an export at the
+     * 20,000-folder ceiling with 100,000 assignments is a 6.2MB option, and a
+     * database whose `max_allowed_packet` is 4MB — MySQL 5.7's default —
+     * rejects the INSERT. The route then answered as if it had worked and the
+     * preview failed a step later with nothing to say why.
+     *
+     * `update_option()` is also false when the value is unchanged — the same
+     * file chosen twice — so false alone is not a refusal. A refusal leaves
+     * `$wpdb->last_error`; an unchanged value runs no write at all, and the
+     * read before it clears the error.
+     *
      * @param array<string, mixed> $document
      */
-    public static function store(array $document): void
+    public static function store(array $document): bool
     {
-        update_option(self::OPTION, $document, false);
+        global $wpdb;
+
+        self::$refused = '';
+
+        if (update_option(self::OPTION, $document, false)) {
+            return true;
+        }
+
+        self::$refused = (string) $wpdb->last_error;
+
+        return self::$refused === '';
+    }
+
+    /**
+     * Why a document could not be kept, in words a site owner can take to a
+     * host. The database's own message is not shown: it names a server
+     * variable and nothing about the file.
+     *
+     * @param array<string, mixed> $document
+     */
+    public static function refusal(array $document): string
+    {
+        global $wpdb;
+
+        $packet = (int) $wpdb->get_var('SELECT @@max_allowed_packet');
+
+        // The database's own reason first. The size is the fallback, and it
+        // is escaped because that is what travels: a serialized array is full
+        // of quotes, ~15% on top. Even then it is short of the whole query,
+        // so the sentence names the limit, which is exact, and not the file's
+        // size, which would read "needs 1.0 MB, takes at most 1.0 MB".
+        $tooBig = str_contains(self::$refused, 'max_allowed_packet')
+            || ($packet > 0 && strlen($wpdb->_real_escape(serialize($document))) >= $packet);
+
+        if ($tooBig && $packet > 0) {
+            return sprintf(
+                /* translators: %s: the most the database accepts in one write, e.g. "4 MB". */
+                __('The file was read, but it is too large for this site’s database to keep while it is imported — the database takes at most %s in one write. Your host can raise its max_allowed_packet setting.', 'folderfolio'),
+                // A no-break space, or "1" ends one line and "MB" starts the
+                // next — which it did in the step-1 row at 1280.
+                str_replace(' ', "\u{00A0}", (string) size_format($packet))
+            );
+        }
+
+        return __('The file was read, but this site’s database would not keep it for the import. Try again, and ask your host if it keeps happening.', 'folderfolio');
     }
 
     /**
