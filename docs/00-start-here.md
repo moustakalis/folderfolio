@@ -1647,7 +1647,7 @@ import creates folders here, so the gate closes before the cache is read.
 **What is left.** 1.0 grew on 22 Sep from a finished release into a
 fourteen-feature list — the Claude project's `plan-1.0-features.md` is the
 authority, and `plan-1.0-tier-1.md` is the detail for the seven the tree
-needs. **Six of those seven are built**, all on 22 Sep:
+needs. **All seven are built** — six on 22 Sep, the last on 23 Sep:
 
 | | |
 |---|---|
@@ -1659,14 +1659,17 @@ needs. **Six of those seven are built**, all on 22 Sep:
 | 6 · Export the folder structure | `0888ee5` — `Domain\FolderExport`, format 1, assignments opt-in |
 | 7 · Startup / default folder | `e9ea158` — `Admin\StartupFolder`, a redirect and not a default, and it says so |
 | 7b · A startup folder of your own | `720ae7f` — `RailPreferences::startup`, a toggle on the breadcrumb row; yours beats the site's |
+| 5 · Cut / copy / paste | `cdf932f` — `FolderService::duplicate()` (Duplicate folder, brought forward from tier 2), `Domain\FolderCopy`, a clipboard in `useRail`; *Copy* and *Copy with files* are two rows, Nick's call on board `AU6ezv9WsPVHVk7UmzHNGJ` |
 
 Every folder action now lives in `FolderMenu`, opened from a ⋮ on the
 **selected row** above 782px and from one control below it; the global sort and
-the expand toggle sit next to the search field. **Left: item 5, cut / copy /
-paste** — and it needs one decision first, because cut+paste is `move()` and
-already exists while copy+paste is a subtree duplicate that does not. Then
-reading the export back in, then the readme's two claims, and **then phase 5**,
-the release track.
+the expand toggle sit next to the search field — and, since 23 Sep, the
+clipboard group: Cut, Copy, Copy with files, and while something is held,
+*Inside this folder* / *Beside this folder*. **Cut is `/move`, or `/reorder`
+when the destination level is in Custom order; copy is `POST
+/folders/{id}/duplicate`**, one transaction, everything that can refuse asked
+before it opens. **Left: reading the export back in (6b)**, then tier 2, tier 3,
+the readme's two claims, and **then phase 5**, the release track.
 
 **Numbers not to re-derive:** FileBird silently hides **28 of 47 files** when
 active; our `posts_clauses` bail is **load-bearing** and three of four rivals
@@ -1679,6 +1682,24 @@ lack it; **FolderFolio + Real Media Library is the only clean pair of ten**.
 and the drag's bounds. Everything the React app reads is `appConfig()`. A key
 added to the wrong one is present in the file, ships alongside strings from
 the same edit, and is simply absent on the page.
+
+**TanStack Query drops `mutate()` callbacks for an unmounted observer, without
+a word.** A menu closes on press, and the menu is what owns the mutation — so a
+paste moved the folder and never opened the destination. Use `mutateAsync()`
+and its promise, which belongs to the mutation (`paste.ts`).
+
+**The cascade trap has now bitten four times.** The ⋮ menu's own
+`position: fixed` tied with `.folderfolio-menu { position: absolute; top:
+100% }` in `_toolbar.css` and lost on import order from `abbd720` until 23 Sep.
+Downwards, the hook's inline `top` hid it; upwards it set only `bottom`, and the
+menu was a 10px sliver at the bottom of the window. **A panel that flips is two
+layouts — test the flipped one.**
+
+**The list table's folder `<select>` is rendered once, at page load.** A folder
+created since — by *New folder* or by a paste — has no option, so selecting it
+leaves the select showing the previous folder, and core's *Filter* button would
+submit that. `refreshListTable()` leaves `.wp-filter .actions` alone on purpose.
+Recorded, not fixed.
 
 **One slot means one winner.** `wp.Uploader.prototype.init` is a single
 extension point and FileBird, CatFolders and Premio each *assign* it without
