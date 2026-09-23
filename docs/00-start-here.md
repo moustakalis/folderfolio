@@ -1695,11 +1695,23 @@ Downwards, the hook's inline `top` hid it; upwards it set only `bottom`, and the
 menu was a 10px sliver at the bottom of the window. **A panel that flips is two
 layouts — test the flipped one.**
 
-**The list table's folder `<select>` is rendered once, at page load.** A folder
-created since — by *New folder* or by a paste — has no option, so selecting it
-leaves the select showing the previous folder, and core's *Filter* button would
-submit that. `refreshListTable()` leaves `.wp-filter .actions` alone on purpose.
-Recorded, not fixed.
+**A control the server printed once is a snapshot.** The list table's folder
+`<select>` is rendered at page load and never re-rendered — `refreshListTable()`
+leaves `.wp-filter .actions` alone on purpose — so until `d0f617d` a folder
+created since had no option, and core's *Filter* button submitted the previous
+folder. `useNativeFolderSelect(nodes)` now rebuilds the options from the tree
+when they differ.
+
+**Every refused rail write is on screen** since `d0f617d`: one `MutationCache`
+in `rail.tsx`, a notice sheet in the undo toast's corner. Do not add a per-hook
+`onError` to display a failure — the cache already does.
+
+**The inherited badge counts files, not assignments** (`d0f617d`,
+`FolderTree::overcount()`), and the plain sum travels up separately: correcting
+against children's corrected totals subtracts once per level. **A negative
+control has to overlap where the bug lives** — the first test for this put its
+overlap at one level, where once and twice agree, and passed the reversion it
+was written for.
 
 **One slot means one winner.** `wp.Uploader.prototype.init` is a single
 extension point and FileBird, CatFolders and Premio each *assign* it without
