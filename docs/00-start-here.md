@@ -1363,6 +1363,7 @@ mise install                 # PHP 8.2, Node 20, Composer
 mise run deps:install
 make build                   # typecheck + esbuild → assets/build/ (gitignored)
 make test                    # PHPUnit
+yarn test:js                 # the rail's decision functions, node --test (no browser)
 yarn test:pipeline           # React on wp-element, in a real browser
 yarn test:slot               # the toolbar slot surviving core's re-renders
 yarn test:tree               # the tree's roving-tabindex invariant
