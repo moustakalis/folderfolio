@@ -208,12 +208,16 @@ test.describe('lock, pin and star', () => {
         await menu.getByRole('menuitemcheckbox', { name: 'Star' }).click();
         await expect(page.getByRole('group', { name: 'Starred' })).toContainText('Charlie');
 
-        // Written through the one-folder route, so the server has it.
-        const stars = await page.evaluate(async () => {
-            const r = await window.wp.apiFetch({ path: '/folderfolio/v1/preferences' });
+        // Written through the one-folder route, so the server has it. Polled:
+        // the group above is optimistic and draws before the write lands.
+        await expect
+            .poll(() =>
+                page.evaluate(async () => {
+                    const r = await window.wp.apiFetch({ path: '/folderfolio/v1/preferences' });
 
-            return r.data.rail.stars as number[];
-        });
-        expect(stars).toEqual([f.charlie.id]);
+                    return r.data.rail.stars as number[];
+                })
+            )
+            .toEqual([f.charlie.id]);
     });
 });

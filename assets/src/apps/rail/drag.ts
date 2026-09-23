@@ -30,6 +30,7 @@
  */
 
 import { selectedAttachmentIds } from '../../lib/selection';
+import { isMedia } from '../../core/api';
 
 /**
  * The ids being dragged, and where from.
@@ -199,7 +200,7 @@ export function watchDrags(currentFolder: () => number | null): () => void {
 
         // Replaces the browser's default payload (the thumbnail's URL), which
         // is what would otherwise be dropped on anything outside this page.
-        event.dataTransfer?.setData('text/plain', `${ids.length} media file(s)`);
+        event.dataTransfer?.setData('text/plain', `${ids.length} item(s)`);
         event.dataTransfer?.setData(
             'application/x-folderfolio',
             JSON.stringify(payload)
@@ -223,9 +224,16 @@ export function watchDrags(currentFolder: () => number | null): () => void {
 
     // Tiles with no <img> of their own — audio, some documents — are not
     // draggable until told. Re-applied on every grid re-render.
+    //
+    // A post list's rows (tier 3 item 12) have no thumbnail to start a drag
+    // from — only the title link, which drags its URL — so the row itself is
+    // made draggable, the way the media list's image makes its row. Not the
+    // inline-edit row (`tr#edit-123`), which holds a form.
     const markDraggable = () => {
         document
-            .querySelectorAll<HTMLElement>('li.attachment:not([draggable])')
+            .querySelectorAll<HTMLElement>(
+                isMedia() ? 'li.attachment:not([draggable])' : '#the-list > tr[id^="post-"]:not([draggable])'
+            )
             .forEach((tile) => {
                 tile.draggable = true;
             });

@@ -15,11 +15,11 @@ use FolderFolio\Domain\AttachmentFolderRepository;
 use FolderFolio\Domain\Folder;
 use FolderFolio\Domain\FolderBulk;
 use FolderFolio\Domain\FolderLocks;
-use FolderFolio\Domain\FolderRepository;
 use FolderFolio\Domain\FolderService;
 use FolderFolio\Domain\FolderSorts;
 use FolderFolio\Domain\FolderTree;
 use FolderFolio\Support\Capabilities;
+use FolderFolio\Support\PostTypes;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -86,6 +86,7 @@ class FolderController
                         'required' => false,
                         'enum' => ['inherited', 'direct', 'none'],
                     ],
+                    'object_type' => $this->objectTypeArgument(),
                 ],
             ],
             [
@@ -348,6 +349,7 @@ class FolderController
             'methods' => WP_REST_Server::READABLE,
             'callback' => [$this, 'counts'],
             'permission_callback' => [$this, 'canUseFolders'],
+            'args' => ['object_type' => $this->objectTypeArgument()],
         ]);
 
         // -------------------------------------------------------- assignments
@@ -370,7 +372,7 @@ class FolderController
         register_rest_route($ns, '/attachments/(?P<id>\d+)/folders', [
             'methods' => WP_REST_Server::READABLE,
             'callback' => [$this, 'attachmentFolders'],
-            'permission_callback' => [$this, 'canUseFolders'],
+            'permission_callback' => [$this, 'canReadItemFolders'],
         ]);
 
         register_rest_route($ns, '/health', [
@@ -438,17 +440,90 @@ class FolderController
         ]);
     }
 
-    /**
-     * Reading folders, and filing media into them.
-     */
-    public function canDownloadFolders(): bool
+    public function canDownloadFolders(WP_REST_Request $request): bool
     {
-        return FolderDownload::allowed();
+        return FolderDownload::allowed() && $this->objectType($request) === PostTypes::MEDIA;
     }
 
-    public function canUseFolders(): bool
+    /**
+     * Reading folders, and filing items into them.
+     *
+     * Every permission here asks about one object type (tier 3 item 12): the
+     * folder's own when the route names one, and otherwise `object_type` —
+     * absent is media, as before item 12. `upload_files` opens the media
+     * tree; the Posts tree needs `edit_posts`.
+     */
+    public function canUseFolders(WP_REST_Request $request): bool
     {
-        return Capabilities::canUseFolders();
+        return Capabilities::canUseFolders($this->objectType($request));
+    }
+
+    /**
+     * The folders one item is filed in. The id here is the item's — a file or,
+     * since item 12, a post — so its type is the post's own, never a folder's.
+     */
+    public function canReadItemFolders(WP_REST_Request $request): bool
+    {
+        $type = get_post_type((int) $request['id']);
+
+        return Capabilities::canUseFolders(is_string($type) ? $type : PostTypes::MEDIA);
+    }
+
+    /**
+     * Whose folders a request is about.
+     *
+     * A route with a folder in it answers from the folder, so a request cannot
+     * borrow a type it may use to act on a tree it may not: the route's own
+     * folder, then the one a file goes into (`folder_id`), then the parent a
+     * folder is made or arranged under, then the first folder of a level
+     * being arranged. Only a request naming no folder at all — the tree, the
+     * counts, a folder or a list made at the top — reads `object_type`. A
+     * folder that does not exist falls through, and the handler says "not
+     * found".
+     */
+    public function objectType(WP_REST_Request $request): string
+    {
+        $ids = $request->get_param('ids');
+        $candidates = [
+            $request->get_param('id'),
+            $request->get_param('folder_id'),
+            $request->get_param('parent_id'),
+            is_array($ids) ? ($ids[0] ?? null) : null,
+        ];
+
+        foreach ($candidates as $id) {
+            if (is_numeric($id) && (int) $id > 0) {
+                $folder = $this->folders->get((int) $id);
+
+                if ($folder !== null) {
+                    return $folder->objectType;
+                }
+            }
+        }
+
+        return PostTypes::fromRequest($request->get_param('object_type'));
+    }
+
+    /**
+     * The tree of the type a request was about — what every write returns.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function treeFor(WP_REST_Request $request): array
+    {
+        return $this->folders->tree($this->objectType($request));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function objectTypeArgument(): array
+    {
+        return [
+            'type' => 'string',
+            'required' => false,
+            'pattern' => '^[a-z0-9_-]{1,20}$',
+        ];
     }
 
     /**
@@ -459,18 +534,18 @@ class FolderController
      * "Authors may create folders but not delete them" — the thing the roles
      * matrix on screen 08 exists to say.
      */
-    public function canCreateFolders(): bool
+    public function canCreateFolders(WP_REST_Request $request): bool
     {
-        return Capabilities::can('create');
+        return Capabilities::can('create', $this->objectType($request));
     }
 
     /**
      * Renaming, recolouring, and moving: all three edit a folder that already
      * exists, and the matrix has one column for that.
      */
-    public function canRenameFolders(): bool
+    public function canRenameFolders(WP_REST_Request $request): bool
     {
-        return Capabilities::can('rename');
+        return Capabilities::can('rename', $this->objectType($request));
     }
 
     /**
@@ -483,21 +558,23 @@ class FolderController
      */
     public function canDuplicateFolders(WP_REST_Request $request): bool
     {
-        if (!Capabilities::can('create') || !Capabilities::can('rename')) {
+        $type = $this->objectType($request);
+
+        if (!Capabilities::can('create', $type) || !Capabilities::can('rename', $type)) {
             return false;
         }
 
-        return !$this->withFiles($request) || Capabilities::can('assign');
+        return !$this->withFiles($request) || Capabilities::can('assign', $type);
     }
 
-    public function canDeleteFolders(): bool
+    public function canDeleteFolders(WP_REST_Request $request): bool
     {
-        return Capabilities::can('delete');
+        return Capabilities::can('delete', $this->objectType($request));
     }
 
-    public function canLockFolders(): bool
+    public function canLockFolders(WP_REST_Request $request): bool
     {
-        return Capabilities::can('lock');
+        return Capabilities::can('lock', $this->objectType($request));
     }
 
     /**
@@ -506,9 +583,9 @@ class FolderController
      * Which files may be filed is a separate question, asked per attachment by
      * FolderService through Capabilities::canEditAttachment().
      */
-    public function canAssignFiles(): bool
+    public function canAssignFiles(WP_REST_Request $request): bool
     {
-        return Capabilities::can('assign');
+        return Capabilities::can('assign', $this->objectType($request));
     }
 
     public function tree(WP_REST_Request $request): WP_REST_Response
@@ -516,14 +593,16 @@ class FolderController
         $mode = $request->get_param('counts');
 
         return $this->success($this->folders->tree(
-            FolderRepository::DEFAULT_OBJECT_TYPE,
+            $this->objectType($request),
             is_string($mode) ? $mode : null
         ));
     }
 
     public function create(WP_REST_Request $request): WP_REST_Response
     {
-        $result = $this->folders->create($this->folderPayload($request));
+        $result = $this->folders->create(
+            $this->folderPayload($request) + ['object_type' => $this->objectType($request)]
+        );
 
         return $this->result(
             $result,
@@ -531,7 +610,7 @@ class FolderController
             fn (Folder $folder): array => [
                 'id' => $folder->id,
                 'folder' => $folder->toArray(),
-                'tree' => $this->folders->tree(),
+                'tree' => $this->folders->tree($folder->objectType),
             ]
         );
     }
@@ -546,7 +625,7 @@ class FolderController
         return $this->result(
             $result,
             200,
-            fn (): array => ['tree' => $this->folders->tree()]
+            fn (): array => ['tree' => $this->treeFor($request)]
         );
     }
 
@@ -554,6 +633,8 @@ class FolderController
     {
         $destination = $request->get_param('reassign_to');
         $children = (string) $request->get_param('children');
+        // Asked now: once the folder is gone, nothing can say what it was.
+        $type = $this->objectType($request);
 
         $result = $this->folders->delete(
             (int) $request['id'],
@@ -566,7 +647,7 @@ class FolderController
         return $this->result(
             $result,
             200,
-            fn (): array => ['tree' => $this->folders->tree()]
+            fn (): array => ['tree' => $this->folders->tree($type)]
         );
     }
 
@@ -592,7 +673,7 @@ class FolderController
         return $this->result(
             $result,
             200,
-            fn (): array => ['tree' => $this->folders->tree()]
+            fn (): array => ['tree' => $this->treeFor($request)]
         );
     }
 
@@ -601,7 +682,7 @@ class FolderController
         return $this->result(
             $this->folders->mark((int) $request['id'], FolderLocks::LOCKED, (bool) $request->get_param('locked')),
             200,
-            fn (): array => ['tree' => $this->folders->tree()]
+            fn (): array => ['tree' => $this->treeFor($request)]
         );
     }
 
@@ -610,7 +691,7 @@ class FolderController
         return $this->result(
             $this->folders->mark((int) $request['id'], FolderLocks::PINNED, (bool) $request->get_param('pinned')),
             200,
-            fn (): array => ['tree' => $this->folders->tree()]
+            fn (): array => ['tree' => $this->treeFor($request)]
         );
     }
 
@@ -680,7 +761,7 @@ class FolderController
         return $this->result(
             $result,
             200,
-            fn (): array => ['placed' => $result, 'tree' => $this->folders->tree()]
+            fn (): array => ['placed' => $result, 'tree' => $this->treeFor($request)]
         );
     }
 
@@ -694,7 +775,7 @@ class FolderController
         return $this->result(
             $result,
             200,
-            fn (): array => ['tree' => $this->folders->tree()]
+            fn (): array => ['tree' => $this->treeFor($request)]
         );
     }
 
@@ -714,7 +795,7 @@ class FolderController
             201,
             fn (Folder $copy): array => [
                 'folder' => $copy->toArray(),
-                'tree' => $this->folders->tree(),
+                'tree' => $this->folders->tree($copy->objectType),
             ]
         );
     }
@@ -731,7 +812,7 @@ class FolderController
             200,
             fn (int $arranged): array => [
                 'arranged' => $arranged,
-                'tree' => $this->folders->tree(),
+                'tree' => $this->treeFor($request),
             ]
         );
     }
@@ -744,7 +825,8 @@ class FolderController
         return $this->result(
             (new FolderBulk())->plan(
                 (string) $request->get_param('text'),
-                $this->nullableInteger($request->get_param('parent_id'))
+                $this->nullableInteger($request->get_param('parent_id')),
+                $this->objectType($request)
             ),
             200,
             /** @param array<string, mixed> $plan */
@@ -765,7 +847,8 @@ class FolderController
         return $this->result(
             (new FolderBulk())->run(
                 (string) $request->get_param('text'),
-                $this->nullableInteger($request->get_param('parent_id'))
+                $this->nullableInteger($request->get_param('parent_id')),
+                $this->objectType($request)
             ),
             201,
             /** @param array<string, mixed> $plan */
@@ -866,12 +949,13 @@ class FolderController
         ]);
     }
 
-    public function counts(): WP_REST_Response
+    public function counts(WP_REST_Request $request): WP_REST_Response
     {
         $counts = [];
+        $type = $this->objectType($request);
 
         FolderTree::walk(
-            $this->folders->tree(),
+            $this->folders->tree($type),
             static function (array $node) use (&$counts): void {
                 $counts[(int) $node['id']] = [
                     'count' => (int) ($node['count'] ?? 0),
@@ -886,7 +970,7 @@ class FolderController
             // route of their own because they are read at the same moment, by
             // the same component, and a second round trip for two integers is
             // a second chance for one of them to be stale.
-            'library' => (new AttachmentFolderRepository())->libraryCounts(),
+            'library' => (new AttachmentFolderRepository())->libraryCounts($type),
         ]);
     }
 
@@ -981,6 +1065,10 @@ class FolderController
                 'required' => false,
                 'sanitize_callback' => 'intval',
             ],
+            // Whose tree a folder made at the top joins. Under a parent the
+            // parent's type wins (`objectType()`), and a rename cannot change
+            // it — the service drops it on update.
+            'object_type' => $this->objectTypeArgument(),
         ];
     }
 
@@ -1060,6 +1148,7 @@ class FolderController
                 'required' => false,
                 'sanitize_callback' => [$this, 'nullableInteger'],
             ],
+            'object_type' => $this->objectTypeArgument(),
         ];
     }
 

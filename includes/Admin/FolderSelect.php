@@ -10,6 +10,8 @@ if (!defined('ABSPATH')) {
 
 use FolderFolio\Domain\AttachmentFolderRepository;
 use FolderFolio\Domain\FolderService;
+use FolderFolio\Support\Capabilities;
+use FolderFolio\Support\PostTypes;
 
 /**
  * The "All folders" select in the Media Library's filter bar — screens 03,
@@ -64,11 +66,15 @@ final class FolderSelect
      */
     public function render($postType, $which = ''): void
     {
-        if ('attachment' !== (string) $postType || 'bar' !== (string) $which) {
+        $postType = (string) $postType;
+
+        // upload.php fires this with 'bar'; edit.php with 'top' and again
+        // with 'bottom' — one select, in the top bar, beside the other filters.
+        if ((PostTypes::MEDIA === $postType ? 'bar' : 'top') !== (string) $which) {
             return;
         }
 
-        if (!current_user_can('upload_files')) {
+        if (!Capabilities::canUseFolders($postType)) {
             return;
         }
 
@@ -76,11 +82,15 @@ final class FolderSelect
             $_GET[MediaLibraryFilter::QUERY_VAR] ?? null
         );
 
-        $counts = $this->assignments->libraryCounts();
+        $counts = $this->assignments->libraryCounts($postType);
         // Default object type, and the site's own count setting rather than
         // a literal: the select and the rail have to agree, and they only do
         // if neither of them decides for itself.
-        $rows = self::flatten($this->folders->tree());
+        $rows = self::flatten($this->folders->tree($postType));
+        $object = get_post_type_object($postType);
+        $all = PostTypes::MEDIA === $postType || null === $object
+            ? __('All media', 'folderfolio')
+            : (string) $object->labels->all_items;
 
         ?>
         <label class="screen-reader-text" for="folderfolio-folder-filter">
@@ -92,7 +102,7 @@ final class FolderSelect
             class="folderfolio folderfolio-folder-select<?php echo null === $current ? '' : ' is-active'; ?>"
         >
             <option value="" <?php selected(null === $current); ?>>
-                <?php echo esc_html(self::label(__('All media', 'folderfolio'), 0, (int) $counts['all'])); ?>
+                <?php echo esc_html(self::label($all, 0, (int) $counts['all'])); ?>
             </option>
             <option value="0" <?php selected(0 === $current); ?>>
                 <?php echo esc_html(self::label(__('Unassigned', 'folderfolio'), 0, (int) $counts['unassigned'])); ?>

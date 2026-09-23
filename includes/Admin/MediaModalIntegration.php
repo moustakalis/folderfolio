@@ -78,6 +78,14 @@ final class MediaModalIntegration
             return;
         }
 
+        // A post list with its own folder rail (tier 3 item 12). Both would
+        // write window.folderFolio — media's abilities and labels against the
+        // rail's for posts — and the list screen opens no media picker of its
+        // own to need this.
+        if ('edit.php' === $hookSuffix && null !== Rail::screenType()) {
+            return;
+        }
+
         $manifest = FOLDERFOLIO_PLUGIN_DIR . 'assets/build/apps/modal.asset.php';
 
         if (!file_exists($manifest)) {

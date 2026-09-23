@@ -18,11 +18,15 @@ if (!defined('ABSPATH')) {
  * The four abilities now come from the roles matrix on the settings screen,
  * which the site owner can edit. Two rules hold whatever that table says:
  *
- * 1. upload_files first. The matrix narrows, it never widens: a role that
- *    cannot open the media library cannot be handed the folder tree by ticking
- *    a box. So a Contributor row with `assign` ticked - which is the shipped
- *    default, and what screen 08 draws - grants nothing until that site also
- *    gives Contributors upload_files.
+ * 1. The content's own capability first — upload_files for media, and since
+ *    tier 3 item 12 each post type's `edit_posts` for its folders
+ *    (`PostTypes::baseCap()`). The matrix narrows, it never widens: a role
+ *    that cannot open the media library cannot be handed the folder tree by
+ *    ticking a box. So a Contributor row with `assign` ticked - which is the
+ *    shipped default, and what screen 08 draws - grants nothing on media until
+ *    that site also gives Contributors upload_files. One matrix for every
+ *    type (Nick's 12e): what a role may do to folders does not change with
+ *    what is in them; whether it can reach them does.
  * 2. Administrators are pinned. A matrix that can lock every administrator out
  *    of the folder tree leaves nobody able to open the screen that would undo
  *    it.
@@ -42,43 +46,67 @@ final class Capabilities
     public const MANAGE = 'folderfolio_manage_folders';
 
     /**
-     * See folders, and file media into them.
+     * See a type's folders, and file its items into them.
+     *
+     * @param string $objectType `attachment` for media, or a post type.
      */
-    public static function canUseFolders(): bool
+    public static function canUseFolders(string $objectType = PostTypes::MEDIA): bool
     {
         return (bool) apply_filters(
             'folderfolio_user_can_use_folders',
-            current_user_can('upload_files')
+            self::reaches($objectType),
+            $objectType
         );
     }
 
     /**
-     * May the current user do one of the four things the matrix names?
-     *
-     * @param string $ability One of Settings::ABILITIES.
+     * Rule 1: the type has folders, and this person can open its screen.
      */
-    public static function can(string $ability): bool
+    private static function reaches(string $objectType): bool
     {
-        $allowed = self::resolve($ability);
+        // Media first and without reading the settings: it is always enabled,
+        // and this is asked on every media request.
+        if ($objectType === PostTypes::MEDIA) {
+            return current_user_can('upload_files');
+        }
+
+        return PostTypes::isEnabled($objectType) && current_user_can(PostTypes::baseCap($objectType));
+    }
+
+    /**
+     * May the current user do one of the things the matrix names?
+     *
+     * @param string $ability    One of Settings::ABILITIES.
+     * @param string $objectType Whose folders — `attachment`, or a post type.
+     */
+    public static function can(string $ability, string $objectType = PostTypes::MEDIA): bool
+    {
+        $allowed = self::resolve($ability, $objectType);
 
         /**
          * Filters one ability for the current user.
          *
-         * @param bool   $allowed Whether the matrix and the two rules allow it.
-         * @param string $ability One of Settings::ABILITIES.
+         * @param bool   $allowed    Whether the matrix and the two rules allow it.
+         * @param string $ability    One of Settings::ABILITIES.
+         * @param string $objectType `attachment`, or a post type.
          */
-        return (bool) apply_filters('folderfolio_user_can', $allowed, $ability);
+        return (bool) apply_filters('folderfolio_user_can', $allowed, $ability, $objectType);
     }
 
-    private static function resolve(string $ability): bool
+    private static function resolve(string $ability, string $objectType): bool
     {
         if (!in_array($ability, Settings::ABILITIES, true)) {
             return false;
         }
 
+        // A ZIP is files; a folder of posts has none to put in one.
+        if ($ability === 'download' && $objectType !== PostTypes::MEDIA) {
+            return false;
+        }
+
         // Rule 1. Also the cheap check: an unauthenticated REST request stops
         // here without reading an option or loading the user's roles.
-        if (!current_user_can('upload_files')) {
+        if (!self::reaches($objectType)) {
             return false;
         }
 
@@ -153,15 +181,18 @@ final class Capabilities
      * A user who can do any one of the three sees the toolbar; each button
      * still checks its own ability.
      */
-    public static function canManageFolders(): bool
+    public static function canManageFolders(string $objectType = PostTypes::MEDIA): bool
     {
-        $can = self::can('create') || self::can('rename') || self::can('delete');
+        $can = self::can('create', $objectType)
+            || self::can('rename', $objectType)
+            || self::can('delete', $objectType);
 
         return (bool) apply_filters('folderfolio_user_can_manage_folders', $can);
     }
 
     /**
-     * May the current user organize this particular attachment?
+     * May the current user organize this particular attachment — or, since
+     * item 12, this particular post? `edit_post` is the same question for both.
      *
      * Assignment changes a post's relationships, so it needs the same
      * permission as editing it. Without this an Author could file another

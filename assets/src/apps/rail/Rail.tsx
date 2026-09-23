@@ -32,8 +32,8 @@ import {
 import { useRail } from './store';
 import { can } from '../../lib/can';
 import { useIsNarrow } from '../../lib/narrow';
-import { applyFolderFilter, keepServerOrder, showUploads, watchFolderLinks } from '../../lib/filter';
-import { t } from '../../core/api';
+import { applyFolderFilter, FOLDER_QUERY_VAR, keepServerOrder, showUploads, watchFolderLinks } from '../../lib/filter';
+import { isMedia, t } from '../../core/api';
 
 export function Rail({
     contentMount,
@@ -207,6 +207,34 @@ export function Rail({
      * breadcrumb, the cards and the URL agreeing with the table.
      */
     useEffect(() => watchFolderLinks(select), [select]);
+
+    /**
+     * Add New from inside a folder files the new post there — tier 3 item 12
+     * (Admin\PostFolders::fileNewPost). The link carries the folder being
+     * viewed; All posts and Unassigned carry nothing. Media's Add New uploads,
+     * and uploads already follow the folder (core/upload-target.ts).
+     */
+    useEffect(() => {
+        if (isMedia()) {
+            return;
+        }
+
+        document.querySelectorAll<HTMLAnchorElement>('#wpbody-content .wrap a.page-title-action').forEach((link) => {
+            const url = new URL(link.href, window.location.href);
+
+            if (!url.pathname.endsWith('post-new.php')) {
+                return;
+            }
+
+            if (selectedId !== null && selectedId > 0) {
+                url.searchParams.set(FOLDER_QUERY_VAR, String(selectedId));
+            } else {
+                url.searchParams.delete(FOLDER_QUERY_VAR);
+            }
+
+            link.href = url.toString();
+        });
+    }, [selectedId]);
 
     /**
      * Leaving the page inside the window still deletes.

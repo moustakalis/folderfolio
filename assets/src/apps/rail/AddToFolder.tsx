@@ -58,7 +58,7 @@ import { sortTree, useRail } from './store';
 import { useAnchoredPanel } from './useAnchoredPanel';
 import { can } from '../../lib/can';
 import { watchSelection } from '../../lib/selection';
-import { t, tn } from '../../core/api';
+import { isMedia, t, tn } from '../../core/api';
 
 /**
  * How many folder rows the flyout renders at once.
@@ -413,7 +413,7 @@ function Flyout({ nodes, ids, source, anchor, onClose }: FlyoutProps) {
               and the way to move a file further than a drag can reach. Like
               the drag, it makes the folder Custom.
             */}
-            {source !== null && can('rename') ? (
+            {source !== null && can('rename') && isMedia() ? (
                 <div
                     className="folderfolio-flyout__arrange"
                     role="group"

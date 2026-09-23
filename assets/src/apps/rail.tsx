@@ -14,7 +14,7 @@ import { Rail } from './rail/Rail';
 import { countsKey, treeKey } from './rail/queries';
 import { useRail } from './rail/store';
 import { watchUploadTarget } from '../core/upload-target';
-import { errorMessage } from '../core/api';
+import { errorMessage, isMedia } from '../core/api';
 
 /**
  * Where the breadcrumb and the drill-down cards go.
@@ -130,17 +130,20 @@ const client = new QueryClient({
  * is said on the same notice sheet as a refused rail write — which is why the
  * client is built first.
  */
-watchUploadTarget(
-    (listener) => useRail.subscribe((state) => listener(state.selectedId)),
-    useRail.getState().selectedId,
-    {
-        changed: () => {
-            void client.invalidateQueries({ queryKey: treeKey });
-            void client.invalidateQueries({ queryKey: countsKey });
-        },
-        notice: (message) => useRail.getState().showNotice(message),
-    }
-);
+// Media only: a post list has no uploader to follow the folder (item 12).
+if (isMedia()) {
+    watchUploadTarget(
+        (listener) => useRail.subscribe((state) => listener(state.selectedId)),
+        useRail.getState().selectedId,
+        {
+            changed: () => {
+                void client.invalidateQueries({ queryKey: treeKey });
+                void client.invalidateQueries({ queryKey: countsKey });
+            },
+            notice: (message) => useRail.getState().showNotice(message),
+        }
+    );
+}
 
 const mount = document.getElementById('folderfolio-rail-app');
 

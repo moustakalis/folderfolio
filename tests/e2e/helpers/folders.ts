@@ -43,19 +43,20 @@ export interface SeededFolder {
 export async function createFolder(
     page: Page,
     name: string,
-    parentId: number | null = null
+    parentId: number | null = null,
+    objectType = 'attachment'
 ): Promise<SeededFolder> {
     const id = await page.evaluate(
-        async ([folderName, parent]) => {
+        async ([folderName, parent, type]) => {
             const response = await window.wp.apiFetch({
                 path: '/folderfolio/v1/folders',
                 method: 'POST',
-                data: { name: folderName, parent_id: parent },
+                data: { name: folderName, parent_id: parent, object_type: type },
             });
 
             return response.data.id as number;
         },
-        [name, parentId] as const
+        [name, parentId, objectType] as const
     );
 
     return { id, name };
@@ -89,10 +90,13 @@ export async function folderNames(page: Page): Promise<string[]> {
     });
 }
 
-/** Remove every folder, so a spec starts from a library nobody has filed. */
-export async function resetFolders(page: Page): Promise<void> {
-    await page.evaluate(async () => {
-        const response = await window.wp.apiFetch({ path: '/folderfolio/v1/folders' });
+/**
+ * Remove every folder, so a spec starts from a library nobody has filed. One
+ * type's tree at a time — media's unless told (tier 3 item 12).
+ */
+export async function resetFolders(page: Page, objectType = 'attachment'): Promise<void> {
+    await page.evaluate(async (type) => {
+        const response = await window.wp.apiFetch({ path: `/folderfolio/v1/folders?object_type=${type}` });
 
         for (const node of response.data ?? []) {
             await window.wp.apiFetch({
@@ -101,7 +105,7 @@ export async function resetFolders(page: Page): Promise<void> {
                 data: { children: 'cascade' },
             });
         }
-    });
+    }, objectType);
 }
 
 declare global {

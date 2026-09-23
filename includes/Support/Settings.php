@@ -42,7 +42,8 @@ if (!defined('ABSPATH')) {
  *     default_sort: string,
  *     startup_folder: int|null,
  *     undo_window: int,
- *     roles: Matrix
+ *     roles: Matrix,
+ *     post_types: list<string>
  * }
  */
 final class Settings
@@ -140,6 +141,18 @@ final class Settings
     public const MAX_UNDO = 60;
 
     /**
+     * The post types with folders out of the box — tier 3 item 12.
+     *
+     * Posts and Pages (Nick's 12a, board KZsHhrffzKQYqUjTvdFszK): the two
+     * every site has and the two a person looks for folders on first. Any
+     * other type — a shop's products, a page builder's templates — is one
+     * tick away under *Folders for*, and off until then: a folder tree turning
+     * up uninvited on a plugin's own screens is the surprise this avoids.
+     * Media is not in the list because it is not optional; it is the product.
+     */
+    public const DEFAULT_POST_TYPES = ['post', 'page'];
+
+    /**
      * @return SettingsArray
      */
     public static function defaults(): array
@@ -150,6 +163,7 @@ final class Settings
             'startup_folder' => self::STARTUP_NONE,
             'undo_window' => self::DEFAULT_UNDO,
             'roles' => self::defaultRoles(),
+            'post_types' => self::DEFAULT_POST_TYPES,
         ];
     }
 
@@ -199,7 +213,58 @@ final class Settings
             'startup_folder' => self::startupFolder($raw['startup_folder'] ?? null),
             'undo_window' => self::clampUndo($raw['undo_window'] ?? null),
             'roles' => self::sanitizeRoles($raw['roles'] ?? null),
+            'post_types' => self::sanitizePostTypes($raw['post_types'] ?? null),
         ];
+    }
+
+    /**
+     * Which post types have folders, as slugs.
+     *
+     * Not checked against the registered types here — this runs in the unit
+     * suite, and a type whose plugin is switched off for a week should come
+     * back with its folders when the plugin does. `Support\PostTypes` drops
+     * what is not registered at the moment it is asked. An empty list is a
+     * real answer (media only), which is why the form sends a blank entry
+     * alongside the ticks: a form with every box cleared still names the key.
+     *
+     * @param mixed $value
+     *
+     * @return list<string>
+     */
+    public static function sanitizePostTypes($value): array
+    {
+        if (!is_array($value)) {
+            return self::DEFAULT_POST_TYPES;
+        }
+
+        $clean = [];
+
+        foreach ($value as $key => $type) {
+            // The form's ['product' => '1'] or a list (['post', 'page']).
+            if (is_string($key)) {
+                if (!self::truthy($type)) {
+                    continue;
+                }
+
+                $type = $key;
+            }
+
+            if (!is_string($type)) {
+                continue;
+            }
+
+            $type = strtolower(trim($type));
+
+            // A post type slug is at most 20 characters of [a-z0-9_-], and 20
+            // is also the width of the folders table's object_type column.
+            if ('' === $type || 'attachment' === $type || 1 !== preg_match('/^[a-z0-9_-]{1,20}$/', $type)) {
+                continue;
+            }
+
+            $clean[] = $type;
+        }
+
+        return array_values(array_unique($clean));
     }
 
     /**

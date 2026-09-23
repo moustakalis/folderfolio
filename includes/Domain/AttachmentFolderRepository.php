@@ -8,6 +8,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+use FolderFolio\Support\PostTypes;
 use WP_Error;
 use wpdb;
 
@@ -24,6 +25,32 @@ class AttachmentFolderRepository
     public function table(): string
     {
         return $this->wpdb->prefix . 'folderfolio_attachment_folders';
+    }
+
+    /**
+     * A join that keeps only rows whose post is in a status the type's list
+     * screen shows — tier 3 item 12.
+     *
+     * Empty for media, deliberately: those counts have never joined the posts
+     * table and a library of 100,000 files should not start now. A post
+     * folder has to, because posts go to the trash and a folder showing a
+     * count for a post nobody can see in it is a wrong number.
+     */
+    private function statusJoin(?string $objectType, string $alias): string
+    {
+        if ($objectType === null || $objectType === PostTypes::MEDIA) {
+            return '';
+        }
+
+        $statuses = implode(', ', array_map(
+            fn (string $status): string => (string) $this->wpdb->prepare('%s', $status),
+            PostTypes::statuses($objectType)
+        ));
+
+        return (string) $this->wpdb->prepare(
+            " INNER JOIN {$this->wpdb->posts} AS ff_p ON ff_p.ID = {$alias}.attachment_id AND ff_p.post_type = %s",
+            $objectType
+        ) . " AND ff_p.post_status IN ({$statuses})";
     }
 
     /**
@@ -350,10 +377,12 @@ class AttachmentFolderRepository
      *
      * @return array<int, int> folder id => count
      */
-    public function directCounts(): array
+    public function directCounts(?string $objectType = null): array
     {
+        $join = $this->statusJoin($objectType, 'a');
+
         $rows = $this->wpdb->get_results(
-            "SELECT folder_id, COUNT(*) AS total FROM {$this->table()} GROUP BY folder_id",
+            "SELECT a.folder_id, COUNT(*) AS total FROM {$this->table()} AS a{$join} GROUP BY a.folder_id",
             ARRAY_A
         ) ?: [];
 
@@ -384,11 +413,13 @@ class AttachmentFolderRepository
      *
      * @return array<int, list<int>> attachment id => folder ids
      */
-    public function multiFiled(): array
+    public function multiFiled(?string $objectType = null): array
     {
         $table = $this->table();
+        $join = $this->statusJoin($objectType, 'a');
 
-        // Identifiers only; nothing here comes from a request.
+        // Identifiers, and statuses prepared above; nothing here comes from a
+        // request.
         $rows = $this->wpdb->get_results(
             "SELECT a.attachment_id, a.folder_id
              FROM {$table} AS a
@@ -396,7 +427,7 @@ class AttachmentFolderRepository
                  SELECT attachment_id FROM {$table}
                  GROUP BY attachment_id
                  HAVING COUNT(*) > 1
-             ) AS m ON m.attachment_id = a.attachment_id",
+             ) AS m ON m.attachment_id = a.attachment_id{$join}",
             ARRAY_A
         ) ?: [];
 
@@ -422,11 +453,15 @@ class AttachmentFolderRepository
      *
      * @return array{all: int, unassigned: int}
      */
-    public function libraryCounts(): array
+    public function libraryCounts(string $objectType = PostTypes::MEDIA): array
     {
         global $wpdb;
 
         $table = $this->table();
+
+        if ($objectType !== PostTypes::MEDIA) {
+            return $this->typeCounts($objectType);
+        }
 
         // Not prepared: $table is built from $wpdb->prefix, and an identifier
         // cannot be a bound parameter in any case. No user input reaches this.
@@ -450,15 +485,47 @@ class AttachmentFolderRepository
         ];
     }
 
-    public function subtreeCount(string $path): int
+    /**
+     * The fixed rows' counts on a post type's screen: every item the list
+     * calls *All*, and those in no folder.
+     *
+     * @return array{all: int, unassigned: int}
+     */
+    private function typeCounts(string $objectType): array
+    {
+        $table = $this->table();
+        $statuses = implode(', ', array_map(
+            fn (string $status): string => (string) $this->wpdb->prepare('%s', $status),
+            PostTypes::statuses($objectType)
+        ));
+
+        $row = $this->wpdb->get_row(
+            $this->wpdb->prepare(
+                "SELECT COUNT(*) AS total,
+                        SUM(NOT EXISTS (SELECT 1 FROM {$table} a WHERE a.attachment_id = p.ID)) AS unassigned
+                 FROM {$this->wpdb->posts} p
+                 WHERE p.post_type = %s AND p.post_status IN ({$statuses})",
+                $objectType
+            ),
+            ARRAY_A
+        );
+
+        return [
+            'all' => (int) ($row['total'] ?? 0),
+            'unassigned' => (int) ($row['unassigned'] ?? 0),
+        ];
+    }
+
+    public function subtreeCount(string $path, ?string $objectType = null): int
     {
         $folders = $this->wpdb->prefix . 'folderfolio_folders';
+        $join = $this->statusJoin($objectType, 'a');
 
         return (int) $this->wpdb->get_var(
             $this->wpdb->prepare(
                 "SELECT COUNT(DISTINCT a.attachment_id)
                  FROM {$this->table()} AS a
-                 INNER JOIN {$folders} AS f ON f.id = a.folder_id
+                 INNER JOIN {$folders} AS f ON f.id = a.folder_id{$join}
                  WHERE f.path LIKE %s",
                 $this->wpdb->esc_like($path) . '%'
             )

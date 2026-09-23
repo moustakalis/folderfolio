@@ -225,4 +225,36 @@ final class SettingsTest extends TestCase
         // Saved with the column showing: an unticked Download stays unticked.
         $this->assertSame($saved, Settings::withNewAbilities($saved, Settings::ABILITIES));
     }
+
+    /**
+     * Folders for — tier 3 item 12. Posts and Pages unless told otherwise;
+     * an empty list is a real answer (media only), and media itself is never
+     * in the list because it is not optional.
+     */
+    public function test_folders_for_defaults_to_posts_and_pages(): void
+    {
+        $this->assertSame(['post', 'page'], Settings::sanitize([])['post_types']);
+        $this->assertSame(['post', 'page'], Settings::sanitizePostTypes('post'));
+    }
+
+    public function test_folders_for_reads_both_shapes_and_keeps_an_empty_list(): void
+    {
+        // The form's shape, with the blank entry it always sends.
+        $this->assertSame(
+            ['page', 'product'],
+            Settings::sanitizePostTypes(['' => '', 'post' => '0', 'page' => '1', 'product' => 'on'])
+        );
+        // A list, from a filter or WP-CLI.
+        $this->assertSame(['post', 'product'], Settings::sanitizePostTypes(['post', 'product', 'post']));
+        // Every box cleared.
+        $this->assertSame([], Settings::sanitizePostTypes(['']));
+    }
+
+    public function test_folders_for_drops_media_and_anything_that_is_not_a_slug(): void
+    {
+        $this->assertSame(
+            ['page'],
+            Settings::sanitizePostTypes(['attachment', 'Page ', 'a b', str_repeat('x', 21), ['post'], 7])
+        );
+    }
 }

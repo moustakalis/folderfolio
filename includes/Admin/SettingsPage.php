@@ -14,6 +14,7 @@ use FolderFolio\Domain\AttachmentFolderRepository;
 use FolderFolio\Support\Assets;
 use FolderFolio\Domain\FolderService;
 use FolderFolio\Domain\FolderTree;
+use FolderFolio\Support\PostTypes;
 use FolderFolio\Support\Settings;
 
 /**
@@ -225,6 +226,8 @@ final class SettingsPage
             <input type="hidden" name="action" value="<?php echo esc_attr(self::SAVE_ACTION); ?>">
             <?php wp_nonce_field(self::SAVE_ACTION); ?>
 
+            <?php $this->renderPostTypes($settings['post_types']); ?>
+
             <div class="folderfolio-field">
                 <div class="folderfolio-field__label">
                     <div class="folderfolio-field__name"><?php esc_html_e('Folder counts', 'folderfolio'); ?></div>
@@ -418,6 +421,64 @@ final class SettingsPage
                 </button>
             </p>
         </form>
+        <?php
+    }
+
+    /**
+     * Folders for — tier 3 item 12.
+     *
+     * Media is shown ticked and cannot be cleared: its folders are the
+     * product, not an option, and a box that did nothing when cleared would
+     * be a lie. The blank hidden entry makes "every box cleared" a value the
+     * form can send, rather than an absent key that would read as the
+     * defaults. A type saved while its plugin was active but not registered
+     * now is carried through unseen, so switching a plugin off for a week and
+     * saving this screen does not forget it.
+     *
+     * @param list<string> $chosen
+     */
+    private function renderPostTypes(array $chosen): void
+    {
+        $offered = PostTypes::offered();
+
+        ?>
+        <div class="folderfolio-field">
+            <div class="folderfolio-field__label">
+                <div class="folderfolio-field__name" id="folderfolio-post-types-name"><?php esc_html_e('Folders for', 'folderfolio'); ?></div>
+                <div class="folderfolio-field__note"><?php esc_html_e('Which screens have a folder tree', 'folderfolio'); ?></div>
+            </div>
+            <div class="folderfolio-field__control">
+                <input type="hidden" name="post_types[]" value="">
+                <div class="folderfolio-checks" role="group" aria-labelledby="folderfolio-post-types-name">
+                    <label class="folderfolio-checks__item">
+                        <input type="checkbox" checked disabled>
+                        <?php esc_html_e('Media', 'folderfolio'); ?>
+                    </label>
+                    <?php foreach ($offered as $slug => $label) : ?>
+                        <label class="folderfolio-checks__item">
+                            <input
+                                type="checkbox"
+                                name="post_types[]"
+                                value="<?php echo esc_attr($slug); ?>"
+                                <?php checked(in_array($slug, $chosen, true)); ?>
+                            >
+                            <?php echo esc_html($label); ?>
+                        </label>
+                    <?php endforeach; ?>
+                    <?php foreach (array_diff($chosen, array_keys($offered)) as $kept) : ?>
+                        <input type="hidden" name="post_types[]" value="<?php echo esc_attr($kept); ?>">
+                    <?php endforeach; ?>
+                </div>
+                <p class="folderfolio-field__help">
+                    <?php
+                    esc_html_e(
+                        'Each one gets its own folders, on its own list screen and in the editor. A post and an image never share a folder.',
+                        'folderfolio'
+                    );
+                    ?>
+                </p>
+            </div>
+        </div>
         <?php
     }
 

@@ -11,6 +11,7 @@ if (!defined('ABSPATH')) {
 use FolderFolio\Admin\FolderDownload;
 use FolderFolio\Admin\FolderSelect;
 use FolderFolio\Admin\FoldersColumn;
+use FolderFolio\Admin\PostFolders;
 use FolderFolio\Admin\ImportPage;
 use FolderFolio\Admin\MediaLibraryFilter;
 use FolderFolio\Admin\StartupFolder;
@@ -82,6 +83,7 @@ final class Plugin
         $this->registerCliCommands();
         add_action('rest_api_init', [$this, 'registerRestRoutes']);
         add_action('delete_attachment', [$this, 'forgetAttachment']);
+        add_action('deleted_post', [$this, 'forgetPost'], 10, 2);
 
         // Not admin-only: its clause filter also has to cover REST media
         // queries and anything else that sets the folder query var.
@@ -121,6 +123,10 @@ final class Plugin
             // that it filters the library with scripts off, and so that a list
             // refresh gets a correctly-selected copy back from the server.
             (new FolderSelect())->register();
+
+            // A post's folders from the editor, and Add New from inside a
+            // folder filing the new post there — tier 3 item 12.
+            (new PostFolders())->register();
 
             // One line under our own row on the plugins screen, when another
             // folder plugin holds data and this library holds none of ours.
@@ -183,6 +189,34 @@ final class Plugin
     public function forgetAttachment($attachmentId): void
     {
         (new AttachmentFolderRepository())->deleteForAttachment((int) $attachmentId);
+    }
+
+    /**
+     * The same for a post, page or any other item filed since tier 3 item 12.
+     *
+     * `deleted_post` fires for attachments too, after `delete_attachment` has
+     * already done this; revisions and menu items are never filed, and a site
+     * saving a post deletes revisions often enough to skip them.
+     *
+     * @param int   $postId
+     * @param mixed $post
+     */
+    public function forgetPost($postId, $post = null): void
+    {
+        $type = $post instanceof \WP_Post ? $post->post_type : '';
+
+        if (in_array($type, ['attachment', 'revision', 'nav_menu_item', 'customize_changeset', 'oembed_cache'], true)) {
+            return;
+        }
+
+        // No schema yet, nothing filed: the tables are made on activation and
+        // on admin_init after an update, and a post deleted before either
+        // would otherwise print a database error.
+        if (get_option(self::DB_VERSION_OPTION) === false) {
+            return;
+        }
+
+        (new AttachmentFolderRepository())->deleteForAttachment((int) $postId);
     }
 
     public function registerRestRoutes(): void

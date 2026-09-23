@@ -12,6 +12,7 @@ use FolderFolio\Modules\Import\Elsewhere;
 use FolderFolio\Support\Assets;
 use FolderFolio\Support\Capabilities;
 use FolderFolio\Support\ClientConfig;
+use FolderFolio\Support\PostTypes;
 use FolderFolio\Support\Settings;
 
 /**
@@ -22,8 +23,6 @@ use FolderFolio\Support\Settings;
  */
 final class MediaLibraryIntegration
 {
-    private const SCREEN_HOOK = 'upload.php';
-
     /**
      * Compiled bundles this screen needs, mapped to their script dependencies.
      *
@@ -65,17 +64,24 @@ final class MediaLibraryIntegration
     }
 
     /**
-     * Enqueue built assets only on Media > Library.
+     * Enqueue built assets on Media > Library — and, since tier 3 item 12, on
+     * a post type's list screen when its folders are on (`Rail::screenType()`).
      *
      * @param string $hookSuffix Current WordPress admin screen identifier.
      */
     public function enqueueAssets(string $hookSuffix): void
     {
-        if (self::SCREEN_HOOK !== $hookSuffix || !current_user_can('upload_files')) {
+        $type = Rail::screenType();
+
+        if (!in_array($hookSuffix, ['upload.php', 'edit.php'], true) || null === $type) {
             return;
         }
 
-        wp_enqueue_media();
+        // The grid's frame is media's alone; a post list has no wp.media to
+        // keep in step.
+        if (PostTypes::MEDIA === $type) {
+            wp_enqueue_media();
+        }
 
         $stylePath = FOLDERFOLIO_PLUGIN_DIR . 'assets/build/core/admin.css';
 
@@ -120,7 +126,7 @@ final class MediaLibraryIntegration
         if (wp_script_is('folderfolio-media-library-integration', 'enqueued')) {
             wp_add_inline_script(
                 'folderfolio-media-library-integration',
-                ClientConfig::script($this->config()),
+                ClientConfig::script($this->config($type)),
                 'before'
             );
         }
@@ -134,30 +140,18 @@ final class MediaLibraryIntegration
      *
      * @return array<string, mixed>
      */
-    private function config(): array
+    private function config(string $type): array
     {
         $settings = Settings::get();
 
-        return [
+        // The type, its labels and the abilities for it — the same keys the
+        // rail's own config carries, from the same method, because whichever
+        // of the two is printed first wins window.folderFolio.
+        return Rail::typeConfig($type) + [
             'restUrl' => esc_url_raw(rest_url('folderfolio/v1')),
             'nonce' => wp_create_nonce('wp_rest'),
             'pluginUrl' => FOLDERFOLIO_PLUGIN_URL,
             'version' => FOLDERFOLIO_VERSION,
-            /*
-             * The four abilities of the roles matrix, resolved for this user.
-             *
-             * This used to be a single `canManageFolders` set to
-             * current_user_can('upload_files') — which nothing read, and which
-             * would have been the wrong answer if it had.
-             */
-            'can' => [
-                'create' => Capabilities::can('create'),
-                'rename' => Capabilities::can('rename'),
-                'delete' => Capabilities::can('delete'),
-                'assign' => Capabilities::can('assign'),
-                'lock' => Capabilities::can('lock'),
-                'download' => Capabilities::can('download'),
-            ],
 
             /*
              * Site settings — screen 08.
@@ -175,7 +169,7 @@ final class MediaLibraryIntegration
             // above: whichever of the two bundles is enqueued first wins the
             // `||`, so a key in only one of them is a feature that works on
             // some page loads.
-            'elsewhere' => Elsewhere::forConfig(),
+            'elsewhere' => PostTypes::MEDIA === $type ? Elsewhere::forConfig() : null,
             // No 'i18n' here any more. All four labels belonged to
             // upload-integration.ts, and media-library-integration.ts — the
             // only bundle left on this screen — renders no text of its own.

@@ -13,6 +13,7 @@ use FolderFolio\Modules\Import\Elsewhere;
 use FolderFolio\Support\Assets;
 use FolderFolio\Support\Capabilities;
 use FolderFolio\Support\ClientConfig;
+use FolderFolio\Support\PostTypes;
 use FolderFolio\Support\Settings;
 
 /**
@@ -73,9 +74,43 @@ use FolderFolio\Support\Settings;
  */
 final class Rail
 {
-    private const SCREEN_HOOK = 'upload.php';
-
     private const SCREEN_ID = 'upload';
+
+    /**
+     * The object type whose folders this screen shows, or null for a screen
+     * with no rail.
+     *
+     * The media library shows media's; since tier 3 item 12 a post type's
+     * list screen (`edit.php?post_type=…`) shows that type's, when the type
+     * has folders (*Folders for*) and this person can reach them (its
+     * `edit_posts`, `Capabilities` rule 1). One place answers it, because the
+     * rail, the bundles' config, the folder select and the media picker all
+     * have to agree on which screens the rail is on.
+     */
+    public static function screenType(): ?string
+    {
+        if (!function_exists('get_current_screen')) {
+            return null;
+        }
+
+        $screen = get_current_screen();
+
+        if (!$screen) {
+            return null;
+        }
+
+        if (self::SCREEN_ID === $screen->id) {
+            return current_user_can('upload_files') ? PostTypes::MEDIA : null;
+        }
+
+        $type = (string) $screen->post_type;
+
+        if ('edit' !== $screen->base || '' === $type || PostTypes::MEDIA === $type) {
+            return null;
+        }
+
+        return Capabilities::canUseFolders($type) ? $type : null;
+    }
 
     public function register(): void
     {
@@ -90,7 +125,7 @@ final class Rail
 
     public function enqueueAssets(string $hookSuffix): void
     {
-        if (self::SCREEN_HOOK !== $hookSuffix || !$this->userMaySee()) {
+        if (!in_array($hookSuffix, ['upload.php', 'edit.php'], true) || null === self::screenType()) {
             return;
         }
 
@@ -136,7 +171,11 @@ final class Rail
             // folder selection onto an upload. Core loads it on this screen
             // anyway; declaring it is what makes the order a fact rather than
             // a coincidence.
-            array_merge($asset['dependencies'], ['wp-api-fetch', 'wp-a11y', 'wp-plupload']),
+            array_merge(
+                $asset['dependencies'],
+                ['wp-api-fetch', 'wp-a11y'],
+                self::screenType() === PostTypes::MEDIA ? ['wp-plupload'] : []
+            ),
             $asset['version'],
             ['in_footer' => true, 'strategy' => 'defer']
         );
@@ -219,7 +258,7 @@ final class Rail
                 id="folderfolio-rail-app"
                 class="folderfolio-rail__app"
                 role="navigation"
-                aria-label="<?php esc_attr_e('Media folders', 'folderfolio'); ?>"
+                aria-label="<?php echo esc_attr(self::treeLabel((string) self::screenType())); ?>"
             ></div>
 
             <div class="folderfolio-rail__footer">
@@ -598,6 +637,58 @@ final class Rail
     }
 
     /**
+     * "Media folders", "Posts folders" — the rail's landmark name.
+     */
+    private static function treeLabel(string $type): string
+    {
+        if (PostTypes::MEDIA === $type) {
+            return __('Media folders', 'folderfolio');
+        }
+
+        /* translators: %s: a post type's plural name, such as "Pages". */
+        return sprintf(__('%s folders', 'folderfolio'), PostTypes::label($type));
+    }
+
+    /**
+     * What the app needs to know about the type it is showing — tier 3 item 12.
+     *
+     * `objectType` goes on every request that names no folder (the tree, the
+     * counts, a folder made at the top), and the labels replace "All media"
+     * with the type's own words. `media` is what hides the rows that only
+     * mean something for files — Download as ZIP, Copy with files, Sort
+     * inside › Files — and the drop of files onto a folder from the grid.
+     *
+     * Public and static because MediaLibraryIntegration writes the same
+     * global on the same screens, and whichever is printed first wins it.
+     *
+     * @return array<string, mixed>
+     */
+    public static function typeConfig(string $type): array
+    {
+        $object = get_post_type_object($type);
+        $media = PostTypes::MEDIA === $type;
+
+        return [
+            'objectType' => $type,
+            'media' => $media,
+            'typeLabels' => [
+                'all' => $media ? __('All media', 'folderfolio') : (string) ($object->labels->all_items ?? $type),
+                'plural' => $media ? __('Media', 'folderfolio') : PostTypes::label($type),
+                'singular' => $media ? __('file', 'folderfolio') : (string) ($object->labels->singular_name ?? $type),
+                'tree' => self::treeLabel($type),
+            ],
+            'can' => [
+                'create' => Capabilities::can('create', $type),
+                'rename' => Capabilities::can('rename', $type),
+                'delete' => Capabilities::can('delete', $type),
+                'assign' => Capabilities::can('assign', $type),
+                'lock' => Capabilities::can('lock', $type),
+                'download' => Capabilities::can('download', $type),
+            ],
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function config(): array
@@ -633,27 +724,20 @@ final class Rail
     private function appConfig(): array
     {
         $settings = Settings::get();
+        $type = self::screenType() ?? PostTypes::MEDIA;
 
-        return [
+        return self::typeConfig($type) + [
             'restUrl' => esc_url_raw(rest_url('folderfolio/v1')),
             'nonce' => wp_create_nonce('wp_rest'),
             'pluginUrl' => FOLDERFOLIO_PLUGIN_URL,
             'version' => FOLDERFOLIO_VERSION,
             /*
-             * The four abilities of the roles matrix, resolved for this user.
-             *
-             * This used to be a single `canManageFolders` set to
-             * current_user_can('upload_files') — which nothing read, and which
-             * would have been the wrong answer if it had.
+             * The abilities of the roles matrix, resolved for this user and
+             * this screen's type — `typeConfig()`. This used to be a single
+             * `canManageFolders` set to current_user_can('upload_files') —
+             * which nothing read, and which would have been the wrong answer
+             * if it had.
              */
-            'can' => [
-                'create' => Capabilities::can('create'),
-                'rename' => Capabilities::can('rename'),
-                'delete' => Capabilities::can('delete'),
-                'assign' => Capabilities::can('assign'),
-                'lock' => Capabilities::can('lock'),
-                'download' => Capabilities::can('download'),
-            ],
 
             /*
              * Site settings — screen 08.
@@ -690,7 +774,12 @@ final class Rail
              * globals — width, open, the drag's bounds. Everything the React
              * app reads is here.
              */
-            'startupFolder' => RailPreferences::forUser(get_current_user_id())['startup'],
+            // Media only: the startup redirect is the media library's
+            // (Admin\StartupFolder), and a toggle on the Posts screen would
+            // set a folder nothing ever opens.
+            'startupFolder' => PostTypes::MEDIA === $type
+                ? RailPreferences::forUser(get_current_user_id())['startup']
+                : null,
 
             /*
              * This person's starred folders, for the Starred group above the
@@ -710,8 +799,8 @@ final class Rail
              * moment later. It is null on almost every site and costs one
              * COUNT to find that out; Modules\Import\Elsewhere has the rest.
              */
-            'elsewhere' => Elsewhere::forConfig(),
-            'i18n' => self::strings(),
+            'elsewhere' => PostTypes::MEDIA === $type ? Elsewhere::forConfig() : null,
+            'i18n' => PostTypes::MEDIA === $type ? self::strings() : self::itemStrings($type) + self::strings(),
         ];
     }
 
@@ -1032,19 +1121,50 @@ final class Rail
         ];
     }
 
-    private function isTargetScreen(): bool
+    /**
+     * The sentences that say "files", said about posts — tier 3 item 12.
+     *
+     * Only the ones a post list can show: the rows the ⋮ keeps, the undo
+     * toast, the Add-to-folder flyout's result and the fixed row's label.
+     * "Items" rather than the type's own noun, because a translator cannot
+     * put "posts" or "Seiten" into a sentence built around a %s count in
+     * every language; "items" is one word to translate once.
+     *
+     * @return array<string, string>
+     */
+    private static function itemStrings(string $type): array
     {
-        if (!function_exists('get_current_screen')) {
-            return false;
-        }
+        $object = get_post_type_object($type);
 
-        $screen = get_current_screen();
-
-        return $screen && self::SCREEN_ID === $screen->id && $this->userMaySee();
+        return [
+            'allMedia' => null === $object ? $type : (string) $object->labels->all_items,
+            /* translators: 1: folder name, 2: how many items, 3: how many folders are inside it. */
+            'folderWithSubfolders' => __('%1$s, %2$s items, %3$s folders inside', 'folderfolio'),
+            'moveFailed' => __('Could not move those items.', 'folderfolio'),
+            /* translators: 1: number of items, 2: the destination folder name. */
+            'movedFile' => __('Moved %s item to %s', 'folderfolio'),
+            /* translators: 1: number of items, 2: the destination folder name. */
+            'movedFiles' => __('Moved %s items to %s', 'folderfolio'),
+            'addFailed' => __('Could not file those items.', 'folderfolio'),
+            /* translators: %s is the number of selected items. */
+            'fileSelected' => __('%s item selected', 'folderfolio'),
+            /* translators: %s is the number of selected items. */
+            'filesSelected' => __('%s items selected', 'folderfolio'),
+            /* translators: 1: number of items, 2: a comma-separated list of folder names. */
+            'addedFile' => __('Added %s item to %s', 'folderfolio'),
+            /* translators: 1: number of items, 2: a comma-separated list of folder names. */
+            'addedFiles' => __('Added %s items to %s', 'folderfolio'),
+            /* translators: 1: folder name, 2: number of items, always 1. */
+            'deletedWithFile' => __('Deleted “%1$s” — %2$s item moved to Unassigned', 'folderfolio'),
+            /* translators: 1: folder name, 2: number of items. */
+            'deletedWithFiles' => __('Deleted “%1$s” — %2$s items moved to Unassigned', 'folderfolio'),
+            /* translators: %s is the folder the items are being moved out of. */
+            'movesOutOf' => __('Moves them out of “%s”', 'folderfolio'),
+        ];
     }
 
-    private function userMaySee(): bool
+    private function isTargetScreen(): bool
     {
-        return current_user_can('upload_files');
+        return null !== self::screenType();
     }
 }

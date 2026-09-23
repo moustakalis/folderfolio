@@ -52,7 +52,10 @@ final class FolderArchive
     {
         $root = $this->folders->get($folderId);
 
-        if (null === $root) {
+        // Only media folders hold files. A folder of posts is not "not
+        // found", but there is nothing in it a ZIP could carry — and the
+        // download route answers the same way for both, so it says less.
+        if (null === $root || FolderRepository::DEFAULT_OBJECT_TYPE !== $root->objectType) {
             return null;
         }
 

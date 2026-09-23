@@ -10,6 +10,7 @@ if (!defined('ABSPATH')) {
 
 use FolderFolio\Database\Transaction;
 use FolderFolio\Support\Capabilities;
+use FolderFolio\Support\PostTypes;
 use FolderFolio\Support\Settings;
 use FolderFolio\Support\Swatches;
 use WP_Error;
@@ -90,6 +91,30 @@ class FolderService
     }
 
     /**
+     * A folder given as a parent, a destination or a reassignment that holds
+     * another kind of content — tier 3 item 12.
+     *
+     * One tree per object type (Nick's 12b): a post folder never sits inside a
+     * media folder, and a post is never filed where images are. The rail never
+     * offers either — each screen shows one type's tree — so this is the rule
+     * for a request that did not come from the rail.
+     *
+     * @param array<string, mixed>|null $folder A row from the repository.
+     */
+    private function wrongType(?array $folder, string $objectType): ?WP_Error
+    {
+        if ($folder === null || (string) $folder['object_type'] === $objectType) {
+            return null;
+        }
+
+        return new WP_Error(
+            'folderfolio_wrong_type',
+            __('That folder holds a different kind of content.', 'folderfolio'),
+            ['status' => 400]
+        );
+    }
+
+    /**
      * Mark a folder locked or pinned — tier 2 item 10.
      *
      * Locking needs the `lock` ability, which the route asks. Pinning moves a
@@ -167,7 +192,7 @@ class FolderService
         // Files filed in more than one folder: the input to both corrections
         // below, asked once. Empty — and one GROUP BY — on a library filed one
         // file to one folder.
-        $multiFiled = $this->assignments->multiFiled();
+        $multiFiled = $this->assignments->multiFiled($objectType);
 
         // Only the inherited total can count a file twice.
         $overcount = [];
@@ -184,7 +209,7 @@ class FolderService
 
         return FolderTree::withCounts(
             $nodes,
-            $this->assignments->directCounts(),
+            $this->assignments->directCounts($objectType),
             $inherited,
             $overcount,
             FolderTree::shared($multiFiled)
@@ -253,6 +278,7 @@ class FolderService
 
         $parentId = $data['parent_id'] ?? null;
         $parentPath = null;
+        $objectType = $data['object_type'] ?? FolderRepository::DEFAULT_OBJECT_TYPE;
 
         if ($parentId !== null) {
             $parent = $this->folders->find($parentId);
@@ -262,6 +288,12 @@ class FolderService
                     'folderfolio_invalid_parent',
                     __('The selected parent folder does not exist.', 'folderfolio')
                 );
+            }
+
+            $mixed = $this->wrongType($parent, $objectType);
+
+            if ($mixed !== null) {
+                return $mixed;
             }
 
             $parentPath = (string) $parent['path'];
@@ -281,8 +313,6 @@ class FolderService
                 return $tooDeep;
             }
         }
-
-        $objectType = $data['object_type'] ?? FolderRepository::DEFAULT_OBJECT_TYPE;
 
         if ($this->folders->siblingNameExists($data['name'] ?? '', $parentId, null, $objectType)) {
             return new WP_Error(
@@ -427,6 +457,12 @@ class FolderService
                     'folderfolio_invalid_parent',
                     __('The selected parent folder does not exist.', 'folderfolio')
                 );
+            }
+
+            $mixed = $this->wrongType($parent, $folder->objectType);
+
+            if ($mixed !== null) {
+                return $mixed;
             }
 
             $parentPath = (string) $parent['path'];
@@ -800,7 +836,7 @@ class FolderService
             // subtree at once and before anything is written: one file this
             // person may not organise refuses the paste, rather than a copy
             // that silently leaves it out and looks complete.
-            $permitted = $this->guardAttachments(array_values(array_unique($everything)));
+            $permitted = $this->guardAttachments(array_values(array_unique($everything)), $objectType);
 
             if (is_wp_error($permitted)) {
                 return $permitted;
@@ -978,7 +1014,11 @@ class FolderService
         // request that is going to be refused should not cost a transaction.
         if (
             $reassignAttachmentsTo !== null
-            && ($reassignAttachmentsTo === $id || $this->folders->find($reassignAttachmentsTo) === null)
+            && (
+                $reassignAttachmentsTo === $id
+                || $this->folders->find($reassignAttachmentsTo) === null
+                || $this->wrongType($this->folders->find($reassignAttachmentsTo), $folder->objectType) !== null
+            )
         ) {
             return new WP_Error(
                 'folderfolio_invalid_reassignment',
@@ -1093,7 +1133,9 @@ class FolderService
         string $mode = self::MODE_ADD,
         ?string $importRun = null
     ): int|WP_Error {
-        if ($this->folders->find($folderId) === null) {
+        $folder = $this->folders->find($folderId);
+
+        if ($folder === null) {
             return new WP_Error(
                 'folderfolio_folder_not_found',
                 __('Folder not found.', 'folderfolio')
@@ -1109,7 +1151,7 @@ class FolderService
 
         $ids = array_values(array_unique(array_map('intval', $attachmentIds)));
 
-        $permitted = $this->guardAttachments($ids);
+        $permitted = $this->guardAttachments($ids, (string) $folder['object_type']);
 
         if (is_wp_error($permitted)) {
             return $permitted;
@@ -1201,9 +1243,14 @@ class FolderService
      */
     public function orderedAttachmentIds(int $folderId): array
     {
+        // The folder's own kind of content, in the statuses its list screen
+        // shows — a post folder's drafts count, its trash does not.
+        $row = $this->folders->find($folderId);
+        $objectType = $row === null ? FolderRepository::DEFAULT_OBJECT_TYPE : (string) $row['object_type'];
+
         $query = new \WP_Query([
-            'post_type' => 'attachment',
-            'post_status' => ['inherit', 'private'],
+            'post_type' => $objectType,
+            'post_status' => PostTypes::statuses($objectType),
             'fields' => 'ids',
             'posts_per_page' => -1,
             'no_found_rows' => true,
@@ -1261,7 +1308,9 @@ class FolderService
      */
     public function moveFiles(int $folderId, array $attachmentIds, string $place, ?int $anchorId = null): int|WP_Error
     {
-        if ($this->folders->find($folderId) === null) {
+        $folder = $this->folders->find($folderId);
+
+        if ($folder === null) {
             return new WP_Error('folderfolio_folder_not_found', __('Folder not found.', 'folderfolio'));
         }
 
@@ -1294,7 +1343,7 @@ class FolderService
             );
         }
 
-        $permitted = $this->guardAttachments($ids);
+        $permitted = $this->guardAttachments($ids, (string) $folder['object_type']);
 
         if (is_wp_error($permitted)) {
             return $permitted;
@@ -1340,7 +1389,7 @@ class FolderService
     {
         $ids = array_values(array_unique(array_map('intval', $attachmentIds)));
 
-        $permitted = $this->guardAttachments($ids, false);
+        $permitted = $this->guardAttachments($ids, null);
 
         if (is_wp_error($permitted)) {
             return $permitted;
@@ -1449,7 +1498,7 @@ class FolderService
             return count($this->assignments->attachmentIdsForFolder($folderId));
         }
 
-        return $this->assignments->subtreeCount($folder->path);
+        return $this->assignments->subtreeCount($folder->path, $folder->objectType);
     }
 
     /**
@@ -1498,10 +1547,16 @@ class FolderService
     }
 
     /**
-     * @param list<int> $ids
+     * May these items be filed — each one the folder's kind, and each one this
+     * person's to organise?
+     *
+     * @param list<int>   $ids
+     * @param string|null $objectType What every item must be; null asks only
+     *                                the permission (taking items out, where
+     *                                what they are is not in question).
      * @return true|WP_Error
      */
-    private function guardAttachments(array $ids, bool $requireAttachment = true): bool|WP_Error
+    private function guardAttachments(array $ids, ?string $objectType = FolderRepository::DEFAULT_OBJECT_TYPE): bool|WP_Error
     {
         // One query per thousand files instead of one per file. Both checks
         // below read the post, and uncached that is a SELECT each: measured
@@ -1515,11 +1570,14 @@ class FolderService
 
         foreach ($ids as $attachmentId) {
             // wp_attachment_is_image() implied the post type anyway; the only
-            // thing that ever asserted was "is an attachment".
-            if ($requireAttachment && get_post_type($attachmentId) !== 'attachment') {
+            // thing that ever asserted was "is an attachment". Since item 12,
+            // "is the folder's kind": an image is not filed among posts.
+            if ($objectType !== null && get_post_type($attachmentId) !== $objectType) {
                 return new WP_Error(
                     'folderfolio_invalid_attachment',
-                    __('One or more selected media items are invalid.', 'folderfolio')
+                    $objectType === FolderRepository::DEFAULT_OBJECT_TYPE
+                        ? __('One or more selected media items are invalid.', 'folderfolio')
+                        : __('One or more of the selected items cannot be filed in this folder.', 'folderfolio')
                 );
             }
 

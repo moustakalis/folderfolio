@@ -193,6 +193,20 @@ export async function refreshListTable(url: string): Promise<boolean> {
                     continue;
                 }
 
+                /*
+                 * `#the-list` keeps its element and takes the new rows.
+                 * Quick Edit binds to it directly — inline-edit-post.js's
+                 * `$('#the-list').on('click', '.editinline', …)` — so the
+                 * media list, which has no Quick Edit, never needed this;
+                 * a post list (tier 3 item 12) that swapped the element lost
+                 * Quick Edit on the first folder click.
+                 */
+                if (current.id === 'the-list') {
+                    current.replaceChildren(...[...next.childNodes].map((node) => document.importNode(node, true)));
+
+                    continue;
+                }
+
                 current.replaceWith(next);
             } else {
                 // Present before, absent now — .subsubsub disappears when a

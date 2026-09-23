@@ -270,6 +270,29 @@
   width: 64px;
 }
 
+/**
+ * Folders for — a wrapping row of checkboxes (tier 3 item 12). Core's own
+ * checkbox, untouched; each label is one target, and a row wraps rather than
+ * scrolls on a phone. Media is ticked and disabled: always on.
+ */
+.folderfolio-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  font-size: 13px;
+}
+
+.folderfolio-checks__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+}
+
+.folderfolio-checks__item input[type="checkbox"] {
+  margin: 0;
+}
+
 .folderfolio-field__inline {
   display: grid;
   grid-auto-flow: column;

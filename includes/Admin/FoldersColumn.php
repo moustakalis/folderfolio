@@ -11,6 +11,8 @@ if (!defined('ABSPATH')) {
 use FolderFolio\Domain\AttachmentFolderRepository;
 use FolderFolio\Domain\FolderPath;
 use FolderFolio\Domain\FolderRepository;
+use FolderFolio\Support\Capabilities;
+use FolderFolio\Support\PostTypes;
 
 /**
  * The Folders column in the Media Library's list table — screen 06.
@@ -83,10 +85,35 @@ final class FoldersColumn
     ) {
     }
 
+    /** Whose folders the cells name — media, or the list screen's post type. */
+    private string $objectType = PostTypes::MEDIA;
+
     public function register(): void
     {
         add_filter('manage_media_columns', [$this, 'addColumn']);
         add_action('manage_media_custom_column', [$this, 'renderCell'], 10, 2);
+
+        // A post type's list screen — tier 3 item 12. Hooked once the screen
+        // knows its type, and only for a type with folders this person can
+        // reach: the column is part of the folder feature, not a column every
+        // list screen grows.
+        add_action('load-edit.php', [$this, 'registerForPostType']);
+    }
+
+    public function registerForPostType(): void
+    {
+        global $typenow;
+
+        $type = is_string($typenow) && '' !== $typenow ? $typenow : 'post';
+
+        if (PostTypes::MEDIA === $type || !Capabilities::canUseFolders($type)) {
+            return;
+        }
+
+        $this->objectType = $type;
+
+        add_filter("manage_{$type}_posts_columns", [$this, 'addColumn']);
+        add_action("manage_{$type}_posts_custom_column", [$this, 'renderCell'], 10, 2);
     }
 
     /**
@@ -110,14 +137,14 @@ final class FoldersColumn
             $out[$key] = $label;
 
             if ('title' === $key) {
-                $out[self::COLUMN] = self::headerLabel();
+                $out[self::COLUMN] = $this->headerLabel();
             }
         }
 
         // No `title` column — a plugin removed it, or a future core changed
         // its key. Better at the end than not at all.
         if (!isset($out[self::COLUMN])) {
-            $out[self::COLUMN] = self::headerLabel();
+            $out[self::COLUMN] = $this->headerLabel();
         }
 
         return $out;
@@ -147,10 +174,14 @@ final class FoldersColumn
      * that have no second folder plugin at all. A plain noun phrase costs them
      * nothing and still cannot be confused with a bare *Folders*.
      */
-    private static function headerLabel(): string
+    private function headerLabel(): string
     {
         return '<span class="folderfolio folderfolio-folders__head">'
-            . esc_html__('Media folders', 'folderfolio')
+            . esc_html(
+                PostTypes::MEDIA === $this->objectType
+                    ? __('Media folders', 'folderfolio')
+                    : __('Folders', 'folderfolio')
+            )
             . '</span>';
     }
 
@@ -205,7 +236,9 @@ final class FoldersColumn
                 esc_url(
                     add_query_arg(
                         [MediaLibraryFilter::QUERY_VAR => $folderId],
-                        admin_url('upload.php')
+                        PostTypes::MEDIA === $this->objectType
+                            ? admin_url('upload.php')
+                            : add_query_arg('post_type', $this->objectType, admin_url('edit.php'))
                     )
                 ),
                 $folderId,
@@ -239,6 +272,12 @@ final class FoldersColumn
         foreach ((array) $posts as $post) {
             if ($post instanceof \WP_Post) {
                 $ids[] = $post->ID;
+            } elseif (is_object($post) && isset($post->ID)) {
+                // 'fields' => 'id=>parent' — how edit.php queries a
+                // hierarchical type such as Pages: plain objects with ID and
+                // post_parent, and every page on the site rather than one
+                // screenful, because core builds the hierarchy in PHP.
+                $ids[] = (int) $post->ID;
             } elseif (is_numeric($post)) {
                 // 'fields' => 'ids' — not how upload.php queries, but a filter
                 // can make it so, and a fatal here would take the screen down.
@@ -252,7 +291,7 @@ final class FoldersColumn
 
         $this->folders = [];
 
-        foreach ($this->folderRepository->all() as $row) {
+        foreach ($this->folderRepository->all($this->objectType) as $row) {
             $this->folders[(int) $row['id']] = [
                 'name' => (string) $row['name'],
                 'path' => (string) $row['path'],

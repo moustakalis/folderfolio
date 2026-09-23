@@ -62,4 +62,4 @@ parameters:
         # end-to-end tests in the job that does build assets.
         -
             identifier: require.fileNotFound
-            message: '#assets/build/apps/(gallery|import|modal|rail)\.asset\.php#'
+            message: '#assets/build/apps/(gallery|import|modal|post-folders|rail)\.asset\.php#'

@@ -60,7 +60,7 @@ import { SORT_LABELS, isSortOrder, useRail, type SortOrder } from './store';
 import { useAnchoredPanel } from './useAnchoredPanel';
 import { can } from '../../lib/can';
 import { SWATCHES, isSwatch, swatchLabel, type Swatch } from '../../lib/swatches';
-import { t } from '../../core/api';
+import { isMedia, t } from '../../core/api';
 
 type Scope = 'folders' | 'files';
 
@@ -482,7 +482,10 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
                         </button>
                     ) : null}
 
-                    {copying && can('assign') ? (
+                    {/* Media only (tier 3 item 12): a post filed in two folders is
+                        still one post, and "with files" names what a post
+                        folder does not hold. */}
+                    {copying && can('assign') && isMedia() ? (
                         <button
                             type="button"
                             role="menuitem"
@@ -577,20 +580,24 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
                         <ChevronRightIcon size={12} />
                     </button>
 
-                    <button
-                        ref={filesRef}
-                        type="button"
-                        role="menuitem"
-                        className="folderfolio-menu__item folderfolio-menu__item--step"
-                        aria-haspopup="menu"
-                        onClick={() => setStep('files')}
-                    >
-                        {t('sortFiles', 'Files')}
-                        <span className="folderfolio-menu__value">
-                            {orderLabel(folder.sort_files)}
-                        </span>
-                        <ChevronRightIcon size={12} />
-                    </button>
+                    {/* The file order is the media library's: a post list
+                        keeps its own column sorting. */}
+                    {isMedia() ? (
+                        <button
+                            ref={filesRef}
+                            type="button"
+                            role="menuitem"
+                            className="folderfolio-menu__item folderfolio-menu__item--step"
+                            aria-haspopup="menu"
+                            onClick={() => setStep('files')}
+                        >
+                            {t('sortFiles', 'Files')}
+                            <span className="folderfolio-menu__value">
+                                {orderLabel(folder.sort_files)}
+                            </span>
+                            <ChevronRightIcon size={12} />
+                        </button>
+                    ) : null}
 
                     <div className="folderfolio-menu__rule" role="separator" />
 

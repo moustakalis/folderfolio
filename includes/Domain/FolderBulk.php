@@ -84,7 +84,7 @@ final class FolderBulk
         ?int $parentId = null,
         string $objectType = FolderRepository::DEFAULT_OBJECT_TYPE
     ): array|WP_Error {
-        $destination = $this->destination($parentId);
+        $destination = $this->destination($parentId, $objectType);
 
         if (is_wp_error($destination)) {
             return $destination;
@@ -387,7 +387,7 @@ final class FolderBulk
      *
      * @return array{id: ?int, name: string, depth: int}|WP_Error
      */
-    private function destination(?int $parentId): array|WP_Error
+    private function destination(?int $parentId, string $objectType): array|WP_Error
     {
         if ($parentId === null || $parentId === 0) {
             // -1, so that a segment at position 0 lands at depth 0 — which is
@@ -402,6 +402,16 @@ final class FolderBulk
                 'folderfolio_invalid_parent',
                 __('The selected parent folder does not exist.', 'folderfolio'),
                 ['status' => 404]
+            );
+        }
+
+        // One tree per object type (tier 3 item 12): a list is made in the
+        // tree it was asked for, and a parent from another is not in it.
+        if ((string) $row['object_type'] !== $objectType) {
+            return new WP_Error(
+                'folderfolio_wrong_type',
+                __('That folder holds a different kind of content.', 'folderfolio'),
+                ['status' => 400]
             );
         }
 

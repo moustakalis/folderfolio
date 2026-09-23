@@ -9,7 +9,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { apiFetch, ApiEnvelope, errorMessage } from '../../core/api';
+import { apiFetch, ApiEnvelope, errorMessage, isMedia, objectType, typedPath } from '../../core/api';
 import { useRail } from './store';
 import type { Swatch } from '../../lib/swatches';
 
@@ -86,7 +86,7 @@ export function useTree() {
                 // No ?counts=: the mode is a site setting now, and the
                 // server applies it. Sending 'inherited' from here made the
                 // rail the one place on the site that ignored it.
-                '/folders'
+                typedPath('/folders')
             );
 
             return response.data ?? [];
@@ -103,7 +103,7 @@ export function useLibraryCounts() {
     return useQuery({
         queryKey: countsKey,
         queryFn: async (): Promise<LibraryCounts> => {
-            const response = await apiFetch<ApiEnvelope<{ library: LibraryCounts }>>('/counts');
+            const response = await apiFetch<ApiEnvelope<{ library: LibraryCounts }>>(typedPath('/counts'));
 
             return response.data.library;
         },
@@ -474,7 +474,7 @@ export function useReorderFolders() {
                 '/folders/reorder',
                 {
                     method: 'POST',
-                    data: { parent_id: input.parentId, ids: input.ids },
+                    data: { parent_id: input.parentId, ids: input.ids, ...(isMedia() ? {} : { object_type: objectType() }) },
                 }
             );
 
@@ -586,7 +586,10 @@ export function useCreateFolder() {
         mutationFn: async (input: { name: string; parentId: number | null }) => {
             const response = await apiFetch<ApiEnvelope<FolderNode>>('/folders', {
                 method: 'POST',
-                data: { name: input.name, parent_id: input.parentId },
+                // The type goes along even under a parent — the server takes the
+                // parent's — so a folder made at the top of the Pages tree is a
+                // Pages folder.
+                data: { name: input.name, parent_id: input.parentId, ...(isMedia() ? {} : { object_type: objectType() }) },
             });
 
             return response.data;

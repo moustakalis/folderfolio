@@ -26,7 +26,7 @@ import { StartHere } from './StartHere';
 import { sortTree, useRail } from './store';
 import { arrivedFromStartupFolder, folderFromUrl } from '../../lib/filter';
 import { hasListTable } from '../../lib/list-refresh';
-import { t, tn } from '../../core/api';
+import { isMedia, t, tn } from '../../core/api';
 
 /**
  * @param cards Whether to draw the folders here too, which is the fallback for
@@ -51,7 +51,8 @@ export function Content({ nodes, cards }: { nodes: FolderNode[]; cards: boolean 
                 controls={
                     <>
                         <ClearFilter />
-                        {selectedId === null ? null : <StartHere folderId={selectedId} />}
+                        {/* The startup folder is the media library's (item 12). */}
+                        {selectedId === null || !isMedia() ? null : <StartHere folderId={selectedId} />}
                     </>
                 }
             />

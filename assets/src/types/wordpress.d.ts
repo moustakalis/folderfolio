@@ -250,6 +250,15 @@ interface FolderFolioConfig {
    * for the same reason the settings below are.
    */
   can?: Record<'create' | 'rename' | 'delete' | 'assign' | 'lock' | 'download', boolean>;
+  /**
+   * Whose folders this screen shows — tier 3 item 12. `attachment` on the
+   * media library; a post type on its list screen. Absent means media.
+   * `media` is the same fact as a boolean, for the rows that only mean
+   * something for files. Admin\\Rail::typeConfig().
+   */
+  objectType?: string;
+  media?: boolean;
+  typeLabels?: { all: string; plural: string; singular: string; tree: string };
   /** This person's starred folders — Admin\\Rail::appConfig(), tier 2 item 10. */
   stars?: number[];
   i18n: Record<string, string>;

@@ -32,6 +32,31 @@ export function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promis
 }
 
 /**
+ * Whose folders this screen shows — tier 3 item 12.
+ *
+ * `attachment` on the media library and in every picker; a post type on its
+ * own list screen. Read from the config each time rather than captured, so
+ * the value is whatever the page was printed with.
+ */
+export function objectType(): string {
+  return window.folderFolio?.objectType ?? 'attachment';
+}
+
+/** Is this screen's tree the media library's? Only files have downloads, file order and "with files". */
+export function isMedia(): boolean {
+  return objectType() === 'attachment';
+}
+
+/**
+ * A path naming no folder, for this screen's type: `/folders` on media, as it
+ * always was, and `/folders?object_type=page` on Pages. A request that names
+ * a folder needs none of this — the server answers from the folder.
+ */
+export function typedPath(path: string): string {
+  return isMedia() ? path : `${path}${path.includes('?') ? '&' : '?'}object_type=${encodeURIComponent(objectType())}`;
+}
+
+/**
  * Look up a server-supplied label.
  *
  * The config object carried these strings from the start and nothing read

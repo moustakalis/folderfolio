@@ -565,7 +565,11 @@ test.describe('list mode', () => {
 
 test.describe('the media picker', () => {
     test('puts a folder column beside the attachments, at the cramped geometry', async ({ page }) => {
-        await page.goto('/wp-admin/edit.php?post_type=post');
+        // Not edit.php any more: since tier 3 item 12 the Posts screen has a
+        // folder rail of its own (Posts folders), and the media picker's
+        // bundle stays off a screen whose window.folderFolio is the rail's.
+        // themes.php is a MediaModalIntegration screen with no rail.
+        await page.goto('/wp-admin/themes.php');
 
         await page.evaluate(() => {
             const frame = (window as any).wp.media({ title: 'Select', multiple: false });

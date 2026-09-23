@@ -9,6 +9,8 @@ if (!defined('ABSPATH')) {
 }
 
 use FolderFolio\Domain\FolderSorts;
+use FolderFolio\Support\Capabilities;
+use FolderFolio\Support\PostTypes;
 use WP_Query;
 
 /**
@@ -55,20 +57,21 @@ final class MediaLibraryFilter
     }
 
     /**
-     * List mode: upload.php?folderfolio_folder=12 on the main query.
+     * List mode: upload.php?folderfolio_folder=12 on the main query — and,
+     * since tier 3 item 12, edit.php?post_type=page&folderfolio_folder=12.
      *
      * Read-only filtering from a GET parameter, so there is no nonce here;
      * the capability check is what matters.
      */
     public function applyToListMode(WP_Query $query): void
     {
-        if (!is_admin() || !$query->is_main_query() || !current_user_can('upload_files')) {
+        if (!is_admin() || !$query->is_main_query()) {
             return;
         }
 
-        // post_type is a string on upload.php but the query var accepts an
-        // array; comparing with !== would silently disable the filter.
-        if (!in_array('attachment', (array) $query->get('post_type'), true)) {
+        $type = self::listType($query);
+
+        if ($type === null || !Capabilities::canUseFolders($type)) {
             return;
         }
 
@@ -90,6 +93,26 @@ final class MediaLibraryFilter
         foreach (self::ordering($folderId) as $key => $value) {
             $query->set($key, $value);
         }
+    }
+
+    /**
+     * The one type a main query lists, or null.
+     *
+     * post_type is a string on upload.php but the query var accepts an
+     * array; comparing with !== would silently disable the filter. Media wins
+     * when it is among several, as before item 12; any other type has to be
+     * the only one — a query over posts *and* pages is not a screen with one
+     * folder tree.
+     */
+    private static function listType(WP_Query $query): ?string
+    {
+        $types = array_values(array_filter((array) $query->get('post_type'), 'is_string'));
+
+        if (in_array(PostTypes::MEDIA, $types, true)) {
+            return PostTypes::MEDIA;
+        }
+
+        return count($types) === 1 ? $types[0] : null;
     }
 
     /**
