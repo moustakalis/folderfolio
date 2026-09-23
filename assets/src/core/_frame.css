@@ -159,6 +159,13 @@
   padding: 4px 0 0;
 }
 
+/* And keep their own 8px: the picker's rows are denser than the rail's, which
+   put their gutter inside the row (24 Sep). */
+.folderfolio-frame .folderfolio-rail__fixed-row {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
 
 /* -------------------------------------------------- core's own form styles */
 

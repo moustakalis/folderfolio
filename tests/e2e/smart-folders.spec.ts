@@ -86,6 +86,44 @@ test.describe('smart folders', () => {
             const [fixedIcon, smartIcon] = await iconLefts(page, '.folderfolio-rail__smart-row');
             expect(smartIcon).toBe(fixedIcon);
 
+            // One selected pattern in the rail (Nick, 24 Sep): a selected smart
+            // row, All media and a tree row are the same full-width box, and
+            // the focus ring goes round the smart row and its pencil together.
+            const boxes = await page.evaluate(() => {
+                const box = (s: string) => {
+                    const r = document.querySelector(s)!.getBoundingClientRect();
+
+                    return [Math.round(r.left), Math.round(r.right)];
+                };
+
+                return {
+                    tree: box('.folderfolio-tree .folderfolio-row'),
+                    fixed: box('.folderfolio-rail__fixed .folderfolio-row'),
+                    smart: box('.folderfolio-rail__smart-item.is-selected'),
+                };
+            });
+            expect(boxes.fixed).toEqual(boxes.tree);
+            expect(boxes.smart).toEqual(boxes.tree);
+
+            // The ring is a layer above both buttons: an outline on the item
+            // computed as solid and was painted over by the row button
+            // (position: relative) — so assert the layer, its box and that it
+            // sits above the row, not the outline.
+            await row.focus();
+            const ring = await page.evaluate(() => {
+                const item = document.querySelector('.folderfolio-rail__smart-item.is-selected')!;
+                const after = getComputedStyle(item, '::after');
+                const row = item.querySelector('.folderfolio-rail__smart-row')!;
+
+                return {
+                    border: after.borderTopStyle,
+                    inset: [after.top, after.right, after.bottom, after.left],
+                    above: Number(after.zIndex) > (Number(getComputedStyle(row).zIndex) || 0),
+                    rowOutline: getComputedStyle(row).outlineStyle,
+                };
+            });
+            expect(ring).toEqual({ border: 'solid', inset: ['0px', '0px', '0px', '0px'], above: true, rowOutline: 'none' });
+
             // Not a drop target: nothing in it says it takes a drop.
             await expect(row).not.toHaveAttribute('data-folderfolio-folder', /.*/);
 

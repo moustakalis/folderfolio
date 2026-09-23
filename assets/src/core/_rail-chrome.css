@@ -176,7 +176,10 @@
 
 .folderfolio-rail__fixed {
   flex: 0 0 auto;
-  padding: 10px 12px 8px;
+  /* No side padding: a fixed row is full width, like a tree row, so its
+     selected wash and 3px bar are flush with the rail's edge — the handoff's
+     "flush-left" (DESIGN-TO-CODE.md, Selected). The row carries the gutter. */
+  padding: 10px 0 8px;
   border-bottom: 1px solid var(--ff-line);
 }
 
@@ -185,8 +188,9 @@
    what <button> brings of its own is undone here. */
 .folderfolio-rail__fixed-row {
   width: 100%;
-  padding-left: 8px;
-  padding-right: 8px;
+  /* Icon at 20px, count ending 20px from the edge (288 in a 310 rail). */
+  padding-left: 20px;
+  padding-right: 20px;
   border: 0;
   font-family: inherit;
   text-align: left;
@@ -490,9 +494,8 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
-  /* The + stands over the selected row's pencil and the counts, which end
-     at 288px: the list's 12px inset plus the row's own 8px. */
-  padding-inline-end: 20px;
+  /* The + stands where the pencil does, and a tree row's ⋮ (274–298px). */
+  padding-inline-end: 10px;
 }
 
 .folderfolio-rail__smart-add,
@@ -528,13 +531,49 @@
 }
 
 .folderfolio-rail__smart-item .folderfolio-rail__smart-edit {
-  margin-inline-end: 8px;
+  margin-inline-end: 10px;
 }
 
-/* The wash runs under the edit button too, so the row and its action read as
-   one — the folder ⋮ sits inside its row's wash the same way. */
+/*
+ * A selected smart row is drawn as a selected tree row is: the wash and the
+ * 3px bar across the whole width, the pencil where the ⋮ is (274–298px), the
+ * count where a tree row's is (ending 268px), and the focus ring round the
+ * row and its action together — the pencil is a second button, so the ring
+ * goes on the item rather than on the row button, which would stop short of
+ * it.
+ */
 .folderfolio-rail__smart-item.is-selected {
   background: var(--ff-wash);
+  box-shadow: inset 3px 0 0 var(--ff-sel);
+}
+
+.folderfolio-rail__smart-item.is-selected > .folderfolio-rail__smart-row {
+  padding-right: 6px;
+}
+
+.folderfolio-rail__smart-item:not(.is-selected):hover {
+  background: var(--ff-hover);
+}
+
+/* Drawn on a layer above both buttons, not as the item's outline: the row
+   button is `position: relative` (.folderfolio-row), so it paints over its
+   parent's outline, and the ring showed round the pencil alone (seen on the
+   dev site while the computed outline read solid). */
+.folderfolio-rail__smart-item {
+  position: relative;
+}
+
+.folderfolio-rail__smart-item:has(> .folderfolio-rail__smart-row:focus)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border: 2px solid var(--ff-sel);
+  pointer-events: none;
+}
+
+.folderfolio-rail__smart-item > .folderfolio-rail__smart-row:focus {
+  outline: none;
 }
 
 /* A rule is not filed into, and the icon says so: the folder's outline,
@@ -785,12 +824,12 @@
   overflow-y: auto;
 
   /*
-   * The same inset as `.folderfolio-rail__fixed`, so a Starred or Smart row
-   * is drawn exactly like All media above it — icon at 20px, count ending at
-   * 288px in a 310px rail. Without it the rows started at the rail's edge and
-   * every icon, name and count sat 12px left of All media's (Nick, 24 Sep).
+   * No inset of its own: its rows are `.folderfolio-rail__fixed-row`s, full
+   * width with the gutter inside them, so a Starred or Smart row is drawn
+   * exactly like All media — icon at 20px, count ending at 288px, and when
+   * selected a flush wash and bar like a tree row's (Nick, 24 Sep: three
+   * selected patterns in one rail).
    */
-  padding-inline: 12px;
 }
 
 .folderfolio-rail__starred-parent {
