@@ -59,6 +59,27 @@ final class Runner
     public const BATCH = 25;
 
     /**
+     * Folders per call when the source is an export file — and a time limit
+     * on them.
+     *
+     * A plugin source re-reads its tree with one query. A file source
+     * re-reads, decodes and re-validates the whole document every batch:
+     * measured on 23 Sep at the 20,000-folder ceiling, that was ~200ms of
+     * every ~380ms batch — 160s of a 307s run spent reading the same file 800
+     * times. Four times the folders is a quarter of the re-reads.
+     *
+     * Four times the folders could also be four times the files, and the
+     * request timeout is still the thing being protected. So a file batch
+     * also stops once it has spent FILE_BATCH_SECONDS, whatever its count; the
+     * next call carries on from the cursor like any other. Filterable
+     * (`folderfolio_import_file_batch_seconds`) for a host with a shorter
+     * timeout than most.
+     */
+    public const FILE_BATCH = 100;
+
+    public const FILE_BATCH_SECONDS = 5.0;
+
+    /**
      * How many skipped attachment ids the run record keeps.
      *
      * The report names them — "attachments 118 and 204 no longer exist" is
@@ -163,9 +184,22 @@ final class Runner
         // stale the moment somebody adds a folder in the old plugin mid-run.
         $targets = $this->targetsSoFar($run, $source->key());
 
-        $end = min($run->cursor + self::BATCH, count($entries));
+        $isFile = $source instanceof JsonSource;
+        $end = min($run->cursor + ($isFile ? self::FILE_BATCH : self::BATCH), count($entries));
+        $began = microtime(true);
+        $from = $run->cursor;
+        $budget = $isFile
+            ? (float) apply_filters('folderfolio_import_file_batch_seconds', self::FILE_BATCH_SECONDS)
+            : INF;
 
         for ($i = $run->cursor; $i < $end; ++$i) {
+            // Checked before a folder, never inside one: at least one folder
+            // lands per call, so a slow site still gets through.
+            // $from, not $run->cursor: the cursor moves as each folder lands.
+            if ($i > $from && microtime(true) - $began > $budget) {
+                break;
+            }
+
             $entry = $entries[$i] ?? null;
 
             if (null === $entry) {

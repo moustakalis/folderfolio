@@ -176,4 +176,67 @@ class JsonSourceTest extends WP_UnitTestCase
         $this->assertStringContainsString('would not keep it', (string) $response->get_data()['error']);
         $this->assertFalse(get_option(JsonSource::OPTION, false));
     }
+
+    /**
+     * @param int $count
+     * @return array<string, mixed>
+     */
+    private function wide(int $count): array
+    {
+        $folders = [];
+
+        for ($i = 1; $i <= $count; $i++) {
+            $folders[] = ['id' => $i, 'parent_id' => null, 'name' => "Wide $i"];
+        }
+
+        return ['folderfolio' => FolderExport::FORMAT, 'site' => home_url(), 'folders' => $folders, 'assignments' => []];
+    }
+
+    /**
+     * A file re-reads the whole document every batch, so its batches are four
+     * times a plugin's: 60 folders is one call, where 25 a call would be three.
+     *
+     * @test
+     */
+    public function a_file_imports_a_hundred_folders_a_call(): void
+    {
+        $document = $this->wide(60);
+        JsonSource::store($document);
+        $source = JsonSource::fromDocument($document);
+
+        $runner = new Runner();
+        $runner->start($source);
+        $run = $runner->step();
+
+        $this->assertTrue($run->isFinished(), 'one call');
+        $this->assertSame(60, $run->foldersCreated);
+    }
+
+    /**
+     * …and a call stops when its time is spent, whatever its count, with at
+     * least one folder landed so a slow site still gets through.
+     *
+     * @test
+     */
+    public function a_file_batch_stops_when_its_time_is_spent(): void
+    {
+        add_filter('folderfolio_import_file_batch_seconds', static fn (): float => 0.0);
+
+        $document = $this->wide(3);
+        JsonSource::store($document);
+        $source = JsonSource::fromDocument($document);
+
+        $runner = new Runner();
+        $runner->start($source);
+
+        $calls = 0;
+
+        do {
+            $run = $runner->step();
+            ++$calls;
+        } while (!$run->isFinished() && $calls < 10);
+
+        $this->assertSame(3, $calls, 'one folder a call');
+        $this->assertSame(3, $run->foldersCreated);
+    }
 }

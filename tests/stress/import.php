@@ -101,12 +101,17 @@ while (true) {
     $run = $runner->step();
     $d = (microtime(true) - $s) * 1000;
     $steps++;
-    if (in_array($steps, [1, 10, 100, 200, 400, 600, 799], true)) {
+    if (in_array($steps, [1, 10, 50, 100, 150, 199, 200, 400, 600, 799], true)) {
         wp_cache_flush();
         $p = microtime(true); $st = JsonSource::stored(); $pr = $ms($p);
-        $p = microtime(true); SourceTree::of($st->folders()); $pt = $ms($p);
-        $p = microtime(true); $map = (new Provenance())->mapFor($st->key()); $pm = $ms($p);
-        $marks[] = "#$steps " . round($d) . "ms (stored $pr, tree $pt, mapFor $pm/" . count($map) . ')';
+        if ($st === null) {
+            // The last call: the run finished and let go of the file.
+            $marks[] = "#$steps " . round($d) . 'ms (the last)';
+        } else {
+            $p = microtime(true); SourceTree::of($st->folders()); $pt = $ms($p);
+            $p = microtime(true); $map = (new Provenance())->mapFor($st->key()); $pm = $ms($p);
+            $marks[] = "#$steps " . round($d) . "ms (stored $pr, tree $pt, mapFor $pm/" . count($map) . ')';
+        }
     }
     if (is_wp_error($run)) { WP_CLI::error($run->get_error_message()); }
     if ($run->isFinished()) { break; }
