@@ -13,7 +13,7 @@
 
 import { create } from 'zustand';
 
-import { folderFromUrl } from '../../lib/filter';
+import { folderFromUrl, smartFromUrl } from '../../lib/filter';
 import { apiFetch, errorMessage } from '../../core/api';
 
 export interface RailState {
@@ -122,6 +122,19 @@ export interface RailState {
     notice: Notice | null;
 
     select: (id: number | null) => void;
+
+    /**
+     * The smart folder being viewed, or null — tier 3 item 13.
+     *
+     * Beside `selectedId`, not inside it: a smart folder is not a folder, and
+     * every reader of `selectedId` — the tree, the drop, the paste, the upload
+     * target — asks about folders. The two are exclusive: choosing one clears
+     * the other, and while a smart folder is chosen `selectedId` is null, so
+     * everything folder-shaped reads "All media", which is what a smart folder
+     * narrows.
+     */
+    smartId: number | null;
+    selectSmart: (id: number | null) => void;
 
     /** Set or clear this user's startup folder. `null` clears it. */
     setStartupFolder: (id: number | null) => void;
@@ -262,8 +275,9 @@ export interface Notice {
 let noticeId = 0;
 
 export const useRail = create<RailState>((set) => ({
-    selectedId: folderFromUrl(),
-    focusedId: folderFromUrl(),
+    selectedId: smartFromUrl() === null ? folderFromUrl() : null,
+    focusedId: smartFromUrl() === null ? folderFromUrl() : null,
+    smartId: smartFromUrl(),
     startupFolderId: window.folderFolio?.startupFolder ?? null,
     stars: window.folderFolio?.stars ?? [],
     expandedIds: new Set<number>(),
@@ -282,7 +296,9 @@ export const useRail = create<RailState>((set) => ({
     clipboard: null,
     notice: null,
 
-    select: (id) => set({ selectedId: id, focusedId: id }),
+    select: (id) => set({ selectedId: id, focusedId: id, smartId: null }),
+
+    selectSmart: (id) => set({ smartId: id, selectedId: null }),
 
     setStartupFolder: (id) => set({ startupFolderId: id }),
 

@@ -473,6 +473,287 @@
   color: var(--ff-muted);
 }
 
+/* ------------------------------------------- the Smart group — item 13 */
+
+/**
+ * Saved views, under Starred and above the tree. The same rows and the same
+ * five-then-scroll list as Starred; its own heading line, because Organise
+ * holders get a + at its end. A grid rather than flex: label, then the
+ * button, on one track each.
+ */
+.folderfolio-rail__smart {
+  display: grid;
+  border-bottom: 1px solid var(--ff-line);
+}
+
+.folderfolio-rail__smart-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  padding-inline-end: 10px;
+}
+
+.folderfolio-rail__smart-add,
+.folderfolio-rail__smart-edit {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ff-muted);
+  cursor: pointer;
+}
+
+.folderfolio-rail__smart-add:hover,
+.folderfolio-rail__smart-edit:hover {
+  background: var(--ff-hover);
+  color: var(--ff-ink);
+}
+
+.folderfolio-rail__smart-add:focus-visible,
+.folderfolio-rail__smart-edit:focus-visible {
+  outline: 2px solid var(--ff-sel);
+  outline-offset: -2px;
+}
+
+/* The row and, on the selected row only, its edit button — the ⋮'s place. */
+.folderfolio-rail__smart-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.folderfolio-rail__smart-item .folderfolio-rail__smart-edit {
+  margin-inline-end: 8px;
+}
+
+/* The wash runs under the edit button too, so the row and its action read as
+   one — the folder ⋮ sits inside its row's wash the same way. */
+.folderfolio-rail__smart-item.is-selected {
+  background: var(--ff-wash);
+}
+
+/* A rule is not filed into, and the icon says so: the folder's outline,
+   dashed, in the row's own ink — an icon, so 3:1 is the bar. */
+.folderfolio-rail__smart-row .folderfolio-row__icon {
+  color: var(--ff-muted);
+}
+
+.folderfolio-rail__smart-row--new .folderfolio-row__name {
+  color: var(--ff-accent-text);
+}
+
+/* ------------------------------------------- the smart-folder editor */
+
+/**
+ * A modal `<dialog>`: the browser holds focus inside it, Escape closes it,
+ * and it sits in the top layer over the media modal and the admin bar alike.
+ * One rule a line — about, how, value, remove — on a grid whose value track
+ * takes what is left, and wraps to two lines on a phone.
+ */
+.folderfolio.folderfolio-smart-editor {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  padding: 0;
+  border: 1px solid var(--ff-line);
+  border-radius: 4px;
+  background: var(--ff-panel);
+  color: var(--ff-ink);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.2);
+}
+
+.folderfolio.folderfolio-smart-editor::backdrop {
+  background: rgb(0 0 0 / 0.35);
+}
+
+.folderfolio-smart-editor__form {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px 16px;
+}
+
+.folderfolio-smart-editor__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.folderfolio-smart-editor__head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.folderfolio-smart-editor__close {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ff-muted);
+  cursor: pointer;
+}
+
+.folderfolio-smart-editor__close:hover {
+  background: var(--ff-hover);
+  color: var(--ff-ink);
+}
+
+.folderfolio-smart-editor__name {
+  display: grid;
+  gap: 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.folderfolio-smart-editor__name input {
+  width: 100%;
+}
+
+.folderfolio-smart-editor__rules {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.folderfolio-smart-editor__rules legend {
+  margin-block-end: 6px;
+  padding: 0;
+  font-size: 12.5px;
+  color: var(--ff-muted);
+}
+
+.folderfolio-smart-rule {
+  display: grid;
+  grid-template-columns: 8.5em 9.5em minmax(0, 1fr) 28px;
+  gap: 6px;
+  align-items: center;
+}
+
+.folderfolio-smart-rule select,
+.folderfolio-smart-rule input {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
+.folderfolio-smart-rule__pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+
+.folderfolio-smart-rule__remove {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ff-muted);
+  cursor: pointer;
+}
+
+.folderfolio-smart-rule__remove:hover:not(:disabled) {
+  background: var(--ff-hover);
+  color: var(--ff-danger-text);
+}
+
+.folderfolio-smart-rule__remove:disabled {
+  color: var(--ff-off);
+  cursor: default;
+}
+
+.folderfolio-smart-editor__add {
+  display: inline-grid;
+  grid-auto-flow: column;
+  justify-content: start;
+  align-items: center;
+  gap: 6px;
+  justify-self: start;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--ff-accent-text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.folderfolio-smart-editor__count {
+  margin: 0;
+  min-height: 1.5em;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.folderfolio-smart-editor__error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ff-danger-text);
+}
+
+.folderfolio-smart-editor__actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding-block-start: 12px;
+  border-top: 1px solid var(--ff-line);
+}
+
+.folderfolio-smart-editor__buttons,
+.folderfolio-smart-editor__confirm {
+  display: inline-grid;
+  grid-auto-flow: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.folderfolio-smart-editor__confirm {
+  justify-content: start;
+  font-size: 12.5px;
+}
+
+.folderfolio-smart-editor .folderfolio-smart-editor__delete-link {
+  justify-self: start;
+  color: var(--ff-danger-text);
+}
+
+.folderfolio-smart-editor .button.folderfolio-smart-editor__delete {
+  border-color: var(--ff-danger-text);
+  color: var(--ff-danger-text);
+}
+
+/* A phone: the value takes its own line under about-and-how. */
+@media (max-width: 600px) {
+  .folderfolio-smart-rule {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 28px;
+  }
+
+  .folderfolio-smart-rule > :nth-child(3) {
+    grid-column: 1 / 3;
+    grid-row: 2;
+  }
+
+  .folderfolio-smart-editor__actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .folderfolio-smart-editor__confirm {
+    grid-auto-flow: row;
+  }
+}
+
 /* ------------------------------------------- the Starred group — item 10 */
 
 /**

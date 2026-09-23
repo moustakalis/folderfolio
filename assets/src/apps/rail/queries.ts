@@ -816,3 +816,108 @@ export function useSetFolderMark() {
         },
     });
 }
+
+// ---------------------------------------------------------------- smart folders
+
+/**
+ * One rule of a smart folder — tier 3 item 13. Domain\SmartRules is the
+ * vocabulary and the authority: the server drops what it does not understand.
+ */
+export interface SmartRule {
+    field: 'type' | 'date' | 'author' | 'size' | 'filed' | 'name';
+    op: string;
+    value: number | string;
+}
+
+export interface SmartFolder {
+    id: number;
+    name: string;
+    object_type: string;
+    rules: SmartRule[];
+    /** How many items match, for the person asking — "uploaded by me" is theirs. */
+    count: number;
+}
+
+/**
+ * Under the counts key on purpose: every write that changes what is filed
+ * where already invalidates `countsKey`, and TanStack matches by prefix — so
+ * a "not filed" smart folder's count follows a drop without every mutation
+ * having to know smart folders exist.
+ */
+export const smartKey = [...countsKey, 'smart'] as const;
+
+export function useSmartFolders() {
+    return useQuery({
+        queryKey: [...smartKey, objectType()],
+        queryFn: async (): Promise<SmartFolder[]> =>
+            (await apiFetch<ApiEnvelope<SmartFolder[]>>(typedPath('/smart'))).data ?? [],
+        // Media first (Nick's 13c): a post type has no smart rules yet.
+        enabled: isMedia(),
+        staleTime: Infinity,
+        refetchOnWindowFocus: false,
+    });
+}
+
+/** How many items a set of rules matches, without saving it — the editor's live count. */
+export async function previewSmart(rules: SmartRule[]): Promise<number | null> {
+    const response = await apiFetch<ApiEnvelope<{ count: number | null }>>('/smart/preview', {
+        method: 'POST',
+        data: { rules, ...(isMedia() ? {} : { object_type: objectType() }) },
+    });
+
+    return response.data.count;
+}
+
+export function useSaveSmart() {
+    const client = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (input: { id: number | null; name: string; rules: SmartRule[] }) => {
+            const response = await apiFetch<ApiEnvelope<SmartFolder>>(
+                input.id === null ? '/smart' : `/smart/${input.id}`,
+                {
+                    method: 'POST',
+                    data: {
+                        name: input.name,
+                        rules: input.rules,
+                        ...(input.id === null && !isMedia() ? { object_type: objectType() } : {}),
+                    },
+                }
+            );
+
+            return response.data;
+        },
+        onSuccess: (saved) => {
+            // Into the cache before the caller selects it: SmartGroup lets go
+            // of a selected id the list does not have (a deleted folder's
+            // link), and a refetch still in flight would not have this one.
+            // Ordered as the server orders them (strnatcasecmp) until the
+            // refetch below replaces the list.
+            client.setQueryData<SmartFolder[]>([...smartKey, objectType()], (list) => {
+                const rest = (list ?? []).filter((item) => item.id !== saved.id);
+
+                return [...rest, saved].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+            });
+            void client.invalidateQueries({ queryKey: smartKey });
+        },
+    });
+}
+
+export function useDeleteSmart() {
+    const client = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (id: number) => {
+            await apiFetch<ApiEnvelope<unknown>>(`/smart/${id}`, { method: 'DELETE' });
+
+            return id;
+        },
+        onSuccess: (id) => {
+            if (useRail.getState().smartId === id) {
+                useRail.getState().selectSmart(null);
+            }
+
+            void client.invalidateQueries({ queryKey: smartKey });
+        },
+    });
+}

@@ -342,6 +342,18 @@ made at the top.
 | `POST` | `/assignments` — `{attachment_ids, folder_id, mode}` | assign, and `edit_post` per item |
 | `DELETE` | `/assignments` — `{attachment_ids, folder_id?}` | assign, and `edit_post` per item |
 | `GET` | `/attachments/{id}/folders` — an item's folders, a file's or a post's | use, for the item's type |
+| `GET` | `/smart` — `?object_type=`; smart folders, each with its count for the person asking | use |
+| `POST` | `/smart` — `{name, rules, object_type?}` | rename (Organise) |
+| `PATCH` | `/smart/{id}` — `{name?, rules?}` | rename (Organise) |
+| `DELETE` | `/smart/{id}` — never touches a file | rename (Organise) |
+| `POST` | `/smart/preview` — `{rules, object_type?}`, what they would match; writes nothing | use |
+
+**Smart folders** (1.0, media first) are a name and rules, every rule must match. A rule is
+`{field, op, value}`: `type` `is`/`is_not` `image|video|audio|document`; `date` `last` (days),
+`after` or `before` (`Y-m-d`); `author` `is` a user id or `"me"` — whoever is asking; `size`
+`gt`/`lt` bytes; `filed` `none`, `any`, or `in` a folder id (its subfolders included); `name`
+`contains` text (title or file name). Anything else is dropped; a smart folder with no rule
+left is refused. The library filters by one with `?folderfolio_smart={id}`.
 
 *Use* is rule 1 for the type — see Capabilities. Every folder write returns the whole tree
 it touched, with fresh counts, so a client redraws from the response instead of fetching

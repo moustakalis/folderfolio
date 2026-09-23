@@ -74,6 +74,7 @@ export function ClearFilter({ compact = false }: { compact?: boolean }) {
 export function Breadcrumb({ crumbs, controls }: { crumbs: Crumb[]; controls?: ReactNode }) {
     const select = useRail((s) => s.select);
     const selectedId = useRail((s) => s.selectedId);
+    const smartId = useRail((s) => s.smartId);
     const ref = useRef<HTMLElement>(null);
     const [hidden, setHidden] = useState(0);
     const [menuOpen, setMenuOpen] = useState(false);
@@ -170,7 +171,7 @@ export function Breadcrumb({ crumbs, controls }: { crumbs: Crumb[]; controls?: R
      * the absence of a folder, which is still a filter over the library, and
      * "show me what is not filed yet" is a startup folder somebody wants.
      */
-    const filtering = selectedId !== null;
+    const filtering = selectedId !== null || smartId !== null;
 
     return (
         <nav className="folderfolio-crumbs" aria-label={t('breadcrumb', 'Folder path')} ref={ref}>

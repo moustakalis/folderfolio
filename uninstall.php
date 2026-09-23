@@ -39,6 +39,11 @@ function folderfolio_uninstall_site(): void
     // The ZIP download's cache of each file's checksum (FolderArchive).
     delete_post_meta_by_key('_folderfolio_crc32');
 
+    // Smart folders (tier 3 item 13) and the size index their size rule reads.
+    delete_option('folderfolio_smart_folders');
+    delete_option('folderfolio_filesizes_checked');
+    delete_post_meta_by_key('_folderfolio_filesize');
+
     delete_option('folderfolio_db_version');
     delete_transient('folderfolio_upgrading');
 }

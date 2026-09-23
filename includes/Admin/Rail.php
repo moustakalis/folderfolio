@@ -1118,6 +1118,59 @@ final class Rail
             'zipConfirmOne' => __('“%1$s” is %2$s, %3$s file. A download this large can stop partway on some hosts — your browser’s Resume continues it.', 'folderfolio'),
             /* translators: 1: folder name, 2: a size such as "1.3 GB", 3: number of files. */
             'zipConfirmMany' => __('“%1$s” is %2$s in %3$s files. A download this large can stop partway on some hosts — your browser’s Resume continues it.', 'folderfolio'),
+            // Smart folders — tier 3 item 13 (apps/rail/SmartGroup.tsx, SmartEditor.tsx).
+            'smartGroup' => __('Smart folders', 'folderfolio'),
+            'smartLabel' => __('Smart', 'folderfolio'),
+            'newSmartFolder' => __('New smart folder', 'folderfolio'),
+            'editSmartFolder' => __('Edit smart folder', 'folderfolio'),
+            /* translators: %s: a smart folder's name. */
+            'editSmartNamed' => __('Edit “%s”', 'folderfolio'),
+            'smartName' => __('Name', 'folderfolio'),
+            'smartNameHint' => __('For example: Unfiled images this month', 'folderfolio'),
+            'smartMatchAll' => __('Shows what matches every rule', 'folderfolio'),
+            'smartFieldType' => __('Type', 'folderfolio'),
+            'smartFieldDate' => __('Uploaded', 'folderfolio'),
+            'smartFieldAuthor' => __('Uploaded by', 'folderfolio'),
+            'smartFieldSize' => __('Size', 'folderfolio'),
+            'smartFieldFiled' => __('Folder', 'folderfolio'),
+            'smartFieldName' => __('Name', 'folderfolio'),
+            'smartOpIs' => __('is', 'folderfolio'),
+            'smartOpIsNot' => __('is not', 'folderfolio'),
+            'smartOpLast' => __('in the last', 'folderfolio'),
+            'smartOpAfter' => __('on or after', 'folderfolio'),
+            'smartOpBefore' => __('before', 'folderfolio'),
+            'smartOpLarger' => __('larger than', 'folderfolio'),
+            'smartOpSmaller' => __('smaller than', 'folderfolio'),
+            'smartOpNone' => __('is none', 'folderfolio'),
+            'smartOpAny' => __('is any', 'folderfolio'),
+            'smartOpIn' => __('is within', 'folderfolio'),
+            'smartOpContains' => __('contains', 'folderfolio'),
+            'smartTypeImage' => __('an image', 'folderfolio'),
+            'smartTypeVideo' => __('a video', 'folderfolio'),
+            'smartTypeAudio' => __('audio', 'folderfolio'),
+            'smartTypeDocument' => __('a document', 'folderfolio'),
+            'smartDays' => __('days', 'folderfolio'),
+            'smartMe' => __('me — whoever is looking', 'folderfolio'),
+            'smartNameContains' => __('For example: logo', 'folderfolio'),
+            /* translators: %s: the rule's number, 1 or more. */
+            'smartRuleField' => __('Rule %s: about', 'folderfolio'),
+            /* translators: %s: the rule's number, 1 or more. */
+            'smartRuleOp' => __('Rule %s: how', 'folderfolio'),
+            /* translators: %s: the rule's number, 1 or more. */
+            'smartRuleValue' => __('Rule %s: value', 'folderfolio'),
+            /* translators: %s: the rule's number, 1 or more. */
+            'smartSizeUnit' => __('Rule %s: unit', 'folderfolio'),
+            /* translators: %s: the rule's number, 1 or more. */
+            'smartRemoveRule' => __('Remove rule %s', 'folderfolio'),
+            'smartAddRule' => __('Add a rule', 'folderfolio'),
+            'smartNeedsRule' => __('Add a rule to see what it matches.', 'folderfolio'),
+            'smartCounting' => __('Counting…', 'folderfolio'),
+            /* translators: %s: a number of files, always 1. */
+            'smartMatchesOne' => __('Matches %s file', 'folderfolio'),
+            /* translators: %s: a number of files. */
+            'smartMatchesMany' => __('Matches %s files', 'folderfolio'),
+            'smartDeleteAsk' => __('Delete this smart folder? No files are touched.', 'folderfolio'),
+            'keep' => __('Keep', 'folderfolio'),
         ];
     }
 

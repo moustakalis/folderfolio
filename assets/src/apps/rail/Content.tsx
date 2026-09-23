@@ -21,7 +21,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Breadcrumb, ClearFilter, type Crumb } from './Breadcrumb';
 import { Cards } from './Cards';
 import { CloseIcon } from './icons';
-import type { FolderNode } from './queries';
+import { useSmartFolders, type FolderNode } from './queries';
 import { StartHere } from './StartHere';
 import { sortTree, useRail } from './store';
 import { arrivedFromStartupFolder, folderFromUrl } from '../../lib/filter';
@@ -162,7 +162,10 @@ function useFolderContent(nodes: FolderNode[]): {
     label: string;
 } {
     const selectedId = useRail((s) => s.selectedId);
+    const smartId = useRail((s) => s.smartId);
     const sort = useRail((s) => s.sort);
+    const { data: smartFolders } = useSmartFolders();
+    const smart = smartId === null ? undefined : smartFolders?.find((item) => item.id === smartId);
 
     // The rail's order, not the wire's: until tier 2 item 10 these cards came
     // out in the server's order whatever the rail showed beside them, and a
@@ -174,6 +177,9 @@ function useFolderContent(nodes: FolderNode[]): {
         { id: null, label: t('allMedia', 'All media') },
         ...(selectedId === 0 ? [{ id: 0, label: t('unassigned', 'Unassigned') }] : []),
         ...trail.map((node) => ({ id: node.id as number | null, label: node.name })),
+        // A smart folder is the last crumb, never a link — it has no parent
+        // but the library. -1 is never selected: the last crumb is not a button.
+        ...(smartId === null ? [] : [{ id: -1, label: smart?.name ?? '…' }]),
     ];
 
     /**

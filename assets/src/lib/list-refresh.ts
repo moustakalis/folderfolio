@@ -46,6 +46,28 @@
 /** Must match MediaLibraryFilter::QUERY_VAR. */
 const QUERY_VAR = 'folderfolio_folder';
 
+/** Must match MediaLibraryFilter::SMART_VAR. */
+const SMART_VAR = 'folderfolio_smart';
+
+function syncHidden(form: HTMLFormElement, name: string, value: string | null): void {
+    let input = form.querySelector<HTMLInputElement>(`input[type="hidden"][name="${name}"]`);
+
+    if (value === null || value === '') {
+        input?.remove();
+
+        return;
+    }
+
+    if (!input) {
+        input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        form.appendChild(input);
+    }
+
+    input.value = value;
+}
+
 /**
  * The regions a folder filter changes.
  *
@@ -266,6 +288,10 @@ function syncFilterForm(url: string): void {
     if (!form) {
         return;
     }
+
+    // A smart folder has no control of its own in the form; a hidden input
+    // keeps it through a search or a bulk action (tier 3 item 13).
+    syncHidden(form, SMART_VAR, new URL(url, window.location.origin).searchParams.get(SMART_VAR));
 
     const value = new URL(url, window.location.origin).searchParams.get(QUERY_VAR);
 

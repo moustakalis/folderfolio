@@ -9,6 +9,9 @@ if (!defined('ABSPATH')) {
 }
 
 use FolderFolio\Domain\FolderSorts;
+use FolderFolio\Domain\SmartFolders;
+use FolderFolio\Domain\SmartRules;
+use FolderFolio\Support\FileSizes;
 use FolderFolio\Support\Capabilities;
 use FolderFolio\Support\PostTypes;
 use WP_Query;
@@ -45,6 +48,19 @@ final class MediaLibraryFilter
      */
     public const ORDER_VAR = 'folderfolio_order';
 
+    /**
+     * Query var carrying a smart folder's id — tier 3 item 13. Absent means no
+     * smart folder; like the folder var, its absence is the bail.
+     */
+    public const SMART_VAR = 'folderfolio_smart';
+
+    /**
+     * Rules to apply directly, without a saved smart folder — the count and
+     * the editor's live preview. Never read from a request: only code that
+     * has already sanitised the rules sets it (`SmartFolders::count()`).
+     */
+    public const SMART_RULES_VAR = 'folderfolio_smart_rules';
+
     public function register(): void
     {
         add_action('pre_get_posts', [$this, 'applyToListMode']);
@@ -73,6 +89,12 @@ final class MediaLibraryFilter
 
         if ($type === null || !Capabilities::canUseFolders($type)) {
             return;
+        }
+
+        $smartId = self::normalizeFolderId($_GET[self::SMART_VAR] ?? null);
+
+        if (null !== $smartId && $smartId > 0) {
+            $query->set(self::SMART_VAR, $smartId);
         }
 
         $folderId = self::normalizeFolderId($_GET[self::QUERY_VAR] ?? null);
@@ -133,6 +155,12 @@ final class MediaLibraryFilter
 
         if (!is_array($query)) {
             return $args;
+        }
+
+        $smartId = self::normalizeFolderId($query[self::SMART_VAR] ?? null);
+
+        if (null !== $smartId && $smartId > 0) {
+            $args[self::SMART_VAR] = $smartId;
         }
 
         $folderId = self::normalizeFolderId($query[self::QUERY_VAR] ?? null);
@@ -201,6 +229,58 @@ final class MediaLibraryFilter
      * @return array<string, string>
      */
     public function joinFolderAssignments(array $clauses, WP_Query $query): array
+    {
+        return self::applySmart(self::applyFolder($clauses, $query), $query);
+    }
+
+    /**
+     * A smart folder's rules as `WHERE` fragments (`Domain\SmartRules`).
+     *
+     * The same bail as the folder join: no smart folder asked for, clauses
+     * untouched. A smart folder that no longer exists matches nothing — a
+     * stale link shows an empty view rather than the whole library under a
+     * name it no longer has.
+     *
+     * @param array<string, string> $clauses
+     * @return array<string, string>
+     */
+    private static function applySmart(array $clauses, WP_Query $query): array
+    {
+        $rules = $query->get(self::SMART_RULES_VAR);
+
+        if (!is_array($rules) || $rules === []) {
+            $smartId = (int) $query->get(self::SMART_VAR);
+
+            if ($smartId <= 0) {
+                return $clauses;
+            }
+
+            $smart = (new SmartFolders())->get($smartId);
+
+            if ($smart === null) {
+                $clauses['where'] .= ' AND 1 = 0';
+
+                return $clauses;
+            }
+
+            $rules = $smart['rules'];
+        }
+
+        /** @var list<array{field: string, op: string, value: int|string}> $rules */
+        if (SmartRules::needsSizes($rules)) {
+            FileSizes::backfill();
+        }
+
+        $clauses['where'] .= SmartRules::where($rules) . self::cacheVersion();
+
+        return $clauses;
+    }
+
+    /**
+     * @param array<string, string> $clauses
+     * @return array<string, string>
+     */
+    private static function applyFolder(array $clauses, WP_Query $query): array
     {
         $folderId = $query->get(self::QUERY_VAR);
 

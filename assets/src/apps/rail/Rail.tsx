@@ -12,6 +12,7 @@ import { createPortal } from 'react-dom';
 import { Content, ContentCards } from './Content';
 import { FixedRows } from './FixedRows';
 import { Starred } from './Starred';
+import { SmartGroup } from './SmartGroup';
 import { Header } from './Header';
 import { Levels } from './Levels';
 import { LibraryToolbar } from './LibraryToolbar';
@@ -50,6 +51,7 @@ export function Rail({
 
     const query = useRail((s) => s.query);
     const selectedId = useRail((s) => s.selectedId);
+    const smartId = useRail((s) => s.smartId);
     const reveal = useRail((s) => s.reveal);
     const editing = useRail((s) => s.editing);
     const edit = useRail((s) => s.edit);
@@ -315,7 +317,7 @@ export function Rail({
             return;
         }
 
-        applyFolderFilter(selectedId);
+        applyFolderFilter(selectedId, smartId);
 
         /*
          * The same event v0.2.0's tree dispatched. media-library-integration
@@ -332,7 +334,7 @@ export function Rail({
                 bubbles: true,
             })
         );
-    }, [selectedId]);
+    }, [selectedId, smartId]);
 
     /**
      * A selected folder is always visible in the tree.
@@ -403,6 +405,8 @@ export function Rail({
                 <FixedRows />
                 {/* This person's shortcuts — tier 2 item 10. Nothing without a star. */}
                 {isError ? null : <Starred nodes={nodes} />}
+                {/* Saved views — tier 3 item 13. Media only for now (13c). */}
+                {isError || !isMedia() ? null : <SmartGroup nodes={nodes} />}
                 <RailControls
                     selected={selectedNode}
                     nodes={nodes}

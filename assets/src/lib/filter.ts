@@ -13,6 +13,19 @@ import { hasListTable, refreshListTable } from './list-refresh';
 /** Must match MediaLibraryFilter::QUERY_VAR. */
 export const FOLDER_QUERY_VAR = 'folderfolio_folder';
 
+/** Must match MediaLibraryFilter::SMART_VAR — a smart folder's id (tier 3 item 13). */
+export const SMART_QUERY_VAR = 'folderfolio_smart';
+
+/**
+ * The smart folder in the address bar, or null. A positive id or nothing:
+ * there is no "unassigned" smart folder.
+ */
+export function smartFromUrl(): number | null {
+    const parsed = Number.parseInt(new URL(window.location.href).searchParams.get(SMART_QUERY_VAR) ?? '', 10);
+
+    return Number.isNaN(parsed) || parsed <= 0 ? null : parsed;
+}
+
 /** Must match Admin\StartupFolder::QUERY_VAR. */
 export const STARTUP_QUERY_VAR = 'folderfolio_startup';
 
@@ -63,10 +76,19 @@ export function folderFromUrl(): number | null {
  * normalises to null here and in `MediaLibraryFilter::normalizeFolderId()`, so
  * the library is unfiltered and `posts_clauses` is untouched.
  */
-export function urlForFolder(folderId: number | null): string {
+export function urlForFolder(folderId: number | null, smartId: number | null = null): string {
     const url = new URL(window.location.href);
 
     url.searchParams.set(FOLDER_QUERY_VAR, folderId === null ? '' : String(folderId));
+
+    // A smart folder travels beside the folder key rather than instead of it:
+    // the key present and empty is what keeps the startup redirect from
+    // sending a person looking at a smart folder somewhere else.
+    if (smartId === null) {
+        url.searchParams.delete(SMART_QUERY_VAR);
+    } else {
+        url.searchParams.set(SMART_QUERY_VAR, String(smartId));
+    }
 
     // Page 3 of the old folder is not page 3 of the new one.
     url.searchParams.delete('paged');
@@ -243,8 +265,18 @@ export function showUpload(model: unknown, folder: string): void {
     for (const view of uploadViews) {
         const raw = view.props.get(FOLDER_QUERY_VAR);
         const viewing = raw === '' || raw === null || raw === undefined ? '' : String(raw);
-        // All media holds every file; Unassigned, the unfiled ones.
-        const shows = viewing === '' ? true : viewing === '0' ? folder === '' : viewing === folder;
+        const smart = view.props.get(SMART_QUERY_VAR);
+        // All media holds every file; Unassigned, the unfiled ones. A smart
+        // folder is the server's to answer: an upload may or may not match
+        // its rules, and the next query says which.
+        const shows =
+            smart !== '' && smart !== null && smart !== undefined
+                ? false
+                : viewing === ''
+                  ? true
+                  : viewing === '0'
+                    ? folder === ''
+                    : viewing === folder;
 
         if (!shows || typeof view.add !== 'function') {
             continue;
@@ -288,13 +320,17 @@ export function redrawUpload(model: unknown): void {
  * its own if its fetch fails, so the user always ends up seeing the folder
  * they asked for.
  */
-export function applyFolderFilter(folderId: number | null): void {
-    const url = urlForFolder(folderId);
+export function applyFolderFilter(folderId: number | null, smartId: number | null = null): void {
+    const url = urlForFolder(folderId, smartId);
 
     const collection = window.wp?.media?.frame?.content?.get?.()?.collection;
 
     if (collection?.props) {
-        collection.props.set(FOLDER_QUERY_VAR, folderId === null ? '' : folderId);
+        // Both at once, so the grid asks the server one question, not two.
+        collection.props.set({
+            [FOLDER_QUERY_VAR]: folderId === null ? '' : folderId,
+            [SMART_QUERY_VAR]: smartId === null ? '' : smartId,
+        });
 
         // The grid re-queries in place, so nothing else would update the
         // address bar — and a refresh or a shared link would lose the filter.

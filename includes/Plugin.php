@@ -28,6 +28,8 @@ use FolderFolio\Cli\FolderCommand;
 use FolderFolio\Cli\RootCommand;
 use FolderFolio\Rest\FolderController;
 use FolderFolio\Rest\PreferenceController;
+use FolderFolio\Rest\SmartController;
+use FolderFolio\Support\FileSizes;
 use FolderFolio\Support\UploadRouter;
 use FolderFolio\Support\UploadTarget;
 use FolderFolio\Rest\ImportController;
@@ -88,6 +90,11 @@ final class Plugin
         // Not admin-only: its clause filter also has to cover REST media
         // queries and anything else that sets the folder query var.
         (new MediaLibraryFilter())->register();
+
+        // Each file's size as a number SQL can compare — a smart folder's
+        // size rule (tier 3 item 13). Not admin-only: an upload over REST or
+        // WP-CLI writes attachment metadata too.
+        (new FileSizes())->register();
 
         // Does nothing until something uses the
         // folderfolio_default_folder_for_upload filter.
@@ -224,6 +231,7 @@ final class Plugin
         (new FolderController())->registerRoutes();
         (new ImportController())->registerRoutes();
         (new PreferenceController())->registerRoutes();
+        (new SmartController())->registerRoutes();
     }
 
     /**

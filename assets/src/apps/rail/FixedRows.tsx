@@ -26,6 +26,7 @@ import { t } from '../../core/api';
 
 export function FixedRows() {
     const selectedId = useRail((s) => s.selectedId);
+    const smartId = useRail((s) => s.smartId);
     const select = useRail((s) => s.select);
     const { data } = useLibraryCounts();
 
@@ -34,7 +35,7 @@ export function FixedRows() {
             <FixedRow
                 label={t('allMedia', 'All media')}
                 count={data?.all}
-                selected={selectedId === null}
+                selected={selectedId === null && smartId === null}
                 onSelect={() => select(null)}
                 icon={<FolderOpenIcon />}
             />
