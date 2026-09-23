@@ -1459,7 +1459,7 @@ directory the old `php -S` is still serving, and every page answers 500. Kill
 the old servers by PID first — `ps -eo pid,args`, then `kill` — never
 `pkill -f router.php`, which matches the shell running it.
 
-**It runs there since 23 Sep (`dab8a6a`), 87 / 87, 95 / 95 at `cfba873`** —
+**It runs there since 23 Sep (`dab8a6a`), 87 / 87, 97 / 97 at `133e6c8`** —
 the first run against
 tier 1, and the first anywhere since `9cff4ad`. Playground's CLI does not
 install in the container and Playwright cannot run on the device VM, so
@@ -1506,7 +1506,7 @@ gallery has *Folder order*. Three things it found, all fixed with it:
   dragover**, over the rail too, so a tile dropped on a folder in grid mode
   filed nothing. Hidden while one of our drags is on.
 
-### Upload a folder structure (tier 2 item 9, `cfba873`)
+### Upload a folder structure (tier 2 item 9, `cfba873`; picker fix `133e6c8`)
 
 Drop a directory from the desktop on the media grid (or a picker) and its
 folders are made under the selected folder, each file filed into the one it
@@ -1556,8 +1556,8 @@ with a reason (`5f9ca0d`); the attachment guard did a query per file and a
 2,001-folder copy with 36,000 files took 7.7s, now 3.8s (`9ba3754`);
 `tree()`, a 1,000-sibling reorder and the export need nothing. Integration is
 89 / 89 since `cfba873` (76 at the stress tests — an earlier "75" counted a
-stray copy of `JsonSourceTest` that existed only in the rig); e2e 95 / 95; JS
-unit 52.
+stray copy of `JsonSourceTest` that existed only in the rig); e2e 97 / 97 at
+`133e6c8`; JS unit 52.
 
 ### Running the integration suite
 
@@ -1804,13 +1804,15 @@ lack it; **FolderFolio + Real Media Library is the only clean pair of ten**.
 folder parameter is not, so a grid on a folder never showed an upload until
 `lib/filter.ts`'s `showUpload()` (tier 2 item 9).
 
-**On the block editor, the gallery block's config wins `window.folderFolio`.**
-`Blocks\Gallery` writes `can: {create, rename, delete: false}` with
-`window.folderFolio = window.folderFolio || …` and is enqueued first, so the
-media picker on the same screen — `MediaModalIntegration::config()` — loses:
-its folder column is read-only for an administrator there, its strings fall
-back to English, and a dropped directory uploads flat. Found 23 Sep, **not
-fixed** — the inspector's read-only tree should be a prop, not a global lie.
+**`window.folderFolio` has several writers, and they merge** (`133e6c8`).
+Every screen prints its config through `Support\ClientConfig::script()`:
+scalars first-writer-wins, `i18n` a union. Before that each printed `x = x ||
+{…}` and on the block editor the gallery block's won — its `create / rename /
+delete: false` made the picker beside it read-only for an administrator,
+untranslated, and a dropped directory uploaded flat. **An ability in the
+config is a fact about the user; a screen that offers less narrows its own
+bundle** — `restrictAbilities()` in `lib/can.ts` (each esbuild bundle has its
+own copy of the module). `block-editor.spec.ts` asserts both halves.
 
 **`window.folderFolio` and `window.folderFolioRail` are different objects.**
 `Rail::config()` writes the second — the chrome script's own globals, width
