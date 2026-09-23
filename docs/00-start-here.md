@@ -1734,6 +1734,40 @@ Board `KZsHhrffzKQYqUjTvdFszK`; Nick took all ten recommendations. This is
   are new elements. A reload restores both. CatFolders and Real Media Library
   touch media only (read from source).
 
+### Smart folders (tier 3 item 13, `36ae7b9`)
+
+Board `KZsHhrffzKQYqUjTvdFszK`, 13a–13c as recommended: saved rules, every
+rule must match, the site's (Organise makes and changes them, *use* reads
+them), a *Smart* group under Starred, never a drop target, media first.
+
+- **Rules** (`Domain\SmartRules::FIELDS['attachment']`): type is / is not
+  (image, video, audio, document — `application/*` and `text/*`), uploaded in
+  the last N days / after / before, uploaded by (a user, or `me` — whoever is
+  looking, so one saved view means something different to each person), size
+  larger / smaller, folder is none / any / within (the subtree), name contains
+  (title or file path). `sanitize()` drops anything unknown and keeps ten.
+  Other object types return no rules yet — the engine is keyed by type so 13c
+  can add them without a new shape.
+- **Storage**: one autoloaded option, `folderfolio_smart_folders` —
+  `{next, items[]}`. Names are unique case-insensitively; fifty at most.
+- **Applied** in `MediaLibraryFilter::joinFolderAssignments()` after the
+  folder clause: `folderfolio_smart` (a saved id, from `$_GET` in list mode or
+  the grid's query) or `folderfolio_smart_rules` (already-sanitised rules,
+  internal — the count and the preview). A deleted id adds `AND 1 = 0`.
+- **Size** needs an index core does not keep: `_folderfolio_filesize`
+  postmeta, written on `wp_update_attachment_metadata` and backfilled in a
+  two-second budget the first time a size rule is asked (then rechecked at
+  most hourly, `folderfolio_filesizes_checked`). uninstall removes all three.
+- **REST** `/smart` (GET, POST), `/smart/preview` (POST — the editor's live
+  count), `/smart/{id}` (PATCH/POST, DELETE). Each response carries `count`.
+- **Client**: `smartId` in `useRail` is exclusive with `selectedId`. The URL
+  keeps `folderfolio_folder=` present-and-empty beside `folderfolio_smart=ID`,
+  which is what keeps `StartupFolder`'s redirect quiet. The crumb names the
+  view; *Clear filter* leaves it. **A link to a smart folder that no longer
+  exists falls back to All media and cleans the address bar** (SmartGroup's
+  effect), as a deleted folder's link does. The editor's users list is
+  `/wp/v2/users`, so it needs `list_users` to name anyone but *me*.
+
 ### Stress tests
 
 `tests/stress/import.php` and `tests/stress/ops.php`, run with `wp
@@ -2933,6 +2967,16 @@ one level back and off screen. An action on the selection can then succeed and
 appear to do nothing. `FolderMenu` steps out to the parent before moving the
 level it is standing in; `levelId` is null in the wide tree, so the same code
 is inert there.
+
+**A saved smart folder has to be in the query cache before it is
+selected.** `SmartGroup` lets go of a selected id its list does not have (a
+dead link). `useSaveSmart` writes the saved folder into the cache in
+`onSuccess`, before the editor calls `selectSmart()`; with only an invalidate
+there, a fresh save would be selected and dropped in the same frame.
+
+**The rig's attachments have `post_author` 0.** A rule on *uploaded by me*
+matches nothing in the container suite; `smart-folders.spec.ts` filters by
+name and type instead. The author rule is covered in `SmartFoldersTest`.
 
 ## Which document is which
 
