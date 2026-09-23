@@ -10,6 +10,7 @@ if (!defined('ABSPATH')) {
 
 use FolderFolio\Domain\FolderExport;
 use FolderFolio\Modules\Import\Catalog;
+use FolderFolio\Modules\Import\JsonSource;
 use FolderFolio\Modules\Import\Run;
 use FolderFolio\Modules\Import\Planner;
 use FolderFolio\Modules\Import\Runner;
@@ -78,6 +79,35 @@ class ImportController
                     'required' => false,
                     'default' => false,
                 ],
+            ],
+        ]);
+
+        /*
+         * An export file, read back in — tier 1 item 6b.
+         *
+         * The body is the decoded document, sent as JSON; the browser reads
+         * the file, so there is no multipart upload and nothing lands in the
+         * uploads directory. Validated whole and stored; the wizard then
+         * previews and runs it under the key it answers with, through the same
+         * /plan and /start as every plugin source.
+         */
+        register_rest_route(self::NS, '/import/file', [
+            [
+                'methods' => WP_REST_Server::CREATABLE,
+                'callback' => [$this, 'file'],
+                'permission_callback' => [$this, 'canManageOptions'],
+                'args' => [
+                    'document' => [
+                        'required' => true,
+                    ],
+                ],
+            ],
+            // Letting go of it when the preview is cancelled — a finished run
+            // lets go by itself (Runner::finish), and nothing else reads it.
+            [
+                'methods' => WP_REST_Server::DELETABLE,
+                'callback' => [$this, 'discardFile'],
+                'permission_callback' => [$this, 'canManageOptions'],
             ],
         ]);
 
@@ -152,6 +182,55 @@ class ImportController
         return $response;
     }
 
+    public function file(WP_REST_Request $request): WP_REST_Response
+    {
+        // The stored document is what a running import re-reads every batch;
+        // replacing it mid-run would change the tree under the cursor.
+        $current = $this->runs->current();
+
+        if (null !== $current && !$current->isFinished()) {
+            return $this->fail(
+                __('An import is already running. Wait for it to finish, or stop it first.', 'folderfolio'),
+                409
+            );
+        }
+
+        $document = $request->get_param('document');
+        $source = JsonSource::fromDocument($document);
+
+        if ($source instanceof WP_Error) {
+            return $this->fail($source->get_error_message(), 400);
+        }
+
+        /** @var array<string, mixed> $document */
+        JsonSource::store($document);
+
+        return $this->ok([
+            'source' => [
+                'key' => $source->key(),
+                'label' => $source->label(),
+                'folders' => $source->folderCount(),
+                'assignments' => $source->assignmentCount(),
+            ] + $source->facts(),
+        ]);
+    }
+
+    public function discardFile(): WP_REST_Response
+    {
+        $current = $this->runs->current();
+
+        if (null !== $current && !$current->isFinished()) {
+            return $this->fail(
+                __('An import is already running. Wait for it to finish, or stop it first.', 'folderfolio'),
+                409
+            );
+        }
+
+        delete_option(JsonSource::OPTION);
+
+        return $this->ok([]);
+    }
+
     public function sources(): WP_REST_Response
     {
         $run = $this->runs->current();
@@ -181,7 +260,15 @@ class ImportController
             );
         }
 
-        return $this->ok(['plan' => $this->planner->plan($source)->toArray()]);
+        $plan = $this->planner->plan($source)->toArray();
+
+        // What only a file can say: where it came from, and whether its file
+        // assignments apply here. The preview draws a line from it.
+        if ($source instanceof JsonSource) {
+            $plan['file'] = $source->facts();
+        }
+
+        return $this->ok(['plan' => $plan]);
     }
 
     public function start(WP_REST_Request $request): WP_REST_Response

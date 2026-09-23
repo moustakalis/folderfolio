@@ -11,6 +11,7 @@ if (!defined('ABSPATH')) {
 use FolderFolio\Domain\AttachmentFolderRepository;
 use FolderFolio\Domain\FolderRepository;
 use FolderFolio\Domain\FolderService;
+use FolderFolio\Domain\FolderSorts;
 use WP_Error;
 
 /**
@@ -71,7 +72,8 @@ final class Runner
         private readonly FolderService $service = new FolderService(),
         private readonly FolderRepository $folders = new FolderRepository(),
         private readonly AttachmentFolderRepository $assignments = new AttachmentFolderRepository(),
-        private readonly Provenance $provenance = new Provenance()
+        private readonly Provenance $provenance = new Provenance(),
+        private readonly FolderSorts $sorts = new FolderSorts()
     ) {
     }
 
@@ -329,17 +331,41 @@ final class Runner
                     ++$run->foldersMerged;
                 }
             } else {
-                $created = $this->service->create([
+                // Colour and icon only when the source carries them — a
+                // FolderFolio export does, no plugin does — and only here, on
+                // a folder this run creates. A merged folder is somebody's own
+                // and keeps what they gave it.
+                $data = [
                     'name' => $folder->name,
                     'parent_id' => $parentId,
                     'sort_order' => $folder->sortOrder,
-                ]);
+                ];
+
+                if ($folder->color !== null) {
+                    $data['color'] = $folder->color;
+                }
+
+                if ($folder->icon !== null) {
+                    $data['icon'] = $folder->icon;
+                }
+
+                $created = $this->service->create($data);
 
                 if (is_wp_error($created)) {
                     return $created;
                 }
 
                 $folderId = $created->id;
+
+                // The two per-folder orders, the same way. An order this
+                // version does not know was dropped when the file was read,
+                // and a failed write here costs an order, not the folder — so
+                // it is not a reason to stop the run.
+                foreach (['folders' => $folder->sortFolders, 'files' => $folder->sortFiles] as $scope => $order) {
+                    if ($order !== null) {
+                        $this->sorts->set($folderId, $scope, $order);
+                    }
+                }
                 $run->createdFolderIds[] = $folderId;
                 ++$run->foldersCreated;
             }
@@ -463,6 +489,9 @@ final class Runner
         $run->finishedAt = current_time('mysql', true);
 
         $this->store->save($run);
+
+        // An uploaded export file is not kept once nothing reads it.
+        JsonSource::forget($run->sourceKey);
 
         return $run;
     }

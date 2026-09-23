@@ -101,8 +101,11 @@ export function tn(
  * with an `Error`, so there is no `.message` on the first shape at all.
  */
 export function errorMessage(error: unknown): string {
-  const body = error as { error?: { message?: unknown }; message?: unknown } | null;
-  const message = body?.error?.message ?? body?.message;
+  // A third shape: the import routes answer `{success: false, error: "…"}`,
+  // the sentence itself where the folder routes put an object.
+  const body = error as { error?: { message?: unknown } | string; message?: unknown } | null;
+  const message =
+    typeof body?.error === 'string' ? body.error : (body?.error?.message ?? body?.message);
 
   return typeof message === 'string' && message.trim() !== ''
     ? message

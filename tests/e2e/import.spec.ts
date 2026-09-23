@@ -393,3 +393,45 @@ test.describe('bulk create', () => {
         );
     });
 });
+
+/**
+ * Tier 1 item 6b — the export file read back in, through the same wizard.
+ */
+test.describe('importing an export file', () => {
+    const doc = (site: string) => ({
+        folderfolio: 1,
+        site,
+        object_type: 'attachment',
+        folders: [
+            { id: 10, parent_id: null, name: 'Round trip', slug: null, color: 'red', icon: null, sort_order: 0, sort_folders: 'name-desc', sort_files: null },
+            { id: 11, parent_id: 10, name: 'Logos', slug: null, color: 'moss', icon: null, sort_order: 0, sort_folders: null, sort_files: 'name-desc' },
+        ],
+        assignments: [{ folder: 11, attachments: [999999] }],
+    });
+
+    async function choose(page: import('@playwright/test').Page, body: string) {
+        await page.locator('.folderfolio-wizard input[type="file"]').setInputFiles({
+            name: 'export.json',
+            mimeType: 'application/json',
+            buffer: Buffer.from(body),
+        });
+    }
+
+    test("another site's file brings its folders and says why not its files", async ({ page }) => {
+        await page.goto('/wp-admin/admin.php?page=folderfolio&tab=import');
+        await choose(page, JSON.stringify(doc('https://elsewhere.example')));
+
+        await expect(page.locator('.folderfolio-wizard__lines')).toContainText('An export of another site');
+        await expect(page.locator('.folderfolio-wizard__lines')).toContainText('2 folders created');
+        await page.getByRole('button', { name: 'Cancel' }).click();
+    });
+
+    test('a file that is not an export is refused in its own row, with the reason', async ({ page }) => {
+        await page.goto('/wp-admin/admin.php?page=folderfolio&tab=import');
+        await choose(page, 'not json');
+        await expect(page.locator('.folderfolio-source [role="alert"]')).toContainText('could not be read as JSON');
+
+        await choose(page, JSON.stringify({ ...doc('https://x.example'), folderfolio: 2 }));
+        await expect(page.locator('.folderfolio-source [role="alert"]')).toContainText('export format 2');
+    });
+});

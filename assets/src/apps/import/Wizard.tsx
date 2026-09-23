@@ -16,7 +16,7 @@ import { Progress } from './Progress';
 import { Report } from './Report';
 import { Steps } from './Steps';
 import { usePlan, useRunAction, useSources, type RunState } from './queries';
-import { t } from '../../core/api';
+import { apiFetch, errorMessage, t } from '../../core/api';
 
 export function Wizard() {
     const sources = useSources();
@@ -118,10 +118,19 @@ export function Wizard() {
     }, [action]);
 
     const restart = useCallback(() => {
+        // Backing out of a file's preview lets go of the stored file — the
+        // server keeps it only while something may still read it. After a
+        // run it is already gone (Runner::finish), so this is only ever the
+        // cancelled preview. Best effort: a failure leaves it for the next
+        // upload to replace.
+        if (run === null && chosen?.startsWith('ff-file-')) {
+            void apiFetch('/import/file', { method: 'DELETE' }).catch(() => undefined);
+        }
+
         setRun(null);
         setChosen(null);
         void sources.refetch();
-    }, [sources]);
+    }, [sources, run, chosen]);
 
     const step = run !== null ? (active ? 3 : 4) : chosen !== null ? 2 : 1;
 
@@ -142,7 +151,10 @@ export function Wizard() {
                     <Preview
                         plan={plan.data ?? null}
                         loading={plan.isPending}
-                        error={plan.error instanceof Error ? plan.error.message : null}
+                        // Not `instanceof Error`: wp.apiFetch rejects with the
+                        // response body, so that test was never true and a
+                        // refused preview showed "Reading the folders…" for ever.
+                        error={plan.error ? errorMessage(plan.error) : null}
                         starting={action.isPending}
                         onImport={start}
                         onCancel={restart}
@@ -161,11 +173,11 @@ export function Wizard() {
                 )}
             </div>
 
-            {action.error instanceof Error && (
+            {action.error ? (
                 <div className="folderfolio-wizard__error" role="alert">
-                    {action.error.message || t('importFailed', 'The import could not continue.')}
+                    {errorMessage(action.error) || t('importFailed', 'The import could not continue.')}
                 </div>
-            )}
+            ) : null}
         </div>
     );
 }

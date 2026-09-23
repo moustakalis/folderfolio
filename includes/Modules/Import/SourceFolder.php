@@ -28,12 +28,27 @@ final class SourceFolder
      * @param int|null $parentId  Normalised: null means top level.
      * @param string   $name      Raw, as stored. Sanitised when written.
      * @param int      $sortOrder The source's own ordering, where it had one.
+     *
+     * The four below are carried by one source only — a FolderFolio export
+     * file (`JsonSource`), which knows what no other plugin stores in our
+     * vocabulary. Null everywhere else, and applied only to a folder the
+     * import *creates*: a folder merged into one of yours keeps your colour
+     * and your orders, for the same reason files are added and never moved.
+     *
+     * @param string|null $color       A swatch name, already validated.
+     * @param string|null $icon        An icon key, already sanitised.
+     * @param string|null $sortFolders A per-folder order for its subfolders.
+     * @param string|null $sortFiles   A per-folder order for its files.
      */
     public function __construct(
         public readonly int $id,
         public readonly ?int $parentId,
         public readonly string $name,
-        public readonly int $sortOrder = 0
+        public readonly int $sortOrder = 0,
+        public readonly ?string $color = null,
+        public readonly ?string $icon = null,
+        public readonly ?string $sortFolders = null,
+        public readonly ?string $sortFiles = null
     ) {
     }
 }

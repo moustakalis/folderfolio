@@ -1,0 +1,121 @@
+<?php
+
+namespace FolderFolio\Tests\Integration\Modules\Import;
+
+use FolderFolio\Database\Schema;
+use FolderFolio\Domain\FolderExport;
+use FolderFolio\Domain\FolderService;
+use FolderFolio\Domain\FolderSorts;
+use FolderFolio\Modules\Import\Catalog;
+use FolderFolio\Modules\Import\JsonSource;
+use FolderFolio\Modules\Import\Runner;
+use WP_Error;
+use WP_UnitTestCase;
+
+/**
+ * An export file read back in — tier 1 item 6b.
+ */
+class JsonSourceTest extends WP_UnitTestCase
+{
+    private FolderService $service;
+
+    public function setUp(): void
+    {
+        parent::setUp();
+        (new Schema())->migrate();
+        $this->service = new FolderService();
+
+        global $wpdb;
+        $wpdb->query("DELETE FROM {$wpdb->prefix}folderfolio_attachment_folders");
+        $wpdb->query("DELETE FROM {$wpdb->prefix}folderfolio_folders");
+        $wpdb->query("DELETE FROM {$wpdb->prefix}folderfolio_folder_meta");
+        delete_option(JsonSource::OPTION);
+    }
+
+    /** @return array<string, mixed> */
+    private function document(string $site): array
+    {
+        return [
+            'folderfolio' => FolderExport::FORMAT,
+            'site' => $site,
+            'folders' => [
+                ['id' => 10, 'parent_id' => null, 'name' => 'Brand', 'color' => 'red', 'sort_order' => 0,
+                 'sort_folders' => null, 'sort_files' => null],
+                ['id' => 11, 'parent_id' => 10, 'name' => 'Logos', 'color' => 'moss', 'sort_order' => 2,
+                 'sort_folders' => null, 'sort_files' => 'name-desc'],
+            ],
+            'assignments' => [['folder' => 11, 'attachments' => [999999]]],
+        ];
+    }
+
+    /**
+     * @test
+     */
+    public function refuses_what_is_not_a_format_1_export(): void
+    {
+        $this->assertWPError(JsonSource::fromDocument(['hello' => 'world']));
+        $this->assertWPError(JsonSource::fromDocument(['folderfolio' => 2, 'folders' => []]));
+        $this->assertWPError(JsonSource::fromDocument(['folderfolio' => 1, 'folders' => []]));
+
+        $repeated = $this->document(home_url());
+        $repeated['folders'][1]['id'] = 10;
+        $this->assertWPError(JsonSource::fromDocument($repeated));
+    }
+
+    /**
+     * @test
+     */
+    public function applies_assignments_only_from_this_site(): void
+    {
+        $here = JsonSource::fromDocument($this->document(home_url() . '/'));
+        $there = JsonSource::fromDocument($this->document('https://elsewhere.example'));
+
+        $this->assertInstanceOf(JsonSource::class, $here);
+        $this->assertInstanceOf(JsonSource::class, $there);
+        $this->assertSame([999999], $here->attachmentIdsFor(11));
+        $this->assertSame([], $there->attachmentIdsFor(11));
+        $this->assertSame(1, $there->facts()['assignments_in_file']);
+        $this->assertNotSame($here->key(), $there->key(), 'two sites must never share provenance');
+    }
+
+    /**
+     * @test
+     */
+    public function is_found_but_never_detected(): void
+    {
+        $document = $this->document(home_url());
+        JsonSource::store($document);
+        $source = JsonSource::fromDocument($document);
+
+        $this->assertNotNull(Catalog::find($source->key()));
+        $this->assertNotContains(
+            $source->key(),
+            array_column(Catalog::detect(), 'key')
+        );
+    }
+
+    /**
+     * @test
+     */
+    public function a_run_recreates_colours_and_orders_and_lets_go_of_the_file(): void
+    {
+        $document = $this->document('https://elsewhere.example');
+        JsonSource::store($document);
+        $source = JsonSource::fromDocument($document);
+
+        $runner = new Runner();
+        $runner->start($source);
+
+        do {
+            $run = $runner->step();
+        } while (!$run->isFinished());
+
+        $brand = $this->service->findByPath('Brand');
+        $logos = $this->service->findByPath('Brand/Logos');
+
+        $this->assertSame('red', $brand->color);
+        $this->assertSame('moss', $logos->color);
+        $this->assertSame('name-desc', (new FolderSorts())->for($logos->id)['files']);
+        $this->assertFalse(get_option(JsonSource::OPTION, false), 'the stored file goes once the run is over');
+    }
+}

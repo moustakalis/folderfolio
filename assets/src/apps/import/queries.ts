@@ -10,7 +10,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { apiFetch, type ApiEnvelope } from '../../core/api';
+import { apiFetch, t, type ApiEnvelope } from '../../core/api';
 
 export interface DetectedSource {
     key: string;
@@ -57,9 +57,19 @@ export interface PlanCounts {
     unreachable: number;
 }
 
+/** What only an export file can say about itself — see JsonSource::facts(). */
+export interface FileFacts {
+    site: string;
+    same_site: boolean;
+    assignments_in_file: number;
+    assignments_applied: number;
+}
+
 export interface PlanState {
     source: string;
     label: string;
+    /** Present when the source is an uploaded export file. */
+    file?: FileFacts;
     counts: PlanCounts;
     samples: {
         create: string[];
@@ -130,6 +140,35 @@ export function useRunAction() {
             // The folder tree in the library behind this screen is now wrong,
             // and so is the source list's idea of what is already imported.
             void client.invalidateQueries({ queryKey: sourcesKey });
+        },
+    });
+}
+
+/**
+ * Hand an export file to the server — tier 1 item 6b.
+ *
+ * Read in the browser and sent as the decoded document, not uploaded as a
+ * file: there is no multipart request, nothing lands in the uploads
+ * directory, and a file that is not JSON is refused here before a request is
+ * made. Everything about whether it is a FolderFolio export is the server's
+ * question; the answer comes back as the key to preview it under.
+ */
+export function useImportFile() {
+    return useMutation({
+        mutationFn: async (file: File) => {
+            let document: unknown;
+
+            try {
+                document = JSON.parse(await file.text());
+            } catch {
+                throw { error: t('importFileNotJson', 'This file is not an export — it could not be read as JSON.') };
+            }
+
+            const response = await apiFetch<
+                ApiEnvelope<{ source: { key: string; label: string } & FileFacts }>
+            >('/import/file', { method: 'POST', data: { document } });
+
+            return response.data.source;
         },
     });
 }

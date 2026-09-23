@@ -140,7 +140,14 @@ final class Catalog
             }
         }
 
-        return null;
+        // The uploaded export file — found, never detected. See JsonSource
+        // on why it is not in all(): it is not a plugin in this database, and
+        // detection is a question about those. Finding it here is what lets
+        // the planner, every batch of the runner and the run payload reach it
+        // without knowing a file source exists.
+        $file = JsonSource::stored();
+
+        return $file !== null && $file->key() === $key ? $file : null;
     }
 
     /**

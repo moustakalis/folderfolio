@@ -45,6 +45,41 @@ export function Preview({
     const { counts, samples } = plan;
 
     const lines: Array<{ label: string; detail: string } | null> = [
+        /*
+         * A file's own line — what it is, and whether its files come too.
+         * Assignments name one site's attachments by number, so from another
+         * site they are left out rather than filed onto whatever carries the
+         * same numbers here (see JsonSource). First, so "0 files added" further
+         * down is never the first hint.
+         */
+        plan.file
+            ? plan.file.same_site
+                ? {
+                      label: t('importFileSame', 'An export of this site'),
+                      detail: t(
+                          'importFileSameDetail',
+                          'Colours, icons and orders come with the folders it creates; folders that already exist keep their own.'
+                      ),
+                  }
+                : {
+                      label: t('importFileOther', 'An export of another site'),
+                      detail:
+                          plan.file.assignments_in_file > 0
+                              ? tn(
+                                    'importFileOtherFile',
+                                    'importFileOtherFiles',
+                                    plan.file.assignments_in_file,
+                                    'Only the folders are imported. Its %1$s file assignment names a file on %2$s by number, and that number is a different file here.',
+                                    'Only the folders are imported. Its %1$s file assignments name files on %2$s by number, and those numbers are different files here.',
+                                    plan.file.assignments_in_file,
+                                    plan.file.site
+                                )
+                              : t(
+                                    'importFileOtherNone',
+                                    'Only the folders are imported — it carries no file assignments. Colours, icons and orders come with the folders it creates.'
+                                ),
+                  }
+            : null,
         counts.create > 0
             ? {
                   label: tn(
