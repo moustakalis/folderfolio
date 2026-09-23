@@ -1459,7 +1459,7 @@ directory the old `php -S` is still serving, and every page answers 500. Kill
 the old servers by PID first — `ps -eo pid,args`, then `kill` — never
 `pkill -f router.php`, which matches the shell running it.
 
-**It runs there since 23 Sep (`dab8a6a`), 87 / 87, 98 / 98 at `2195053`** —
+**It runs there since 23 Sep (`dab8a6a`), 87 / 87, 101 / 101 at `581ea30`** —
 the first run against
 tier 1, and the first anywhere since `9cff4ad`. Playground's CLI does not
 install in the container and Playwright cannot run on the device VM, so
@@ -1554,6 +1554,57 @@ one — present from the first selection on, `''` included. `showUpload()` and
 and rebuild its tile when it finishes (core builds the tile's `aria-label` once,
 as "uploading…").
 
+### Lock, pin and star (tier 2 item 10, `581ea30`)
+
+Board `3ZU8VGkJemznTvKp8tNnvY`; Nick took all six recommendations.
+
+- **A lock protects the shape of a folder and its whole subtree** — no rename,
+  move, reorder or delete, nothing created, cut or pasted inside. Files still
+  go in and out; colour and *Sort inside* stay allowed (they change how a
+  folder is shown, not what it is); a copy comes out unlocked.
+- **It is a permission, not a safety catch.** A fifth ability, **Lock**, in
+  the roles matrix — Administrator only by default, and `legacyFallback`
+  refuses it. Its holders lock, unlock and are not stopped. **WP-CLI is
+  exempt**: a CLI run has no user, so otherwise every command would be refused.
+- **Enforced once, in the domain.** `Domain\FolderLocks` (meta keys
+  `state:locked`, `state:pinned` in `folderfolio_folder_meta`) is asked by
+  `FolderService` in create, update (a name change only), move, reorder,
+  duplicate (the destination) and delete (the folder or anything locked
+  under it). Bulk-create, `getOrCreateByPath()`, the importer and a dropped
+  directory all end there. `lockingId()` finds the topmost lock in a path;
+  the tree carries `locked`, `locked_by` and `pinned` (`FolderTree::withMarks()`).
+  The refusal is `folderfolio_locked`, 403: *"“%s” is locked. Someone who can
+  lock folders can unlock it."*
+- **A reorder of a locked folder's siblings is allowed** unless the locked one
+  itself moved — `lockedFolderMoved()` removes it from both lists and compares.
+- **Pin is the site's**, needs Organise, and on a locked folder needs Lock.
+  **It is applied by the client**, `sortTree()`, first in its level whatever
+  the sort. `planSiblingMove()` will not step across the pinned/unpinned line
+  and `clampToPinGroup()` lands a drop in its own group — a step across would
+  be saved and never seen.
+- **Star is each person's**, in the `folderfolio_rail` preference (`stars`,
+  positive ids, at most 100), toggled optimistically by `useRail.toggleStar()`,
+  and drawn as a **Starred** group above the tree (`Starred.tsx`, five rows
+  then a scroll, each with its parent's name).
+- **The ⋮ menu has one strip of three labelled toggles** (`.folderfolio-marks`,
+  `menuitemcheckbox`) — after Move down for Organise, at the top otherwise.
+  It is 497px unlocked (446 before); a blocked person's is 549 with the *why*
+  line. **Marks sit beside the count** (`RowMarks.tsx`) in both renderers; an
+  inherited lock is fainter. `locks.ts::isBlocked()` decides for the menu,
+  the drag and the keyboard; the server decides again.
+- **Found with it**: the content cards came out in the wire's order whatever
+  the rail showed (`Content.tsx` sorts now), and `.folderfolio-levels__row`'s
+  fixed four-track grid wrapped a fifth part onto a second line (two tracks
+  stated, the rest flowing).
+- **The matrix with a fifth column** floored at 303.8px in a 274px box at 320.
+  Phone heads are sentence case below 520 and 9.5px at 360 and below: 267.8px.
+
+**Known limits**: an Author (create + assign) has no ⋮, so cannot star; a
+folder dropped into a locked one by someone without Lock is refused by the
+server and the notice says so, with no drop-time affordance; an import into a
+locked folder stops at that folder; meta rows outlive a deleted folder
+(harmless, never read).
+
 ### Stress tests
 
 `tests/stress/import.php` and `tests/stress/ops.php`, run with `wp
@@ -1567,8 +1618,8 @@ with a reason (`5f9ca0d`); the attachment guard did a query per file and a
 2,001-folder copy with 36,000 files took 7.7s, now 3.8s (`9ba3754`);
 `tree()`, a 1,000-sibling reorder and the export need nothing. Integration is
 89 / 89 since `cfba873` (76 at the stress tests — an earlier "75" counted a
-stray copy of `JsonSourceTest` that existed only in the rig); e2e 98 / 98 at
-`2195053`; unit 152; JS unit 52.
+stray copy of `JsonSourceTest` that existed only in the rig), **98 / 98 at
+`581ea30`** (FolderLocksTest); e2e 101 / 101; unit 153; JS unit 61.
 
 ### Running the integration suite
 
