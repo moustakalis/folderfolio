@@ -307,7 +307,11 @@ class FolderServiceIntegrationTest extends WP_UnitTestCase
      */
     public function duplicate_checks_the_depth_of_the_whole_subtree_first(): void
     {
-        add_filter('folderfolio_max_depth', static fn (): int => 3);
+        // A root is depth 0 and the guard refuses depth > max, so A → B → C
+        // pasted under a root lands C at depth 3: over a limit of 2. (This
+        // said 3 when it was written and passed nothing — found the first
+        // time the suite ran, 23 Sep.)
+        add_filter('folderfolio_max_depth', static fn (): int => 2);
 
         $a = $this->service->create(['name' => 'A']);
         $b = $this->service->create(['name' => 'B', 'parent_id' => $a->id]);
@@ -327,6 +331,11 @@ class FolderServiceIntegrationTest extends WP_UnitTestCase
      */
     public function duplicate_with_files_files_the_same_media_and_without_files_files_none(): void
     {
+        // Filing asks edit_post of every file, and the suite runs as nobody:
+        // without a user, the assignment below is refused and the test
+        // compares two empty copies.
+        wp_set_current_user(self::factory()->user->create(['role' => 'administrator']));
+
         $brand = $this->service->create(['name' => 'Brand']);
         $logos = $this->service->create(['name' => 'Logos', 'parent_id' => $brand->id]);
         $attachment = self::factory()->attachment->create(['post_mime_type' => 'image/jpeg']);
@@ -370,6 +379,8 @@ class FolderServiceIntegrationTest extends WP_UnitTestCase
      */
     public function the_inherited_total_counts_a_file_filed_twice_once(): void
     {
+        wp_set_current_user(self::factory()->user->create(['role' => 'administrator']));
+
         $parent = $this->service->create(['name' => 'Clients']);
         $a = $this->service->create(['name' => 'Brand', 'parent_id' => $parent->id]);
         $b = $this->service->create(['name' => 'Brand copy', 'parent_id' => $parent->id]);
