@@ -39,9 +39,24 @@ async function resetSettings(page: Page): Promise<void> {
     await page.getByLabel('Default sort').selectOption('name-asc');
     await page.getByLabel('Undo window').fill('5');
     await page.getByRole('checkbox', { name: 'Create — Author' }).check();
+    await page.getByLabel('Opens in').selectOption('');
 
     await page.getByRole('button', { name: 'Save changes' }).click();
     await expect(page.getByText('Settings saved.')).toBeVisible();
+
+    // And the per-user startup folder (7b), which the form does not reach. A
+    // spec that fails between pressing Start here and pressing it again
+    // leaves it set, and every later spec that expects the site's folder —
+    // or none — then fails for a reason that is not its own.
+    await page.goto('/wp-admin/upload.php?folderfolio_folder=');
+    await page.locator('#folderfolio-rail').waitFor();
+    await page.evaluate(() =>
+        window.wp.apiFetch({
+            path: '/folderfolio/v1/preferences',
+            method: 'POST',
+            data: { rail: { startup: null } },
+        })
+    );
 }
 
 test.describe('the settings screen', () => {
@@ -336,7 +351,8 @@ test.describe('the settings screen', () => {
         // 3. The way out works, and takes the sentence with it — the sentence
         //    outliving the filter was a real bug, found in the browser and not
         //    by any suite.
-        await page.locator('.folderfolio-crumbs__clear').click();
+        // The library's labelled Clear filter; `__clear` is the picker's icon.
+        await page.locator('.folderfolio-crumbs__control', { hasText: /clear filter/i }).click();
         await expect(note).toHaveCount(0);
 
         // 4. And the way out **stays** out on the next load. The URL the ×
@@ -347,7 +363,18 @@ test.describe('the settings screen', () => {
         expect(cleared).toContain('folderfolio_folder=');
 
         await page.goto(cleared);
-        await expect(page).toHaveURL(cleared);
+        // Not `toHaveURL(cleared)`: core's wp-admin-canonical replaceState
+        // re-spells `?folderfolio_folder=` as `?folderfolio_folder`. PHP reads
+        // both as present-and-empty, which is all StartupFolder asks
+        // (array_key_exists), so what matters is that the key is still there
+        // and no folder id came back.
+        await expect(page).toHaveURL(/[?&]folderfolio_folder(=)?(&|$)/);
+        await expect(page).not.toHaveURL(/folderfolio_folder=\d/);
+        await expect(page.locator('.folderfolio-startup-note')).toHaveCount(0);
+
+        // …and the re-spelt URL holds too, since it is the one a reload uses.
+        await page.reload();
+        await expect(page).not.toHaveURL(/folderfolio_folder=\d/);
         await expect(page.locator('.folderfolio-startup-note')).toHaveCount(0);
     });
 
@@ -384,6 +411,9 @@ test.describe('the settings screen', () => {
         await expect(toggle).toHaveAttribute('aria-pressed', 'false');
         await toggle.click();
         await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+        // The press is optimistic; the button is disabled until the write
+        // lands. Navigating before then abandons the request.
+        await expect(toggle).toBeEnabled();
 
         // 1. It survives the round trip, and 2. it beats the site's.
         await page.goto('/wp-admin/upload.php');
@@ -408,6 +438,7 @@ test.describe('the settings screen', () => {
             'aria-pressed',
             'false'
         );
+        await expect(page.getByRole('button', { name: 'Start here' })).toBeEnabled();
 
         await page.goto('/wp-admin/upload.php');
         await expect(page).toHaveURL(new RegExp(`folderfolio_folder=${theirs.id}\\b`));

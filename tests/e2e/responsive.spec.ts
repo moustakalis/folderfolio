@@ -298,7 +298,10 @@ test.describe('the rail across viewport widths', () => {
             }
 
             // The search takes the band rather than sitting in a 274px box
-            // inside it — the same decision, one row down.
+            // inside it — the same decision, one row down. Measured against
+            // the wider of the two controls beside it.
+            const widest = Math.max(...s.toolWidths);
+
             expect(
                 s.searchWidth,
                 `the search field does not fill the band at ${s.width}px`
@@ -684,37 +687,66 @@ test.describe('the rail across viewport widths', () => {
 
         await page.locator('.folderfolio-rail__collapse').click();
         await expect(page.locator('#folderfolio-rail.is-collapsed')).toBeVisible();
-        await page.screenshot({ path: 'test-results/responsive/collapsed.png' });
 
-        const collapsed = await page.evaluate(() => {
-            const rail = document.querySelector('#folderfolio-rail') as HTMLElement;
-            const box = rail.getBoundingClientRect();
-            const tab = document.querySelector('.folderfolio-rail__tab') as HTMLElement;
-
-            const outside = [...rail.querySelectorAll('*')]
-                .filter((el) => {
-                    const b = el.getBoundingClientRect();
-                    if (b.width === 0 || b.height === 0) return false;
-                    return b.right > box.right + 1 || b.left < box.left - 1;
-                })
-                .map((el) => String(el.className).split(/\s+/)[0] || el.tagName)
-                .filter((c, i, a) => a.indexOf(c) === i);
-
-            return {
-                width: Math.round(box.width),
-                outside,
-                tabOffsetFromTop: Math.round(tab.getBoundingClientRect().top - box.top),
-            };
-        });
-
-        expect(collapsed.width, 'the collapsed rail is a 28px tab').toBe(28);
-        expect(collapsed.outside, 'nothing may render outside the collapsed rail').toEqual([]);
-
-        // 14px of padding-top and no more: the board's collapsed rail holds
-        // the reopen button and the label, and nothing above them.
-        expect(
-            collapsed.tabOffsetFromTop,
-            'the reopen tab belongs at the top of the rail'
-        ).toBeLessThanOrEqual(16);
+        try {
+            await measureCollapsed(page);
+        } finally {
+            // Open/closed is a stored preference. Left closed, every spec
+            // after this one meets a 28px tab where it expects a tree — the
+            // suite's first full run lost two settings specs to exactly that.
+            //
+            // Through the tab, not a direct POST: rail.ts debounces its own
+            // write by 400ms, so a POST from here could land first and be
+            // overwritten by the collapse. Waiting for the write that says
+            // `open: true` is waiting for the last word.
+            const reopened = page.waitForResponse(
+                (response) =>
+                    response.url().includes('folderfolio/v1/preferences') &&
+                    response.request().method() === 'POST' &&
+                    response.request().postDataJSON()?.rail?.open === true
+            );
+            await page.locator('.folderfolio-rail__expand').click();
+            await reopened;
+        }
     });
 });
+
+/**
+ * The collapsed rail's measurements — split out so the test above can put
+ * the rail back open whether these pass or not.
+ */
+async function measureCollapsed(page: Page): Promise<void> {
+    await page.screenshot({ path: 'test-results/responsive/collapsed.png' });
+
+    const collapsed = await page.evaluate(() => {
+        const rail = document.querySelector('#folderfolio-rail') as HTMLElement;
+        const box = rail.getBoundingClientRect();
+        const tab = document.querySelector('.folderfolio-rail__tab') as HTMLElement;
+
+        const outside = [...rail.querySelectorAll('*')]
+            .filter((el) => {
+                const b = el.getBoundingClientRect();
+                if (b.width === 0 || b.height === 0) return false;
+                return b.right > box.right + 1 || b.left < box.left - 1;
+            })
+            .map((el) => String(el.className).split(/\s+/)[0] || el.tagName)
+            .filter((c, i, a) => a.indexOf(c) === i);
+
+        return {
+            width: Math.round(box.width),
+            outside,
+            tabOffsetFromTop: Math.round(tab.getBoundingClientRect().top - box.top),
+        };
+    });
+
+    expect(collapsed.width, 'the collapsed rail is a 28px tab').toBe(28);
+    expect(collapsed.outside, 'nothing may render outside the collapsed rail').toEqual([]);
+
+    // 14px of padding-top and no more: the board's collapsed rail holds
+    // the reopen button and the label, and nothing above them.
+    expect(
+        collapsed.tabOffsetFromTop,
+        'the reopen tab belongs at the top of the rail'
+    ).toBeLessThanOrEqual(16);
+}
+

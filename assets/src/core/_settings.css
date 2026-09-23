@@ -651,3 +651,26 @@
   }
 
 }
+
+/*
+ * At 360 and below, some slack for a font that is not Apple's.
+ *
+ * The 520px rules above were measured on a Mac, where the matrix floors at
+ * 272px against a 272px content box at 320 — fit with nothing to spare. The
+ * e2e suite's first run (23 Sep, headless Chromium on Linux, where
+ * -apple-system falls back to a wider sans) measured 277.5px in a 274px box:
+ * 3.5px past it. CI runs on Linux too, so this is not only a rig reading.
+ *
+ * The heads lose their 0.02em tracking (ORGANISE, the widest, is 1.6px of it)
+ * and the role cell its 8px inline-end padding comes down to 4. About 9px of
+ * slack on either system, and nothing a person could tell apart at that size.
+ */
+@media screen and (max-width: 360px) {
+  .folderfolio-matrix th {
+    letter-spacing: 0;
+  }
+
+  .folderfolio-matrix th.folderfolio-matrix__role {
+    padding-inline-end: 4px;
+  }
+}

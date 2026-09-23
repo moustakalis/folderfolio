@@ -159,27 +159,30 @@ function FileRow({ onChoose }: { onChoose: (key: string) => void }) {
                         {errorMessage(read.error)}
                     </p>
                 ) : null}
+
+                {/* Inside the text, not beside it: the row is two children —
+                    text and action — and a third, even an invisible one, is
+                    a third child to every rule that counts them. */}
+                <input
+                    ref={input}
+                    type="file"
+                    accept=".json,application/json"
+                    className="screen-reader-text"
+                    tabIndex={-1}
+                    aria-hidden="true"
+                    onChange={(event) => {
+                        const file = event.target.files?.[0];
+
+                        // Cleared, so choosing the same file again after
+                        // fixing it still fires a change.
+                        event.target.value = '';
+
+                        if (file) {
+                            read.mutate(file, { onSuccess: (source) => onChoose(source.key) });
+                        }
+                    }}
+                />
             </div>
-
-            <input
-                ref={input}
-                type="file"
-                accept=".json,application/json"
-                className="screen-reader-text"
-                tabIndex={-1}
-                aria-hidden="true"
-                onChange={(event) => {
-                    const file = event.target.files?.[0];
-
-                    // Cleared, so choosing the same file again after fixing
-                    // it still fires a change.
-                    event.target.value = '';
-
-                    if (file) {
-                        read.mutate(file, { onSuccess: (source) => onChoose(source.key) });
-                    }
-                }}
-            />
 
             <button
                 type="button"

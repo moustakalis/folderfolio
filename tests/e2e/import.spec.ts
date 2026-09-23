@@ -38,8 +38,10 @@ test.describe('the import wizard', () => {
 
         const rows = page.locator('.folderfolio-source');
 
-        // Nine sources ship: three custom-table, six taxonomy-backed.
-        await expect(rows).toHaveCount(9);
+        // Nine sources ship — three custom-table, six taxonomy-backed — and
+        // the export file's row comes last (6b), since a file is not detected.
+        await expect(rows).toHaveCount(10);
+        await expect(rows.last()).toContainText('FolderFolio export file');
         await expect(rows.first()).toContainText('FileBird');
 
         // A fresh WordPress has none of them, so every row reads the same way

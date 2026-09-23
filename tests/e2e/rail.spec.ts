@@ -99,8 +99,10 @@ test.describe('the folder rail', () => {
         await page.reload();
         await waitForTree(page, 'Archive');
 
+        // Delete lives on the selected row's ⋮ since the toolbar went (20 Sep).
         await page.locator('.folderfolio-row', { hasText: 'Archive' }).click();
-        await page.getByRole('button', { name: /^delete$/i }).click();
+        await page.locator('.folderfolio-row__menu').click();
+        await page.getByRole('menuitem', { name: /^delete$/i }).click();
 
         // The rail's body, not the tree: deleting the only folder replaces
         // the tree with the empty state, and a `not.toContainText` on a
@@ -143,7 +145,9 @@ test.describe('the breadcrumb', () => {
         await page.reload();
         await waitForTree(page, 'Brand');
 
-        const clear = page.locator('.folderfolio-crumbs__clear');
+        // The library's crumb row carries a labelled button (22 Sep); the
+        // icon-only `__clear` is the media picker's compact one.
+        const clear = page.locator('.folderfolio-crumbs__control', { hasText: /clear filter/i });
 
         // All media is not a state there is anything to clear.
         await expect(clear).toHaveCount(0);
@@ -159,7 +163,10 @@ test.describe('the breadcrumb', () => {
 
         await clear.click();
 
-        await expect(page).not.toHaveURL(/folderfolio_folder=/);
+        // Cleared is `folderfolio_folder=` with no value, not the key gone:
+        // the empty spelling is what stops a startup folder's redirect from
+        // putting the person back where they were (lib/filter.ts).
+        await expect(page).not.toHaveURL(/folderfolio_folder=\d/);
         await expect(clear).toHaveCount(0);
         await expect(page.locator('.folderfolio-crumbs')).toHaveText(/All media/);
         expect(
@@ -280,11 +287,20 @@ test.describe('reordering a folder', () => {
 
     /** The probe folders in the order the rail is drawing them. */
     const arrangement = (page: import('@playwright/test').Page) =>
-        page.evaluate(() =>
-            [...document.querySelectorAll('[data-folderfolio-name]')]
-                .map((el) => el.getAttribute('data-folderfolio-name'))
-                .filter((name): name is string => /^(Alpha|Bravo|Charlie)$/.test(name ?? ''))
-        );
+        page.evaluate(() => {
+            // The tree's rows carry the name as data; the narrow sheet's
+            // `Levels` rows only as text.
+            const tagged = [...document.querySelectorAll('[data-folderfolio-name]')].map((el) =>
+                el.getAttribute('data-folderfolio-name')
+            );
+            const names = tagged.length
+                ? tagged
+                : [...document.querySelectorAll('.folderfolio-levels__row .folderfolio-row__name')].map(
+                      (el) => el.textContent?.trim() ?? ''
+                  );
+
+            return names.filter((name): name is string => /^(Alpha|Bravo|Charlie)$/.test(name ?? ''));
+        });
 
     async function openLevel(page: import('@playwright/test').Page) {
         await page
@@ -295,7 +311,10 @@ test.describe('reordering a folder', () => {
 
     test('Alt+ArrowDown moves a folder one place and selects Custom order', async ({ page }) => {
         await openLevel(page);
-        await page.locator('.folderfolio-row', { hasText: 'Alpha' }).first().focus();
+        // A click, not `.focus()`: the tree's keys act on the store's
+        // focusedId, which a click (select) sets and a bare DOM focus on a
+        // tabindex=-1 row does not.
+        await page.locator('.folderfolio-row', { hasText: 'Alpha' }).first().click();
         await page.keyboard.press('Alt+ArrowDown');
 
         await expect.poll(() => arrangement(page)).toEqual(['Bravo', 'Alpha', 'Charlie']);
@@ -304,7 +323,7 @@ test.describe('reordering a folder', () => {
         // *visible* under Custom. A gesture that saved one and left the tree
         // showing another order is the half-finished version of this feature.
         await page.getByRole('button', { name: /^sort$/i }).click();
-        await expect(page.getByRole('menuitem', { name: /custom order/i })).toHaveAttribute(
+        await expect(page.getByRole('menuitemradio', { name: /custom order/i })).toHaveAttribute(
             'aria-checked',
             'true'
         );
@@ -316,18 +335,23 @@ test.describe('reordering a folder', () => {
 
             if (width > 782) {
                 await openLevel(page);
+                await page.locator('.folderfolio-row', { hasText: 'Alpha' }).first().click();
+                // The selected row's ⋮ — the toolbar's More went on 20 Sep.
+                await page.locator('.folderfolio-row__menu').click();
             } else {
+                // Below 782px the rail is a sheet behind its tab, drawn by
+                // `Levels`, and the menu is the controls row's Folder actions.
+                await page.reload();
+                await page.locator('.folderfolio-rail__tab').click();
                 // The drill-down: there is no expand here, the row walks in.
                 await page.locator('.folderfolio-levels__row', { hasText: 'Level' }).click();
+                // Alpha is a leaf, so tapping it selects and stays put — the
+                // case where the moved folder and its siblings are both on
+                // screen.
+                await page.locator('.folderfolio-levels__row', { hasText: 'Alpha' }).click();
+                await page.getByRole('button', { name: /^folder actions$/i }).click();
             }
 
-            // Alpha is a leaf, so tapping it selects and stays put — the case
-            // where the moved folder and its siblings are both on screen.
-            await page
-                .locator('.folderfolio-row', { hasText: 'Alpha' })
-                .first()
-                .click();
-            await page.getByRole('button', { name: /^more$/i }).click();
             await page.getByRole('menuitem', { name: /move down/i }).click();
 
             await expect.poll(() => arrangement(page)).toEqual(['Bravo', 'Alpha', 'Charlie']);
@@ -338,13 +362,13 @@ test.describe('reordering a folder', () => {
         await openLevel(page);
 
         await page.locator('.folderfolio-row', { hasText: 'Alpha' }).first().click();
-        await page.getByRole('button', { name: /^more$/i }).click();
+        await page.locator('.folderfolio-row__menu').click();
         await expect(page.getByRole('menuitem', { name: /move up/i })).toBeDisabled();
         await expect(page.getByRole('menuitem', { name: /move down/i })).toBeEnabled();
         await page.keyboard.press('Escape');
 
         await page.locator('.folderfolio-row', { hasText: 'Charlie' }).first().click();
-        await page.getByRole('button', { name: /^more$/i }).click();
+        await page.locator('.folderfolio-row__menu').click();
         await expect(page.getByRole('menuitem', { name: /move up/i })).toBeEnabled();
         await expect(page.getByRole('menuitem', { name: /move down/i })).toBeDisabled();
     });
@@ -665,9 +689,10 @@ test.describe('cut, copy and paste', () => {
         await page.reload();
         await waitForTree(page, 'Brand');
 
-        // Acme is the last root under Name, A to Z; with a 520px window it
-        // sits well inside the hook's 320px flip threshold.
-        await menuOn(page, 'Acme');
+        // Brand is the last root under Name, A to Z (the sort a reload comes
+        // back to); with a 520px window it sits well inside the hook's 320px
+        // flip threshold, and there is more room above it than below.
+        await menuOn(page, 'Brand');
 
         const geometry = await page.evaluate(() => {
             const menu = document.querySelector('.folderfolio-menu--row')!;

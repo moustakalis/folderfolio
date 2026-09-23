@@ -166,8 +166,33 @@ export async function claimsTheContentPadding(page: Page): Promise<void> {
          * the wrong reason, because our own `window.load` re-read would clean
          * it up afterwards.
          *
-         * `documentElement` because `head` does not exist yet.
+         * Nor does `documentElement`, in Chromium: an init script runs on the
+         * new, still empty document, so the first version's
+         * `(document.head ?? document.documentElement).append()` threw on
+         * null and the claim was never made — found on the suite's first run,
+         * 23 Sep, as a 20px padding where 305 was expected. So the style goes
+         * in the moment `<html>` exists, before any script in the page runs.
          */
-        (document.head ?? document.documentElement).append(style);
+        const place = (): boolean => {
+            const root = document.head ?? document.documentElement;
+
+            if (!root) {
+                return false;
+            }
+
+            root.append(style);
+
+            return true;
+        };
+
+        if (!place()) {
+            const watch = new MutationObserver(() => {
+                if (place()) {
+                    watch.disconnect();
+                }
+            });
+
+            watch.observe(document, { childList: true, subtree: true });
+        }
     });
 }

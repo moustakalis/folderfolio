@@ -667,15 +667,21 @@ test.describe('the wide grid toolbar', () => {
                     bulkOnFilterLine: Math.abs(mid(bulk) - mid(folder)) < 12,
                     bulkAfterFolder:
                         bulk.getBoundingClientRect().left > folder.getBoundingClientRect().right,
-                    // …and the search is on the line below, not beside them.
-                    searchBelow: mid(search) > mid(folder) + 12,
+                    // …and the search is on the line below, or — when the
+                    // filters are short enough to leave it room, as on a site
+                    // whose date filter holds one month — at the end of the
+                    // same line. Never between them.
+                    searchPlaced:
+                        mid(search) > mid(folder) + 12 ||
+                        (Math.abs(mid(search) - mid(folder)) < 12 &&
+                            search.getBoundingClientRect().left > bulk.getBoundingClientRect().right),
                 };
             });
 
             expect(shape, `at ${width}px`).not.toBeNull();
             expect(shape!.bulkOnFilterLine, `Bulk select on the filter line at ${width}px`).toBe(true);
             expect(shape!.bulkAfterFolder, `Bulk select after the folder select at ${width}px`).toBe(true);
-            expect(shape!.searchBelow, `search below the filters at ${width}px`).toBe(true);
+            expect(shape!.searchPlaced, `search below the filters, or after them, at ${width}px`).toBe(true);
             // Two rows. It was 168 in the band and 128 above it.
             expect(shape!.height, `toolbar height at ${width}px`).toBeLessThan(145);
         }
