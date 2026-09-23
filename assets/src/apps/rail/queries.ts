@@ -526,6 +526,83 @@ export function useCreateFolder() {
 }
 
 /**
+ * Cut + paste into a level that is not in Custom order — tier 1 item 5.
+ *
+ * Just the move: the folder takes the destination's sort like everything
+ * else there, and the level's own arrangement is left exactly as it was. A
+ * paste into a Custom level goes through `useReorderFolders` instead, because
+ * there a position is something the person can see and chose.
+ *
+ * Not optimistic, like creating: a paste is deliberate and rare, and the
+ * reorder path already carries the optimistic version for the case where the
+ * position is visible.
+ */
+export function useMoveFolder() {
+    const client = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (input: { id: number; parentId: number | null }) => {
+            const response = await apiFetch<ApiEnvelope<{ tree: FolderNode[] }>>(
+                `/folders/${input.id}/move`,
+                { method: 'POST', data: { parent_id: input.parentId } }
+            );
+
+            return response.data;
+        },
+        onSettled: () => {
+            void client.invalidateQueries({ queryKey: treeKey });
+        },
+    });
+}
+
+/**
+ * Copy + paste — a new subtree, and with it, perhaps, a second filing of
+ * every file inside it.
+ *
+ * `order` is the destination level as the person sees it with a `0` where the
+ * copy goes, sent only when that level is in Custom order; the server puts the
+ * real id in its place inside the same transaction.
+ *
+ * With files, the library's counts are invalidated as well as the tree: no
+ * file changes state between filed and unfiled, so today they come back the
+ * same — but "the counts cannot have changed" is a claim about the server this
+ * would have to keep true for ever, and one refetch is cheaper than that.
+ */
+export function useDuplicateFolder() {
+    const client = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (input: {
+            id: number;
+            parentId: number | null;
+            withFiles: boolean;
+            order?: number[];
+        }) => {
+            const response = await apiFetch<ApiEnvelope<{ folder: FolderNode }>>(
+                `/folders/${input.id}/duplicate`,
+                {
+                    method: 'POST',
+                    data: {
+                        parent_id: input.parentId,
+                        with_files: input.withFiles,
+                        ...(input.order ? { order: input.order } : {}),
+                    },
+                }
+            );
+
+            return response.data.folder;
+        },
+        onSettled: (_data, _error, input) => {
+            void client.invalidateQueries({ queryKey: treeKey });
+
+            if (input.withFiles) {
+                void client.invalidateQueries({ queryKey: countsKey });
+            }
+        },
+    });
+}
+
+/**
  * The bulk "Add to folder" flyout — screens 03, 06 and 11.
  *
  * Adds, and only adds. The membership model is many-to-many, so filing a file

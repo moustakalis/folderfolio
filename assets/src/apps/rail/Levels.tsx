@@ -339,6 +339,7 @@ function LevelRow({
     onOpen: () => void;
 }) {
     const inside = node.children.length;
+    const cut = useRail((s) => s.clipboard?.verb === 'cut' && s.clipboard.id === node.id);
 
     if (renaming) {
         return (
@@ -357,7 +358,7 @@ function LevelRow({
         <li>
             <button
                 type="button"
-                className="folderfolio-row folderfolio-levels__row"
+                className={`folderfolio-row folderfolio-levels__row${cut ? ' is-cut' : ''}`}
                 aria-current={selected ? 'true' : undefined}
                 /*
                  * The row says what is inside it, because the chevron beside

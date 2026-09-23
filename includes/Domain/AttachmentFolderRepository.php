@@ -367,6 +367,49 @@ class AttachmentFolderRepository
     }
 
     /**
+     * File everything in one folder into another as well — a pasted copy's
+     * half of "with files".
+     *
+     * One INSERT … SELECT, so a folder of ten thousand files is one statement
+     * and not ten thousand. Each file keeps its position (`sort_order`), which
+     * is what makes the copy a copy rather than the same files in a different
+     * order. `import_run` is left null: these rows are a person's work, and an
+     * undo of some earlier import must not reach into a folder that did not
+     * exist when it ran. INSERT IGNORE, because the destination is a folder
+     * created a moment ago in the same transaction and has no rows — a
+     * collision would mean something else wrote there first, and the row it
+     * wrote is the one to keep.
+     *
+     * Returns no count on purpose: MySQL's affected-rows here depends on what
+     * the destination already held (trap 65). The caller read the source's
+     * ids to check them, and that list is the number.
+     */
+    public function copyFolder(int $fromFolderId, int $toFolderId): bool|WP_Error
+    {
+        $inserted = $this->wpdb->query(
+            $this->wpdb->prepare(
+                "INSERT IGNORE INTO {$this->table()}
+                     (folder_id, attachment_id, sort_order, assigned_at, import_run)
+                 SELECT %d, attachment_id, sort_order, %s, NULL
+                 FROM {$this->table()}
+                 WHERE folder_id = %d",
+                $toFolderId,
+                current_time('mysql', true),
+                $fromFolderId
+            )
+        );
+
+        if ($inserted === false) {
+            return new WP_Error(
+                'folderfolio_assignment_failed',
+                __('Unable to assign media to the folder.', 'folderfolio')
+            );
+        }
+
+        return true;
+    }
+
+    /**
      * Remove every assignment one import run created.
      *
      * This is how an import is undone without the run having stored a list of

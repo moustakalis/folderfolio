@@ -12,6 +12,7 @@ import { useCallback, useEffect, useMemo } from 'react';
 
 import { CreateRow, Row, GhostRows } from './Row';
 import { useReorderFolders, type FolderNode } from './queries';
+import { usePaste } from './paste';
 import { useFolderDrop } from './folder-drop';
 import { planSiblingMove } from './move';
 import { sortTree, useRail } from './store';
@@ -85,6 +86,7 @@ export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: Tre
     const edit = useRail((s) => s.edit);
     const setSort = useRail((s) => s.setSort);
     const reorder = useReorderFolders();
+    const clipboard = usePaste();
 
     const ordered = useMemo(() => sortTree(nodes, sort), [nodes, sort]);
     const visible = useMemo(() => flatten(ordered, expandedIds), [ordered, expandedIds]);
@@ -229,6 +231,50 @@ export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: Tre
                 return;
             }
 
+            /*
+             * Cut, copy and paste — the keyboard half of the ⋮ menu's
+             * clipboard group, on the focused row.
+             *
+             * ⌘ on a Mac, Ctrl elsewhere, and never with Alt or Shift: those
+             * are the browser's and the system's. Paste goes *inside* the
+             * focused row — Beside is one menu away, and a single key can
+             * only mean one of them. Copy with files has no key on purpose:
+             * the menu row names what it does, a chord would not.
+             */
+            if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey) {
+                const key = event.key.toLowerCase();
+
+                if (key === 'x' && can('rename')) {
+                    event.preventDefault();
+                    clipboard.take(current.node, 'cut');
+
+                    return;
+                }
+
+                if (key === 'c' && can('rename') && can('create')) {
+                    event.preventDefault();
+                    clipboard.take(current.node, 'copy');
+
+                    return;
+                }
+
+                if (key === 'v') {
+                    event.preventDefault();
+                    clipboard.paste(ordered, current.node.id, 'inside');
+
+                    return;
+                }
+            }
+
+            // Escape lets go of whatever is held — the one way to un-cut a
+            // folder without pasting it somewhere or reloading the page.
+            if (event.key === 'Escape' && useRail.getState().clipboard) {
+                event.preventDefault();
+                clipboard.clear();
+
+                return;
+            }
+
             switch (event.key) {
                 case 'ArrowDown':
                     return move(at + 1);
@@ -362,7 +408,7 @@ export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: Tre
         [
             visible, ordered, expandedIds, editing,
             focus, select, toggle, expand, collapse, edit, parentOf,
-            setSort, reorder,
+            setSort, reorder, clipboard,
             onSaveEdit, onCancelEdit, onDelete,
         ]
     );

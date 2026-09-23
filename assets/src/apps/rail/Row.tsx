@@ -80,6 +80,9 @@ export function Row({
      */
     const focused = useRail((s) => s.focusedId === node.id);
     const selected = useRail((s) => s.selectedId === node.id);
+    // One boolean, like the two above: taking a folder onto the clipboard
+    // re-renders the row that was cut and the one that stopped being cut.
+    const cut = useRail((s) => s.clipboard?.verb === 'cut' && s.clipboard.id === node.id);
 
     const ref = useRef<HTMLDivElement>(null);
     const menuRef = useRef<HTMLButtonElement>(null);
@@ -149,6 +152,7 @@ export function Row({
                     + (canOpenMenu ? ' folderfolio-row--menu-slot' : '')
                     + (renaming ? ' is-renaming' : '')
                     + (drop.isOver ? ' is-dragover' : '')
+                    + (cut ? ' is-cut' : '')
                 }
                 {...drop.handlers}
                 /*

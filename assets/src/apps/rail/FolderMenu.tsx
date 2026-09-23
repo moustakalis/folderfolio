@@ -39,10 +39,14 @@ import {
     ArrowDownIcon,
     ArrowUpIcon,
     ChevronRightIcon,
+    CopyIcon,
+    PasteIcon,
+    ScissorsIcon,
     PencilIcon,
     TrashIcon,
 } from './icons';
 import { planSiblingMove } from './move';
+import { heldLabel, mayPaste, planPaste, stillThere, usePaste, type Where } from './paste';
 import { Menu } from './Menu';
 import type { FolderNode } from './queries';
 import { useReorderFolders, useSetFolderColor, useSetFolderSort } from './queries';
@@ -90,6 +94,9 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
     const levelId = useRail((s) => s.levelId);
     const openLevel = useRail((s) => s.openLevel);
     const current = isSwatch(folder.color) ? folder.color : null;
+    const held = useRail((s) => s.clipboard);
+    const globalSort = useRail((s) => s.sort);
+    const clipboard = usePaste();
 
     const [step, setStep] = useState<Scope | null>(null);
     const backRef = useRef<HTMLButtonElement>(null);
@@ -159,6 +166,29 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
     }
 
     const organise = can('rename');
+    const copying = organise && can('create');
+
+    /*
+     * Each paste row is asked the same question the paste itself will be, so
+     * a row that is enabled and a paste that does nothing cannot disagree —
+     * the rule Move up and Move down already follow. Inside itself, past the
+     * depth limit, or a cut that would land exactly where it is: disabled.
+     */
+    const pastable = held !== null && mayPaste(held) && stillThere(ordered, held);
+    const canPasteInside = pastable && planPaste(ordered, held, folder.id, 'inside', globalSort) !== null;
+    const canPasteBeside = pastable && planPaste(ordered, held, folder.id, 'beside', globalSort) !== null;
+
+    function paste(where: Where) {
+        // Step out first when standing inside the folder being pasted beside,
+        // for the reason move() above gives: in Levels its siblings are one
+        // level back, and a paste there would be invisible from here.
+        if (where === 'beside' && levelId !== null && levelId === folder.id) {
+            openLevel(folder.parent_id ?? null);
+        }
+
+        clipboard.paste(ordered, folder.id, where);
+        onClose();
+    }
 
     // ------------------------------------------------------------ step two
     if (step !== null) {
@@ -278,6 +308,104 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
                         <ArrowDownIcon size={13} />
                         {t('moveDown', 'Move down')}
                     </button>
+
+                    <div className="folderfolio-menu__rule" role="separator" />
+
+                    {/*
+                      The clipboard — tier 1 item 5. Between the rows that
+                      move a folder and the rows that arrange what is inside
+                      it, because a paste is the first kind: it puts a folder
+                      somewhere.
+
+                      Two copy rows rather than a question afterwards. Whether
+                      a copy brings its files is decided looking at the
+                      source, which is the moment a person knows which they
+                      mean — and a wrong default costs a manual pass per
+                      subfolder in either direction. Nick's call, board
+                      AU6ezv9WsPVHVk7UmzHNGJ.
+                    */}
+                    <button
+                        type="button"
+                        role="menuitem"
+                        className="folderfolio-menu__item"
+                        onClick={() => {
+                            clipboard.take(folder, 'cut');
+                            onClose();
+                        }}
+                    >
+                        <ScissorsIcon size={13} />
+                        {t('cut', 'Cut')}
+                    </button>
+
+                    {copying ? (
+                        <button
+                            type="button"
+                            role="menuitem"
+                            className="folderfolio-menu__item"
+                            onClick={() => {
+                                clipboard.take(folder, 'copy');
+                                onClose();
+                            }}
+                        >
+                            <CopyIcon size={13} />
+                            {t('copy', 'Copy')}
+                        </button>
+                    ) : null}
+
+                    {copying && can('assign') ? (
+                        <button
+                            type="button"
+                            role="menuitem"
+                            className="folderfolio-menu__item"
+                            onClick={() => {
+                                clipboard.take(folder, 'copy', true);
+                                onClose();
+                            }}
+                        >
+                            <CopyIcon size={13} />
+                            {t('copyWithFiles', 'Copy with files')}
+                        </button>
+                    ) : null}
+
+                    {/*
+                      Only while something is held, and only for someone who
+                      may paste it — a person who can cut but not create is
+                      never shown a copy they could not paste. The label names
+                      what is held, the way Sort inside labels its two rows,
+                      because the clipboard is otherwise invisible.
+                    */}
+                    {pastable ? (
+                        <>
+                            <p
+                                className="folderfolio-menu__label folderfolio-menu__label--held"
+                                title={heldLabel(held)}
+                            >
+                                {heldLabel(held)}
+                            </p>
+
+                            <button
+                                type="button"
+                                role="menuitem"
+                                className="folderfolio-menu__item"
+                                disabled={!canPasteInside}
+                                onClick={() => paste('inside')}
+                            >
+                                <PasteIcon size={13} />
+                                {t('pasteInside', 'Inside this folder')}
+                            </button>
+
+                            <button
+                                type="button"
+                                role="menuitem"
+                                className="folderfolio-menu__item"
+                                disabled={!canPasteBeside}
+                                onClick={() => paste('beside')}
+                            >
+                                <PasteIcon size={13} />
+                                {t('pasteBeside', 'Beside this folder')}
+                            </button>
+                        </>
+                    ) : null}
 
                     <div className="folderfolio-menu__rule" role="separator" />
 

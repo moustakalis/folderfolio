@@ -372,9 +372,28 @@
  * `.folderfolio-flyout` has. `--ff-room` is the space that hook measured
  * between the trigger and the edge of the window; the panel is clamped to it
  * rather than running off the bottom of a short one.
+ *
+ * Two classes, not one, and `top: auto` said out loud. `.folderfolio-menu` in
+ * _toolbar.css is `position: absolute; top: 100%`, and admin.css imports that
+ * file after this one — so with a single class this rule tied and lost on
+ * source order, the trap this file has hit three times before. Nothing looked
+ * wrong while the panel opened downwards: the hook's inline `top` hid the
+ * `top: 100%`. It opened upwards only when a row sat in the lower part of the
+ * window, the hook set `bottom` alone, and the stylesheet's `top: 100%` stayed
+ * — pinning the panel's top edge to the bottom of the window and leaving it
+ * 10px tall. The hook flips whenever less than 320px is left below the row,
+ * whatever the panel's height, so this was true of every row that close to
+ * the bottom since the ⋮ shipped (`abbd720`). Found on 23 Sep, measuring the
+ * menu the clipboard group had made 90px taller.
  */
-.folderfolio-menu--row {
+.folderfolio-menu.folderfolio-menu--row {
   position: fixed;
+  top: auto;
+  /* `--ff-room` is the whole gap the hook measured, so the border and the
+     padding have to come out of it, not be added to it — as content-box the
+     flipped panel stood 10px taller than its room and ran 4px off the top of
+     the window. */
+  box-sizing: border-box;
   z-index: 100000;
   width: 240px;
   min-width: 0;
@@ -407,6 +426,24 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ff-muted);
+}
+
+/**
+ * The paste group's label — "Paste “Brand” · cut".
+ *
+ * Not uppercased, unlike Sort inside: it carries a folder's name, and a name
+ * in capitals is a different name — "BRAND" cannot be told from "brand", and
+ * on a site with both the label would be naming the wrong one. One line and an
+ * ellipsis, because a folder name has no length limit a menu can plan for;
+ * the full sentence is on the element's title.
+ */
+.folderfolio-menu__label--held {
+  overflow: hidden;
+  font-size: 11px;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
 }
 
 /**
@@ -641,6 +678,22 @@
 
 .folderfolio-row.is-renaming .folderfolio-row__icon {
   color: var(--ff-sel);
+}
+
+/* Cut and waiting to be pasted — the file-manager convention, and the only
+   sign on the tree that something is on the clipboard.
+
+   The icon fades and the name leans; the name keeps its full ink. A cut row
+   is still a live control — it can be selected, opened and pasted beside —
+   so its text is held to AA like any other, which an opacity on the whole
+   row would have taken it under (#1d2327 at 55% is about 3.4:1 on white).
+   The icon is the part that may recede: it is not the text a person reads. */
+.folderfolio-row.is-cut .folderfolio-row__icon {
+  opacity: 0.4;
+}
+
+.folderfolio-row.is-cut .folderfolio-row__name {
+  font-style: italic;
 }
 
 /* A leaf's icon sits back: nothing to open. */

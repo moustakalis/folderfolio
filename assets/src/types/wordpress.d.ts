@@ -214,6 +214,8 @@ interface FolderFolioConfig {
   defaultSort?: string;
   /** The undo grace period, in seconds. */
   undoWindow?: number;
+  /** `folderfolio_max_depth`, filtered — a root folder is depth 0. */
+  maxDepth?: number;
 
   /**
    * THIS USER'S own startup folder, and deliberately not the site's.

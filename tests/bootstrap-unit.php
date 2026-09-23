@@ -32,6 +32,10 @@ define('ABSPATH', __DIR__ . '/');
 $root = dirname(__DIR__);
 
 require_once $root . '/includes/Domain/FolderPath.php';
+
+// The pure half of pasting a copy — its name, and where it lands. The half
+// that writes is FolderService::duplicate(), and it is an integration test.
+require_once $root . '/includes/Domain/FolderCopy.php';
 require_once $root . '/includes/Domain/FolderTree.php';
 require_once $root . '/includes/Admin/RailPreferences.php';
 require_once $root . '/includes/Support/Settings.php';

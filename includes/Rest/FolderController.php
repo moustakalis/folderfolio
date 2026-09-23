@@ -143,6 +143,40 @@ class FolderController
             ],
         ]);
 
+        /*
+         * Paste a copy — tier 1 item 5, with Duplicate folder brought forward
+         * from tier 2 to make it possible.
+         *
+         * Cut + paste needs no route of its own: it is /move, or /reorder when
+         * the destination level is in Custom order. Copy + paste is a new
+         * subtree, so it is here.
+         */
+        register_rest_route($ns, '/folders/(?P<id>\\d+)/duplicate', [
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => [$this, 'duplicate'],
+            'permission_callback' => [$this, 'canDuplicateFolders'],
+            'args' => [
+                // Optional, and absent means the top level — the same
+                // spelling /folders/reorder uses.
+                'parent_id' => [
+                    'required' => false,
+                    'sanitize_callback' => [$this, 'nullableInteger'],
+                ],
+                'with_files' => [
+                    'type' => 'boolean',
+                    'required' => false,
+                    'default' => false,
+                ],
+                // The destination level as the person sees it, with a 0 where
+                // the copy goes. Only sent when that level is in Custom order.
+                'order' => [
+                    'type' => 'array',
+                    'required' => false,
+                    'items' => ['type' => 'integer'],
+                ],
+            ],
+        ]);
+
         // Not `/folders/{id}/reorder`: the subject is the level, not one
         // folder, and the level is named by its parent — which is null at the
         // top. `\d+` cannot match "reorder", so this and the id routes above
@@ -366,6 +400,23 @@ class FolderController
         return Capabilities::can('rename');
     }
 
+    /**
+     * Copy + paste makes folders (`create`) that are arrangements of an
+     * existing one (`rename`, the column headed Organise) — both, because a
+     * role holding one alone could otherwise do with a paste what it cannot
+     * do directly. With files it also files media, which is `assign`; which
+     * files is asked per attachment by FolderService, before anything is
+     * written.
+     */
+    public function canDuplicateFolders(WP_REST_Request $request): bool
+    {
+        if (!Capabilities::can('create') || !Capabilities::can('rename')) {
+            return false;
+        }
+
+        return !$this->withFiles($request) || Capabilities::can('assign');
+    }
+
     public function canDeleteFolders(): bool
     {
         return Capabilities::can('delete');
@@ -478,6 +529,27 @@ class FolderController
             $result,
             200,
             fn (): array => ['tree' => $this->folders->tree()]
+        );
+    }
+
+    public function duplicate(WP_REST_Request $request): WP_REST_Response
+    {
+        $order = $request->get_param('order');
+
+        $result = $this->folders->duplicate(
+            (int) $request['id'],
+            $this->nullableInteger($request->get_param('parent_id')),
+            $this->withFiles($request),
+            is_array($order) ? $this->integerList($order) : null
+        );
+
+        return $this->result(
+            $result,
+            201,
+            fn (Folder $copy): array => [
+                'folder' => $copy->toArray(),
+                'tree' => $this->folders->tree(),
+            ]
         );
     }
 
@@ -675,6 +747,21 @@ class FolderController
     public function nullableInteger(mixed $value): ?int
     {
         return $value === null || $value === '' ? null : absint($value);
+    }
+
+    /**
+     * `with_files` as the route declared it.
+     *
+     * The argument is typed `boolean`, and the REST server sanitises typed
+     * arguments before it asks the permission callback — so by the time
+     * either reader gets here, a form post's "1" or "true" is already `true`.
+     * Comparing to `true` rather than casting means an absent value and any
+     * value the schema did not turn into a boolean both read as "no files",
+     * which is the answer that asks for the fewer abilities and writes less.
+     */
+    private function withFiles(WP_REST_Request $request): bool
+    {
+        return $request->get_param('with_files') === true;
     }
 
     /**

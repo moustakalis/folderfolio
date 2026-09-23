@@ -261,3 +261,32 @@ export function UndoIcon(props: IconProps) {
         </Svg>
     );
 }
+
+/* Cut, copy and paste — the three the ⋮ menu's clipboard group draws. */
+export function ScissorsIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <circle cx="6" cy="6" r="3" />
+            <circle cx="6" cy="18" r="3" />
+            <path d="M8.12 8.12 12 12M20 4 8.12 15.88M14.8 14.8 20 20" />
+        </Svg>
+    );
+}
+
+export function CopyIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <rect x="8" y="8" width="14" height="14" rx="2" />
+            <path d="M4 16a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2" />
+        </Svg>
+    );
+}
+
+export function PasteIcon(props: IconProps) {
+    return (
+        <Svg {...props}>
+            <rect x="8" y="2" width="8" height="4" rx="1" />
+            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+        </Svg>
+    );
+}

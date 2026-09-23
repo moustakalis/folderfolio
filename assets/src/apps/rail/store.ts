@@ -91,6 +91,17 @@ export interface RailState {
      */
     pendingUndo: PendingUndo | null;
 
+    /**
+     * The folder that Cut or Copy is holding — tier 1 item 5.
+     *
+     * Here and not in preferences: a clipboard is a gesture in progress, and a
+     * reload is the end of it. Holding it in the store is also what lets a cut
+     * row draw itself faded — `Row` subscribes to one boolean derived from
+     * this, so taking a folder onto the clipboard re-renders the one row that
+     * changed and not the tree.
+     */
+    clipboard: Clipboard | null;
+
     select: (id: number | null) => void;
 
     /** Set or clear this user's startup folder. `null` clears it. */
@@ -121,6 +132,8 @@ export interface RailState {
     setEditValue: (value: string) => void;
     setSort: (sort: SortOrder) => void;
     setPendingUndo: (undo: PendingUndo | null) => void;
+    /** Take a folder onto the clipboard, or clear it with `null`. */
+    hold: (clipboard: Clipboard | null) => void;
 }
 
 export type SortOrder = 'name-asc' | 'name-desc' | 'newest' | 'oldest' | 'custom';
@@ -193,6 +206,21 @@ export interface PendingUndo {
     deadline: number;
 }
 
+/**
+ * What Cut, Copy and Copy with files leave behind.
+ *
+ * `name` is kept so the paste rows can say what they will paste without a
+ * lookup — and so they can still say it for the moment between the folder
+ * being deleted elsewhere and the next tree arriving. `withFiles` is only
+ * ever true for a copy; a cut always takes its files, because it is a move.
+ */
+export interface Clipboard {
+    id: number;
+    name: string;
+    verb: 'cut' | 'copy';
+    withFiles: boolean;
+}
+
 export const useRail = create<RailState>((set) => ({
     selectedId: folderFromUrl(),
     focusedId: folderFromUrl(),
@@ -210,6 +238,7 @@ export const useRail = create<RailState>((set) => ({
     editing: null,
     sort: defaultSort(),
     pendingUndo: null,
+    clipboard: null,
 
     select: (id) => set({ selectedId: id, focusedId: id }),
 
@@ -277,6 +306,7 @@ export const useRail = create<RailState>((set) => ({
         set((state) => (state.editing ? { editing: { ...state.editing, value } } : state)),
     setSort: (sort) => set({ sort }),
     setPendingUndo: (pendingUndo) => set({ pendingUndo }),
+    hold: (clipboard) => set({ clipboard }),
 }));
 
 /**

@@ -512,3 +512,180 @@ test.describe('a folder sorts what is inside it', () => {
         await expect.poll(() => childrenOf(page, 'Outer')).not.toEqual(['Zulu', 'Mike', 'Alpha']);
     });
 });
+
+/**
+ * Cut, copy and paste — tier 1 item 5.
+ *
+ * Each guard fails on one reversion: a copy that drops a property, a copy
+ * that brings files it was not asked for (or leaves them when it was), a cut
+ * row that stops saying so, a paste row that stays pressable where it cannot
+ * work, and a menu that opens upwards as a 10px sliver — which the row menu
+ * did, unremarked, from `abbd720` until 23 Sep.
+ */
+test.describe('cut, copy and paste', () => {
+    test.beforeEach(async ({ page }) => {
+        await page.goto('/wp-admin/upload.php');
+        await page.locator('#folderfolio-rail').waitFor();
+        await resetFolders(page);
+
+        const brand = await createFolder(page, 'Brand');
+        const logos = await createFolder(page, 'Logos', brand.id);
+        await createFolder(page, 'Primary', logos.id);
+        await createFolder(page, 'Acme');
+
+        await page.evaluate(async (id) => {
+            await window.wp.apiFetch({
+                path: `/folderfolio/v1/folders/${id}`,
+                method: 'PATCH',
+                data: { color: 'red' },
+            });
+            await window.wp.apiFetch({
+                path: `/folderfolio/v1/folders/${id}/sort`,
+                method: 'POST',
+                data: { scope: 'files', order: 'name-desc' },
+            });
+        }, logos.id);
+
+        await page.reload();
+        await waitForTree(page, 'Brand');
+    });
+
+    async function menuOn(page: import('@playwright/test').Page, folder: string) {
+        await page.locator('.folderfolio-tree .folderfolio-row', { hasText: new RegExp(`^${folder}`) }).first().click();
+        await page.locator('.folderfolio-row__menu').click();
+    }
+
+    /** The server's own tree, flattened to name/colour/order lines. */
+    const shape = (page: import('@playwright/test').Page) =>
+        page.evaluate(async () => {
+            const response = await window.wp.apiFetch({ path: '/folderfolio/v1/folders' });
+            const out: string[] = [];
+            const walk = (nodes: any[], depth: number) =>
+                nodes.forEach((node) => {
+                    out.push(`${'  '.repeat(depth)}${node.name}|${node.color ?? ''}|${node.sort_files ?? ''}`);
+                    walk(node.children ?? [], depth + 1);
+                });
+            walk(response.data, 0);
+
+            return out.sort();
+        });
+
+    test('Copy, then Paste beside, makes “Brand copy” with every property below it', async ({ page }) => {
+        await menuOn(page, 'Brand');
+        await page.getByRole('menuitem', { name: 'Copy', exact: true }).click();
+        await menuOn(page, 'Brand');
+        await page.getByRole('menuitem', { name: 'Beside this folder' }).click();
+
+        await expect.poll(() => shape(page)).toContain('Brand copy||');
+        const lines = await shape(page);
+
+        // Two Logos, both red and both Z–A on files; two Primary.
+        expect(lines.filter((l) => l.trim() === 'Logos|red|name-desc')).toHaveLength(2);
+        expect(lines.filter((l) => l.trim().startsWith('Primary|'))).toHaveLength(2);
+    });
+
+    test('Copy with files files the same media; plain Copy files none', async ({ page }) => {
+        const ids = await page.evaluate(async () => {
+            const media = await window.wp.apiFetch({ path: '/wp/v2/media?per_page=2&_fields=id' });
+            const tree = await window.wp.apiFetch({ path: '/folderfolio/v1/folders' });
+            const logos = tree.data[0].name === 'Brand'
+                ? tree.data[0].children[0]
+                : tree.data[1].children[0];
+            await window.wp.apiFetch({
+                path: '/folderfolio/v1/assignments',
+                method: 'POST',
+                data: { folder_id: logos.id, attachment_ids: media.map((m: any) => m.id), mode: 'add' },
+            });
+
+            return media.map((m: any) => m.id);
+        });
+
+        test.skip(ids.length === 0, 'the rig has no media to file');
+
+        for (const [item, expected] of [['Copy with files', ids.length], ['Copy', 0]] as const) {
+            await menuOn(page, 'Brand');
+            await page.getByRole('menuitem', { name: item, exact: true }).click();
+            await menuOn(page, 'Acme');
+            await page.getByRole('menuitem', { name: 'Inside this folder' }).click();
+
+            await expect
+                .poll(() =>
+                    page.evaluate(async () => {
+                        const tree = (await window.wp.apiFetch({ path: '/folderfolio/v1/folders' })).data;
+                        const acme = tree.find((n: any) => n.name === 'Acme');
+                        const newest = [...acme.children].sort((a: any, b: any) => b.id - a.id)[0];
+                        const logos = newest?.children?.[0];
+
+                        return logos
+                            ? (await window.wp.apiFetch({ path: `/folderfolio/v1/folders/${logos.id}/attachments` })).data.count
+                            : -1;
+                    })
+                )
+                .toBe(expected);
+        }
+    });
+
+    test('a cut folder is drawn cut until it is pasted, and Escape lets go of it', async ({ page }) => {
+        await menuOn(page, 'Brand');
+        await page.getByRole('menuitem', { name: 'Cut' }).click();
+
+        const brand = page.locator('.folderfolio-tree .folderfolio-row', { hasText: /^Brand/ }).first();
+        await expect(brand).toHaveClass(/is-cut/);
+        // The name keeps its ink — a cut row is still a live control.
+        await expect(brand.locator('.folderfolio-row__name')).toHaveCSS('opacity', '1');
+
+        await brand.focus();
+        await page.keyboard.press('Escape');
+        await expect(brand).not.toHaveClass(/is-cut/);
+    });
+
+    test('Paste inside a folder moves it there and opens the destination', async ({ page }) => {
+        await menuOn(page, 'Brand');
+        await page.getByRole('menuitem', { name: 'Cut' }).click();
+        await menuOn(page, 'Acme');
+        await page.getByRole('menuitem', { name: 'Inside this folder' }).click();
+
+        const acme = page.locator('.folderfolio-tree .folderfolio-row', { hasText: /^Acme/ }).first();
+        await expect(acme).toHaveAttribute('aria-expanded', 'true');
+        await expect(page.locator('.folderfolio-row.is-cut')).toHaveCount(0);
+    });
+
+    test('a folder cannot be pasted inside itself or below itself', async ({ page }) => {
+        await menuOn(page, 'Brand');
+        await page.getByRole('menuitem', { name: 'Copy', exact: true }).click();
+        await menuOn(page, 'Brand');
+
+        await expect(page.getByRole('menuitem', { name: 'Inside this folder' })).toBeDisabled();
+        // Beside itself is the ordinary duplicate, and stays available.
+        await expect(page.getByRole('menuitem', { name: 'Beside this folder' })).toBeEnabled();
+    });
+
+    test('the row menu opened near the bottom of the window flips up at full height', async ({ page }) => {
+        await page.setViewportSize({ width: 1280, height: 520 });
+        await page.reload();
+        await waitForTree(page, 'Brand');
+
+        // Acme is the last root under Name, A to Z; with a 520px window it
+        // sits well inside the hook's 320px flip threshold.
+        await menuOn(page, 'Acme');
+
+        const geometry = await page.evaluate(() => {
+            const menu = document.querySelector('.folderfolio-menu--row')!;
+            const trigger = document.querySelector('[aria-selected="true"] .folderfolio-row__menu')!;
+            const m = menu.getBoundingClientRect();
+            const t = trigger.getBoundingClientRect();
+
+            return {
+                position: getComputedStyle(menu).position,
+                height: m.height,
+                top: m.top,
+                gapAbove: t.top - m.bottom,
+            };
+        });
+
+        expect(geometry.position).toBe('fixed');
+        expect(geometry.height).toBeGreaterThan(150);
+        expect(geometry.top).toBeGreaterThanOrEqual(0);
+        expect(geometry.gapAbove).toBeGreaterThanOrEqual(0);
+    });
+});

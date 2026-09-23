@@ -8,6 +8,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+use FolderFolio\Domain\FolderPath;
 use FolderFolio\Modules\Import\Elsewhere;
 use FolderFolio\Support\Assets;
 use FolderFolio\Support\Capabilities;
@@ -664,6 +665,14 @@ final class Rail
             'undoWindow' => $settings['undo_window'],
 
             /*
+             * The nesting limit, filtered, so the ⋮ menu can draw a paste that
+             * would pass it as disabled rather than let it be pressed and
+             * refused. The server asks the same filter again; this is the
+             * affordance, not the rule.
+             */
+            'maxDepth' => (int) apply_filters('folderfolio_max_depth', FolderPath::MAX_DEPTH),
+
+            /*
              * This person's own startup folder, and deliberately NOT the
              * site's. The toggle in the breadcrumb is pressed when *they*
              * chose this folder; a site-wide folder arriving is explained by
@@ -731,6 +740,41 @@ final class Rail
                 'renameFolder' => __('Rename folder', 'folderfolio'),
                 'newFolderName' => __('Name for the new folder', 'folderfolio'),
                 'delete' => __('Delete', 'folderfolio'),
+
+                // Ten strings the rail drew from t()'s English fallbacks since
+                // they shipped — reordering, Sort inside, expand / collapse
+                // all and the crumb row's collapse — found on 23 Sep by
+                // diffing every t() key under apps/rail against this map.
+                'moveUp' => __('Move up', 'folderfolio'),
+                'moveDown' => __('Move down', 'folderfolio'),
+                'sortInside' => __('Sort inside', 'folderfolio'),
+                'sortSubfolders' => __('Subfolders', 'folderfolio'),
+                'sortFiles' => __('Files', 'folderfolio'),
+                'sortSameAsEverywhere' => __('Same as everywhere', 'folderfolio'),
+                'expandAll' => __('Expand all', 'folderfolio'),
+                'collapseAll' => __('Collapse all', 'folderfolio'),
+                'breadcrumb' => __('Folder path', 'folderfolio'),
+                'showHiddenLevels' => __('Show the levels in between', 'folderfolio'),
+
+                // Cut, copy and paste — tier 1 item 5.
+                'cut' => __('Cut', 'folderfolio'),
+                'copy' => __('Copy', 'folderfolio'),
+                'copyWithFiles' => __('Copy with files', 'folderfolio'),
+                /* translators: %s is the name of the folder waiting to be pasted. */
+                'pasteHeldCut' => __('Paste “%s” · cut', 'folderfolio'),
+                /* translators: %s is the name of the folder waiting to be pasted. */
+                'pasteHeldCopy' => __('Paste “%s” · copy', 'folderfolio'),
+                /* translators: %s is the name of the folder waiting to be pasted, with its files. */
+                'pasteHeldCopyFiles' => __('Paste “%s” · with files', 'folderfolio'),
+                'pasteInside' => __('Inside this folder', 'folderfolio'),
+                'pasteBeside' => __('Beside this folder', 'folderfolio'),
+                /* translators: %s is a folder name. */
+                'cutAnnounce' => __('Cut “%s”. Paste it inside or beside another folder.', 'folderfolio'),
+                /* translators: %s is a folder name. */
+                'copyAnnounce' => __('Copied “%s”. Paste it inside or beside another folder.', 'folderfolio'),
+                /* translators: %s is a folder name. */
+                'pasted' => __('Pasted “%s”', 'folderfolio'),
+                'pasteFailed' => __('That could not be pasted.', 'folderfolio'),
                 'sort' => __('Sort', 'folderfolio'),
                 'sortNameAsc' => __('Name, A to Z', 'folderfolio'),
                 'sortNameDesc' => __('Name, Z to A', 'folderfolio'),

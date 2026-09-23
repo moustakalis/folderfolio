@@ -31,6 +31,7 @@ use WP_Error;
  *   folderfolio_folder_renamed           (Folder $folder, string $previousName)
  *   folderfolio_folder_moved             (Folder $folder, ?int $previousParentId)
  *   folderfolio_folder_deleted           (int $id, string $children, list<int> $deletedIds)
+ *   folderfolio_folder_duplicated        (Folder $copy, Folder $source, array<int, int> $idMap, bool $withFiles)
  *   folderfolio_attachments_assigned     (list<int> $ids, int $folderId, string $mode)
  *   folderfolio_attachments_unassigned   (list<int> $ids, ?int $folderId)
  *
@@ -513,6 +514,254 @@ class FolderService
             });
 
             return $written;
+        });
+    }
+
+    /**
+     * Paste a copy of a folder, and everything beneath it.
+     *
+     * Names, colours, icons, each folder's place among its siblings and both
+     * of its own orders, at every depth — and, when `$withFiles`, every file
+     * filed in the same folders of the copy, in the same positions. Nothing is
+     * duplicated in the media library itself: membership is many-to-many, so
+     * "with files" means the same attachments filed in two places.
+     *
+     * Everything that can refuse the paste is asked **before** the transaction
+     * opens, the way `FolderBulk::plan()` does: the parent, pasting a folder
+     * inside itself, the depth of the whole subtree at its new home, and — with
+     * files — whether this person may file every one of them. A paste that is
+     * going to be refused should not cost a half-built tree and a rollback.
+     * Then one `Transaction`, the rule every batch write here follows: a
+     * failure at the fortieth folder undoes the first thirty-nine.
+     *
+     * Only the top folder's name can collide — `FolderCopy::name()` — because
+     * every folder beneath it lands under a parent that did not exist a moment
+     * ago. It goes last in its level unless `$order` places it: the level as
+     * the person sees it with a `0` where the copy goes, which is handed to
+     * `reorder()` inside the same unit of work. The client sends that only
+     * when the level is in Custom order, the one sort in which a position is
+     * something a person can see.
+     *
+     * @param list<int>|null $order
+     * @return Folder|WP_Error The copy of the top folder.
+     */
+    public function duplicate(
+        int $id,
+        ?int $parentId,
+        bool $withFiles = false,
+        ?array $order = null
+    ): Folder|WP_Error {
+        $source = $this->get($id);
+
+        if ($source === null) {
+            return new WP_Error(
+                'folderfolio_folder_not_found',
+                __('Folder not found.', 'folderfolio')
+            );
+        }
+
+        $objectType = $source->objectType;
+        $newDepth = 0;
+
+        if ($parentId !== null) {
+            $parent = $this->folders->find($parentId);
+
+            if ($parent === null || (string) $parent['object_type'] !== $objectType) {
+                return new WP_Error(
+                    'folderfolio_invalid_parent',
+                    __('The selected parent folder does not exist.', 'folderfolio')
+                );
+            }
+
+            $parentPath = (string) $parent['path'];
+
+            // Finder refuses this too. A copy taken as a snapshot could be
+            // pasted inside itself, but "Brand inside Brand/Logos" is almost
+            // always a slip of the pointer, and refusing it keeps one rule for
+            // cut and copy alike.
+            if (FolderPath::isWithin($parentPath, $source->path)) {
+                return new WP_Error(
+                    'folderfolio_paste_into_itself',
+                    __('A folder cannot be pasted inside itself.', 'folderfolio')
+                );
+            }
+
+            $newDepth = FolderPath::depth($parentPath) + 1;
+        }
+
+        // Depth ascending, so every folder's parent has been copied before it
+        // is — the id map below is always ready when a child asks it.
+        $rows = $this->folders->subtree($source->path);
+        $deepest = $source->depth;
+
+        foreach ($rows as $row) {
+            $deepest = max($deepest, (int) $row['depth']);
+        }
+
+        $tooDeep = $this->guardDepth($newDepth + ($deepest - $source->depth));
+
+        if (is_wp_error($tooDeep)) {
+            return $tooDeep;
+        }
+
+        if ($order !== null) {
+            $order = array_values(array_map('intval', $order));
+
+            if (FolderCopy::place($order, PHP_INT_MAX) === null) {
+                return new WP_Error(
+                    'folderfolio_reorder_malformed',
+                    __('This folder list is out of date. Reload the page and try again.', 'folderfolio')
+                );
+            }
+        }
+
+        /** @var array<int, list<int>> $files */
+        $files = [];
+
+        if ($withFiles) {
+            $everything = [];
+
+            foreach ($rows as $row) {
+                $files[(int) $row['id']] = $this->assignments->attachmentIdsForFolder((int) $row['id']);
+                array_push($everything, ...$files[(int) $row['id']]);
+            }
+
+            // The same question assignAttachments() asks, over the whole
+            // subtree at once and before anything is written: one file this
+            // person may not organise refuses the paste, rather than a copy
+            // that silently leaves it out and looks complete.
+            $permitted = $this->guardAttachments(array_values(array_unique($everything)));
+
+            if (is_wp_error($permitted)) {
+                return $permitted;
+            }
+        }
+
+        $name = FolderCopy::name(
+            $source->name,
+            fn (string $candidate): bool => $this->folders->siblingNameExists(
+                $candidate,
+                $parentId,
+                null,
+                $objectType
+            ),
+            /* translators: %s: the name of the folder that was copied. */
+            __('%s copy', 'folderfolio'),
+            /* translators: 1: the name of the folder that was copied, 2: a number, 2 or more. */
+            __('%1$s copy %2$d', 'folderfolio')
+        );
+
+        // Last in its level: one past the highest sort_order there. Under any
+        // sort but Custom the position is not visible and this is harmless;
+        // under Custom it is what "paste inside" says.
+        $last = 0;
+
+        foreach ($this->folders->siblingsOf($parentId, $objectType) as $sibling) {
+            $last = max($last, (int) $sibling['sort_order'] + 1);
+        }
+
+        $sorts = $this->sorts->all();
+
+        return Transaction::run(function () use (
+            $rows,
+            $source,
+            $parentId,
+            $objectType,
+            $name,
+            $last,
+            $sorts,
+            $files,
+            $withFiles,
+            $order
+        ): Folder|WP_Error {
+            /** @var array<int, int> $map source id => copy id */
+            $map = [];
+
+            foreach ($rows as $row) {
+                $oldId = (int) $row['id'];
+                $isTop = $oldId === $source->id;
+
+                $created = $this->create([
+                    'name'        => $isTop ? $name : (string) $row['name'],
+                    'parent_id'   => $isTop ? $parentId : $map[(int) $row['parent_id']],
+                    'object_type' => $objectType,
+                    'color'       => $row['color'] ?? null,
+                    'icon'        => $row['icon'] ?? null,
+                    'sort_order'  => $isTop ? $last : (int) $row['sort_order'],
+                ]);
+
+                if (is_wp_error($created)) {
+                    return $created;
+                }
+
+                $map[$oldId] = $created->id;
+
+                foreach (FolderSorts::SCOPES as $scope) {
+                    $chosen = $sorts[$oldId][$scope] ?? null;
+
+                    if ($chosen === null) {
+                        continue;
+                    }
+
+                    $written = $this->sorts->set($created->id, $scope, $chosen);
+
+                    // A stored order that is no longer one of ours is not a
+                    // reason to refuse the paste — the client already ignores
+                    // it (isSortOrder) and the copy simply follows the global
+                    // sort. A write that failed is.
+                    if (is_wp_error($written) && $written->get_error_code() === 'folderfolio_sort_failed') {
+                        return $written;
+                    }
+                }
+
+                if ($withFiles && ($files[$oldId] ?? []) !== []) {
+                    $copied = $this->assignments->copyFolder($oldId, $created->id);
+
+                    if (is_wp_error($copied)) {
+                        return $copied;
+                    }
+                }
+            }
+
+            $copyId = $map[$source->id];
+
+            if ($order !== null) {
+                $placed = FolderCopy::place($order, $copyId);
+                $arranged = $placed === null
+                    ? new WP_Error(
+                        'folderfolio_reorder_malformed',
+                        __('This folder list is out of date. Reload the page and try again.', 'folderfolio')
+                    )
+                    : $this->reorder($parentId, $placed);
+
+                if (is_wp_error($arranged)) {
+                    return $arranged;
+                }
+            }
+
+            $copy = $this->get($copyId);
+
+            if ($copy === null) {
+                return new WP_Error(
+                    'folderfolio_folder_create_failed',
+                    __('Unable to create the folder.', 'folderfolio')
+                );
+            }
+
+            Transaction::after(static function () use ($copy, $source, $map, $files, $withFiles): void {
+                // The filing hook once per folder that received files, so a
+                // listener keeping its own index sees every row this wrote —
+                // the same contract a bulk Add to folder keeps.
+                foreach ($files as $oldId => $ids) {
+                    if ($ids !== []) {
+                        do_action('folderfolio_attachments_assigned', $ids, $map[$oldId], self::MODE_ADD);
+                    }
+                }
+
+                do_action('folderfolio_folder_duplicated', $copy, $source, $map, $withFiles);
+            });
+
+            return $copy;
         });
     }
 
