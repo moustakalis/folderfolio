@@ -17,6 +17,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { Edit, type EditProps } from './gallery/Edit';
 import { NAME } from './gallery/block';
+import { restrictAbilities } from '../lib/can';
+
+// A block inspector is for choosing a folder, not reorganising the library:
+// the tree here offers no create, rename or delete, whatever the user may do
+// elsewhere. Said in this bundle and nowhere else — see lib/can.ts.
+restrictAbilities(['assign']);
 
 const client = new QueryClient({
     defaultOptions: {

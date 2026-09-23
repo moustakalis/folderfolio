@@ -8,9 +8,11 @@
  * it. No second implementation, which is what the handoff's two-cramped-cases
  * table was there to force.
  *
- * What the inspector does not get: create, rename and delete. The config this
- * screen ships says so (Blocks\Gallery::config), the toolbar is absent
- * entirely, and Tree's F2 and Delete keys check the same abilities.
+ * What the inspector does not get: create, rename and delete. This bundle
+ * withholds them (`restrictAbilities()` in apps/gallery.tsx, lib/can.ts) —
+ * not the config, which the media picker on the same screen reads too — the
+ * toolbar is absent entirely, and Tree's F2 and Delete keys check the same
+ * abilities.
  */
 
 import { Tree } from '../rail/Tree';

@@ -12,6 +12,7 @@ use FolderFolio\Domain\FolderPath;
 use FolderFolio\Modules\Import\Elsewhere;
 use FolderFolio\Support\Assets;
 use FolderFolio\Support\Capabilities;
+use FolderFolio\Support\ClientConfig;
 use FolderFolio\Support\Settings;
 
 /**
@@ -142,7 +143,7 @@ final class Rail
 
         wp_add_inline_script(
             'folderfolio-rail-app',
-            'window.folderFolio = window.folderFolio || ' . wp_json_encode($this->appConfig()) . ';',
+            ClientConfig::script($this->appConfig()),
             'before'
         );
     }

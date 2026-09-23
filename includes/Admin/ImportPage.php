@@ -8,6 +8,8 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+use FolderFolio\Support\ClientConfig;
+
 /**
  * The Import tab of the settings screen — screen 07's four-step wizard.
  *
@@ -60,7 +62,7 @@ class ImportPage
 
         wp_add_inline_script(
             'folderfolio-import-app',
-            'window.folderFolio = window.folderFolio || ' . wp_json_encode($this->config()) . ';',
+            ClientConfig::script($this->config()),
             'before'
         );
     }

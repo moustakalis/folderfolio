@@ -6,6 +6,7 @@ namespace FolderFolio\Blocks;
 
 use FolderFolio\Support\Assets;
 use FolderFolio\Support\Capabilities;
+use FolderFolio\Support\ClientConfig;
 use FolderFolio\Support\Settings;
 
 if (!defined('ABSPATH')) {
@@ -99,7 +100,7 @@ final class Gallery
 
         wp_add_inline_script(
             self::EDITOR_HANDLE,
-            'window.folderFolio = window.folderFolio || ' . wp_json_encode($this->config()) . ';',
+            ClientConfig::script($this->config()),
             'before'
         );
     }
@@ -125,15 +126,17 @@ final class Gallery
             'pluginUrl' => FOLDERFOLIO_PLUGIN_URL,
             'version' => FOLDERFOLIO_VERSION,
 
-            // The tree component asks; in here every answer is false. A block
-            // inspector is for choosing a folder, not for reorganising the
-            // library — and the roles matrix still has the final say, so a
-            // user who cannot create folders is not shown a control that
-            // would fail.
+            // The user's real four, the same as every writer's. The inspector
+            // is read-only — a block inspector is for choosing a folder, not
+            // reorganising the library — but that is said in the gallery's
+            // own bundle (`restrictAbilities()`, lib/can.ts), not here: until
+            // 23 Sep this said `false` three times, won window.folderFolio on
+            // the block editor, and made the media picker beside it read-only
+            // for an administrator. Support\ClientConfig has the story.
             'can' => [
-                'create' => false,
-                'rename' => false,
-                'delete' => false,
+                'create' => Capabilities::can('create'),
+                'rename' => Capabilities::can('rename'),
+                'delete' => Capabilities::can('delete'),
                 'assign' => Capabilities::can('assign'),
             ],
             'countMode' => $settings['count_mode'],

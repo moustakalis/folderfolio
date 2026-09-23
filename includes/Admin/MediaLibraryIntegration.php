@@ -11,6 +11,7 @@ if (!defined('ABSPATH')) {
 use FolderFolio\Modules\Import\Elsewhere;
 use FolderFolio\Support\Assets;
 use FolderFolio\Support\Capabilities;
+use FolderFolio\Support\ClientConfig;
 use FolderFolio\Support\Settings;
 
 /**
@@ -113,15 +114,13 @@ final class MediaLibraryIntegration
          * to the English literal at each call site; the symptom was every
          * label in these two bundles silently ignoring its translation.
          *
-         * Hung off the first bundle that is actually enqueued now, and the
-         * `||` matches Rail's: whichever of the two runs first wins, and the
-         * other does not clobber it.
+         * Hung off the first bundle that is actually enqueued now, through
+         * the same merging writer as every other screen — Support\ClientConfig.
          */
         if (wp_script_is('folderfolio-media-library-integration', 'enqueued')) {
             wp_add_inline_script(
                 'folderfolio-media-library-integration',
-                'window.folderFolio = window.folderFolio || '
-                    . wp_json_encode($this->config()) . ';',
+                ClientConfig::script($this->config()),
                 'before'
             );
         }

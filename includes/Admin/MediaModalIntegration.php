@@ -10,6 +10,7 @@ if (!defined('ABSPATH')) {
 
 use FolderFolio\Support\Assets;
 use FolderFolio\Support\Capabilities;
+use FolderFolio\Support\ClientConfig;
 use FolderFolio\Support\Settings;
 
 /**
@@ -111,7 +112,7 @@ final class MediaModalIntegration
 
         wp_add_inline_script(
             'folderfolio-frame',
-            'window.folderFolio = window.folderFolio || ' . wp_json_encode($this->config()) . ';',
+            ClientConfig::script($this->config()),
             'before'
         );
     }
