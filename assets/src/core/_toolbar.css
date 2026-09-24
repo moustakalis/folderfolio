@@ -16,7 +16,16 @@
   position: absolute;
   top: 100%;
   left: 0;
-  z-index: 100;
+  /*
+   * 101, one over core's `.media-toolbar` (position: relative; z-index: 100).
+   * Below 782px the rail is a bar above the library and the control line's
+   * menus open down over it; at 100 the tie went to the toolbar, later in the
+   * document, and it painted over the menu's lower half (Nick, 24 Sep —
+   * "more panel hides below toolbar"). No ancestor of the rail's menus makes
+   * a stacking context at that width, so the number competes with core's
+   * directly.
+   */
+  z-index: 101;
   min-width: 160px;
   padding: 4px 0;
   background: var(--ff-panel);
@@ -176,6 +185,13 @@
 .folderfolio-swatches__none:focus-visible {
   outline: 2px solid var(--ff-sel);
   outline-offset: -2px;
+}
+
+/* The Colour row's chip: the folder's colour, in the icon column of the
+   rows around it (13px, like their glyphs). */
+.folderfolio-menu__chip {
+  flex: 0 0 13px;
+  height: 13px;
 }
 
 /* A dashed square: the absence of a colour, drawn where a colour would be. */

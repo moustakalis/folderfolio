@@ -22,6 +22,10 @@
  * the tree. So choosing a scope replaces the panel's body, with one row back.
  * One level, no hover, and it works on a touch screen.
  *
+ * *Colour* is a step too since 24 Sep (Nick): its ten swatches and *No
+ * colour* were ~130px of the first step, and with them Delete was below the
+ * fold of a 497px panel. The row shows the colour it is set to.
+ *
  * ## No heading
  *
  * It said "Colour for <name>" when colour was all it did, then the name alone
@@ -65,6 +69,10 @@ import { isMedia, t } from '../../core/api';
 
 type Scope = 'folders' | 'files';
 
+/** A second step: one of the two sorts, or the colour (24 Sep, Nick: the
+    ten swatches in the first step put Delete below the fold). */
+type Step = Scope | 'color';
+
 /**
  * What a folder's files can be ordered by: the same five as its folders.
  *
@@ -105,10 +113,11 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
     const globalSort = useRail((s) => s.sort);
     const clipboard = usePaste();
 
-    const [step, setStep] = useState<Scope | null>(null);
+    const [step, setStep] = useState<Step | null>(null);
     const backRef = useRef<HTMLButtonElement>(null);
     const foldersRef = useRef<HTMLButtonElement>(null);
     const filesRef = useRef<HTMLButtonElement>(null);
+    const colorRef = useRef<HTMLButtonElement>(null);
 
     /*
      * Focus follows the step.
@@ -125,13 +134,13 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
         }
     }, [step]);
 
-    function leaveStep(from: Scope) {
+    function leaveStep(from: Step) {
         setStep(null);
 
         // After paint, because the row being focused does not exist until
         // this step has been replaced by the main list.
         requestAnimationFrame(() => {
-            (from === 'files' ? filesRef : foldersRef).current?.focus();
+            (from === 'files' ? filesRef : from === 'color' ? colorRef : foldersRef).current?.focus();
         });
     }
 
@@ -295,6 +304,65 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
 
         clipboard.paste(ordered, folder.id, where);
         onClose();
+    }
+
+    // ------------------------------------------------------ step two: colour
+    if (step === 'color') {
+        return (
+            <>
+                <button
+                    ref={backRef}
+                    type="button"
+                    role="menuitem"
+                    className="folderfolio-menu__back"
+                    onClick={() => leaveStep('color')}
+                >
+                    <span className="folderfolio-menu__back-icon" aria-hidden="true">
+                        <ChevronRightIcon size={12} />
+                    </span>
+                    {t('colourRow', 'Colour')}
+                </button>
+
+                {/*
+                  role="group" inside the menu, so a screen reader announces
+                  the eleven choices as one set with one of them checked,
+                  rather than as eleven unrelated menu items. The eleventh is
+                  "No colour", which is a value in this set and not an escape
+                  from it — which is why it is a radio and not a separate
+                  command.
+                */}
+                <div
+                    className="folderfolio-swatches"
+                    role="group"
+                    aria-label={t('folderColor', 'Folder colour')}
+                >
+                    {SWATCHES.map((swatch) => (
+                        <button
+                            key={swatch}
+                            type="button"
+                            role="menuitemradio"
+                            aria-checked={current === swatch}
+                            aria-label={swatchLabel(swatch)}
+                            title={swatchLabel(swatch)}
+                            className="folderfolio-swatches__swatch"
+                            style={{ background: `var(--ff-folder-${swatch})` }}
+                            onClick={() => choose(swatch)}
+                        />
+                    ))}
+                </div>
+
+                <button
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={current === null}
+                    className="folderfolio-swatches__none"
+                    onClick={() => choose(null)}
+                >
+                    <span className="folderfolio-swatches__empty" aria-hidden="true" />
+                    {t('noColor', 'No colour')}
+                </button>
+            </>
+        );
     }
 
     // ------------------------------------------------------------ step two
@@ -595,6 +663,39 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
                         </button>
                     ) : null}
 
+                    {/*
+                      Colour — a step since 24 Sep (see the head of this file).
+                      Among the action rows, its chip in their icon column: the
+                      chip is the colour, or the dashed square No colour draws.
+                      The value names it; with no colour it says nothing, the
+                      dashed square already has. Allowed under a lock (answer 6).
+                    */}
+                    {download || isMedia() ? null : <div className="folderfolio-menu__rule" role="separator" />}
+
+                    <button
+                        ref={colorRef}
+                        type="button"
+                        role="menuitem"
+                        className="folderfolio-menu__item folderfolio-menu__item--step"
+                        aria-haspopup="menu"
+                        onClick={() => setStep('color')}
+                    >
+                        {current === null ? (
+                            <span className="folderfolio-swatches__empty" aria-hidden="true" />
+                        ) : (
+                            <span
+                                className="folderfolio-menu__chip"
+                                aria-hidden="true"
+                                style={{ background: `var(--ff-folder-${current})` }}
+                            />
+                        )}
+                        {t('colourRow', 'Colour')}
+                        <span className="folderfolio-menu__value">
+                            {current === null ? '' : swatchLabel(current)}
+                        </span>
+                        <ChevronRightIcon size={12} />
+                    </button>
+
                     <div className="folderfolio-menu__rule" role="separator" />
 
                     {/*
@@ -642,46 +743,6 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
                     ) : null}
 
 
-                    <div className="folderfolio-menu__rule" role="separator" />
-
-                    {/*
-                      role="group" inside the menu, so a screen reader
-                      announces the eleven choices as one set with one of them
-                      checked, rather than as eleven unrelated menu items. The
-                      eleventh is "No colour", which is a value in this set and
-                      not an escape from it — which is why it is a radio and
-                      not a separate command.
-                    */}
-                    <div
-                        className="folderfolio-swatches"
-                        role="group"
-                        aria-label={t('folderColor', 'Folder colour')}
-                    >
-                        {SWATCHES.map((swatch) => (
-                            <button
-                                key={swatch}
-                                type="button"
-                                role="menuitemradio"
-                                aria-checked={current === swatch}
-                                aria-label={swatchLabel(swatch)}
-                                title={swatchLabel(swatch)}
-                                className="folderfolio-swatches__swatch"
-                                style={{ background: `var(--ff-folder-${swatch})` }}
-                                onClick={() => choose(swatch)}
-                            />
-                        ))}
-                    </div>
-
-                    <button
-                        type="button"
-                        role="menuitemradio"
-                        aria-checked={current === null}
-                        className="folderfolio-swatches__none"
-                        onClick={() => choose(null)}
-                    >
-                        <span className="folderfolio-swatches__empty" aria-hidden="true" />
-                        {t('noColor', 'No colour')}
-                    </button>
                 </>
             ) : null}
 

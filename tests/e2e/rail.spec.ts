@@ -358,6 +358,39 @@ test.describe('reordering a folder', () => {
         });
     }
 
+    // Nick, 24 Sep: "more panel hides below toolbar". Below 782px the rail is
+    // a bar above the library, and core's media toolbar (relative, z-index
+    // 100) tied the menu and, later in the document, painted over it.
+    test('below 782px the folder menu is drawn over the media toolbar', async ({ page }) => {
+        await page.setViewportSize({ width: 600, height: 1400 });
+        await page.reload();
+        await page.locator('.folderfolio-rail__tab').click();
+        await page.locator('.folderfolio-levels__row', { hasText: 'Level' }).click();
+        await page.locator('.folderfolio-levels__row', { hasText: 'Alpha' }).click();
+        await page.getByRole('button', { name: /^folder actions$/i }).click();
+
+        const cover = await page.evaluate(() => {
+            const menu = document.querySelector('.folderfolio-menu--folder')!;
+            const toolbar = document.querySelector('.media-toolbar')!.getBoundingClientRect();
+            const box = menu.getBoundingClientRect();
+            // The part of the menu the toolbar's box also covers.
+            const top = Math.max(box.top, toolbar.top) + 4;
+            const bottom = Math.min(box.bottom, toolbar.bottom) - 4;
+            const points = [];
+
+            for (let y = top; y < bottom; y += 12) {
+                const el = document.elementFromPoint(box.left + box.width / 2, y);
+                points.push(Boolean(el && menu.contains(el)));
+            }
+
+            return { overlap: bottom - top, points };
+        });
+
+        // The precondition: the menu does reach down over the toolbar.
+        expect(cover.overlap).toBeGreaterThan(20);
+        expect(cover.points.every(Boolean)).toBe(true);
+    });
+
     test('the ends of a level disable the direction that would leave it', async ({ page }) => {
         await openLevel(page);
 
@@ -488,12 +521,50 @@ test.describe('a folder sorts what is inside it', () => {
         await expect(panel.locator('.folderfolio-menu__label')).toHaveText(/sort inside/i);
 
         // Both rows, both unset — which is a value, not an absence. The
-        // step rows only: the Gallery row (tier 3 item 14) has a value too.
+        // step rows only: the Gallery row (tier 3 item 14) has a value too,
+        // and Colour (24 Sep) is a step with nothing to say when unset.
         const values = panel.locator('.folderfolio-menu__item--step .folderfolio-menu__value');
-        await expect(values).toHaveCount(2);
-        await expect(values.first()).toHaveText(
-            /same as everywhere/i
-        );
+        await expect(values).toHaveCount(3);
+        await expect(values.nth(0)).toHaveText('');
+        await expect(values.nth(1)).toHaveText(/same as everywhere/i);
+        await expect(values.nth(2)).toHaveText(/same as everywhere/i);
+    });
+
+    // Nick, 24 Sep: "make color a nested child as to reach delete you should
+    // scroll". The ten swatches were ~130px of the first step.
+    test('colour is a second step, and Delete is on the first screen', async ({ page }) => {
+        await page.setViewportSize({ width: 1280, height: 900 });
+        await page.locator('.folderfolio-row', { hasText: 'Outer' }).first().click();
+        await page.locator('.folderfolio-row__menu').click();
+
+        const panel = page.locator('.folderfolio-menu--row');
+        await expect(panel.locator('.folderfolio-swatches')).toHaveCount(0);
+
+        const fits = await panel.evaluate((el) => {
+            const del = [...el.querySelectorAll('button')].find((b) => /delete/i.test(b.textContent ?? ''))!;
+            const menu = el.getBoundingClientRect();
+            const row = del.getBoundingClientRect();
+
+            return { scrolls: el.scrollHeight > el.clientHeight, inside: row.bottom <= menu.bottom + 0.5, height: menu.height };
+        });
+        expect(fits.scrolls).toBe(false);
+        expect(fits.inside).toBe(true);
+
+        await panel.getByRole('menuitem', { name: /^colour/i }).click();
+        await expect(panel.locator('.folderfolio-swatches__swatch')).toHaveCount(10);
+        await expect(panel.getByRole('menuitemradio', { name: /no colour/i })).toHaveAttribute('aria-checked', 'true');
+        await panel.getByRole('menuitemradio', { name: /^plum$/i }).click();
+        await expect(panel).toHaveCount(0);
+
+        await page.locator('.folderfolio-row__menu').click();
+        const colour = page.locator('.folderfolio-menu--row').getByRole('menuitem', { name: /^colour/i });
+        await expect(colour.locator('.folderfolio-menu__value')).toHaveText(/plum/i);
+        await expect(colour.locator('.folderfolio-menu__chip')).toHaveCount(1);
+
+        // Back returns focus to the row it left from.
+        await colour.click();
+        await page.locator('.folderfolio-menu__back').click();
+        await expect(colour).toBeFocused();
     });
 
     test('an order reaches that folder\'s children and nothing else', async ({ page }) => {
@@ -686,34 +757,38 @@ test.describe('cut, copy and paste', () => {
         await expect(page.getByRole('menuitem', { name: 'Beside this folder' })).toBeEnabled();
     });
 
-    test('the row menu opened near the bottom of the window flips up at full height', async ({ page }) => {
+    // A row menu that fits the window is shown whole — Delete included —
+    // above its row, below it, or slid over it when neither side has the
+    // room (Nick, 24 Sep: "to reach delete you should scroll"). Until then it
+    // flipped at the 320px threshold and scrolled inside whichever side won.
+    test('the row menu opened near the bottom of a short window is shown whole', async ({ page }) => {
         await page.setViewportSize({ width: 1280, height: 520 });
         await page.reload();
         await waitForTree(page, 'Brand');
 
         // Brand is the last root under Name, A to Z (the sort a reload comes
-        // back to); with a 520px window it sits well inside the hook's 320px
-        // flip threshold, and there is more room above it than below.
+        // back to); in a 520px window neither side of it holds the menu.
         await menuOn(page, 'Brand');
 
         const geometry = await page.evaluate(() => {
-            const menu = document.querySelector('.folderfolio-menu--row')!;
-            const trigger = document.querySelector('[aria-selected="true"] .folderfolio-row__menu')!;
+            const menu = document.querySelector('.folderfolio-menu--row') as HTMLElement;
+            const del = [...menu.querySelectorAll('button')].find((b) => /delete/i.test(b.textContent ?? ''))!;
             const m = menu.getBoundingClientRect();
-            const t = trigger.getBoundingClientRect();
 
             return {
                 position: getComputedStyle(menu).position,
-                height: m.height,
                 top: m.top,
-                gapAbove: t.top - m.bottom,
+                bottom: m.bottom,
+                scrolls: menu.scrollHeight > menu.clientHeight,
+                deleteInside: del.getBoundingClientRect().bottom <= m.bottom + 0.5,
             };
         });
 
         expect(geometry.position).toBe('fixed');
-        expect(geometry.height).toBeGreaterThan(150);
-        expect(geometry.top).toBeGreaterThanOrEqual(0);
-        expect(geometry.gapAbove).toBeGreaterThanOrEqual(0);
+        expect(geometry.top).toBeGreaterThanOrEqual(8);
+        expect(geometry.bottom).toBeLessThanOrEqual(520 - 8 + 0.5);
+        expect(geometry.scrolls).toBe(false);
+        expect(geometry.deleteInside).toBe(true);
     });
 });
 

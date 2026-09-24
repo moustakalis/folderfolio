@@ -1001,6 +1001,8 @@ final class Rail
             /* translators: %s is the folder name. */
             'colorFor' => __('Colour for %s', 'folderfolio'),
             'noColor' => __('No colour', 'folderfolio'),
+            // The ⋮ menu's row that opens the swatches (24 Sep).
+            'colourRow' => __('Colour', 'folderfolio'),
             'swatchSlate' => __('Slate', 'folderfolio'),
             'swatchRed' => __('Red', 'folderfolio'),
             'swatchClay' => __('Clay', 'folderfolio'),

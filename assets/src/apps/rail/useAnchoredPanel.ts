@@ -103,6 +103,37 @@ export function useAnchoredPanel<T extends HTMLElement>(
              */
             const below = window.innerHeight - box.bottom - MARGIN;
             const above = box.top - MARGIN;
+
+            /*
+             * A panel that fits the window is shown whole (24 Sep, Nick: "to
+             * reach delete you should scroll"). Its own height is known —
+             * it is rendered, off screen, before this runs, and scrollHeight
+             * is its content whatever `--ff-room` clamps it to. Below if it
+             * fits there, above if it fits there, and when it fits neither
+             * side of its trigger but does fit the window, slid up until its
+             * foot meets the window's, over the trigger's row — the way a
+             * desktop context menu does. The ⋮ menu from a row halfway down an
+             * 818px window was 459px against 346 below and 420 above.
+             *
+             * A panel taller than the window — a folder list — keeps the rule
+             * below, which picks the better side and scrolls.
+             */
+            // Its borders too: the panels are border-box, and a max-height
+            // of the content alone scrolled them by 2px.
+            const panel = ref.current;
+            const natural = panel ? panel.scrollHeight + panel.offsetHeight - panel.clientHeight : 0;
+            const usable = window.innerHeight - 2 * MARGIN;
+
+            if (natural > 0 && natural <= usable && natural > below) {
+                setAt(
+                    natural <= above
+                        ? { bottom: window.innerHeight - box.top + 2, left, room: natural }
+                        : { top: window.innerHeight - MARGIN - natural, left, room: natural }
+                );
+
+                return;
+            }
+
             const flip = below < PREFERRED_ROOM && above > below;
             const room = Math.max(MIN_ROOM, flip ? above : below);
 
