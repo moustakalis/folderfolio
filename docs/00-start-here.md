@@ -3047,6 +3047,21 @@ container can run it: `php /tmp/wp-cli.phar --allow-root` in `~/wp-e2e`
 description is one `: ` line — a second `: ` line is read as synopsis**
 (`CliHelpTest`).
 
+**The facade, WP-CLI and REST reach what the rail does since `dda2580`** —
+organising (duplicate, reorder, colour, sort, file order, lock, pin, kind),
+smart folders, export, a ZIP written to a file, the two repairs, and the
+settings (`wp folderfolio settings get|set`, `GET/POST /settings`, through
+`Settings::change()`: the form's sanitiser, refusing what it would quietly
+replace). Seven more hooks. **`docs/api/README.md` is held to the code** —
+`ApiSurfaceTest` checks every facade method, hook and CLI command is on it,
+`RouteDocsTest` checks the REST table against the registered routes both
+ways — so adding any of those means adding its line. Every refusal is
+`{success: false, error: {code, message}}`, the import routes included; the
+old `/attachments/assign|unassign|bulk-move` and `/tree` aliases are gone
+(the rail calls `/assignments` and `/assignments/move`). **`--json` is
+WP-CLI's own flag** (it becomes `--format=json`), so `settings set` takes
+`--values`.
+
 **A straight apostrophe inside a single-quoted PHP string is a parse error
 that takes the whole plugin down** — the integration run and all 116 e2e
 failed on "file's". The plugin's copy uses ’ throughout; so should a new
