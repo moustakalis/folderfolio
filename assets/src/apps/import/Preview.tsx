@@ -58,7 +58,7 @@ export function Preview({
                       label: t('importFileSame', 'An export of this site'),
                       detail: t(
                           'importFileSameDetail',
-                          'Colours, icons and orders come with the folders it creates; folders that already exist keep their own.'
+                          'Colours, galleries and orders come with the folders it creates; folders that already exist keep their own.'
                       ),
                   }
                 : {
@@ -76,7 +76,7 @@ export function Preview({
                                 )
                               : t(
                                     'importFileOtherNone',
-                                    'Only the folders are imported — it carries no file assignments. Colours, icons and orders come with the folders it creates.'
+                                    'Only the folders are imported — it carries no file assignments. Colours, galleries and orders come with the folders it creates.'
                                 ),
                   }
             : null,

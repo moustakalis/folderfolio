@@ -283,7 +283,7 @@ class FolderRepository
         if ($created === false) {
             return new WP_Error(
                 'folderfolio_folder_create_failed',
-                __('Unable to create the folder.', 'folderfolio')
+                __('The folder could not be created.', 'folderfolio')
             );
         }
 
@@ -328,7 +328,7 @@ class FolderRepository
         if ($updated === false) {
             return new WP_Error(
                 'folderfolio_folder_update_failed',
-                __('Unable to update the folder.', 'folderfolio')
+                __('The folder could not be changed.', 'folderfolio')
             );
         }
 
@@ -391,7 +391,7 @@ class FolderRepository
         if ($this->wpdb->query($sql) === false) {
             return new WP_Error(
                 'folderfolio_folder_reorder_failed',
-                __('Unable to save the new folder order.', 'folderfolio')
+                __('The new folder order could not be saved.', 'folderfolio')
             );
         }
 
@@ -435,7 +435,7 @@ class FolderRepository
         if ($result === false) {
             return new WP_Error(
                 'folderfolio_folder_move_failed',
-                __('Unable to move the folder.', 'folderfolio')
+                __('The folder could not be moved.', 'folderfolio')
             );
         }
 
@@ -461,7 +461,7 @@ class FolderRepository
         if ($deleted === false) {
             return new WP_Error(
                 'folderfolio_folder_delete_failed',
-                __('Unable to delete the folder.', 'folderfolio')
+                __('The folder could not be deleted.', 'folderfolio')
             );
         }
 
@@ -485,7 +485,7 @@ class FolderRepository
         if ($deleted === false) {
             return new WP_Error(
                 'folderfolio_folder_delete_failed',
-                __('Unable to delete the folder.', 'folderfolio')
+                __('The folder could not be deleted.', 'folderfolio')
             );
         }
 

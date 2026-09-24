@@ -1,6 +1,6 @@
 # FolderFolio
 
-**Organize your WordPress Media Library with unlimited virtual folders. Every feature free — no tiers, no upsells, no telemetry.**
+**Unlimited virtual folders for the WordPress Media Library, posts and pages. Every feature free — no tiers, no upsells, no telemetry.**
 
 ## Version
 
@@ -14,15 +14,28 @@ deactivating the plugin cannot break a published link.
 ### In the Media Library
 
 - Unlimited nested folders, in both grid and list mode
-- Drag files onto a folder to file them
+- Drag files onto a folder to file them (a move from inside a folder, an add
+  from All media)
 - Multi-folder membership — one file, several folders, no duplicate on disk
-- Bulk assign, move and unassign, with an undo window
-- Uploads go to the folder currently selected
-- Ten folder colours
+- Add to folder and Move to folder for a selection
+- Folders arranged by hand or sorted, with a per-folder order for subfolders
+  and files (files arranged by hand too)
+- Cut, copy, paste and duplicate folders, with or without their files
+- Uploads go to the folder currently selected; a dropped directory keeps its
+  structure
+- Smart folders (saved rules) and Gallery folders (images only)
+- Pin, star and lock; download a folder as a ZIP
+- Ten folder colours; a starting folder for the site or per person
 - A folder filter on the library toolbar, in both modes
 - A folder column inside the media picker (block editor, Classic Editor, ACF,
   Customizer)
-- A keyboard-navigable folder tree
+- A keyboard-navigable folder tree; deleting a folder can be undone
+
+### Posts, pages and custom post types
+
+- Posts and Pages on by default, other types opt-in under *Folders for*
+- The same rail on their list screens, a Folders panel in the editor, and
+  *Add New* into the current folder
 
 ### On the front end
 
@@ -45,20 +58,23 @@ undoes that run exactly.
 
 ### Administration
 
-- A settings screen: count mode, default sort, undo window, and a per-role
-  capability matrix
-- A **Status** tab reporting the schema, the storage engine and the health check
+- A settings screen: which screens have folders, count mode, default sort,
+  starting folder, undo window, and a per-role matrix of six abilities
+- Bulk-create from a pasted list; export the folder structure and read it back
+- A **Status** tab with a health check and two repairs
 - WP-CLI: `wp folderfolio folder list|create|move|delete`, plus `assign`,
   `rebuild-paths` and `doctor`
 - A REST API, a PHP facade, and filters on the capability checks, the import
   sources and the default upload folder
-- `uninstall.php` removes every table, option and transient the plugin created
+- `uninstall.php` removes every table, option, transient and meta key the
+  plugin created (`tests/Unit/Support/UninstallTest.php` holds it to that)
 
 ### Not in 1.0.0
 
 - Folder icons. The column, the sanitizer and the REST field exist; no UI sets
   one, so the feature does not ship.
-- Reordering folders by hand inside the tree.
+- Smart-folder rules for posts and pages — smart folders are media only.
+- `wp folderfolio import` — imports run from the wizard.
 
 ## Requirements
 
@@ -119,23 +135,9 @@ by construction.
 
 ## REST API
 
-`/wp-json/folderfolio/v1/`
-
-| | |
-|---|---|
-| `GET /tree` | The folder tree |
-| `POST /folders` | Create |
-| `PATCH /folders/{id}` | Update |
-| `DELETE /folders/{id}` | Delete — `children` is required, `reparent` or `cascade` |
-| `POST /folders/{id}/move` | Move |
-| `GET /folders/{id}/attachments` | A folder's attachments |
-| `POST /attachments/assign` | File attachments into a folder |
-| `POST /attachments/unassign` | Remove them from one |
-| `POST /attachments/bulk-move` | Move between folders |
-| `GET /import/detect` | Which sources hold data |
-| `POST /import/{importer}` | Run an import |
-
-Every response is enveloped as `{success, data}`.
+`/wp-json/folderfolio/v1/` — every route, its ability and its arguments are in
+[`docs/api/README.md`](docs/api/README.md). Every response is enveloped as
+`{success, data}`; a failure is `{success: false, error: {code, message}}`.
 
 ## Documentation
 

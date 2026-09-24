@@ -160,8 +160,8 @@ export function Report({
                             'importSkipOne',
                             'importSkipMany',
                             run.skipped_total,
-                            'Skipped — %s file',
-                            'Skipped — %s files',
+                            '%s file skipped',
+                            '%s files skipped',
                             run.skipped_total
                         )}
                     </div>
@@ -184,8 +184,8 @@ export function Report({
                             'importStrandedOne',
                             'importStrandedMany',
                             run.unreachable.length,
-                            'Not placed — %s folder',
-                            'Not placed — %s folders',
+                            '%s folder could not be placed',
+                            '%s folders could not be placed',
                             run.unreachable.length
                         )}
                     </div>

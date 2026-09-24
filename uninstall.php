@@ -44,8 +44,18 @@ function folderfolio_uninstall_site(): void
     delete_option('folderfolio_filesizes_checked');
     delete_post_meta_by_key('_folderfolio_filesize');
 
+    // Settings, a stored import file and the last import run — the readme
+    // promises every option goes, and until 24 Sep these three stayed.
+    delete_option('folderfolio_settings');
+    delete_option('folderfolio_import_file');
+    delete_option('folderfolio_import_run');
+
+    // Each person's rail: width, collapsed, stars, starting folder.
+    delete_metadata('user', 0, 'folderfolio_rail', '', true);
+
     delete_option('folderfolio_db_version');
     delete_transient('folderfolio_upgrading');
+    delete_transient('folderfolio_elsewhere');
 }
 
 if (is_multisite()) {

@@ -150,7 +150,7 @@ function FileRow({ onChoose }: { onChoose: (key: string) => void }) {
                 <div className="folderfolio-source__detail">
                     {t(
                         'importFileDetail',
-                        'A .json file saved with Export folders — from this site, or from another one.'
+                        'A .json file saved with Export folder structure — from this site, or from another one.'
                     )}
                 </div>
 

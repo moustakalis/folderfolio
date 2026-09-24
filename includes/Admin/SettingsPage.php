@@ -492,8 +492,8 @@ final class SettingsPage
     private function sortLabels(): array
     {
         return [
-            'name-asc' => __('Name, A–Z', 'folderfolio'),
-            'name-desc' => __('Name, Z–A', 'folderfolio'),
+            'name-asc' => __('Name, A to Z', 'folderfolio'),
+            'name-desc' => __('Name, Z to A', 'folderfolio'),
             'newest' => __('Newest first', 'folderfolio'),
             'oldest' => __('Oldest first', 'folderfolio'),
             // Last, and after the four views: this one is the tree's own

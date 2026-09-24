@@ -1081,7 +1081,7 @@ final class Rail
             /* translators: 1: number of files, 2: the folder they were placed in. */
             'placedFilesEnd' => __('Moved %s files to the end of %s', 'folderfolio'),
             'findFolder' => __('Find a folder', 'folderfolio'),
-            'addsACopy' => __('Adds a copy of the membership', 'folderfolio'),
+            'addsACopy' => __('Keeps them in their other folders too', 'folderfolio'),
             /* translators: %s is the number of folders not shown. */
             'andMoreFolders' => __('%s more — keep typing to narrow', 'folderfolio'),
             'addFailed' => __('Could not file those files.', 'folderfolio'),

@@ -183,7 +183,7 @@ final class Doctor
         return $this->finding(
             'path_drift',
             'error',
-            __('Folders whose stored path disagrees with their parent. Fix with rebuild-paths.', 'folderfolio'),
+            __('Folders whose stored path disagrees with their parent. Fix with Repair folder tree on the Status tab, or wp folderfolio rebuild-paths.', 'folderfolio'),
             $drifted
         );
     }
@@ -212,7 +212,7 @@ final class Doctor
         return $this->finding(
             'depth_drift',
             'warning',
-            __('Folders whose depth disagrees with their path. Fix with rebuild-paths.', 'folderfolio'),
+            __('Folders whose depth disagrees with their path. Fix with Repair folder tree on the Status tab, or wp folderfolio rebuild-paths.', 'folderfolio'),
             $drifted
         );
     }
@@ -261,7 +261,7 @@ final class Doctor
         return $this->finding(
             'cycle',
             'error',
-            __('Folders that are their own ancestor. Move them to the root to break the loop.', 'folderfolio'),
+            __('Folders that are their own ancestor. Move them to the top level to break the loop.', 'folderfolio'),
             $looping
         );
     }

@@ -273,7 +273,7 @@ class AttachmentFolderRepository
         ]);
 
         if ($result === false) {
-            return new WP_Error('folderfolio_assignment_failed', __('Unable to assign media to the folder.', 'folderfolio'));
+            return new WP_Error('folderfolio_assignment_failed', __('The files could not be filed in the folder.', 'folderfolio'));
         }
 
         $this->changed();
@@ -289,7 +289,7 @@ class AttachmentFolderRepository
         ]);
 
         if ($result === false) {
-            return new WP_Error('folderfolio_unassignment_failed', __('Unable to remove media from the folder.', 'folderfolio'));
+            return new WP_Error('folderfolio_unassignment_failed', __('The files could not be taken out of the folder.', 'folderfolio'));
         }
 
         $this->changed();
@@ -311,7 +311,7 @@ class AttachmentFolderRepository
         if ($result === false) {
             return new WP_Error(
                 'folderfolio_attachment_cleanup_failed',
-                __('Unable to remove folder assignments for the deleted media item.', 'folderfolio')
+                __('The deleted file’s folder entries could not be removed.', 'folderfolio')
             );
         }
 
@@ -325,7 +325,7 @@ class AttachmentFolderRepository
         $result = $this->wpdb->delete($this->table(), ['folder_id' => $folderId]);
 
         if ($result === false) {
-            return new WP_Error('folderfolio_assignment_cleanup_failed', __('Unable to remove folder assignments.', 'folderfolio'));
+            return new WP_Error('folderfolio_assignment_cleanup_failed', __('The folder entries could not be removed.', 'folderfolio'));
         }
 
         $this->changed();
@@ -580,7 +580,7 @@ class AttachmentFolderRepository
         if ($deleted === false) {
             return new WP_Error(
                 'folderfolio_assignment_delete_failed',
-                __('Unable to remove the folder assignments.', 'folderfolio')
+                __('The folder entries could not be removed.', 'folderfolio')
             );
         }
 
@@ -625,7 +625,7 @@ class AttachmentFolderRepository
         if ($inserted === false) {
             return new WP_Error(
                 'folderfolio_assignment_failed',
-                __('Unable to assign media to the folder.', 'folderfolio')
+                __('The files could not be filed in the folder.', 'folderfolio')
             );
         }
 

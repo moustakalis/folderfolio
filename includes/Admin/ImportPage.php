@@ -77,7 +77,7 @@ class ImportPage
     {
         ?>
         <div class="wrap">
-            <h1><?php echo esc_html__('Import Folders', 'folderfolio'); ?></h1>
+            <h1><?php echo esc_html__('Import folders', 'folderfolio'); ?></h1>
             <?php $this->renderTab(); ?>
         </div>
         <?php
@@ -98,7 +98,7 @@ class ImportPage
         <div id="folderfolio-import-app" class="folderfolio">
             <noscript>
                 <p class="folderfolio-wizard__lede">
-                    <?php esc_html_e('The import wizard needs JavaScript. With it switched off you can still import from the command line: wp folderfolio import.', 'folderfolio'); ?>
+                    <?php esc_html_e('The import wizard needs JavaScript. Switch it on in your browser to import folders from another plugin.', 'folderfolio'); ?>
                 </p>
             </noscript>
         </div>
@@ -141,18 +141,18 @@ class ImportPage
 
                 // An export file, read back in — tier 1 item 6b.
                 'importFileName' => __('FolderFolio export file', 'folderfolio'),
-                'importFileDetail' => __('A .json file saved with Export folders — from this site, or from another one.', 'folderfolio'),
+                'importFileDetail' => __('A .json file saved with Export folder structure — from this site, or from another one.', 'folderfolio'),
                 'importFileChoose' => __('Choose file…', 'folderfolio'),
                 'importFileReading' => __('Reading the file…', 'folderfolio'),
                 'importFileNotJson' => __('This file is not an export — it could not be read as JSON.', 'folderfolio'),
                 'importFileSame' => __('An export of this site', 'folderfolio'),
-                'importFileSameDetail' => __('Colours, icons and orders come with the folders it creates; folders that already exist keep their own.', 'folderfolio'),
+                'importFileSameDetail' => __('Colours, galleries and orders come with the folders it creates; folders that already exist keep their own.', 'folderfolio'),
                 'importFileOther' => __('An export of another site', 'folderfolio'),
                 /* translators: 1: number of file assignments, always 1. 2: the other site's address. */
                 'importFileOtherFile' => __('Only the folders are imported. Its %1$s file assignment names a file on %2$s by number, and that number is a different file here.', 'folderfolio'),
                 /* translators: 1: number of file assignments. 2: the other site's address. */
                 'importFileOtherFiles' => __('Only the folders are imported. Its %1$s file assignments name files on %2$s by number, and those numbers are different files here.', 'folderfolio'),
-                'importFileOtherNone' => __('Only the folders are imported — it carries no file assignments. Colours, icons and orders come with the folders it creates.', 'folderfolio'),
+                'importFileOtherNone' => __('Only the folders are imported — it carries no file assignments. Colours, galleries and orders come with the folders it creates.', 'folderfolio'),
                 'actionFailed' => __('That could not be done.', 'folderfolio'),
                 'importNothingToImport' => __('Nothing to import', 'folderfolio'),
                 'importActive' => __('plugin active', 'folderfolio'),

@@ -459,7 +459,7 @@ class FolderService
         if ($folder === null) {
             return new WP_Error(
                 'folderfolio_folder_create_failed',
-                __('Unable to create the folder.', 'folderfolio')
+                __('The folder could not be created.', 'folderfolio')
             );
         }
 
@@ -1089,7 +1089,7 @@ class FolderService
             if ($copy === null) {
                 return new WP_Error(
                     'folderfolio_folder_create_failed',
-                    __('Unable to create the folder.', 'folderfolio')
+                    __('The folder could not be created.', 'folderfolio')
                 );
             }
 
@@ -1734,7 +1734,7 @@ class FolderService
             if (!Capabilities::canEditAttachment($attachmentId)) {
                 return new WP_Error(
                     'folderfolio_attachment_forbidden',
-                    __('You are not allowed to organize one or more of the selected media items.', 'folderfolio')
+                    __('You are not allowed to organise one or more of the selected media items.', 'folderfolio')
                 );
             }
         }
@@ -1831,7 +1831,7 @@ class FolderService
                 'folderfolio_invalid_color',
                 sprintf(
                     /* translators: %s: comma-separated list of the ten folder colour names. */
-                    __('Choose one of the folder colors: %s.', 'folderfolio'),
+                    __('Choose one of the folder colours: %s.', 'folderfolio'),
                     implode(', ', Swatches::keys())
                 )
             );

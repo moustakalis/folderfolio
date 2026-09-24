@@ -608,7 +608,7 @@ function Flyout({ nodes, ids, source, anchor, onClose }: FlyoutProps) {
                             : t('addFailed', 'Could not file those files.')
                         : mode === 'move'
                           ? t('movesOutOf', 'Moves them out of “%s”', sourceName)
-                          : t('addsACopy', 'Adds a copy of the membership')}
+                          : t('addsACopy', 'Keeps them in their other folders too')}
                 </span>
             </div>
         </div>

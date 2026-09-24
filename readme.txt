@@ -8,11 +8,12 @@ Stable tag: 1.0.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Organize the Media Library with unlimited nested folders. Every feature is free: no tiers, no upsells, no telemetry.
+Unlimited nested folders for the Media Library, posts and pages. Every feature is free: no tiers, no upsells, no telemetry.
 
 == Description ==
 
-FolderFolio gives the WordPress Media Library the thing it has never had: folders.
+FolderFolio gives the WordPress Media Library the thing it has never had: folders
+— and gives posts, pages and your own post types the same.
 
 **Every feature is free.** There is no Pro version, no upgrade prompt and no
 feature held back for one. Nesting is unlimited at every level, bulk actions
@@ -30,20 +31,42 @@ is also why deactivating the plugin cannot break a single image on your site.
 = In the Media Library =
 
 * Unlimited nested folders, in both grid and list mode
-* Drag files onto a folder to file them
+* Drag files onto a folder to file them — from inside a folder a drag moves
+  them, from All media it adds them
 * One file can live in several folders at once
-* Bulk assign, move and unassign, with an undo window
-* Uploads go straight into the folder you are looking at
+* Add to folder and Move to folder for a whole selection
+* Arrange folders by hand or sort them, and give any folder its own order for
+  its subfolders and its files — including an order you arrange by hand
+* Cut, copy and paste folders, and duplicate one with or without its files
+* Uploads go straight into the folder you are looking at — drop a whole
+  directory and its subfolders come with it
+* Smart folders: saved rules (type, date, who uploaded it, size, filed or not,
+  name) that fill themselves
+* Gallery folders, which take images only
+* Pin, star and lock folders
+* Download a folder as a ZIP
 * Ten folder colours
+* Open the library in a folder of your choosing, for the whole site or just
+  for you
 * A folder filter on the Media Library toolbar, in both modes
 * A folder column inside the media picker, so the block editor, Classic
   Editor, ACF and the Customizer all see your folders
 * A keyboard-navigable folder tree
+* Deleting a folder can be undone for a few seconds
+
+= Posts, pages and your own post types =
+
+* Folders for Posts and Pages, on by default; any other post type with a list
+  screen can be switched on under **Folders for**
+* The same folder rail on their list screens, and a Folders panel in the
+  editor
+* **Add New** from inside a folder files the new post there
 
 = On the front end =
 
 * A **Folder gallery** block: pick a folder, and every image in it becomes a
-  gallery. Add a file to the folder and the page updates itself.
+  gallery. Add a file to the folder and the page updates itself. Gallery
+  folders are listed first in its folder picker.
 * A `[folderfolio_gallery folder="Brand/Logos"]` shortcode for classic themes
 * Rendered on the server. The block ships no JavaScript of ours to visitors —
   one small stylesheet, and the lightbox is the one WordPress already has.
@@ -72,6 +95,15 @@ import creates is stamped with the run that made it, so a single click undoes
 that run precisely, without a time window and without touching anything you
 filed by hand.
 
+= Settings and tools =
+
+* Who can do what, per role: create, organise, delete, assign files, lock and
+  download folders
+* Paste a list of paths to make many folders at once
+* Export the folder structure to a file, and read it back in — on this site
+  or another one
+* A **Status** tab with a health check and two repairs
+
 = For developers =
 
 * A REST API at `/wp-json/folderfolio/v1/`
@@ -79,9 +111,8 @@ filed by hand.
   `rebuild-paths` and a `doctor` health check
 * A PHP facade, and filters on the capability checks, the import sources and
   the default upload folder
-* A **Status** tab under **FolderFolio** reporting the schema, the storage
-  engine and anything the health check finds
-* `uninstall.php` removes every table, option and transient the plugin created
+* `uninstall.php` removes every table, option, transient and meta key the
+  plugin created
 
 == Installation ==
 
@@ -91,9 +122,9 @@ filed by hand.
 3. Open **Media → Library**. The folder rail is on the left.
 
 Coming from another folder plugin? Open **FolderFolio → Import** in the admin
-menu before you deactivate it — the wizard reads the other plugin's own tables,
-so its data has to still be there. Nothing is written until you approve the
-plan the wizard shows you.
+menu before you delete it. Deactivating a plugin leaves its folders in the
+database, where the wizard reads them; deleting it may not. Nothing is written
+until you approve the plan the wizard shows you.
 
 == Frequently Asked Questions ==
 
@@ -115,8 +146,9 @@ media itself is never touched by either.
 
 = Can a file be in more than one folder? =
 
-Yes. Membership is many-to-many throughout. A drag moves a file, and the bulk
-action adds it — so the same logo can sit in both Brand and Press without a
+Yes. Membership is many-to-many throughout. From inside a folder a drag moves
+a file; from All media it adds it; and **Add to folder** and **Move to folder**
+say which they do — so the same logo can sit in both Brand and Press without a
 duplicate on disk.
 
 = Is there a Pro version, or a feature I will be asked to pay for? =
@@ -131,18 +163,22 @@ activation ping, no remote asset.
 
 = Who is allowed to create and delete folders? =
 
-Reading folders and filing media needs `upload_files`, which is what the Media
-Library itself needs. Creating, renaming, moving and deleting folders needs
-`folderfolio_manage_folders`, which falls back to `edit_others_posts` — Editors
-and Administrators, not Authors or Contributors. Filing an attachment also
-checks `edit_post` on that attachment, so one author cannot file another
-author's media. Both checks run through filters if your site needs a different
-line.
+Each role gets its own set, on the **Settings** tab: create, organise (rename,
+move, arrange and pin), delete, assign files, lock and download. Out of the
+box Administrators have everything; Editors everything but lock; Authors
+create, assign and download; Contributors assign; Subscribers nothing.
+
+The table can only narrow WordPress's own permissions. Media folders need
+`upload_files`, which is what the Media Library itself needs; folders for posts
+and pages need permission to edit them. Filing an item also checks `edit_post`
+on it, so one author cannot file another author's media. The checks run
+through filters if your site needs a different line.
 
 = Can I put a folder on a page? =
 
 Yes, two ways. The **Folder gallery** block in the editor, or the
-`[folderfolio_gallery folder="Brand/Logos"]` shortcode. Both take a folder and
+`[folderfolio_gallery folder="Brand/Logos"]` shortcode. Make the folder a
+gallery from its menu and it takes images only, and the block lists it first. Both take a folder and
 render its images; adding a file to the folder updates the page. The shortcode
 resolves a path that already exists and never creates one, so a typo shows
 nothing rather than quietly making a folder.
