@@ -1105,7 +1105,7 @@ final class Rail
             'startHere' => __('Start here', 'folderfolio'),
             'startHereHint' => __('Open the media library in this folder', 'folderfolio'),
             'dismiss' => __('Dismiss', 'folderfolio'),
-            'startupFolderNote' => __('The media library opens in this folder. Clear the filter in the path above to see everything.', 'folderfolio'),
+            'startupFolderNote' => __('The media library opens in this folder. Press Clear filter above to see everything.', 'folderfolio'),
             /* translators: 1: number of folders, 2: the folder they are in. */
             'folderIn' => __('%1$s folder in %2$s', 'folderfolio'),
             /* translators: 1: number of folders, 2: the folder they are in. */

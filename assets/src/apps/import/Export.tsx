@@ -81,7 +81,7 @@ export function Export() {
                 <p className="folderfolio-wizard__lede">
                     {t(
                         'exportLede',
-                        'Download your folder structure as a file — names, nesting, colours and the order everything sits in. Keep it before a big reorganisation, move it to another site, or just have it.'
+                        'Download the media library’s folders as a file — names, nesting, colours, galleries and the order everything sits in. Keep it before a big reorganisation, move it to another site, or just have it.'
                     )}
                 </p>
             </div>

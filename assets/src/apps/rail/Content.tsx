@@ -126,7 +126,7 @@ function StartupNote() {
             <span>
                 {t(
                     'startupFolderNote',
-                    'The media library opens in this folder. Clear the filter in the path above to see everything.'
+                    'The media library opens in this folder. Press Clear filter above to see everything.'
                 )}
             </span>
 
@@ -134,7 +134,7 @@ function StartupNote() {
               Dismissing is not clearing. Somebody who meant to be in this
               folder should be able to stop being told why they are in it
               without also leaving it — and somebody who did not mean to be
-              has the × on the crumb, which is what this line points at.
+              has Clear filter on the crumb row, which is what this line points at.
             */}
             <button
                 type="button"

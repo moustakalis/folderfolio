@@ -231,7 +231,7 @@ final class SettingsPage
             <div class="folderfolio-field">
                 <div class="folderfolio-field__label">
                     <div class="folderfolio-field__name"><?php esc_html_e('Folder counts', 'folderfolio'); ?></div>
-                    <div class="folderfolio-field__note"><?php esc_html_e('How a folder counts its files', 'folderfolio'); ?></div>
+                    <div class="folderfolio-field__note"><?php esc_html_e('How a folder counts what is in it', 'folderfolio'); ?></div>
                 </div>
                 <div class="folderfolio-field__control">
                     <div class="folderfolio-seg" role="group" aria-label="<?php esc_attr_e('Folder counts', 'folderfolio'); ?>">
@@ -275,11 +275,11 @@ final class SettingsPage
                         $descriptions = [
                             'inherited' => [
                                 __('Inherited', 'folderfolio'),
-                                __('counts everything inside a folder, sub-folders included.', 'folderfolio'),
+                                __('counts everything inside a folder, subfolders included.', 'folderfolio'),
                             ],
                             'direct' => [
                                 __('Direct only', 'folderfolio'),
-                                __('counts just the files filed in the folder itself.', 'folderfolio'),
+                                __('counts just what is filed in the folder itself.', 'folderfolio'),
                             ],
                         ];
 
@@ -373,7 +373,11 @@ final class SettingsPage
                     <p class="folderfolio-field__help">
                         <?php
                         esc_html_e(
-                            'Everyone arrives here. The folder is named in the breadcrumb with a × beside it, and the address bar carries it — so nobody is looking at a filtered library without being told.',
+                            // Since 720ae7f the crumb row ends in two labelled
+                            // buttons, not a ×, and a person's own starting
+                            // folder (Start here) beats this one — the sentence
+                            // said neither until 24 Sep.
+                            'Where the media library opens, unless someone has chosen their own starting folder with Start here. The breadcrumb names the folder, with Clear filter beside it, and the address bar carries it — so nobody is looking at a filtered library without being told.',
                             'folderfolio'
                         );
                         ?>
@@ -582,7 +586,7 @@ final class SettingsPage
             </table>
 
             <p class="folderfolio-matrix__why">
-                <?php esc_html_e('This table can only narrow WordPress’s own permissions — it never widens them. Administrators always have every folder permission. Everyone else needs a tick here and the ability to upload files.', 'folderfolio'); ?>
+                <?php esc_html_e('This table can only narrow WordPress’s own permissions — it never widens them. Administrators always have every folder permission. Everyone else needs a tick here and WordPress’s own permission for that screen: uploading files for media, editing posts for posts, editing pages for pages. On those screens, Assign files means filing posts and pages.', 'folderfolio'); ?>
             </p>
         </div>
         <?php

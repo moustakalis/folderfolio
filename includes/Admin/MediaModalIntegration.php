@@ -199,7 +199,7 @@ final class MediaModalIntegration
                 'startHere' => __('Start here', 'folderfolio'),
                 'startHereHint' => __('Open the media library in this folder', 'folderfolio'),
                 'dismiss' => __('Dismiss', 'folderfolio'),
-                'startupFolderNote' => __('The media library opens in this folder. Clear the filter in the path above to see everything.', 'folderfolio'),
+                'startupFolderNote' => __('The media library opens in this folder. Press Clear filter above to see everything.', 'folderfolio'),
                 'sortNameAsc' => __('Name, A to Z', 'folderfolio'),
                 'sortNameDesc' => __('Name, Z to A', 'folderfolio'),
                 'sortNewest' => __('Newest first', 'folderfolio'),

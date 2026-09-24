@@ -10,6 +10,7 @@ if (!defined('ABSPATH')) {
 
 use FolderFolio\Domain\AttachmentFolderRepository;
 use FolderFolio\Domain\FolderPath;
+use FolderFolio\Support\PostTypes;
 
 /**
  * What the Status tab shows — screen 08's third tab.
@@ -46,21 +47,30 @@ final class StatusReport
         $findings = $this->doctor->check();
         $library = $this->assignments->libraryCounts();
 
-        return [
+        $rows = [
             $this->row(__('Database', 'folderfolio'), $this->schemaVersion()),
-            $this->row(
-                __('Folders', 'folderfolio'),
-                number_format_i18n($this->folderCount())
-            ),
+            $this->row(__('Folders', 'folderfolio'), $this->folderSummary()),
             $this->row(__('Deepest folder', 'folderfolio'), $this->deepestPath()),
             $this->row(__('Files in folders', 'folderfolio'), $this->assignmentSummary()),
             $this->row(
                 __('Files in no folder', 'folderfolio'),
                 number_format_i18n($library['unassigned'])
             ),
-            $this->orphanRow($findings),
-            $this->pathRow($findings),
         ];
+
+        // Tier 3 item 12: posts and pages are filed in the same table. Counted
+        // apart, so a filed page is never reported as a file — and only when
+        // there is something to say, so a media-only site reads as it did.
+        $elsewhere = $this->filedElsewhere();
+
+        if ($elsewhere !== '') {
+            $rows[] = $this->row(__('Filed on other screens', 'folderfolio'), $elsewhere);
+        }
+
+        $rows[] = $this->orphanRow($findings);
+        $rows[] = $this->pathRow($findings);
+
+        return $rows;
     }
 
     /**
@@ -180,14 +190,75 @@ final class StatusReport
         );
     }
 
-    private function folderCount(): int
+    /**
+     * Every folder, and — once a second tree exists — how many are in each,
+     * named as the screens name them: "1,053 · Media 1,049 · Pages 4".
+     */
+    private function folderSummary(): string
     {
         global $wpdb;
 
         // Identifiers cannot be bound, and this one is built from $wpdb->prefix.
-        return (int) $wpdb->get_var(
-            'SELECT COUNT(*) FROM ' . $wpdb->prefix . 'folderfolio_folders'
-        );
+        /** @var list<array{object_type: string, n: string}> $counts */
+        $counts = $wpdb->get_results(
+            'SELECT object_type, COUNT(*) AS n FROM ' . $wpdb->prefix . 'folderfolio_folders GROUP BY object_type ORDER BY object_type = \'attachment\' DESC, object_type',
+            ARRAY_A
+        ) ?: [];
+
+        $total = (int) array_sum(array_column($counts, 'n'));
+
+        if (count($counts) < 2) {
+            return number_format_i18n($total);
+        }
+
+        $parts = [number_format_i18n($total)];
+
+        foreach ($counts as $count) {
+            $parts[] = sprintf(
+                /* translators: 1: a screen's name, e.g. "Pages", 2: how many folders it has. */
+                __('%1$s %2$s', 'folderfolio'),
+                PostTypes::label((string) $count['object_type']),
+                number_format_i18n((int) $count['n'])
+            );
+        }
+
+        return implode(' · ', $parts);
+    }
+
+    /**
+     * Posts, pages and other items filed in folders on their own screens —
+     * "Pages 3 · Posts 1" — or '' when there are none.
+     */
+    private function filedElsewhere(): string
+    {
+        global $wpdb;
+
+        $table = $wpdb->prefix . 'folderfolio_attachment_folders';
+        $folders = $wpdb->prefix . 'folderfolio_folders';
+
+        /** @var list<array{object_type: string, n: string}> $counts */
+        $counts = $wpdb->get_results(
+            "SELECT f.object_type, COUNT(DISTINCT a.attachment_id) AS n
+             FROM {$table} a
+             JOIN {$folders} f ON f.id = a.folder_id
+             WHERE f.object_type <> 'attachment'
+             GROUP BY f.object_type
+             ORDER BY f.object_type",
+            ARRAY_A
+        ) ?: [];
+
+        $parts = [];
+
+        foreach ($counts as $count) {
+            $parts[] = sprintf(
+                /* translators: 1: a screen's name, e.g. "Pages", 2: how many of its items are in folders. */
+                __('%1$s %2$s', 'folderfolio'),
+                PostTypes::label((string) $count['object_type']),
+                number_format_i18n((int) $count['n'])
+            );
+        }
+
+        return implode(' · ', $parts);
     }
 
     /**
@@ -203,9 +274,9 @@ final class StatusReport
 
         $table = $wpdb->prefix . 'folderfolio_folders';
 
-        /** @var array{path: string, depth: string}|null $deepest */
+        /** @var array{path: string, depth: string, object_type: string}|null $deepest */
         $deepest = $wpdb->get_row(
-            "SELECT path, depth FROM {$table} ORDER BY depth DESC, id ASC LIMIT 1",
+            "SELECT path, depth, object_type FROM {$table} ORDER BY depth DESC, id ASC LIMIT 1",
             ARRAY_A
         );
 
@@ -248,12 +319,25 @@ final class StatusReport
 
         $levels = (int) $deepest['depth'] + 1;
 
-        return sprintf(
+        $where = sprintf(
             /* translators: 1: number of levels, 2: the folder trail, e.g. "Brand / Logos". */
             _n('%1$s level down: %2$s', '%1$s levels down: %2$s', $levels, 'folderfolio'),
             number_format_i18n($levels),
             implode(' › ', $trail)
         );
+
+        // A folder in another tree says which: "Landing › 2024" alone would
+        // be looked for in the media library.
+        if ((string) $deepest['object_type'] !== PostTypes::MEDIA) {
+            $where = sprintf(
+                /* translators: 1: e.g. "3 levels down: Landing › 2024", 2: a screen's name, e.g. "Pages". */
+                __('%1$s (%2$s)', 'folderfolio'),
+                $where,
+                PostTypes::label((string) $deepest['object_type'])
+            );
+        }
+
+        return $where;
     }
 
     /**
@@ -276,9 +360,17 @@ final class StatusReport
         // `rows` is reserved in MySQL 8, so the aliases are not the obvious
         // words. An unquoted `AS rows` is a syntax error there and works on
         // 5.7, which is the kind of difference that ships.
+        $folders = $wpdb->prefix . 'folderfolio_folders';
+
+        // Media folders only: a page filed in a Pages folder is not a file
+        // (tier 3 item 12 put both in this table). `filedElsewhere()` says
+        // those.
         /** @var array{row_count: string, file_count: string}|null $counts */
         $counts = $wpdb->get_row(
-            "SELECT COUNT(*) AS row_count, COUNT(DISTINCT attachment_id) AS file_count FROM {$table}",
+            "SELECT COUNT(*) AS row_count, COUNT(DISTINCT a.attachment_id) AS file_count
+             FROM {$table} a
+             JOIN {$folders} f ON f.id = a.folder_id
+             WHERE f.object_type = 'attachment'",
             ARRAY_A
         );
 

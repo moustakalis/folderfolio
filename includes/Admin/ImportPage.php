@@ -157,7 +157,7 @@ class ImportPage
                 'importNothingToImport' => __('Nothing to import', 'folderfolio'),
                 'importActive' => __('plugin active', 'folderfolio'),
                 'importInactive' => __('plugin deactivated, data still present', 'folderfolio'),
-                'importTwoQuestions' => __('Two questions, kept apart: which sources hold data — including plugins you have since deactivated — and which are worth offering in the rail right now.', 'folderfolio'),
+                'importTwoQuestions' => __('Plugins you have deactivated are listed too: their folders stay in the database after they are switched off, and that is what FolderFolio reads.', 'folderfolio'),
                 /* translators: %s is a number of folders. */
                 'importFolderOne' => __('%s folder', 'folderfolio'),
                 /* translators: %s is a number of folders. */
@@ -282,7 +282,7 @@ class ImportPage
                 // fallbacks, which is how a string stays untranslatable
                 // without anything looking broken.
                 'exportEyebrow' => __('Take it with you', 'folderfolio'),
-                'exportLede' => __('Download your folder structure as a file — names, nesting, colours and the order everything sits in. Keep it before a big reorganisation, move it to another site, or just have it.', 'folderfolio'),
+                'exportLede' => __('Download the media library’s folders as a file — names, nesting, colours, galleries and the order everything sits in. Keep it before a big reorganisation, move it to another site, or just have it.', 'folderfolio'),
                 'exportWithAssignments' => __('Include which files are in which folder', 'folderfolio'),
                 'exportWithAssignmentsHint' => __('Makes a much larger file on a big library.', 'folderfolio'),
                 'exportButton' => __('Export folder structure', 'folderfolio'),
@@ -291,7 +291,7 @@ class ImportPage
 
                 // Bulk create.
                 'bulkEyebrow' => __('Many at once', 'folderfolio'),
-                'bulkLede' => __('Paste a list and get the folders. One per line, and a slash nests — Brand/Logos makes both. Nothing is created until you have seen what would be.', 'folderfolio'),
+                'bulkLede' => __('Paste a list and get the folders, in the media library. One per line, and a slash nests — Brand/Logos makes both. Nothing is created until you have seen what would be.', 'folderfolio'),
                 'bulkLabel' => __('Folders, one per line', 'folderfolio'),
                 'bulkPreview' => __('Preview', 'folderfolio'),
                 'bulkPreviewing' => __('Reading…', 'folderfolio'),

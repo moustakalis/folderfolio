@@ -116,7 +116,7 @@ export function Detect({
             <p className="folderfolio-wizard__note">
                 {t(
                     'importTwoQuestions',
-                    'Two questions, kept apart: which sources hold data — including plugins you have since deactivated — and which are worth offering in the rail right now.'
+                    'Plugins you have deactivated are listed too: their folders stay in the database after they are switched off, and that is what FolderFolio reads.'
                 )}
             </p>
         </>

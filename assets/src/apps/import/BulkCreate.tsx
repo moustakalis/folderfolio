@@ -143,7 +143,7 @@ export function BulkCreate() {
                 <p className="folderfolio-wizard__lede">
                     {t(
                         'bulkLede',
-                        'Paste a list and get the folders. One per line, and a slash nests — Brand/Logos makes both. Nothing is created until you have seen what would be.'
+                        'Paste a list and get the folders, in the media library. One per line, and a slash nests — Brand/Logos makes both. Nothing is created until you have seen what would be.'
                     )}
                 </p>
             </div>
