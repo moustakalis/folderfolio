@@ -62,8 +62,9 @@ undoes that run exactly.
   starting folder, undo window, and a per-role matrix of six abilities
 - Bulk-create from a pasted list; export the folder structure and read it back
 - A **Status** tab with a health check and two repairs
-- WP-CLI: `wp folderfolio folder list|create|move|delete`, plus `assign`,
-  `rebuild-paths` and `doctor`
+- WP-CLI: `wp folderfolio folder list|create|move|delete`,
+  `wp folderfolio import list|preview|run|resume|status|stop|undo`, plus
+  `assign`, `rebuild-paths` and `doctor`
 - A REST API, a PHP facade, and filters on the capability checks, the import
   sources and the default upload folder
 - `uninstall.php` removes every table, option, transient and meta key the
@@ -74,7 +75,6 @@ undoes that run exactly.
 - Folder icons. The column, the sanitizer and the REST field exist; no UI sets
   one, so the feature does not ship.
 - Smart-folder rules for posts and pages — smart folders are media only.
-- `wp folderfolio import` — imports run from the wizard.
 
 ## Requirements
 

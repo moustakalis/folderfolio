@@ -25,6 +25,7 @@ use FolderFolio\Blocks\Gallery;
 use FolderFolio\Database\Schema;
 use FolderFolio\Domain\AttachmentFolderRepository;
 use FolderFolio\Cli\FolderCommand;
+use FolderFolio\Cli\ImportCommand;
 use FolderFolio\Cli\RootCommand;
 use FolderFolio\Rest\FolderController;
 use FolderFolio\Rest\PreferenceController;
@@ -177,6 +178,7 @@ final class Plugin
 
         \WP_CLI::add_command('folderfolio', RootCommand::class);
         \WP_CLI::add_command('folderfolio folder', FolderCommand::class);
+        \WP_CLI::add_command('folderfolio import', ImportCommand::class);
     }
 
     public function loadTextDomain(): void

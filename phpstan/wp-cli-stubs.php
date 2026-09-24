@@ -105,4 +105,27 @@ namespace WP_CLI\Utils {
     {
         return $default;
     }
+
+    /**
+     * cli\progress\Bar in a terminal, a no-op object elsewhere — both answer
+     * tick() and finish(), which is all `wp folderfolio import` asks of it.
+     *
+     * @return \WP_CLI\Utils\ProgressBar
+     */
+    function make_progress_bar(string $message, int $count, int $interval = 100)
+    {
+        return new ProgressBar();
+    }
+
+    /** The two methods of cli\progress\Bar the plugin calls. */
+    class ProgressBar
+    {
+        public function tick(int $increment = 1, ?string $msg = null): void
+        {
+        }
+
+        public function finish(): void
+        {
+        }
+    }
 }

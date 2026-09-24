@@ -8,6 +8,8 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+use WP_Error;
+
 /**
  * Every plugin FolderFolio can import from.
  *
@@ -148,6 +150,74 @@ final class Catalog
         $file = JsonSource::stored();
 
         return $file !== null && $file->key() === $key ? $file : null;
+    }
+
+    /**
+     * The source a command line names — `wp folderfolio import` (24 Sep).
+     *
+     * A source's key (`filebird`, `real-media-library`, …) or the path to a
+     * FolderFolio export file. A file is read and stored exactly as the
+     * wizard's *Choose file…* stores it, because every batch of the runner
+     * finds its source again through `find()` — and refused while an import
+     * is running, for the reason the wizard refuses it: the stored file is
+     * what that run is reading.
+     */
+    public static function fromArgument(string $argument): Source|WP_Error
+    {
+        if (str_ends_with(strtolower($argument), '.json') || is_file($argument)) {
+            $current = (new RunStore())->current();
+
+            if (null !== $current && !$current->isFinished()) {
+                return new WP_Error(
+                    'folderfolio_import_in_progress',
+                    __('An import is already running. Wait for it to finish, or stop it first.', 'folderfolio')
+                );
+            }
+
+            $raw = is_readable($argument) ? file_get_contents($argument) : false;
+            $document = is_string($raw) ? json_decode($raw, true) : null;
+
+            if (!is_array($document)) {
+                return new WP_Error(
+                    'folderfolio_import_file_unreadable',
+                    __('This file is not an export — it could not be read as JSON.', 'folderfolio')
+                );
+            }
+
+            $source = JsonSource::fromDocument($document);
+
+            if ($source instanceof WP_Error) {
+                return $source;
+            }
+
+            if (!JsonSource::store($document)) {
+                return new WP_Error('folderfolio_import_file_too_large', JsonSource::refusal($document));
+            }
+
+            return $source;
+        }
+
+        $source = self::find($argument);
+
+        if (null === $source) {
+            return new WP_Error(
+                'folderfolio_import_unknown_source',
+                __('That plugin is not one FolderFolio can import from.', 'folderfolio')
+            );
+        }
+
+        if (!$source->hasData()) {
+            return new WP_Error(
+                'folderfolio_import_no_data',
+                sprintf(
+                    /* translators: %s is a plugin name, e.g. FileBird. */
+                    __('There is no %s data on this site to import.', 'folderfolio'),
+                    $source->label()
+                )
+            );
+        }
+
+        return $source;
     }
 
     /**

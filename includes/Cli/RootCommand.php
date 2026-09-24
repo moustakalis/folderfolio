@@ -31,8 +31,8 @@ final class RootCommand
      * : Destination folder.
      *
      * [--mode=<mode>]
-     * : `add` files it here and leaves every other folder alone. `move` files
-     * : it here and removes it from all others.
+     * : Whether to add or move. add files it here and leaves every other
+     * folder alone; move files it here and takes it out of every other.
      * ---
      * default: add
      * options:
@@ -57,6 +57,13 @@ final class RootCommand
 
         if ($ids === []) {
             WP_CLI::error('Give at least one attachment id.');
+        }
+
+        // Filing checks each file against the person doing it; a CLI run has
+        // nobody unless --user says who (found building `import`, 24 Sep —
+        // the refusal said only "not allowed to organise").
+        if (0 === get_current_user_id()) {
+            WP_CLI::error('Say who is filing — add --user=<login>. Each file is checked against that person, as in the library.');
         }
 
         $result = \FolderFolio::assign(

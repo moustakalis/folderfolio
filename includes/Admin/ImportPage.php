@@ -98,7 +98,7 @@ class ImportPage
         <div id="folderfolio-import-app" class="folderfolio">
             <noscript>
                 <p class="folderfolio-wizard__lede">
-                    <?php esc_html_e('The import wizard needs JavaScript. Switch it on in your browser to import folders from another plugin.', 'folderfolio'); ?>
+                    <?php esc_html_e('The import wizard needs JavaScript. Switch it on in your browser, or import from the command line with wp folderfolio import.', 'folderfolio'); ?>
                 </p>
             </noscript>
         </div>

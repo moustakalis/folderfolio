@@ -239,6 +239,44 @@ final class Runner
      *
      * @return Run|WP_Error
      */
+    /**
+     * Carry the current run to its end — the command line's loop, where the
+     * wizard polls `step()` from the browser.
+     *
+     * `$tick` is told after every batch, for a progress bar. A batch always
+     * lands at least one folder, so this ends; the guard is for a store that
+     * stops saving, which would otherwise hand back the same cursor for ever.
+     *
+     * @param (callable(Run): void)|null $tick
+     */
+    public function toEnd(?callable $tick = null): Run|WP_Error
+    {
+        $still = 0;
+        $last = -1;
+
+        while (true) {
+            $run = $this->step();
+
+            if ($run instanceof WP_Error || $run->isFinished()) {
+                return $run;
+            }
+
+            if (null !== $tick) {
+                $tick($run);
+            }
+
+            $still = $run->cursor === $last ? $still + 1 : 0;
+            $last = $run->cursor;
+
+            if ($still >= 3) {
+                return new WP_Error(
+                    'folderfolio_import_stalled',
+                    __('The import stopped moving forward. Run it again to continue from where it stopped.', 'folderfolio')
+                );
+            }
+        }
+    }
+
     public function stop(): Run|WP_Error
     {
         $run = $this->store->current();

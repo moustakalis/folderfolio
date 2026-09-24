@@ -107,8 +107,10 @@ filed by hand.
 = For developers =
 
 * A REST API at `/wp-json/folderfolio/v1/`
-* WP-CLI: `wp folderfolio folder list|create|move|delete`, plus `assign`,
-  `rebuild-paths` and a `doctor` health check
+* WP-CLI: `wp folderfolio folder list|create|move|delete`,
+  `wp folderfolio import list|preview|run|resume|status|stop|undo` (the
+  wizard's engine, from a terminal — a plugin's data or an export file), plus
+  `assign`, `rebuild-paths` and a `doctor` health check
 * A PHP facade, and filters on the capability checks, the import sources and
   the default upload folder
 * `uninstall.php` removes every table, option, transient and meta key the
@@ -124,7 +126,8 @@ filed by hand.
 Coming from another folder plugin? Open **FolderFolio → Import** in the admin
 menu before you delete it. Deactivating a plugin leaves its folders in the
 database, where the wizard reads them; deleting it may not. Nothing is written
-until you approve the plan the wizard shows you.
+until you approve the plan the wizard shows you. From a terminal,
+`wp folderfolio import run filebird --user=admin` does the same.
 
 == Frequently Asked Questions ==
 
