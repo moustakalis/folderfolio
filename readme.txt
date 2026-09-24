@@ -22,11 +22,40 @@ knows about rather than the one that happens to be cheapest to support. The
 plugin makes no outbound network requests of any kind — nothing is measured,
 nothing is reported, nothing is sent anywhere.
 
+**It never filters your library unless you pick a folder.** Activate it and
+the Media Library shows every file, exactly as it did before. The library
+narrows only when you choose a folder, and whichever folder you are in is named
+above the files with a button that takes you back to all of them. If you give
+the library a folder to open in, for the whole site or just for yourself, it
+opens there and says so in a sentence.
+
 Folders are **virtual**. Nothing on disk moves, no file is renamed, and no
 attachment URL changes. Uploads keep landing in the year/month directories
 WordPress has always used, and every link already published keeps working. A
 folder is a way of looking at the library, not a place on a hard drive — which
 is also why deactivating the plugin cannot break a single image on your site.
+
+= Paid elsewhere, free here =
+
+Every one of these is a paid feature in at least one other popular folder
+plugin. Here they are all in the free plugin, because the free plugin is the
+only one there is:
+
+* Unlimited nested folders
+* Folder permissions by role
+* Importing from other folder plugins — nine of them, with undo
+* Folders for posts, pages and your own post types, nested
+* Uploading into a folder, and uploading a whole directory with its subfolders
+* The folder tree inside the media picker
+* Folder colours
+* Sorting: folders and files, per folder, including your own hand-made order
+* Cut, copy, paste and duplicate folders
+* Lock, pin and star folders
+* Smart folders that fill themselves from rules
+* Gallery folders
+* A folder the library opens in
+* Making many folders at once, and exporting and importing the structure
+* Downloading a folder as a ZIP
 
 = In the Media Library =
 
@@ -187,6 +216,20 @@ gallery from its menu and it takes images only, and the block lists it first. Bo
 render its images; adding a file to the folder updates the page. The shortcode
 resolves a path that already exists and never creates one, so a typo shows
 nothing rather than quietly making a folder.
+
+= Will the Media Library look different when I activate it? =
+
+Only by the folder rail beside it. FolderFolio never filters the library unless
+you pick a folder: every file is shown until you choose one, the folder you are
+in is always named above the files, and one click takes you back to all of
+them. A starting folder, if you set one, says so every time it is used.
+
+= Does it work on multisite? =
+
+Yes, network-activated or on single sites. Each site has its own folders and
+its own settings, a site added to the network later gets its folders when it is
+created, and deleting a site removes its folder tables with it. Each person's
+stars and starting folder are kept per site.
 
 = Does it work inside the block editor's media picker? =
 

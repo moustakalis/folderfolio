@@ -11,6 +11,20 @@
 Folders are virtual: nothing on disk moves, no attachment URL changes, and
 deactivating the plugin cannot break a published link.
 
+**It never filters the library unless you pick a folder.** Every file shows
+until a folder is chosen; the folder in use is always named above the files
+with a way back to all of them; a starting folder says so when it is used. The
+guard is `MediaLibraryFilter`'s early return when the folder query var is
+absent, and its negative control in `tests/Integration/Admin/MediaLibraryFilterTest.php`.
+
+**Paid elsewhere, free here.** Nested folders, folder permissions by role,
+importing from other folder plugins, folders for post types, upload into a
+folder and whole-directory upload, the folder tree in the media picker, folder
+colours, per-folder and hand-made sorting, cut/copy/paste/duplicate, lock, pin
+and star, smart folders, gallery folders, a starting folder, bulk-create and
+structure export, and download as ZIP are each a paid feature in at least one
+other popular folder plugin. Named by feature, never by vendor.
+
 ### In the Media Library
 
 - Unlimited nested folders, in both grid and list mode
