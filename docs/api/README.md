@@ -372,18 +372,30 @@ Passwords are for everything outside the browser.
 wp folderfolio folder list [--tree] [--parent=<id>] [--format=table|json|csv|ids]
 wp folderfolio folder create <path> [--porcelain]
 wp folderfolio folder move <id> --parent=<id>
-wp folderfolio folder delete <id> --children=reparent|cascade
+wp folderfolio folder delete <id> --children=reparent|cascade [--yes]
 wp folderfolio assign <attachment-ids> --folder=<id> [--mode=add|move]
-wp folderfolio import list
-wp folderfolio import preview <source>
+wp folderfolio import list [--format=table|csv|json]
+wp folderfolio import preview <source> [--format=table|json]
 wp folderfolio import run <source> [--yes]
+wp folderfolio import resume
+wp folderfolio import status [--format=table|json]
+wp folderfolio import stop
+wp folderfolio import undo [--yes]
 wp folderfolio rebuild-paths
-wp folderfolio doctor
+wp folderfolio doctor [--format=table|csv|json|yaml]
 ```
 
-> The `import` subcommands land with the importer rewrite. Everything else on
-> this list works today. They are documented here because this page is the 1.0
-> contract, not a changelog of what is currently on `main`.
+**Filing and importing need a user** — add `--user=<login>`. Each file is
+checked against the person filing it (`edit_post`), as in the library, and
+`import run / resume / stop / undo` also need `manage_options`, as the wizard
+does. A CLI run has no user otherwise, and a lock does not stop it.
+
+`import` takes a key from `import list` (`filebird`, `real-media-library`,
+`catfolders`, `folders`, `wicked-folders`, `enhanced-media-library`,
+`media-library-assistant`, `wp-media-folder`, `happyfiles`) or the path to a
+FolderFolio export file. It is the wizard's engine — the same plan, the same
+batches, the same run record — so a run started here shows in the wizard and
+undoes from either (since 24 Sep, `b4bd033`).
 
 `folder create` takes a human path and creates the whole chain, so provisioning a structure
 across a fleet is one line:

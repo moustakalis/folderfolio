@@ -3038,6 +3038,15 @@ constant is removed on uninstall) and `ScreenStringsTest` (every `t()` string
 is in a PHP i18n map and its English fallback is that string). **When a
 feature changes a control's name or a rule, grep the copy for the old one.**
 
+**`wp folderfolio import` exists since `b4bd033`** — the wizard's engine
+from a terminal (`list`, `preview`, `run`, `resume`, `status`, `stop`,
+`undo`; a source key or an export file's path). Filing needs `--user=<login>`
+because each file is checked against a person; a CLI run has none. The
+container can run it: `php /tmp/wp-cli.phar --allow-root` in `~/wp-e2e`
+(fetch the phar from github.com/wp-cli/builds). **A WP-CLI option's
+description is one `: ` line — a second `: ` line is read as synopsis**
+(`CliHelpTest`).
+
 **A straight apostrophe inside a single-quoted PHP string is a parse error
 that takes the whole plugin down** — the integration run and all 116 e2e
 failed on "file's". The plugin's copy uses ’ throughout; so should a new

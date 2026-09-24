@@ -206,7 +206,7 @@ final class FolderCommand
      *
      * --children=<strategy>
      * : What happens to its subfolders. Required — this is not a question to
-     * : answer silently.
+     * answer silently.
      * ---
      * options:
      *   - reparent
