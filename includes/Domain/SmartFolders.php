@@ -134,6 +134,8 @@ final class SmartFolders
         $stored['next']++;
         $this->write($stored);
 
+        do_action('folderfolio_smart_folder_saved', $item, true);
+
         return $item;
     }
 
@@ -171,7 +173,11 @@ final class SmartFolders
 
         $this->write($stored);
 
-        return $this->get($id) ?? $current;
+        $saved = $this->get($id) ?? $current;
+
+        do_action('folderfolio_smart_folder_saved', $saved, false);
+
+        return $saved;
     }
 
     /**
@@ -179,6 +185,7 @@ final class SmartFolders
      */
     public function delete(int $id): bool|WP_Error
     {
+        $gone = $this->get($id);
         $stored = $this->stored();
         $before = count($stored['items']);
         $stored['items'] = array_values(array_filter(
@@ -186,11 +193,13 @@ final class SmartFolders
             static fn ($item): bool => !is_array($item) || (int) ($item['id'] ?? 0) !== $id
         ));
 
-        if (count($stored['items']) === $before) {
+        if (count($stored['items']) === $before || $gone === null) {
             return $this->notFound();
         }
 
         $this->write($stored);
+
+        do_action('folderfolio_smart_folder_deleted', $id, $gone);
 
         return true;
     }
@@ -222,6 +231,37 @@ final class SmartFolders
         ]);
 
         return (int) $query->found_posts;
+    }
+
+    /**
+     * The ids the rules match right now, for the person asking, newest first
+     * — `FolderFolio::getSmartFolderItemIds()` (24 Sep). The same query as
+     * count(), every row of it.
+     *
+     * @param list<Rule> $rules
+     * @return list<int>
+     */
+    public function ids(array $rules, string $objectType = PostTypes::MEDIA): array
+    {
+        if (SmartRules::needsSizes($rules)) {
+            FileSizes::backfill();
+        }
+
+        $query = new \WP_Query([
+            'post_type' => $objectType,
+            'post_status' => PostTypes::statuses($objectType),
+            'fields' => 'ids',
+            'posts_per_page' => -1,
+            'orderby' => 'date',
+            'order' => 'DESC',
+            'no_found_rows' => true,
+            'update_post_meta_cache' => false,
+            'update_post_term_cache' => false,
+            'suppress_filters' => false,
+            MediaLibraryFilter::SMART_RULES_VAR => $rules,
+        ]);
+
+        return array_values(array_map('intval', $query->posts));
     }
 
     /**

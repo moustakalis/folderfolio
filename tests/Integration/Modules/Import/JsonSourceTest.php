@@ -178,7 +178,8 @@ class JsonSourceTest extends WP_UnitTestCase
 
         // Not a 200 with a source the next step cannot find — the bug.
         $this->assertSame(507, $response->get_status());
-        $this->assertStringContainsString('would not keep it', (string) $response->get_data()['error']);
+        $this->assertSame('folderfolio_import_file_too_large', $response->get_data()['error']['code']);
+        $this->assertStringContainsString('would not keep it', (string) $response->get_data()['error']['message']);
         $this->assertFalse(get_option(JsonSource::OPTION, false));
     }
 

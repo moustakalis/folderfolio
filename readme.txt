@@ -106,13 +106,15 @@ filed by hand.
 
 = For developers =
 
-* A REST API at `/wp-json/folderfolio/v1/`
-* WP-CLI: `wp folderfolio folder list|create|move|delete`,
-  `wp folderfolio import list|preview|run|resume|status|stop|undo` (the
-  wizard's engine, from a terminal — a plugin's data or an export file), plus
-  `assign`, `rebuild-paths` and a `doctor` health check
-* A PHP facade, and filters on the capability checks, the import sources and
-  the default upload folder
+* A REST API at `/wp-json/folderfolio/v1/` — everything the screens do,
+  settings included
+* WP-CLI for everything the rail does — `wp folderfolio folder` (list, get,
+  create, rename, move, duplicate, reorder, delete, color, sort, order-files,
+  lock, pin, kind, zip), `assign` and `unassign`, `smart`, `export`,
+  `import` (the wizard's engine, from a terminal), `settings get|set` for a
+  fleet of sites, `rebuild-paths`, `remove-orphans` and a `doctor` health check
+* A PHP facade with the same reach, hooks on every change, and filters on the
+  capability checks, the import sources and the default upload folder
 * `uninstall.php` removes every table, option, transient and meta key the
   plugin created
 

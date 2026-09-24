@@ -161,7 +161,13 @@ export function useImportFile() {
             try {
                 document = JSON.parse(await file.text());
             } catch {
-                throw { error: t('importFileNotJson', 'This file is not an export — it could not be read as JSON.') };
+                // The shape a route refuses in, and the code the CLI gives the same file.
+                throw {
+                    error: {
+                        code: 'folderfolio_import_file_unreadable',
+                        message: t('importFileNotJson', 'This file is not an export — it could not be read as JSON.'),
+                    },
+                };
             }
 
             const response = await apiFetch<

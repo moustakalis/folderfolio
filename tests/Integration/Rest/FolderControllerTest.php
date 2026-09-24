@@ -28,7 +28,7 @@ class FolderControllerTest extends WP_UnitTestCase
      */
     public function tree_returns_empty_array(): void
     {
-        $response = rest_do_request(new WP_REST_Request('GET', '/folderfolio/v1/tree'));
+        $response = rest_do_request(new WP_REST_Request('GET', '/folderfolio/v1/folders'));
         $this->assertSame(200, $response->get_status());
         $this->assertTrue($response->get_data()['success']);
     }

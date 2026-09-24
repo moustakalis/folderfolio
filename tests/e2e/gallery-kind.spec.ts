@@ -123,7 +123,7 @@ test.describe('a gallery folder', () => {
                 async ([folder, file]) => {
                     try {
                         await (window as any).wp.apiFetch({
-                            path: '/folderfolio/v1/attachments/assign',
+                            path: '/folderfolio/v1/assignments',
                             method: 'POST',
                             data: { folder_id: folder, attachment_ids: [file] },
                         });

@@ -126,8 +126,9 @@ export function tn(
  * with an `Error`, so there is no `.message` on the first shape at all.
  */
 export function errorMessage(error: unknown): string {
-  // A third shape: the import routes answer `{success: false, error: "…"}`,
-  // the sentence itself where the folder routes put an object.
+  // Every route answers `{success: false, error: {code, message}}` — the
+  // import routes too, since 24 Sep. A bare string is still read, so a
+  // response cached from before that still says something.
   const body = error as { error?: { message?: unknown } | string; message?: unknown } | null;
   const message =
     typeof body?.error === 'string' ? body.error : (body?.error?.message ?? body?.message);

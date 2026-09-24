@@ -231,7 +231,7 @@ class Schema
      * the support inbox asks for it.
      *
      * @param bool $force Rebuild every row, not only rows with an empty path.
-     * @return int Number of rows written.
+     * @return int Number of rows that had drifted, and were changed.
      */
     public function backfillPaths(bool $force = false): int
     {
@@ -291,13 +291,15 @@ class Schema
                 . implode(FolderPath::SEPARATOR, $chain)
                 . FolderPath::SEPARATOR;
 
-            $wpdb->update(
+            // Every row is written; a row whose path and depth were already
+            // right changes nothing, and MySQL counts only rows it changed —
+            // so the number is what had drifted, which is what the CLI and
+            // the facade say it is (24 Sep: it was every folder on the site).
+            $written += (int) $wpdb->update(
                 $table,
                 ['path' => $path, 'depth' => count($chain) - 1],
                 ['id' => $id]
             );
-
-            $written++;
         }
 
         return $written;

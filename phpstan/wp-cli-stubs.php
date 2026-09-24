@@ -78,6 +78,16 @@ namespace {
         }
 
         /**
+         * Print a value in the format asked for — json, yaml, or var_export.
+         *
+         * @param mixed                $value
+         * @param array<string, mixed> $assoc_args
+         */
+        public static function print_value($value, array $assoc_args = []): void
+        {
+        }
+
+        /**
          * @phpstan-return never
          */
         public static function halt(int $code)

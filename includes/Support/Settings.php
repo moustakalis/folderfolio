@@ -448,6 +448,191 @@ final class Settings
     }
 
     /**
+     * Change some settings and keep the rest — WP-CLI's `settings set` and
+     * `POST /settings` (24 Sep, alignment audit item C).
+     *
+     * The form posts every field, so `save()` can sanitise the whole post.
+     * These change one key, or a few, so the stored settings are the starting
+     * point — as stored, without the `folderfolio_settings` filter, which is
+     * a site's code speaking and would be written into the option if it were
+     * read back through `get()`.
+     *
+     * The same `sanitize()` decides every value. What it would quietly turn
+     * into something else — a count mode it does not know becomes the
+     * default, an undo window of 90 becomes 60 — is refused here instead,
+     * with the values it takes: a form cannot send those, and a script that
+     * did would otherwise be told it succeeded.
+     *
+     * `roles` is merged a role at a time: `['editor' => [...]]` changes the
+     * Editor row and leaves every other.
+     *
+     * @param array<string, mixed> $changes
+     *
+     * @return SettingsArray|\WP_Error
+     */
+    public static function change(array $changes): array|\WP_Error
+    {
+        $known = array_keys(self::defaults());
+        $unknown = array_diff(array_keys($changes), $known);
+
+        if ([] !== $unknown) {
+            return new \WP_Error(
+                'folderfolio_setting_unknown',
+                sprintf(
+                    /* translators: 1: the names given, 2: the names there are. */
+                    __('There is no setting called %1$s. The settings are %2$s.', 'folderfolio'),
+                    implode(', ', $unknown),
+                    implode(', ', $known)
+                ),
+                ['status' => 400]
+            );
+        }
+
+        $stored = get_option(self::OPTION, []);
+        $stored = is_array($stored) ? $stored : [];
+
+        if (isset($stored['roles']) && is_array($stored['roles'])) {
+            $seen = isset($stored['abilities']) && is_array($stored['abilities'])
+                ? $stored['abilities']
+                : self::ABILITIES_BEFORE_DOWNLOAD;
+            $stored['roles'] = self::withNewAbilities($stored['roles'], $seen);
+        }
+
+        $current = self::sanitize(array_merge(self::defaults(), $stored));
+        $next = $current;
+
+        foreach ($changes as $key => $value) {
+            $refused = match ($key) {
+                'count_mode' => self::refuseOneOf($key, $value, self::COUNT_MODES),
+                'default_sort' => self::refuseOneOf($key, $value, self::SORTS),
+                'undo_window' => is_numeric($value) && (int) $value >= self::MIN_UNDO && (int) $value <= self::MAX_UNDO
+                    ? null
+                    : sprintf(
+                        /* translators: 1: the fewest seconds, 2: the most. */
+                        __('undo_window is a number of seconds from %1$d to %2$d.', 'folderfolio'),
+                        self::MIN_UNDO,
+                        self::MAX_UNDO
+                    ),
+                'startup_folder' => self::refuseStartupFolder($value),
+                'post_types' => self::refusePostTypes($value, $current['post_types']),
+                'roles' => self::refuseRoles($value),
+                default => null,
+            };
+
+            if (null !== $refused) {
+                return new \WP_Error('folderfolio_setting_invalid', $refused, ['status' => 400]);
+            }
+
+            $next[$key] = 'roles' === $key && is_array($value)
+                ? array_merge($current['roles'], $value)
+                : $value;
+        }
+
+        return self::save($next);
+    }
+
+    /**
+     * @param mixed        $value
+     * @param list<string> $allowed
+     */
+    private static function refuseOneOf(string $key, $value, array $allowed): ?string
+    {
+        return is_string($value) && in_array(strtolower(trim($value)), $allowed, true)
+            ? null
+            : sprintf(
+                /* translators: 1: a setting's name, 2: the values it takes. */
+                __('%1$s is one of %2$s.', 'folderfolio'),
+                $key,
+                implode(', ', $allowed)
+            );
+    }
+
+    /**
+     * Null (no startup folder), 0 (Unassigned) or a media folder that exists.
+     *
+     * @param mixed $value
+     */
+    private static function refuseStartupFolder($value): ?string
+    {
+        if (null === $value || '' === $value || 0 === $value || '0' === $value) {
+            return null;
+        }
+
+        $id = is_numeric($value) ? (int) $value : 0;
+        $folder = $id > 0 ? (new \FolderFolio\Domain\FolderService())->get($id) : null;
+
+        return null !== $folder && PostTypes::MEDIA === $folder->objectType
+            ? null
+            : __('startup_folder is a media folder’s id, 0 for Unassigned, or empty for none.', 'folderfolio');
+    }
+
+    /**
+     * A list of post types the site has — or had, for one already ticked
+     * whose plugin is off for now (`sanitizePostTypes()` keeps those).
+     *
+     * @param mixed        $value
+     * @param list<string> $ticked
+     */
+    private static function refusePostTypes($value, array $ticked): ?string
+    {
+        if (!is_array($value) || !array_is_list($value)) {
+            return __('post_types is a list of post type names, such as post and page. An empty list means media only.', 'folderfolio');
+        }
+
+        foreach ($value as $type) {
+            if (!is_string($type) || (!in_array($type, $ticked, true) && (!post_type_exists($type) || 'attachment' === $type))) {
+                return sprintf(
+                    /* translators: %s: what was given as a post type. */
+                    __('There is no post type called %s that can have folders.', 'folderfolio'),
+                    is_string($type) ? $type : (string) wp_json_encode($type)
+                );
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Each role one the site has, each ability one of ours.
+     *
+     * @param mixed $value
+     */
+    private static function refuseRoles($value): ?string
+    {
+        if (!is_array($value) || [] === $value) {
+            return __('roles maps a role to the abilities it has, such as {"editor": ["create", "assign"]}.', 'folderfolio');
+        }
+
+        $roles = array_keys(wp_roles()->get_names());
+
+        foreach ($value as $role => $abilities) {
+            if (!is_string($role) || !in_array($role, $roles, true)) {
+                return sprintf(
+                    /* translators: 1: a role name, 2: the roles the site has. */
+                    __('There is no role called %1$s on this site. Its roles are %2$s.', 'folderfolio'),
+                    is_string($role) ? $role : (string) wp_json_encode($role),
+                    implode(', ', $roles)
+                );
+            }
+
+            $list = is_array($abilities) ? $abilities : [];
+            $list = array_is_list($list) ? $list : array_keys(array_filter($list, [self::class, 'truthy']));
+            $unknown = array_diff($list, self::ABILITIES);
+
+            if (!is_array($abilities) || [] !== $unknown) {
+                return sprintf(
+                    /* translators: 1: a role name, 2: the abilities there are. */
+                    __('%1$s is given a list of abilities from %2$s. An empty list takes them all away.', 'folderfolio'),
+                    $role,
+                    implode(', ', self::ABILITIES)
+                );
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Give each role an ability the saved matrix never showed, as its default.
      *
      * A core role takes the default row's answer. A role the defaults do not

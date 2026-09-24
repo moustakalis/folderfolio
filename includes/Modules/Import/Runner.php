@@ -170,6 +170,8 @@ final class Runner
             $run->finishedAt = current_time('mysql', true);
             $this->store->save($run);
 
+            do_action('folderfolio_import_finished', $run->toArray());
+
             return $run;
         }
 
@@ -360,6 +362,8 @@ final class Runner
         $run->status = Run::UNDONE;
         $run->finishedAt = current_time('mysql', true);
         $this->store->save($run);
+
+        do_action('folderfolio_import_undone', $run->toArray());
 
         return $run;
     }
@@ -572,6 +576,11 @@ final class Runner
 
         // An uploaded export file is not kept once nothing reads it.
         JsonSource::forget($run->sourceKey);
+
+        // The run as the REST route and `import status` report it — an array,
+        // because `Run` is not part of the public API. Once per run: a
+        // finished run is handed back by step() without coming here again.
+        do_action('folderfolio_import_finished', $run->toArray());
 
         return $run;
     }

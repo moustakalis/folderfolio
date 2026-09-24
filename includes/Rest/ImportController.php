@@ -190,6 +190,7 @@ class ImportController
 
         if (null !== $current && !$current->isFinished()) {
             return $this->fail(
+                'folderfolio_import_in_progress',
                 __('An import is already running. Wait for it to finish, or stop it first.', 'folderfolio'),
                 409
             );
@@ -199,14 +200,14 @@ class ImportController
         $source = JsonSource::fromDocument($document);
 
         if ($source instanceof WP_Error) {
-            return $this->fail($source->get_error_message(), 400);
+            return $this->failWith($source, 400);
         }
 
         /** @var array<string, mixed> $document */
         if (!JsonSource::store($document)) {
             // 507, not 500: the request was fine and the server could not
             // keep what it was given — which is the one thing a host can fix.
-            return $this->fail(JsonSource::refusal($document), 507);
+            return $this->fail('folderfolio_import_file_too_large', JsonSource::refusal($document), 507);
         }
 
         return $this->ok([
@@ -225,6 +226,7 @@ class ImportController
 
         if (null !== $current && !$current->isFinished()) {
             return $this->fail(
+                'folderfolio_import_in_progress',
                 __('An import is already running. Wait for it to finish, or stop it first.', 'folderfolio'),
                 409
             );
@@ -250,11 +252,16 @@ class ImportController
         $source = Catalog::find((string) $request->get_param('source'));
 
         if (null === $source) {
-            return $this->fail(__('That plugin is not one FolderFolio can import from.', 'folderfolio'), 404);
+            return $this->fail(
+                'folderfolio_import_unknown_source',
+                __('That plugin is not one FolderFolio can import from.', 'folderfolio'),
+                404
+            );
         }
 
         if (!$source->hasData()) {
             return $this->fail(
+                'folderfolio_import_no_data',
                 sprintf(
                     /* translators: %s is a plugin name, e.g. FileBird. */
                     __('There is no %s data on this site to import.', 'folderfolio'),
@@ -280,7 +287,11 @@ class ImportController
         $source = Catalog::find((string) $request->get_param('source'));
 
         if (null === $source) {
-            return $this->fail(__('That plugin is not one FolderFolio can import from.', 'folderfolio'), 404);
+            return $this->fail(
+                'folderfolio_import_unknown_source',
+                __('That plugin is not one FolderFolio can import from.', 'folderfolio'),
+                404
+            );
         }
 
         return $this->fromRun($this->runner->start($source));
@@ -304,10 +315,7 @@ class ImportController
     private function fromRun(mixed $result): WP_REST_Response
     {
         if ($result instanceof WP_Error) {
-            $data = $result->get_error_data();
-            $status = is_array($data) && isset($data['status']) ? (int) $data['status'] : 400;
-
-            return $this->fail($result->get_error_message(), $status);
+            return $this->failWith($result, 400);
         }
 
         /** @var \FolderFolio\Modules\Import\Run $result */
@@ -322,9 +330,33 @@ class ImportController
         return new WP_REST_Response(['success' => true, 'data' => $data]);
     }
 
-    private function fail(string $message, int $status): WP_REST_Response
+    /**
+     * The shape every other route answers a refusal in — `{code, message}`.
+     *
+     * Until 24 Sep these routes sent the sentence alone (`'error' => '…'`),
+     * the one place in the REST API a script could not branch on a code
+     * (record `…-24f-api-cli-alignment`).
+     */
+    private function fail(string $code, string $message, int $status): WP_REST_Response
     {
-        return new WP_REST_Response(['success' => false, 'error' => $message], $status);
+        return new WP_REST_Response(
+            ['success' => false, 'error' => ['code' => $code, 'message' => $message]],
+            $status
+        );
+    }
+
+    /**
+     * A WP_Error's own code and message, at its own status when it names one.
+     */
+    private function failWith(WP_Error $error, int $status): WP_REST_Response
+    {
+        $data = $error->get_error_data();
+
+        return $this->fail(
+            (string) $error->get_error_code(),
+            $error->get_error_message(),
+            is_array($data) && isset($data['status']) ? (int) $data['status'] : $status
+        );
     }
 
     /**

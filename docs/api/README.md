@@ -175,6 +175,152 @@ Exact — `COUNT(DISTINCT attachment_id)`, so a file filed twice inside one subt
 (The number on the tree badge is a cheaper roll-up that can differ; see
 `docs/architecture-plan.md` §4.3.)
 
+### Organising
+
+The same changes the rail makes, with the same checks: a lock refuses what it refuses in the
+library (except to a user with the `lock` ability, and except in WP-CLI), and anything that
+files an item asks `edit_post` for it.
+
+#### `duplicateFolder( int $id, ?int $parent = null, bool $withFiles = false ): Folder|WP_Error`
+
+Copies the folder and everything beneath it into `$parent` — `null` is the top level; pass
+`$folder->parentId` for beside the original. The copy is named as the rail names one
+("Brand copy", "Brand copy 2"). With `$withFiles` the copies hold the same files — filed, not
+copied on disk. Returns the copy of the top folder.
+
+#### `reorderFolders( ?int $parent, array $ids ): int|WP_Error`
+
+The whole level under `$parent` (`null` for the top), in the order it should sit — the order
+*Custom order* shows. A folder from another level in the list is moved here first. Errors:
+`folderfolio_reorder_empty`, `folderfolio_reorder_duplicate`, `folderfolio_reorder_mixed`,
+`folderfolio_reorder_stale` (the list is not the level any more).
+
+#### `setFolderColor( int $id, ?string $color ): Folder|WP_Error`
+
+A swatch — `slate`, `red`, `clay`, `ochre`, `moss`, `teal`, `steel`, `indigo`, `plum`, `ink` —
+or a hex, which takes the nearest swatch. `null` clears it. Not stopped by a lock.
+
+#### `setFolderSort( int $id, string $scope, ?string $order ): Folder|WP_Error`
+
+How the folder orders what is inside it. `$scope` is `folders` or `files`; `$order` is
+`name-asc`, `name-desc`, `newest`, `oldest` or `custom`, or `null` to follow each person's own
+sort. Errors: `folderfolio_sort_scope`, `folderfolio_sort_order`.
+
+#### `orderFiles( int $folderId, array $attachmentIds, string $place = 'start', ?int $anchor = null ): int|WP_Error`
+
+Puts files already in the folder at the `start` or `end`, or `before` / `after` the `$anchor`
+file; they keep their order among themselves. The folder's files sort becomes `custom`.
+Errors: `folderfolio_order_place`, `folderfolio_order_not_here`, `folderfolio_order_anchor`.
+
+```php
+FolderFolio::orderFiles( $gallery->id, [ $cover ], 'start' );   // the cover first
+```
+
+#### `lockFolder( int $id, bool $locked = true ): Folder|WP_Error`
+
+A locked folder and everything beneath it cannot be renamed, moved, deleted or filed into by
+anyone without the `lock` ability (`folderfolio_locked`).
+
+#### `pinFolder( int $id, bool $pinned = true ): Folder|WP_Error`
+
+Pinned folders sit at the top of their level, in every sort.
+
+#### `setFolderKind( int $id, string $kind ): Folder|WP_Error`
+
+`gallery` or `folder`. A gallery is a media folder that holds images only; anything else
+filed or uploaded into it is refused with `folderfolio_gallery_images_only`, and making one is
+refused while it holds anything else (`folderfolio_gallery_has_files`). A new gallery shows its
+files in `custom` order. Errors also: `folderfolio_kind_unknown`, `folderfolio_kind_media_only`.
+
+Stars are not here: a star is one person's own shortcut, kept with their other screen
+preferences (`POST /folders/{id}/star`).
+
+### Smart folders
+
+A name and rules, every rule must match — see [Smart folders](#smart-folders-rules) under
+REST for the rules. Media only for now. Returned as arrays:
+`{id, name, object_type, rules, created_by, created_at}`.
+
+#### `getSmartFolders( string $objectType = 'attachment' ): array`
+
+#### `createSmartFolder( string $name, array $rules, string $objectType = 'attachment' ): array|WP_Error`
+
+```php
+FolderFolio::createSmartFolder( 'Recent images', [
+    [ 'field' => 'type', 'op' => 'is',   'value' => 'image' ],
+    [ 'field' => 'date', 'op' => 'last', 'value' => 30 ],
+] );
+```
+
+Errors: `folderfolio_name_required`, `folderfolio_name_too_long`, `folderfolio_duplicate_name`,
+`folderfolio_smart_no_rules`, `folderfolio_smart_too_many` (50), `folderfolio_smart_type`.
+
+#### `updateSmartFolder( int $id, ?string $name = null, ?array $rules = null ): array|WP_Error`
+
+`null` keeps the name, or the rules. Rules given replace them all.
+
+#### `deleteSmartFolder( int $id ): true|WP_Error`
+
+Never touches a file.
+
+#### `getSmartFolderItemIds( int $id ): int[]|WP_Error`
+
+What it matches now, newest first — for the current user, whose `author is me` it is.
+
+#### `countSmartFolderItems( int $id ): int|WP_Error`
+
+The same, as one count — the number beside it in the rail.
+
+### Site upkeep
+
+#### `exportFolders( bool $withAssignments = false ): array`
+
+Every media folder as a document — what *Import → Export* saves and what
+`wp folderfolio import run <file>` reads on another site. Assignments are only useful on a copy
+of this site, where the file ids are the same.
+
+#### `zipFolder( int $id, string $file ): array|WP_Error`
+
+Writes a media folder's ZIP — the download's own archive, without the site's download size
+limit — to `$file`, or into `$file` when it is a directory, under the download's file name.
+Never replaces a file (`folderfolio_zip_exists`). Files the current user may not read are left
+out and counted in `not-included.txt`. Returns `{path, files, bytes, left_out, length}`.
+
+#### `rebuildPaths(): int`
+
+Recomputes every folder's path and depth from its parent. Writes only what has drifted; returns
+how many.
+
+#### `removeOrphans(): int`
+
+Forgets filings of files that were deleted and of folders that are gone — *Status → Remove
+orphaned entries*. Deleting through WordPress already does this; a file removed another way
+leaves its entry. Returns the rows removed.
+
+### Settings
+
+#### `getSettings(): array`
+
+`count_mode`, `default_sort`, `startup_folder`, `undo_window`, `roles` and `post_types`, as
+the settings screen shows them (after the `folderfolio_settings` filter).
+
+#### `updateSettings( array $changes ): array|WP_Error`
+
+Changes the keys given and keeps the rest; `roles` changes the roles named and keeps the
+others. Every value goes through the settings screen's own sanitiser, and a value it would
+quietly replace — an unknown sort, an undo window of 90 — is refused instead, naming what is
+allowed. Errors: `folderfolio_setting_unknown`, `folderfolio_setting_invalid`.
+
+```php
+FolderFolio::updateSettings( [
+    'undo_window' => 10,
+    'roles'       => [ 'author' => [ 'create', 'assign', 'download' ] ],
+] );
+```
+
+`startup_folder` is a media folder's id, `0` for Unassigned, or `null`. `post_types` is a list
+of post types the site has; an empty list means media only.
+
 ### The `Folder` object
 
 Readonly. Public properties:
@@ -214,11 +360,19 @@ do_action( 'folderfolio_folder_duplicated',      Folder $copy, Folder $source, a
 do_action( 'folderfolio_folders_reordered',      array $ids, ?int $parentId );
 do_action( 'folderfolio_folder_marked',          Folder $folder, string $mark, bool $on );  // 'state:locked' | 'state:pinned'
 do_action( 'folderfolio_folder_kind_changed',    Folder $folder, string $kind );            // 'folder' | 'gallery'
+do_action( 'folderfolio_folder_color_changed',   Folder $folder, ?string $previousColor );
+do_action( 'folderfolio_folder_sort_changed',    Folder $folder, string $scope, ?string $order ); // 'folders' | 'files'
+do_action( 'folderfolio_files_ordered',          array $ids, int $folderId );              // the folder's whole order
+do_action( 'folderfolio_smart_folder_saved',     array $smart, bool $created );
+do_action( 'folderfolio_smart_folder_deleted',   int $id, array $smart );
+do_action( 'folderfolio_import_finished',        array $run );                             // as `GET /import/sources` reports it
+do_action( 'folderfolio_import_undone',          array $run );
 ```
 
 These fire from the domain layer, not from the REST controllers, so a folder created through
 WP-CLI, an importer, the REST API or this facade fires the same hooks as one created by a
-click in the media library.
+click in the media library. The folder ones fire once the change is committed — an undone
+change announces nothing.
 
 ```php
 add_action( 'folderfolio_folder_created', function ( $folder ) {
@@ -321,16 +475,17 @@ made at the top.
 
 | Method | Route | Ability |
 |---|---|---|
-| `GET` | `/folders` — `?counts=inherited\|direct\|none&object_type=` | use |
+| **Folders** | | |
+| `GET` | `/folders` — `?counts=inherited\|direct\|none&object_type=`; the tree, nested | use |
 | `POST` | `/folders` — `{name, parent_id?, color?, icon?, object_type?}` | create |
-| `GET` | `/folders/{id}` | use |
+| `GET` | `/folders/{id}` — the folder, its ancestors and its count | use |
 | `PATCH` | `/folders/{id}` — name, colour, icon | rename |
-| `POST` | `/folders/{id}/move` — `{parent_id}` | rename |
 | `DELETE` | `/folders/{id}?children=reparent\|cascade&reassign_to=` | delete |
+| `POST` | `/folders/{id}/move` — `{parent_id}` | rename |
 | `POST` | `/folders/reorder` — `{parent_id?, ids}`, the whole level in order | rename |
 | `POST` | `/folders/{id}/duplicate` — `{parent_id?, with_files?, order?}` | create + rename (+ assign with files) |
-| `POST` | `/folders/{id}/sort` — `{scope: folders\|files, order}` | rename |
-| `POST` | `/folders/{id}/files/order` — `{ids, place, anchor?}` | rename |
+| `POST` | `/folders/{id}/sort` — `{scope: folders\|files, order}`; `order: null` clears it | rename |
+| `POST` | `/folders/{id}/files/order` — `{ids, place: start\|end\|before\|after, anchor?}` | rename |
 | `POST` | `/folders/{id}/lock` — `{locked}` | lock |
 | `POST` | `/folders/{id}/pin` — `{pinned}` | rename |
 | `POST` | `/folders/{id}/kind` — `{kind: folder\|gallery}`; a gallery holds images only (media folders; refused while the folder holds a non-image) | rename |
@@ -341,16 +496,36 @@ made at the top.
 | `GET` | `/folders/{id}/ancestors` | use |
 | `GET` | `/folders/{id}/attachments` — `?include_descendants=1` | use |
 | `GET` | `/counts` — `?object_type=`; every folder's counts and the fixed rows' | use |
-| `POST` | `/assignments` — `{attachment_ids, folder_id, mode}` | assign, and `edit_post` per item |
-| `DELETE` | `/assignments` — `{attachment_ids, folder_id?}` | assign, and `edit_post` per item |
+| **Filing** | | |
+| `POST` | `/assignments` — `{attachment_ids, folder_id, mode: add\|move}` | assign, and `edit_post` per item |
+| `DELETE` | `/assignments` — `{attachment_ids, folder_id?}`; no folder is every folder | assign, and `edit_post` per item |
+| `POST` | `/assignments/move` — `{attachment_ids, source_folder_id, folder_id}`: out of one folder into another, every other folder left alone | assign, and `edit_post` per item |
 | `GET` | `/attachments/{id}/folders` — an item's folders, a file's or a post's | use, for the item's type |
+| **Smart folders** | | |
 | `GET` | `/smart` — `?object_type=`; smart folders, each with its count for the person asking | use |
 | `POST` | `/smart` — `{name, rules, object_type?}` | rename (Organise) |
 | `PATCH` | `/smart/{id}` — `{name?, rules?}` | rename (Organise) |
 | `DELETE` | `/smart/{id}` — never touches a file | rename (Organise) |
 | `POST` | `/smart/preview` — `{rules, object_type?}`, what they would match; writes nothing | use |
+| **Import and export** | | |
+| `GET` | `/export` — `?assignments=1`; the document itself, not enveloped, with its file name in `X-FolderFolio-Filename` | `manage_options` |
+| `POST` | `/import/file` — `{document}`, an export to import from; kept until its run finishes | `manage_options` |
+| `DELETE` | `/import/file` — forget it | `manage_options` |
+| `GET` | `/import/sources` — every source, whether it has data, and the current run | `manage_options` |
+| `GET` | `/import/{source}/plan` — what an import would do; writes nothing | `manage_options` |
+| `POST` | `/import/{source}/start` — begin a run | `manage_options` |
+| `POST` | `/import/run` — the next batch; call until `status` is `done` | `manage_options` |
+| `POST` | `/import/stop` — finish after the current batch | `manage_options` |
+| `POST` | `/import/undo` — undo the last finished run | `manage_options` |
+| **The site** | | |
+| `GET` | `/settings` — the settings, as `FolderFolio::getSettings()` | `manage_options` |
+| `POST` | `/settings` — the keys to change, as `FolderFolio::updateSettings()` | `manage_options` |
+| `POST` | `/repair` — `{tool: rebuild-paths\|remove-orphans}` → `{fixed}` | `manage_options` |
+| `GET` | `/preferences` — the person's own rail: open, width, startup folder, stars | use |
+| `POST` | `/preferences` — `{rail: {…}}`, the keys to change | use |
+| `GET` | `/health` — `{status, version, wordpress, php}` | use |
 
-**Smart folders** (1.0, media first) are a name and rules, every rule must match. A rule is
+<a id="smart-folders-rules"></a>**Smart folders** (1.0, media first) are a name and rules, every rule must match. A rule is
 `{field, op, value}`: `type` `is`/`is_not` `image|video|audio|document`; `date` `last` (days),
 `after` or `before` (`Y-m-d`); `author` `is` a user id or `"me"` — whoever is asking; `size`
 `gt`/`lt` bytes; `filed` `none`, `any`, or `in` a folder id (its subfolders included); `name`
@@ -361,6 +536,14 @@ left is refused. The library filters by one with `?folderfolio_smart={id}`.
 it touched, with fresh counts, so a client redraws from the response instead of fetching
 again; `/folders/bulk` is the exception, returning its plan.
 
+**Every response is `{success, data}`**, and every refusal `{success: false, error: {code,
+message}}` — the codes are the facade's, above. `/export` alone answers with the document
+itself, so a saved response is the file. (Until 24 Sep the import routes sent `error` as the
+sentence alone.)
+
+Every route on this page is held to the routes the plugin registers by a test, both ways — a
+route added without a row here, or a row for a route that is gone, fails the suite.
+
 Browser requests from the admin screens use the `wp_rest` nonce as usual; Application
 Passwords are for everything outside the browser.
 
@@ -369,11 +552,31 @@ Passwords are for everything outside the browser.
 ## WP-CLI
 
 ```
-wp folderfolio folder list [--tree] [--parent=<id>] [--format=table|json|csv|ids]
-wp folderfolio folder create <path> [--porcelain]
+wp folderfolio folder list [--tree] [--parent=<id>] [--object-type=<type>] [--format=table|csv|json|yaml|ids]
+wp folderfolio folder get <id> [--field=<field>] [--format=table|json|yaml]
+wp folderfolio folder create <path> [--object-type=<type>] [--porcelain]
+wp folderfolio folder rename <id> <name>
 wp folderfolio folder move <id> --parent=<id>
+wp folderfolio folder duplicate <id> [--parent=<id>] [--with-files] [--porcelain]
+wp folderfolio folder reorder <ids> [--parent=<id>]
 wp folderfolio folder delete <id> --children=reparent|cascade [--yes]
+wp folderfolio folder color <id> <swatch|hex|none>
+wp folderfolio folder sort <id> folders|files <order|none>
+wp folderfolio folder order-files <id> <file-ids> [--place=start|end|before|after] [--anchor=<file-id>]
+wp folderfolio folder lock <id>
+wp folderfolio folder unlock <id>
+wp folderfolio folder pin <id>
+wp folderfolio folder unpin <id>
+wp folderfolio folder kind <id> gallery|folder
+wp folderfolio folder zip <id> [--output=<path>] [--porcelain]
 wp folderfolio assign <attachment-ids> --folder=<id> [--mode=add|move]
+wp folderfolio unassign <attachment-ids> [--folder=<id>]
+wp folderfolio smart list [--format=table|csv|json|yaml|ids]
+wp folderfolio smart create <name> --rules=<json> [--porcelain]
+wp folderfolio smart update <id> [--name=<name>] [--rules=<json>]
+wp folderfolio smart delete <id> [--yes]
+wp folderfolio smart files <id> [--format=ids|count|table|csv|json]
+wp folderfolio export [--assignments] [--file=<path>]
 wp folderfolio import list [--format=table|csv|json]
 wp folderfolio import preview <source> [--format=table|json]
 wp folderfolio import run <source> [--yes]
@@ -381,28 +584,43 @@ wp folderfolio import resume
 wp folderfolio import status [--format=table|json]
 wp folderfolio import stop
 wp folderfolio import undo [--yes]
+wp folderfolio settings get [<key>] [--format=table|json|yaml]
+wp folderfolio settings set <key> <value>
+wp folderfolio settings set --values=<json>
 wp folderfolio rebuild-paths
+wp folderfolio remove-orphans
 wp folderfolio doctor [--format=table|csv|json|yaml]
 ```
 
-**Filing and importing need a user** — add `--user=<login>`. Each file is
-checked against the person filing it (`edit_post`), as in the library, and
-`import run / resume / stop / undo` also need `manage_options`, as the wizard
-does. A CLI run has no user otherwise, and a lock does not stop it.
+Every command is a caller of the facade above — the same checks, the same refusals, the same
+hooks — and `wp help folderfolio <command>` has each one's options and examples.
+
+**Commands that touch files need a user** — add `--user=<login>`: `assign`, `unassign`,
+`folder order-files`, `folder duplicate --with-files`, `folder zip` (only the files that person
+may read go in), and `smart files` / `smart list`'s counts (an `author is me` rule is theirs).
+Each file is checked against that person (`edit_post`), as in the library, and
+`import run / resume / stop / undo` also need `manage_options`, as the wizard does. A lock does
+not stop a command.
 
 `import` takes a key from `import list` (`filebird`, `real-media-library`,
 `catfolders`, `folders`, `wicked-folders`, `enhanced-media-library`,
 `media-library-assistant`, `wp-media-folder`, `happyfiles`) or the path to a
-FolderFolio export file. It is the wizard's engine — the same plan, the same
-batches, the same run record — so a run started here shows in the wizard and
-undoes from either (since 24 Sep, `b4bd033`).
+FolderFolio export file — `wp folderfolio export` writes one. It is the wizard's engine — the
+same plan, the same batches, the same run record — so a run started here shows in the wizard
+and undoes from either.
 
 `folder create` takes a human path and creates the whole chain, so provisioning a structure
-across a fleet is one line:
+across a fleet is one line; `settings` carries a site's settings to the next:
 
 ```bash
 wp folderfolio folder create 'Clients/Acme/2026' --porcelain
+wp @fleet folderfolio settings set --values="$(wp @template folderfolio settings get --format=json)"
 ```
+
+`settings set` refuses what the settings screen could not send — an unknown sort, an undo
+window of 90, a role or post type the site does not have, a startup folder that is not there —
+and names what is allowed, rather than saving something else. A startup folder is an id, and
+ids differ between sites; `settings set startup_folder none` on the ones that lack it.
 
 No other plugin in this category ships WP-CLI commands at all.
 

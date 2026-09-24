@@ -62,11 +62,14 @@ undoes that run exactly.
   starting folder, undo window, and a per-role matrix of six abilities
 - Bulk-create from a pasted list; export the folder structure and read it back
 - A **Status** tab with a health check and two repairs
-- WP-CLI: `wp folderfolio folder list|create|move|delete`,
-  `wp folderfolio import list|preview|run|resume|status|stop|undo`, plus
-  `assign`, `rebuild-paths` and `doctor`
-- A REST API, a PHP facade, and filters on the capability checks, the import
-  sources and the default upload folder
+- WP-CLI for everything the rail does: `wp folderfolio folder …` (list, get,
+  create, rename, move, duplicate, reorder, delete, color, sort, order-files,
+  lock, pin, kind, zip), `assign`/`unassign`, `smart`, `export`, `import`,
+  `settings get|set`, `rebuild-paths`, `remove-orphans` and `doctor`
+- A REST API and a PHP facade with the same reach, hooks on every change, and
+  filters on the capability checks, the import sources and the default upload
+  folder — `tests/Unit/Support/ApiSurfaceTest.php` and
+  `tests/Integration/Rest/RouteDocsTest.php` hold docs/api to all three
 - `uninstall.php` removes every table, option, transient and meta key the
   plugin created (`tests/Unit/Support/UninstallTest.php` holds it to that)
 
@@ -137,7 +140,8 @@ by construction.
 
 `/wp-json/folderfolio/v1/` — every route, its ability and its arguments are in
 [`docs/api/README.md`](docs/api/README.md). Every response is enveloped as
-`{success, data}`; a failure is `{success: false, error: {code, message}}`.
+`{success, data}`; a failure is `{success: false, error: {code, message}}` — `/export`
+alone answers with the export document itself.
 
 ## Documentation
 

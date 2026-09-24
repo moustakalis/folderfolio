@@ -421,11 +421,11 @@ export function useMoveAttachments() {
             destinationFolderId: number;
         }) => {
             if (input.sourceFolderId !== null) {
-                await apiFetch<ApiEnvelope<unknown>>('/attachments/bulk-move', {
+                await apiFetch<ApiEnvelope<unknown>>('/assignments/move', {
                     method: 'POST',
                     data: {
                         source_folder_id: input.sourceFolderId,
-                        destination_folder_id: input.destinationFolderId,
+                        folder_id: input.destinationFolderId,
                         attachment_ids: input.ids,
                     },
                 });
@@ -434,7 +434,7 @@ export function useMoveAttachments() {
             }
 
             // No source: add a membership, and leave every other one alone.
-            await apiFetch<ApiEnvelope<unknown>>('/attachments/assign', {
+            await apiFetch<ApiEnvelope<unknown>>('/assignments', {
                 method: 'POST',
                 data: {
                     folder_id: input.destinationFolderId,
@@ -707,7 +707,7 @@ export function useAddToFolders() {
     return useMutation({
         mutationFn: async (input: { ids: number[]; folderIds: number[] }) => {
             for (const folderId of input.folderIds) {
-                await apiFetch<ApiEnvelope<{ assigned: number }>>('/attachments/assign', {
+                await apiFetch<ApiEnvelope<{ assigned: number }>>('/assignments', {
                     method: 'POST',
                     data: {
                         folder_id: folderId,

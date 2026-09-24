@@ -153,6 +153,42 @@ class FolderService
     }
 
     /**
+     * Set or clear one of a folder's two orders — tier 1 item 2.
+     *
+     * `FolderSorts::set()` does the writing; this is where the folder is
+     * found and the hook fires, so a sort set from the rail, the facade or
+     * WP-CLI is announced the same way (24 Sep — the route wrote straight to
+     * FolderSorts and nothing heard it). Not guarded by a lock: how a folder
+     * shows what is inside it is not its shape (answer 6, board
+     * 3ZU8VGkJemznTvKp8tNnvY), like its colour.
+     *
+     * @param string      $scope `folders` or `files`.
+     * @param string|null $order One of FolderSorts' orders, or null to follow the global sort.
+     */
+    public function sort(int $id, string $scope, ?string $order): Folder|WP_Error
+    {
+        $folder = $this->get($id);
+
+        if ($folder === null) {
+            return new WP_Error(
+                'folderfolio_folder_not_found',
+                __('Folder not found.', 'folderfolio'),
+                ['status' => 404]
+            );
+        }
+
+        $written = $this->sorts->set($id, $scope, $order);
+
+        if (is_wp_error($written)) {
+            return $written;
+        }
+
+        do_action('folderfolio_folder_sort_changed', $folder, $scope, $order);
+
+        return $folder;
+    }
+
+    /**
      * Make a folder a gallery, or a plain folder again — tier 3 item 14.
      *
      * Media only: a gallery is a folder of images, and a post tree has none.
@@ -530,6 +566,10 @@ class FolderService
 
         if (isset($data['name']) && $data['name'] !== $existing->name) {
             do_action('folderfolio_folder_renamed', $folder, $existing->name);
+        }
+
+        if (array_key_exists('color', $data) && $data['color'] !== $existing->color) {
+            do_action('folderfolio_folder_color_changed', $folder, $existing->color);
         }
 
         return $folder;
@@ -1524,6 +1564,10 @@ class FolderService
             if (is_wp_error($sorted)) {
                 return $sorted;
             }
+
+            Transaction::after(static function () use ($folderId, $rest): void {
+                do_action('folderfolio_files_ordered', $rest, $folderId);
+            });
 
             return count($rest);
         });

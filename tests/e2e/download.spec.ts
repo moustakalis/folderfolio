@@ -28,12 +28,12 @@ async function seed(page: Page) {
         const ids: number[] = media.map((m: { id: number }) => m.id);
 
         await window.wp.apiFetch({
-            path: '/folderfolio/v1/attachments/assign',
+            path: '/folderfolio/v1/assignments',
             method: 'POST',
             data: { folder_id: kitId, attachment_ids: ids.slice(0, 2) },
         });
         await window.wp.apiFetch({
-            path: '/folderfolio/v1/attachments/assign',
+            path: '/folderfolio/v1/assignments',
             method: 'POST',
             data: { folder_id: webId, attachment_ids: ids.slice(2) },
         });

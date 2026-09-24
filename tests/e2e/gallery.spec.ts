@@ -65,7 +65,7 @@ async function seed(page: Page): Promise<Harness> {
         }
 
         await window.wp.apiFetch({
-            path: '/folderfolio/v1/attachments/assign',
+            path: '/folderfolio/v1/assignments',
             method: 'POST',
             data: { folder_id: folderId, attachment_ids: ids },
         });

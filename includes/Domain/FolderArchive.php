@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace FolderFolio\Domain;
 
 use FolderFolio\Support\ZipWriter;
+use WP_Error;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -219,6 +220,87 @@ final class FolderArchive
                     $entries
                 ),
             ])) . '"',
+        ];
+    }
+
+    /**
+     * Write a folder's archive to a file — `wp folderfolio folder zip` and
+     * `FolderFolio::zipFolder()` (24 Sep).
+     *
+     * The same manifest and bytes as the download, without its size limit:
+     * that limit is about one HTTP response on a host that kills long ones,
+     * and a command on the server is the way round it the refusal would
+     * suggest if it could. An existing file is not replaced — pass a path
+     * that is not there yet. A directory gets the download's own file name.
+     *
+     * @return array{path: string, files: int, bytes: int, left_out: int, length: int}|WP_Error
+     */
+    public function toFile(int $folderId, string $path): array|WP_Error
+    {
+        $manifest = $this->manifest($folderId);
+
+        if (null === $manifest) {
+            return new WP_Error(
+                'folderfolio_folder_not_found',
+                __('Folder not found. Only a media folder can be zipped.', 'folderfolio'),
+                ['status' => 404]
+            );
+        }
+
+        if (is_dir($path)) {
+            $path = trailingslashit($path) . $manifest['filename'];
+        }
+
+        if (file_exists($path)) {
+            return new WP_Error(
+                'folderfolio_zip_exists',
+                /* translators: %s: a file path. */
+                sprintf(__('%s is already there. Choose another name, or move that file first.', 'folderfolio'), $path),
+                ['status' => 409]
+            );
+        }
+
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
+        $handle = is_dir(dirname($path)) && is_writable(dirname($path)) ? fopen($path, 'xb') : false;
+
+        if (false === $handle) {
+            return new WP_Error(
+                'folderfolio_zip_unwritable',
+                /* translators: %s: a file path. */
+                sprintf(__('%s could not be written. Check the folder exists and can be written to.', 'folderfolio'), $path),
+                ['status' => 500]
+            );
+        }
+
+        try {
+            $this->write($manifest, static function (string $bytes) use ($handle): void {
+                // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
+                if (false === fwrite($handle, $bytes)) {
+                    throw new \RuntimeException('the disk refused a write');
+                }
+            });
+        } catch (\RuntimeException $error) {
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+            fclose($handle);
+            wp_delete_file($path);
+
+            return new WP_Error(
+                'folderfolio_zip_failed',
+                /* translators: %s: why, in a few words. */
+                sprintf(__('The ZIP could not be finished: %s.', 'folderfolio'), $error->getMessage()),
+                ['status' => 500]
+            );
+        }
+
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+        fclose($handle);
+
+        return [
+            'path' => $path,
+            'files' => $manifest['files'],
+            'bytes' => $manifest['bytes'],
+            'left_out' => $manifest['left_out'],
+            'length' => $manifest['length'],
         ];
     }
 

@@ -27,8 +27,11 @@ use FolderFolio\Domain\AttachmentFolderRepository;
 use FolderFolio\Cli\FolderCommand;
 use FolderFolio\Cli\ImportCommand;
 use FolderFolio\Cli\RootCommand;
+use FolderFolio\Cli\SettingsCommand;
+use FolderFolio\Cli\SmartCommand;
 use FolderFolio\Rest\FolderController;
 use FolderFolio\Rest\PreferenceController;
+use FolderFolio\Rest\SettingsController;
 use FolderFolio\Rest\SmartController;
 use FolderFolio\Support\FileSizes;
 use FolderFolio\Support\UploadRouter;
@@ -179,6 +182,8 @@ final class Plugin
         \WP_CLI::add_command('folderfolio', RootCommand::class);
         \WP_CLI::add_command('folderfolio folder', FolderCommand::class);
         \WP_CLI::add_command('folderfolio import', ImportCommand::class);
+        \WP_CLI::add_command('folderfolio smart', SmartCommand::class);
+        \WP_CLI::add_command('folderfolio settings', SettingsCommand::class);
     }
 
     public function loadTextDomain(): void
@@ -234,6 +239,7 @@ final class Plugin
         (new ImportController())->registerRoutes();
         (new PreferenceController())->registerRoutes();
         (new SmartController())->registerRoutes();
+        (new SettingsController())->registerRoutes();
     }
 
     /**

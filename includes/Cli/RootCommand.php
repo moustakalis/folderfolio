@@ -9,16 +9,16 @@ if (!defined('ABSPATH')) {
 }
 
 use FolderFolio\Database\Doctor;
-use FolderFolio\Database\Schema;
 use WP_CLI;
 use WP_CLI\Utils;
-use WP_Error;
 
 /**
  * FolderFolio maintenance and media filing.
  */
 final class RootCommand
 {
+    use CommandHelpers;
+
     /**
      * File media into a folder.
      *
@@ -50,21 +50,13 @@ final class RootCommand
      */
     public function assign(array $args, array $assoc): void
     {
-        $ids = array_values(array_filter(array_map(
-            'intval',
-            explode(',', (string) ($args[0] ?? ''))
-        )));
+        $ids = $this->ids((string) ($args[0] ?? ''));
 
         if ($ids === []) {
             WP_CLI::error('Give at least one attachment id.');
         }
 
-        // Filing checks each file against the person doing it; a CLI run has
-        // nobody unless --user says who (found building `import`, 24 Sep —
-        // the refusal said only "not allowed to organise").
-        if (0 === get_current_user_id()) {
-            WP_CLI::error('Say who is filing — add --user=<login>. Each file is checked against that person, as in the library.');
-        }
+        $this->needUser('filing');
 
         $result = \FolderFolio::assign(
             $ids,
@@ -72,18 +64,139 @@ final class RootCommand
             (string) ($assoc['mode'] ?? 'add')
         );
 
-        if ($result instanceof WP_Error) {
-            WP_CLI::error(sprintf('%s (%s)', $result->get_error_message(), $result->get_error_code()));
-        }
+        $this->bailOnError($result);
 
         WP_CLI::success(sprintf('Filed %d attachment(s).', $result));
+    }
+
+    /**
+     * Take media out of a folder, or out of every folder.
+     *
+     * The files are not deleted — only unfiled.
+     *
+     * ## OPTIONS
+     *
+     * <ids>
+     * : Comma-separated attachment ids.
+     *
+     * [--folder=<id>]
+     * : The folder to take them out of. Leave it out to take them out of every folder.
+     *
+     * ## EXAMPLES
+     *
+     *     wp folderfolio unassign 12,13 --folder=7 --user=admin
+     *     wp folderfolio unassign 12 --user=admin
+     *
+     * @param list<string>          $args
+     * @param array<string, string> $assoc
+     */
+    public function unassign(array $args, array $assoc): void
+    {
+        $ids = $this->ids((string) ($args[0] ?? ''));
+
+        if ($ids === []) {
+            WP_CLI::error('Give at least one attachment id.');
+        }
+
+        $this->needUser('unfiling');
+
+        $folder = isset($assoc['folder']) ? (int) $assoc['folder'] : null;
+
+        if ($folder !== null && \FolderFolio::getFolder($folder) === null) {
+            WP_CLI::error(sprintf('No folder with id %d.', $folder));
+        }
+
+        $result = \FolderFolio::unassign($ids, $folder);
+
+        $this->bailOnError($result);
+
+        WP_CLI::success($folder === null
+            ? sprintf('Took %d attachment(s) out of every folder.', $result)
+            : sprintf('Took %d attachment(s) out of folder %d.', $result, $folder));
+    }
+
+    /**
+     * Write every media folder to a FolderFolio export file.
+     *
+     * The file Settings → Import → Export saves. Another site reads it with
+     * `wp folderfolio import run <file>`.
+     *
+     * ## OPTIONS
+     *
+     * [--assignments]
+     * : Include which files are in which folder. Only useful on a copy of this site, where the file ids are the same.
+     *
+     * [--file=<path>]
+     * : Where to write it. Without it the document is printed, for a pipe.
+     *
+     * ## EXAMPLES
+     *
+     *     wp folderfolio export --file=folders.json
+     *     wp folderfolio export --assignments > folders.json
+     *
+     * @param list<string>          $args
+     * @param array<string, string> $assoc
+     */
+    public function export(array $args, array $assoc): void
+    {
+        $document = \FolderFolio::exportFolders((bool) Utils\get_flag_value($assoc, 'assignments', false));
+        $json = (string) wp_json_encode($document, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        if (!isset($assoc['file'])) {
+            WP_CLI::line($json);
+
+            return;
+        }
+
+        $file = (string) $assoc['file'];
+
+        if (file_exists($file)) {
+            WP_CLI::error(sprintf('%s is already there. Choose another name, or move that file first.', $file));
+        }
+
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+        if (false === file_put_contents($file, $json . "\n")) {
+            WP_CLI::error(sprintf('%s could not be written.', $file));
+        }
+
+        WP_CLI::success(sprintf(
+            'Wrote %d folder(s)%s to %s.',
+            count((array) ($document['folders'] ?? [])),
+            isset($document['assignments']) && (array) $document['assignments'] !== []
+                ? sprintf(' and %d filing(s)', count((array) $document['assignments']))
+                : '',
+            $file
+        ));
+    }
+
+    /**
+     * Forget files that were deleted, and folders that are gone.
+     *
+     * Settings → Status → Remove orphaned entries. Deleting a file through
+     * WordPress already does this; a file removed another way — straight
+     * from the database, a sync tool — leaves its entry behind.
+     *
+     * ## EXAMPLES
+     *
+     *     wp folderfolio remove-orphans
+     *
+     * @subcommand remove-orphans
+     *
+     * @param list<string>          $args
+     * @param array<string, string> $assoc
+     */
+    public function remove_orphans(array $args, array $assoc): void
+    {
+        $removed = \FolderFolio::removeOrphans();
+
+        WP_CLI::success($removed === 1 ? 'Removed 1 orphaned entry.' : sprintf('Removed %d orphaned entries.', $removed));
     }
 
     /**
      * Recompute every folder's path and depth from parent_id.
      *
      * parent_id is the source of truth, so this can always rebuild the derived
-     * columns. Safe to run at any time; it writes only what has drifted.
+     * columns. Safe to run at any time; it counts only what had drifted.
      *
      * ## EXAMPLES
      *
@@ -96,9 +209,11 @@ final class RootCommand
      */
     public function rebuild_paths(array $args, array $assoc): void
     {
-        $written = (new Schema())->backfillPaths(true);
+        $written = \FolderFolio::rebuildPaths();
 
-        WP_CLI::success(sprintf('Rebuilt %d folder path(s).', $written));
+        WP_CLI::success($written === 0
+            ? 'Every folder’s path already agreed with its parent.'
+            : sprintf('Repaired %d folder path(s) — they agree with their parents again.', $written));
     }
 
     /**

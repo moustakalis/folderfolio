@@ -381,6 +381,37 @@ class FolderController
             ],
         ]);
 
+        // Out of one folder and into another, every other folder the files
+        // are in left alone — what a drag from a folder does. `mode: move` on
+        // /assignments takes them out of *every* folder, which is not that.
+        // `folder_id` is the destination, spelled as on /assignments, so the
+        // tree it is asked for is the destination's (it was
+        // /attachments/bulk-move until 24 Sep, with /attachments/assign,
+        // /attachments/unassign and /tree beside it — aliases the rail still
+        // called under a comment calling them unused).
+        register_rest_route($ns, '/assignments/move', [
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => [$this, 'bulkMove'],
+            'permission_callback' => [$this, 'canAssignFiles'],
+            'args' => [
+                'source_folder_id' => [
+                    'type' => 'integer',
+                    'required' => true,
+                    'sanitize_callback' => 'absint',
+                ],
+                'folder_id' => [
+                    'type' => 'integer',
+                    'required' => true,
+                    'sanitize_callback' => 'absint',
+                ],
+                'attachment_ids' => [
+                    'type' => 'array',
+                    'required' => true,
+                    'items' => ['type' => 'integer'],
+                ],
+            ],
+        ]);
+
         register_rest_route($ns, '/attachments/(?P<id>\d+)/folders', [
             'methods' => WP_REST_Server::READABLE,
             'callback' => [$this, 'attachmentFolders'],
@@ -393,63 +424,6 @@ class FolderController
             'permission_callback' => [$this, 'canUseFolders'],
         ]);
 
-        $this->registerLegacyRoutes($ns);
-    }
-
-    /**
-     * Routes the shipped JavaScript still calls.
-     *
-     * Undocumented and unsupported: they exist only so the current admin
-     * bundles keep working until the React app replaces them, and they are
-     * removed in the same change that lands it. Nothing outside this plugin
-     * should call them — docs/api/README.md lists the supported surface.
-     *
-     * @deprecated 1.0.0
-     */
-    private function registerLegacyRoutes(string $ns): void
-    {
-        register_rest_route($ns, '/tree', [
-            'methods' => WP_REST_Server::READABLE,
-            'callback' => [$this, 'tree'],
-            'permission_callback' => [$this, 'canUseFolders'],
-        ]);
-
-        register_rest_route($ns, '/attachments/assign', [
-            'methods' => WP_REST_Server::CREATABLE,
-            'callback' => [$this, 'assign'],
-            'permission_callback' => [$this, 'canAssignFiles'],
-            'args' => $this->assignmentArguments(true),
-        ]);
-
-        register_rest_route($ns, '/attachments/unassign', [
-            'methods' => WP_REST_Server::CREATABLE,
-            'callback' => [$this, 'unassign'],
-            'permission_callback' => [$this, 'canAssignFiles'],
-            'args' => $this->assignmentArguments(false),
-        ]);
-
-        register_rest_route($ns, '/attachments/bulk-move', [
-            'methods' => WP_REST_Server::CREATABLE,
-            'callback' => [$this, 'bulkMove'],
-            'permission_callback' => [$this, 'canAssignFiles'],
-            'args' => [
-                'source_folder_id' => [
-                    'type' => 'integer',
-                    'required' => true,
-                    'sanitize_callback' => 'absint',
-                ],
-                'destination_folder_id' => [
-                    'type' => 'integer',
-                    'required' => true,
-                    'sanitize_callback' => 'absint',
-                ],
-                'attachment_ids' => [
-                    'type' => 'array',
-                    'required' => true,
-                    'items' => ['type' => 'integer'],
-                ],
-            ],
-        ]);
     }
 
     public function canDownloadFolders(WP_REST_Request $request): bool
@@ -674,7 +648,7 @@ class FolderController
     {
         $order = $request->get_param('order');
 
-        $result = (new FolderSorts())->set(
+        $result = $this->folders->sort(
             (int) $request['id'],
             (string) $request->get_param('scope'),
             // An empty string arrives from a form post that means "clear it";
@@ -921,7 +895,7 @@ class FolderController
     {
         $result = $this->folders->moveAttachments(
             (int) $request['source_folder_id'],
-            (int) $request['destination_folder_id'],
+            (int) $request['folder_id'],
             $this->integerList($request->get_param('attachment_ids'))
         );
 
