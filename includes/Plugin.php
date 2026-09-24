@@ -22,6 +22,7 @@ use FolderFolio\Admin\PluginsRow;
 use FolderFolio\Admin\Rail;
 use FolderFolio\Admin\SettingsPage;
 use FolderFolio\Blocks\Gallery;
+use FolderFolio\Database\Network;
 use FolderFolio\Database\Schema;
 use FolderFolio\Domain\AttachmentFolderRepository;
 use FolderFolio\Cli\FolderCommand;
@@ -65,8 +66,42 @@ final class Plugin
 
     /**
      * Runs once on activation, via register_activation_hook().
+     *
+     * WordPress fires the hook once, on the site it is called from, even when
+     * the plugin is activated for a whole network — so a network activation
+     * installs every site here (review item #27). Sites made later are
+     * installed by `Database\Network` on `wp_initialize_site`.
+     *
+     * A large network (over 10,000 sites, core's own line) is not looped: one
+     * request cannot create forty thousand tables. Each of those sites gets
+     * its tables from `maybeUpgradeSchema()` on its first admin load instead,
+     * which is the same path a plugin update takes.
+     *
+     * @param bool|mixed $networkWide
      */
-    public static function activate(): void
+    public static function activate($networkWide = false): void
+    {
+        if ($networkWide && is_multisite()) {
+            if (wp_is_large_network('sites')) {
+                return;
+            }
+
+            foreach (get_sites(['fields' => 'ids', 'number' => 0]) as $siteId) {
+                switch_to_blog((int) $siteId);
+                self::install();
+                restore_current_blog();
+            }
+
+            return;
+        }
+
+        self::install();
+    }
+
+    /**
+     * This site's tables and schema version. Idempotent: dbDelta compares.
+     */
+    public static function install(): void
     {
         (new Schema())->migrate();
 
@@ -83,6 +118,12 @@ final class Plugin
         // Not on plugins_loaded: that would run dbDelta on the first front-end
         // request after an update, for whoever happens to arrive first.
         add_action('admin_init', [$this, 'maybeUpgradeSchema']);
+
+        // A site added to a network the plugin is active on, and a site
+        // deleted from one — review item #27.
+        if (is_multisite()) {
+            (new Network())->register();
+        }
 
         add_action('init', [$this, 'loadTextDomain']);
 
@@ -259,9 +300,7 @@ final class Plugin
             return;
         }
 
-        (new Schema())->migrate();
-
-        update_option(self::DB_VERSION_OPTION, self::DB_VERSION);
+        self::install();
 
         delete_transient(self::UPGRADE_LOCK);
     }

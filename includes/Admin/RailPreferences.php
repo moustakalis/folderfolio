@@ -221,7 +221,13 @@ final class RailPreferences
      */
     public static function forUser(int $userId): array
     {
-        $stored = get_user_meta($userId, self::META_KEY, true);
+        // A user option, not plain user meta: on a network one person has
+        // one row of user meta for every site, and a star or a starting
+        // folder is a folder *id* — site 2's folder 12 is a different folder
+        // from site 1's, or none. `get_user_option()` reads this site's
+        // prefixed key and falls back to the unprefixed one, which is where
+        // every value written before 25 Sep lives (review item #27).
+        $stored = get_user_option(self::META_KEY, $userId);
 
         if (!is_array($stored)) {
             $stored = [];
@@ -240,7 +246,15 @@ final class RailPreferences
     {
         $clean = self::sanitize($raw);
 
-        update_user_meta($userId, self::META_KEY, $clean);
+        update_user_option($userId, self::META_KEY, $clean);
+
+        // The unprefixed row is the fallback forUser() reads. On a single
+        // site it is this site's own older copy, spent once the prefixed one
+        // exists; on a network it may be the only value another site has, so
+        // it stays there.
+        if (!is_multisite()) {
+            delete_user_meta($userId, self::META_KEY);
+        }
 
         return $clean;
     }

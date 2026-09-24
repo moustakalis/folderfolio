@@ -50,7 +50,10 @@ function folderfolio_uninstall_site(): void
     delete_option('folderfolio_import_file');
     delete_option('folderfolio_import_run');
 
-    // Each person's rail: width, collapsed, stars, starting folder.
+    // Each person's rail: width, collapsed, stars, starting folder. A user
+    // option since 25 Sep, so each site's copy carries that site's prefix;
+    // the unprefixed row is the older form (and a single site's fallback).
+    delete_metadata('user', 0, $wpdb->get_blog_prefix() . 'folderfolio_rail', '', true);
     delete_metadata('user', 0, 'folderfolio_rail', '', true);
 
     delete_option('folderfolio_db_version');

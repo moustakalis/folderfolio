@@ -13,6 +13,21 @@ if (!defined('ABSPATH')) {
 
 class Schema
 {
+    /**
+     * Every table migrate() creates, without the site's prefix.
+     *
+     * Named once so that a site deleted from a network takes them with it
+     * (`Database\Network::dropTables()`). uninstall.php keeps its own copy —
+     * it runs without the autoloader — and `SchemaTablesTest` holds the two
+     * and migrate() to one list.
+     */
+    public const TABLES = [
+        'folderfolio_folders',
+        'folderfolio_attachment_folders',
+        'folderfolio_folder_meta',
+        'folderfolio_user_preferences',
+    ];
+
     public function migrate(): void
     {
         global $wpdb;

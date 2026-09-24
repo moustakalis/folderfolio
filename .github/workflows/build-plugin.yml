@@ -124,13 +124,20 @@ jobs:
           retention-days: 30
 
   php-tests:
-    name: PHP Tests
+    name: PHP Tests (${{ matrix.php }}${{ matrix.multisite == '1' && ', multisite' || '' }})
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
         php: ['8.1', '8.2', '8.3', '8.4']
+        multisite: ['0']
+        # One leg on a network (review item #27): the tables a network
+        # activation, a new site and a deleted site each owe. NetworkTest is
+        # skipped everywhere else, and the rest of the suite runs here too.
+        include:
+          - php: '8.3'
+            multisite: '1'
 
     services:
       mysql:
@@ -243,3 +250,4 @@ jobs:
         run: composer run test:integration
         env:
           WP_TESTS_DIR: ${{ github.workspace }}/var/wp-tests-lib
+          WP_MULTISITE: ${{ matrix.multisite }}
