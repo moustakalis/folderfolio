@@ -3027,6 +3027,22 @@ the inspector even when the markup is there. `gallery-kind.spec.ts` and
 it.** The calls run together; on 24 Sep the device received the previous
 version of `item14-b.patch` and `git apply` refused it. Write, then send.
 
+**A sentence is a claim, and claims go stale.** On 24 Sep the settings
+screen still promised a × the crumb row lost a month before, the readme
+described 19 Sep's plugin, the no-JavaScript notice named a CLI command that
+never existed, and `uninstall.php` kept five things the readme said it
+removes (`1fec1b2`, `64193c4`). Three guards now read the source:
+`SettingsCopyTest` (the Opens in sentence names the rail's own button
+labels; the Status counts per tree), `UninstallTest` (every stored key
+constant is removed on uninstall) and `ScreenStringsTest` (every `t()` string
+is in a PHP i18n map and its English fallback is that string). **When a
+feature changes a control's name or a rule, grep the copy for the old one.**
+
+**A straight apostrophe inside a single-quoted PHP string is a parse error
+that takes the whole plugin down** — the integration run and all 116 e2e
+failed on "file's". The plugin's copy uses ’ throughout; so should a new
+string.
+
 **An outline on a parent is painted under a positioned child.** The smart
 item's outline computed as solid and showed only round the pencil: the row
 button is `position: relative`. Draw a ring that has to cover children as a
