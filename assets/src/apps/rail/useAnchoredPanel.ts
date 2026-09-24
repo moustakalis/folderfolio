@@ -158,12 +158,28 @@ export function useAnchoredPanel<T extends HTMLElement>(
 
         place();
 
+        /*
+         * Placed again when the panel's contents change — the ⋮ menu's second
+         * steps are shorter than its first. Sized to the first step and slid
+         * or flipped to fit it, a Colour or Subfolders step kept that top and
+         * floated clear of its row (Nick, 24 Sep). A MutationObserver rather
+         * than a ResizeObserver: the box is clamped to the room last measured,
+         * so going back to a taller step does not resize it — its contents
+         * change all the same.
+         */
+        const contents = ref.current ? new MutationObserver(place) : null;
+
+        if (contents && ref.current) {
+            contents.observe(ref.current, { childList: true, subtree: true });
+        }
+
         window.addEventListener('resize', place);
         // Captured, because the thing that scrolls is usually an ancestor
         // rather than the window — the list table's own overflow, most often.
         window.addEventListener('scroll', place, true);
 
         return () => {
+            contents?.disconnect();
             window.removeEventListener('resize', place);
             window.removeEventListener('scroll', place, true);
         };

@@ -1,6 +1,7 @@
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { get } from 'node:http';
+import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 /**
@@ -61,6 +62,26 @@ function stagePlugin(): string {
   });
 
   return staged;
+}
+
+/**
+ * The Blueprint that gives Playground the media library the suite expects.
+ *
+ * The container's rig imports four PNGs in tests/e2e/rig/setup.sh; Playground
+ * boots with an empty library, and every spec that files, orders or zips a
+ * file failed in CI for want of one (24 Sep). The seed is a PHP file so it
+ * can be read and linted as PHP; the Blueprint is written at boot around it.
+ */
+function mediaBlueprint(): string {
+  const code = readFileSync(join(root, 'tests/e2e/playground/seed-media.php'), 'utf8');
+  const path = join(mkdtempSync(join(tmpdir(), 'folderfolio-e2e-')), 'blueprint.json');
+
+  // `login` as well: a Blueprint replaces the CLI's own steps, and with one
+  // passed, `--login` alone left every page on wp-login.php (found running
+  // this in the container, 24 Sep).
+  writeFileSync(path, JSON.stringify({ login: true, steps: [{ step: 'runPHP', code }] }));
+
+  return path;
 }
 
 /**
@@ -133,6 +154,8 @@ export default async function globalSetup(): Promise<(() => Promise<void>) | voi
       '--auto-mount',
       stagePlugin(),
       '--login',
+      '--blueprint',
+      mediaBlueprint(),
       '--verbosity',
       'quiet',
     ],

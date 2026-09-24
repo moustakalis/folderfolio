@@ -37,6 +37,21 @@ test.describe('the folder rail', () => {
         ]);
     });
 
+    // WordPress 7.x's media grid clears the address bar when it starts its
+    // history: its router's reset empties the search field, and the field's
+    // handler navigates to a bare upload.php (found through CI on 24 Sep —
+    // Playground is 7.x, the container's rig 6.8.2, where this held anyway).
+    test('a folder in the address bar is still there once the grid has loaded', async ({ page }) => {
+        const folder = await createFolder(page, 'Addressed');
+
+        await page.goto(`/wp-admin/upload.php?mode=grid&folderfolio_folder=${folder.id}`);
+        await waitForTree(page, 'Addressed');
+        // Core's search handler is throttled to a second.
+        await page.waitForTimeout(1500);
+
+        expect(new URL(page.url()).searchParams.get('folderfolio_folder')).toBe(String(folder.id));
+    });
+
     test('shows All media and Unassigned above the tree', async ({ page }) => {
         const fixed = page.locator('.folderfolio-rail__fixed .folderfolio-row');
 
@@ -789,6 +804,21 @@ test.describe('cut, copy and paste', () => {
         expect(geometry.bottom).toBeLessThanOrEqual(520 - 8 + 0.5);
         expect(geometry.scrolls).toBe(false);
         expect(geometry.deleteInside).toBe(true);
+
+        // A second step is shorter, and it is placed again: against its row,
+        // not left where the first step had to slide to (Nick, 24 Sep — the
+        // Subfolders step floated at the top of the window).
+        await page.locator('.folderfolio-menu--row').getByRole('menuitem', { name: /subfolders/i }).click();
+        await expect(page.locator('.folderfolio-menu__back')).toBeVisible();
+
+        const step = await page.evaluate(() => {
+            const menu = document.querySelector('.folderfolio-menu--row')!.getBoundingClientRect();
+            const trigger = document.querySelector('[aria-selected="true"] .folderfolio-row__menu')!.getBoundingClientRect();
+
+            return { below: Math.abs(menu.top - (trigger.bottom + 2)), above: Math.abs(menu.bottom - (trigger.top - 2)) };
+        });
+
+        expect(Math.min(step.below, step.above)).toBeLessThan(1);
     });
 });
 

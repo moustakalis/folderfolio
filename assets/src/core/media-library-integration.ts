@@ -7,6 +7,7 @@
  * level of it including All media is a way back out.
  */
 
+import { keepFilterInGridUrl } from '../lib/filter';
 import { hasListTable, refreshListTable } from '../lib/list-refresh';
 
 interface FolderSelectedDetail {
@@ -67,6 +68,11 @@ function start(): void {
         }
     });
 }
+
+// Now, not on DOMContentLoaded: this script is deferred, so media-grid.js has
+// run and its Router exists, and the grid starts its history only after its
+// first query — well after this.
+keepFilterInGridUrl();
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', start, { once: true });

@@ -102,6 +102,59 @@ export function urlForFolder(folderId: number | null, smartId: number | null = n
 }
 
 /**
+ * Keep the folder in the address bar when core's media grid rewrites it.
+ *
+ * The grid's Backbone router has a route for plain `upload.php` whose handler
+ * empties the search field and fires `input`, and the search field's handler
+ * navigates to `upload.php` — no query — whenever the field is empty. On
+ * WordPress 7.x that runs when the grid starts its history, so an arrival at
+ * `upload.php?folderfolio_folder=12` showed folder 12 under an address bar
+ * that said `upload.php`: a reload lost the folder, and a shared link was
+ * nothing (found through CI on 24 Sep: WordPress Playground is 7.x, the
+ * container's rig 6.8.2; the dev site's "something rewrites location.search
+ * after load" was this).
+ *
+ * Only the bare `upload.php` navigation gets our keys back. Core's own
+ * `?item=` and `?search=` URLs are matched by routes whose values run to the
+ * end of the string, so a key of ours after theirs would be read as part of
+ * the search term on a reload; those stay core's.
+ */
+export function keepFilterInGridUrl(): void {
+    type Navigate = (fragment: string, options?: unknown) => unknown;
+    const Router = (window.wp?.media?.view as { MediaFrame?: { Manage?: { Router?: { prototype: Record<string, unknown> } } } } | undefined)
+        ?.MediaFrame?.Manage?.Router;
+    const proto = Router?.prototype;
+
+    if (!proto || typeof proto.navigate !== 'function' || proto.folderfolioKeepsUrl) {
+        return;
+    }
+
+    const navigate = proto.navigate as Navigate;
+
+    proto.navigate = function (this: unknown, fragment: string, options?: unknown) {
+        if (fragment === 'upload.php') {
+            const here = new URL(window.location.href).searchParams;
+            const kept = new URLSearchParams();
+
+            for (const key of [FOLDER_QUERY_VAR, SMART_QUERY_VAR]) {
+                const value = here.get(key);
+
+                if (value !== null) {
+                    kept.set(key, value);
+                }
+            }
+
+            const query = kept.toString();
+
+            return navigate.call(this, query === '' ? fragment : `${fragment}?${query}`, options);
+        }
+
+        return navigate.call(this, fragment, options);
+    };
+    proto.folderfolioKeepsUrl = true;
+}
+
+/**
  * A media collection shows a folder in the order the server sent it.
  *
  * Core's attachment collections sort themselves in the browser: the grid's
