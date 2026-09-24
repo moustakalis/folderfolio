@@ -1808,6 +1808,55 @@ a selected smart item puts its count and pencil where a tree row's count
 and ⋮ are, and its ring is an `::after` layer over both buttons. The picker
 keeps its own 8px rows.
 
+### The release track, begun (24 Sep — `ce55b40`, `3ced84d`, `7fb0c73`)
+
+Record: `claude/progress-2026-09-24h-the-release-track-begins.md`.
+
+**Multisite (review #27).** `Plugin::activate($networkWide)` installs every
+site (a large network installs on each site's first admin load instead);
+`Database\Network` installs a site made later (`wp_initialize_site`, 200) when
+the plugin is network-active and adds our tables to `wpmu_drop_tables`.
+`Schema::TABLES` is the one list, held to `migrate()` and `uninstall.php` by
+`SchemaTablesTest`. **A person's rail is a user option** — per site, because a
+star and a starting folder are folder ids and user meta is shared across a
+network; the unprefixed row is still read as the fallback. `NetworkTest` runs
+under `WP_MULTISITE=1`, and CI has a multisite leg.
+
+**#29.** `build-zip.sh` checks names with `zipinfo -1` (the old `awk '{print
+$4}'` saw the first word of a name with a space). `.distignore` is gone —
+packaging is `stage-plugin.sh`'s allowlist.
+
+**Plugin Check is 0** (493 findings, 255 errors on its first run) and CI runs
+it on the built ZIP. Table and column names in SQL are `%i`; an ignore is one
+line, names the sniff and says why. The sniff only knows a variable called
+`$wpdb`, so methods using `$this->wpdb` alias it. Two placeholders are
+`%1$s/%2$s`; a translator comment is a `/* translators: */` line directly above
+the call; one English string with two meanings is `_x()`. `array_is_list()` is
+spelled `array_values($x) === $x` (Plugin Check counts it as WP 6.5's
+polyfill). No `load_plugin_textdomain()` — core loads wp.org language packs.
+
+**`languages/folderfolio.pot`** (528 strings) is committed, and **CI fails if
+it is stale** — regenerate it whenever a PHP string changes:
+
+```
+wp i18n make-pot . languages/folderfolio.pot --slug=folderfolio --domain=folderfolio \
+  --exclude=assets,node_modules,vendor,tests,tools,design,docs,var,dist,phpstan,public,bin \
+  --headers='{"Report-Msgid-Bugs-To":"https://github.com/moustakalis/folderfolio/issues"}'
+```
+
+**The readme's two claims are written** — *It never filters your library
+unless you pick a folder*, and *Paid elsewhere, free here* (fifteen features,
+by feature, never by vendor).
+
+**Open, awaiting Nick:** the narrow sheet, whose folder list Starred and Smart
+squeezed to 31.8px at a 669px-tall window (board `NF7bQktuksgBSi4rCfoLvf`);
+review #24, core's status links inside a folder (board
+`JNf58KfGsi2o8qdVU5Jjcf`); client-side plurals; testing `Requires at least:
+6.4`; the unused `folderfolio_user_preferences` table; tags; screenshots.
+
+Checks at `7fb0c73`: PHPStan clean, unit 173, integration 159 / 159 on one
+site and on a network, e2e 119 / 119 (rig), JS unit 61, Plugin Check 0.
+
 ### Stress tests
 
 `tests/stress/import.php` and `tests/stress/ops.php`, run with `wp
@@ -3083,6 +3132,16 @@ a row that is not in its section.** `rail.spec`'s sort-panel test counted
 every `.folderfolio-menu__value`; the Gallery row has one too. Scope a count
 to the rows it means.
 
+**Inside a WordPress test every CREATE TABLE is a temporary table**, and
+`SHOW TABLES` does not list those — ask `SHOW COLUMNS FROM`. **Making a site
+commits** (its tables are DDL), so undo a network option after
+`parent::tear_down()`, not before. **A network shares one user's meta across
+every site** — anything per user that names a site's object is a user option.
+
+**Anything added above the rail's search line takes height from the folder
+list.** On the narrow sheet (capped at 75dvh) Starred and Smart left it 31.8px
+at a 669px-tall window.
+
 ## Which document is which
 
 | Document | What it is | Still authoritative? |
@@ -3091,7 +3150,7 @@ to the rows it means.
 | `architecture-plan.md` | Decisions, data model, REST surface, importers, developer API, gallery block, the ten phases to 1.0 | **Yes — the roadmap** |
 | `m2-importer-matrix.md` | Verified schemas and detection keys per migration source | Yes, when the importers are rewritten |
 | `research/01..04-*.md` | FileBird, Real Media Library, Folders, CatFolders — measured live and read from source | Background, and the reason for several decisions |
-| `deep-review-2026-09-16.md` | 29 numbered findings against 0.2.0 | Partly — #15 is closed; #24, #26, #27, #28 and #29 are still open |
+| `deep-review-2026-09-16.md` | 29 numbered findings against 0.2.0 | Partly — #24 is the one still open (awaiting Nick); #26–#29 closed, #27 and #29 on 24 Sep |
 | *(Claude project)* `plan-1.0-features.md` | The fourteen features 1.0 grew to hold, in three tiers | **Yes — the authority for scope** |
 | *(Claude project)* `plan-1.0-tier-1.md` | The seven the tree needs, with the source read against each; six built, one left | **Yes — the brief for the current work** |
 | *(Claude project)* `progress-2026-09-22e-the-answers.md` | Nick's answers, and the features they put into 1.0 | Yes |
