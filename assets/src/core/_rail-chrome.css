@@ -480,25 +480,15 @@
 /* ------------------------------------------- the Smart group — item 13 */
 
 /**
- * Saved views, under Starred and above the tree. The same rows and the same
- * five-then-scroll list as Starred; its own heading line, because Organise
- * holders get a + at its end. A grid rather than flex: label, then the
- * button, on one track each.
+ * Saved views, under Starred and above the tree. The same heading, rows and
+ * five-then-scroll list as Starred, and for Organise holders one compact
+ * *New smart folder* row after the list (below).
  */
 .folderfolio-rail__smart {
   display: grid;
   border-bottom: 1px solid var(--ff-line);
 }
 
-.folderfolio-rail__smart-head {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  /* The + stands where the pencil does, and a tree row's ⋮ (274–298px). */
-  padding-inline-end: 10px;
-}
-
-.folderfolio-rail__smart-add,
 .folderfolio-rail__smart-edit {
   display: grid;
   place-items: center;
@@ -511,13 +501,11 @@
   cursor: pointer;
 }
 
-.folderfolio-rail__smart-add:hover,
 .folderfolio-rail__smart-edit:hover {
   background: var(--ff-hover);
   color: var(--ff-ink);
 }
 
-.folderfolio-rail__smart-add:focus-visible,
 .folderfolio-rail__smart-edit:focus-visible {
   outline: 2px solid var(--ff-sel);
   outline-offset: -2px;
@@ -582,8 +570,26 @@
   color: var(--ff-muted);
 }
 
-.folderfolio-rail__smart-row--new .folderfolio-row__name {
+/*
+ * *New smart folder* — a compact row after the list, for Organise (Nick,
+ * 24 Sep: option C, "as small as possible"). 24px is the floor WCAG 2.5.8
+ * sets for a target; the + sits in the icon column and the words in the
+ * name column, so it reads as part of the list without being one of its
+ * rows. Two classes: `.folderfolio-row` sets the 36px height in _row.css.
+ */
+.folderfolio-row.folderfolio-rail__smart-new {
+  height: 24px;
   color: var(--ff-accent-text);
+}
+
+.folderfolio-rail__smart-new .folderfolio-row__icon {
+  display: grid;
+  place-items: center;
+  color: inherit;
+}
+
+.folderfolio-rail__smart-new .folderfolio-row__name {
+  font-size: 12px;
 }
 
 /* ------------------------------------------- the smart-folder editor */

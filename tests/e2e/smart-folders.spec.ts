@@ -86,6 +86,16 @@ test.describe('smart folders', () => {
             const [fixedIcon, smartIcon] = await iconLefts(page, '.folderfolio-rail__smart-row');
             expect(smartIcon).toBe(fixedIcon);
 
+            // With a smart folder saved, the way to make another is still the
+            // compact row after the list, not a + in the heading (Nick, 24 Sep,
+            // option C "as small as possible"): 24px, its + in the icon column.
+            const newRow = group.locator('.folderfolio-rail__smart-new');
+            await expect(newRow).toHaveText('New smart folder');
+            expect((await newRow.boundingBox())!.height).toBe(24);
+            const [, newIcon] = await iconLefts(page, '.folderfolio-rail__smart-new');
+            expect(newIcon).toBe(fixedIcon);
+            await expect(group.locator('.folderfolio-rail__starred-label button')).toHaveCount(0);
+
             // One selected pattern in the rail (Nick, 24 Sep): a selected smart
             // row, All media and a tree row are the same full-width box, and
             // the focus ring goes round the smart row and its pencil together.

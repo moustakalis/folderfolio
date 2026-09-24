@@ -7,10 +7,9 @@
  * not drop targets: nothing is filed into a rule. The dashed icon says so
  * before anyone tries.
  *
- * Made and changed by roles with Organise. For them an empty group is one
- * row, *New smart folder*, rather than a heading over nothing; for everyone
- * else an empty group is nothing at all, so no rail changes until somebody
- * saves a view.
+ * Made and changed by roles with Organise. For them the group ends with a
+ * compact *New smart folder* row, empty or not; for everyone else an empty
+ * group is nothing at all, so no rail changes until somebody saves a view.
  */
 
 import { useEffect, useState } from 'react';
@@ -46,37 +45,13 @@ export function SmartGroup({ nodes }: { nodes: readonly FolderNode[] }) {
 
     return (
         <div className="folderfolio-rail__smart" role="group" aria-label={t('smartGroup', 'Smart folders')}>
-            <div className="folderfolio-rail__smart-head">
-                <p className="folderfolio-rail__starred-label" aria-hidden="true">
-                    {t('smartLabel', 'Smart')}
-                </p>
-                {organise && items.length > 0 ? (
-                    <button
-                        type="button"
-                        className="folderfolio-rail__smart-add"
-                        title={t('newSmartFolder', 'New smart folder')}
-                        aria-label={t('newSmartFolder', 'New smart folder')}
-                        onClick={() => setEditing('new')}
-                    >
-                        <PlusIcon size={12} />
-                    </button>
-                ) : null}
-            </div>
+            <p className="folderfolio-rail__starred-label" aria-hidden="true">
+                {t('smartLabel', 'Smart')}
+            </p>
 
-            <div className="folderfolio-rail__starred-list">
-                {items.length === 0 ? (
-                    <button
-                        type="button"
-                        className="folderfolio-row folderfolio-rail__fixed-row folderfolio-rail__smart-row folderfolio-rail__smart-row--new"
-                        onClick={() => setEditing('new')}
-                    >
-                        <span className="folderfolio-row__icon">
-                            <SmartFolderIcon />
-                        </span>
-                        <span className="folderfolio-row__name">{t('newSmartFolder', 'New smart folder')}</span>
-                    </button>
-                ) : (
-                    items.map((item) => {
+            {items.length === 0 ? null : (
+                <div className="folderfolio-rail__starred-list">
+                    {items.map((item) => {
                         const selected = smartId === item.id;
 
                         return (
@@ -110,9 +85,31 @@ export function SmartGroup({ nodes }: { nodes: readonly FolderNode[] }) {
                                 ) : null}
                             </div>
                         );
-                    })
-                )}
-            </div>
+                    })}
+                </div>
+            )}
+
+            {/*
+              The way to make one, for Organise, whether the group is empty or
+              not: a compact row after the list, outside its scroll so it never
+              scrolls away. It replaced a + in the heading (Nick, 24 Sep, option
+              C on board 6b3bwm7vPh6NMu3kmyxBCt) — the only unlabelled control
+              in a heading, aligned with nothing on screen. 24px, the smallest
+              target WCAG 2.5.8 allows, because he asked for it as small as
+              possible.
+            */}
+            {organise ? (
+                <button
+                    type="button"
+                    className="folderfolio-row folderfolio-rail__fixed-row folderfolio-rail__smart-new"
+                    onClick={() => setEditing('new')}
+                >
+                    <span className="folderfolio-row__icon">
+                        <PlusIcon size={12} />
+                    </span>
+                    <span className="folderfolio-row__name">{t('newSmartFolder', 'New smart folder')}</span>
+                </button>
+            ) : null}
 
             {editing === null ? null : (
                 <SmartEditor
