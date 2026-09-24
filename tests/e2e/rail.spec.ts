@@ -547,7 +547,7 @@ test.describe('a folder sorts what is inside it', () => {
 
     // Nick, 24 Sep: "make color a nested child as to reach delete you should
     // scroll". The ten swatches were ~130px of the first step.
-    test('colour is a second step, and Delete is on the first screen', async ({ page }) => {
+    test('colour is a submenu, and Delete is on the first screen', async ({ page }) => {
         await page.setViewportSize({ width: 1280, height: 900 });
         await page.locator('.folderfolio-row', { hasText: 'Outer' }).first().click();
         await page.locator('.folderfolio-row__menu').click();
@@ -565,10 +565,35 @@ test.describe('a folder sorts what is inside it', () => {
         expect(fits.scrolls).toBe(false);
         expect(fits.inside).toBe(true);
 
-        await panel.getByRole('menuitem', { name: /^colour/i }).click();
-        await expect(panel.locator('.folderfolio-swatches__swatch')).toHaveCount(10);
-        await expect(panel.getByRole('menuitemradio', { name: /no colour/i })).toHaveAttribute('aria-checked', 'true');
-        await panel.getByRole('menuitemradio', { name: /^plum$/i }).click();
+        // A submenu beside the panel, opened on hover; the panel stays (Nick,
+        // 24 Sep: "on hover only is the right way", and not a panel replaced
+        // by one "in nowhere").
+        const colourRow = panel.getByRole('menuitem', { name: /^colour/i });
+        await colourRow.hover();
+        const flyout = page.locator('.folderfolio-menu--sub');
+        await expect(flyout).toHaveAttribute('aria-label', /colour/i);
+        await expect(flyout.locator('.folderfolio-swatches__swatch')).toHaveCount(10);
+        await expect(panel.getByRole('menuitem', { name: /^rename/i })).toBeVisible();
+
+        const beside = await page.evaluate(() => {
+            const main = document.querySelector('.folderfolio-menu--row')!.getBoundingClientRect();
+            const sub = document.querySelector('.folderfolio-menu--sub')!.getBoundingClientRect();
+            const row = [...document.querySelectorAll('.folderfolio-menu--row [data-flyout]')]
+                .find((b) => b.getAttribute('data-flyout') === 'color')!
+                .getBoundingClientRect();
+
+            return { gap: Math.abs(sub.left - (main.right - 1)), level: Math.abs(sub.top + 5 - row.top) };
+        });
+        expect(beside.gap).toBeLessThan(1);
+        expect(beside.level).toBeLessThan(1);
+
+        // Another row of the panel closes it.
+        await panel.getByRole('menuitem', { name: /^rename/i }).hover();
+        await expect(flyout).toHaveCount(0);
+
+        await colourRow.hover();
+        await expect(flyout.getByRole('menuitemradio', { name: /no colour/i })).toHaveAttribute('aria-checked', 'true');
+        await flyout.getByRole('menuitemradio', { name: /^plum$/i }).click();
         await expect(panel).toHaveCount(0);
 
         await page.locator('.folderfolio-row__menu').click();
@@ -576,9 +601,12 @@ test.describe('a folder sorts what is inside it', () => {
         await expect(colour.locator('.folderfolio-menu__value')).toHaveText(/plum/i);
         await expect(colour.locator('.folderfolio-menu__chip')).toHaveCount(1);
 
-        // Back returns focus to the row it left from.
-        await colour.click();
-        await page.locator('.folderfolio-menu__back').click();
+        // From the keyboard: → opens it and goes in, ← comes back to the row.
+        await colour.focus();
+        await page.keyboard.press('ArrowRight');
+        await expect(page.locator('.folderfolio-menu--sub .folderfolio-swatches__swatch').first()).toBeFocused();
+        await page.keyboard.press('ArrowLeft');
+        await expect(page.locator('.folderfolio-menu--sub')).toHaveCount(0);
         await expect(colour).toBeFocused();
     });
 
@@ -805,20 +833,24 @@ test.describe('cut, copy and paste', () => {
         expect(geometry.scrolls).toBe(false);
         expect(geometry.deleteInside).toBe(true);
 
-        // A second step is shorter, and it is placed again: against its row,
-        // not left where the first step had to slide to (Nick, 24 Sep — the
-        // Subfolders step floated at the top of the window).
+        // Its submenus open beside it and inside the window, and the panel
+        // stays where it is (Nick, 24 Sep — a step replacing the panel had
+        // floated at the top of the window). A click opens one too.
+        const before = await page.locator('.folderfolio-menu--row').boundingBox();
         await page.locator('.folderfolio-menu--row').getByRole('menuitem', { name: /subfolders/i }).click();
-        await expect(page.locator('.folderfolio-menu__back')).toBeVisible();
+        await expect(page.locator('.folderfolio-menu--sub')).toBeVisible();
 
-        const step = await page.evaluate(() => {
-            const menu = document.querySelector('.folderfolio-menu--row')!.getBoundingClientRect();
-            const trigger = document.querySelector('[aria-selected="true"] .folderfolio-row__menu')!.getBoundingClientRect();
+        const sub = await page.evaluate(() => {
+            const main = document.querySelector('.folderfolio-menu--row')!.getBoundingClientRect();
+            const box = document.querySelector('.folderfolio-menu--sub')!.getBoundingClientRect();
 
-            return { below: Math.abs(menu.top - (trigger.bottom + 2)), above: Math.abs(menu.bottom - (trigger.top - 2)) };
+            return { top: box.top, bottom: box.bottom, left: box.left, mainRight: main.right, mainTop: main.top };
         });
 
-        expect(Math.min(step.below, step.above)).toBeLessThan(1);
+        expect(sub.mainTop).toBe(before!.y);
+        expect(Math.abs(sub.left - (sub.mainRight - 1))).toBeLessThan(1);
+        expect(sub.top).toBeGreaterThanOrEqual(8);
+        expect(sub.bottom).toBeLessThanOrEqual(520 - 8 + 0.5);
     });
 });
 

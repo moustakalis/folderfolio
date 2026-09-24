@@ -14,17 +14,21 @@
  * the toolbar itself is gone — what survived it is the global sort, which is
  * not a folder action and sits beside the search field.
  *
- * ## Two steps, not a submenu
+ * ## A submenu beside the row's menu; two steps in the narrow one
  *
  * *Sort inside* asks two questions — subfolders, and files — with five and
- * four answers. Nine more rows would make this panel taller than the tree it
- * sits over, and a flyout in a 308px rail has nowhere to open but back across
- * the tree. So choosing a scope replaces the panel's body, with one row back.
- * One level, no hover, and it works on a touch screen.
+ * four answers, and *Colour* (since 24 Sep) eleven: nested, so the first
+ * panel stays short enough to show Delete. Each row says what it is set to.
  *
- * *Colour* is a step too since 24 Sep (Nick): its ten swatches and *No
- * colour* were ~130px of the first step, and with them Delete was below the
- * fold of a 497px panel. The row shows the colour it is set to.
+ * From the row's ⋮ they are submenus, opened on hover — or a click, or →
+ * — beside the panel, which stays where it is (Nick, 24 Sep: "on hover only
+ * is the right way", and a panel replaced by another "in nowhere" was not).
+ * That menu is portaled beside the rail with the library to its right, so a
+ * flyout has room; it opens left of the panel when the window does not.
+ *
+ * The narrow door's menu is the other case: inside a rail that is the whole
+ * width of a phone, with no side to open on and no hover to open with. There
+ * choosing a row replaces the panel's body, with one row back.
  *
  * ## No heading
  *
@@ -36,7 +40,7 @@
  * name, which is the one place a heading says something.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import {
@@ -83,6 +87,8 @@ type Step = Scope | 'color';
 const FILE_ORDERS: readonly SortOrder[] = ['name-asc', 'name-desc', 'newest', 'oldest', 'custom'];
 
 interface FolderMenuProps {
+    /** Submenus beside the panel (the row's ⋮), rather than steps in it. */
+    flyout?: boolean;
     folder: FolderNode;
     /** The tree as the person is looking at it — see move.ts on why sorted. */
     ordered: FolderNode[];
@@ -100,7 +106,73 @@ function orderLabel(order: string | null): string {
     return found ? t(found.label, found.fallback) : order;
 }
 
-function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps) {
+/**
+ * A submenu, beside the ⋮ menu's panel and level with the row that opened it.
+ *
+ * Rendered inside the panel — `useAnchoredPanel` closes the menu on a pointer
+ * outside its element — and fixed to the window, which the panel's own scroll
+ * does not clip. Right of the panel, or left when the window has no room;
+ * slid up as far as it must to stay in the window.
+ */
+function Flyout({
+    trigger,
+    label,
+    onBack,
+    onEnter,
+    children,
+}: {
+    trigger: HTMLElement | null;
+    label: string;
+    onBack: () => void;
+    onEnter: () => void;
+    children: React.ReactNode;
+}) {
+    const ref = useRef<HTMLDivElement>(null);
+    const [at, setAt] = useState<{ left: number; top: number } | null>(null);
+
+    useLayoutEffect(() => {
+        const panel = trigger?.closest('.folderfolio-menu--row');
+        const self = ref.current;
+
+        if (!trigger || !panel || !self) {
+            return;
+        }
+
+        const box = panel.getBoundingClientRect();
+        const row = trigger.getBoundingClientRect();
+        const width = self.offsetWidth;
+        const height = self.offsetHeight;
+        const right = box.right - 1;
+        const left = right + width <= window.innerWidth - MARGIN ? right : Math.max(MARGIN, box.left - width + 1);
+        // The first item level with the row: the flyout's 4px padding and 1px border.
+        const top = Math.max(MARGIN, Math.min(row.top - 5, window.innerHeight - MARGIN - height));
+
+        setAt({ left, top });
+    }, [trigger]);
+
+    return (
+        <div
+            ref={ref}
+            className="folderfolio-menu--sub"
+            role="menu"
+            aria-label={label}
+            style={at ? { left: `${at.left}px`, top: `${at.top}px` } : { left: '-9999px', top: '-9999px' }}
+            onPointerEnter={onEnter}
+            onKeyDown={(event) => {
+                if (event.key === 'ArrowLeft') {
+                    event.preventDefault();
+                    onBack();
+                }
+            }}
+        >
+            {children}
+        </div>
+    );
+}
+
+const MARGIN = 8;
+
+function FolderMenuItems({ flyout = false, folder, ordered, onDelete, onClose }: FolderMenuProps) {
     const setColor = useSetFolderColor();
     const setSort = useSetFolderSort();
     const reorder = useReorderFolders();
@@ -134,14 +206,134 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
         }
     }, [step]);
 
+    function refOf(which: Step) {
+        return which === 'files' ? filesRef : which === 'color' ? colorRef : foldersRef;
+    }
+
     function leaveStep(from: Step) {
         setStep(null);
 
         // After paint, because the row being focused does not exist until
         // this step has been replaced by the main list.
         requestAnimationFrame(() => {
-            (from === 'files' ? filesRef : from === 'color' ? colorRef : foldersRef).current?.focus();
+            refOf(from).current?.focus();
         });
+    }
+
+    /*
+     * The flyouts — the row menu's submenus.
+     *
+     * Open on hover, on a click (a touch screen, or a person who clicks), and
+     * on → or Enter from the keyboard, which also moves focus into it. Hovering
+     * another row of the panel closes it after a moment, so a pointer cutting
+     * the corner on its way into the flyout does not lose it; the panel
+     * scrolling closes it at once, since it would no longer be level with its
+     * row. ← in the flyout goes back to the row.
+     */
+    const [sub, setSub] = useState<Step | null>(null);
+    const closing = useRef<number | undefined>(undefined);
+    const focusSub = useRef(false);
+
+    function openSub(which: Step, withFocus: boolean) {
+        window.clearTimeout(closing.current);
+        focusSub.current = withFocus;
+        setSub(which);
+    }
+
+    function closeSub(returnFocus: Step | null) {
+        window.clearTimeout(closing.current);
+        setSub(null);
+
+        if (returnFocus !== null) {
+            refOf(returnFocus).current?.focus();
+        }
+    }
+
+    useEffect(() => {
+        if (sub !== null && focusSub.current) {
+            refOf(sub)
+                .current?.parentElement?.querySelector<HTMLElement>('.folderfolio-menu--sub button:not(:disabled)')
+                ?.focus();
+        }
+    }, [sub]);
+
+    useEffect(() => {
+        if (!flyout) {
+            return;
+        }
+
+        const panel = (foldersRef.current ?? colorRef.current)?.closest<HTMLElement>('.folderfolio-menu--row');
+
+        if (!panel) {
+            return;
+        }
+
+        const onOver = (event: PointerEvent) => {
+            const target = event.target as HTMLElement;
+
+            if (target.closest('.folderfolio-menu--sub')) {
+                window.clearTimeout(closing.current);
+
+                return;
+            }
+
+            if (target.closest('[data-flyout]')) {
+                return;
+            }
+
+            if (target.closest('button')) {
+                window.clearTimeout(closing.current);
+                closing.current = window.setTimeout(() => setSub(null), 250);
+            }
+        };
+        const onScroll = () => setSub(null);
+
+        panel.addEventListener('pointerover', onOver);
+        panel.addEventListener('scroll', onScroll);
+
+        return () => {
+            window.clearTimeout(closing.current);
+            panel.removeEventListener('pointerover', onOver);
+            panel.removeEventListener('scroll', onScroll);
+        };
+    }, [flyout]);
+
+    /** The props of a row that opens a submenu — or, in the narrow menu, a step. */
+    function opens(which: Step) {
+        if (!flyout) {
+            return { onClick: () => setStep(which) };
+        }
+
+        return {
+            'data-flyout': which,
+            'aria-expanded': sub === which,
+            // A click from the keyboard (Enter, Space) has no pointer: detail 0.
+            onClick: (event: React.MouseEvent) => openSub(which, event.detail === 0),
+            onPointerEnter: (event: React.PointerEvent) => {
+                if (event.pointerType === 'mouse') {
+                    openSub(which, false);
+                }
+            },
+            onKeyDown: (event: React.KeyboardEvent) => {
+                if (event.key === 'ArrowRight') {
+                    event.preventDefault();
+                    openSub(which, true);
+                }
+            },
+        };
+    }
+
+    function flyoutOf(which: Step, label: string) {
+        return flyout && sub === which ? (
+            <Flyout
+                trigger={refOf(which).current}
+                label={label}
+                onBack={() => closeSub(which)}
+                onEnter={() => window.clearTimeout(closing.current)}
+            >
+                {options(which)}
+            </Flyout>
+        ) : null;
     }
 
     // Asked here rather than inside the click, so an item that is enabled and
@@ -306,88 +498,59 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
         onClose();
     }
 
-    // ------------------------------------------------------ step two: colour
-    if (step === 'color') {
-        return (
-            <>
-                <button
-                    ref={backRef}
-                    type="button"
-                    role="menuitem"
-                    className="folderfolio-menu__back"
-                    onClick={() => leaveStep('color')}
-                >
-                    <span className="folderfolio-menu__back-icon" aria-hidden="true">
-                        <ChevronRightIcon size={12} />
-                    </span>
-                    {t('colourRow', 'Colour')}
-                </button>
+    /** What a submenu, or a step, offers — the same in both. */
+    function options(which: Step) {
+        if (which === 'color') {
+            return (
+                <>
+                    {/*
+                      role="group" inside the menu, so a screen reader announces
+                      the eleven choices as one set with one of them checked,
+                      rather than as eleven unrelated menu items. The eleventh
+                      is "No colour", which is a value in this set and not an
+                      escape from it — which is why it is a radio and not a
+                      separate command.
+                    */}
+                    <div
+                        className="folderfolio-swatches"
+                        role="group"
+                        aria-label={t('folderColor', 'Folder colour')}
+                    >
+                        {SWATCHES.map((swatch) => (
+                            <button
+                                key={swatch}
+                                type="button"
+                                role="menuitemradio"
+                                aria-checked={current === swatch}
+                                aria-label={swatchLabel(swatch)}
+                                title={swatchLabel(swatch)}
+                                className="folderfolio-swatches__swatch"
+                                style={{ background: `var(--ff-folder-${swatch})` }}
+                                onClick={() => choose(swatch)}
+                            />
+                        ))}
+                    </div>
 
-                {/*
-                  role="group" inside the menu, so a screen reader announces
-                  the eleven choices as one set with one of them checked,
-                  rather than as eleven unrelated menu items. The eleventh is
-                  "No colour", which is a value in this set and not an escape
-                  from it — which is why it is a radio and not a separate
-                  command.
-                */}
-                <div
-                    className="folderfolio-swatches"
-                    role="group"
-                    aria-label={t('folderColor', 'Folder colour')}
-                >
-                    {SWATCHES.map((swatch) => (
-                        <button
-                            key={swatch}
-                            type="button"
-                            role="menuitemradio"
-                            aria-checked={current === swatch}
-                            aria-label={swatchLabel(swatch)}
-                            title={swatchLabel(swatch)}
-                            className="folderfolio-swatches__swatch"
-                            style={{ background: `var(--ff-folder-${swatch})` }}
-                            onClick={() => choose(swatch)}
-                        />
-                    ))}
-                </div>
+                    <button
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={current === null}
+                        className="folderfolio-swatches__none"
+                        onClick={() => choose(null)}
+                    >
+                        <span className="folderfolio-swatches__empty" aria-hidden="true" />
+                        {t('noColor', 'No colour')}
+                    </button>
+                </>
+            );
+        }
 
-                <button
-                    type="button"
-                    role="menuitemradio"
-                    aria-checked={current === null}
-                    className="folderfolio-swatches__none"
-                    onClick={() => choose(null)}
-                >
-                    <span className="folderfolio-swatches__empty" aria-hidden="true" />
-                    {t('noColor', 'No colour')}
-                </button>
-            </>
-        );
-    }
-
-    // ------------------------------------------------------------ step two
-    if (step !== null) {
         const orders: readonly SortOrder[] =
-            step === 'files' ? FILE_ORDERS : SORT_LABELS.map((option) => option.value);
-        const chosen = step === 'files' ? folder.sort_files : folder.sort_folders;
+            which === 'files' ? FILE_ORDERS : SORT_LABELS.map((option) => option.value);
+        const chosen = which === 'files' ? folder.sort_files : folder.sort_folders;
 
         return (
             <>
-                <button
-                    ref={backRef}
-                    type="button"
-                    role="menuitem"
-                    className="folderfolio-menu__back"
-                    onClick={() => leaveStep(step)}
-                >
-                    <span className="folderfolio-menu__back-icon" aria-hidden="true">
-                        <ChevronRightIcon size={12} />
-                    </span>
-                    {step === 'files'
-                        ? t('sortFiles', 'Files')
-                        : t('sortSubfolders', 'Subfolders')}
-                </button>
-
                 {/*
                   "Same as everywhere" first, and a real choice rather than an
                   absence: it is the state every folder starts in, and the one
@@ -401,7 +564,7 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
                     aria-checked={!isSortOrder(chosen)}
                     className="folderfolio-menu__item"
                     onClick={() => {
-                        setSort.mutate({ id: folder.id, scope: step, order: null });
+                        setSort.mutate({ id: folder.id, scope: which, order: null });
                         onClose();
                     }}
                 >
@@ -424,7 +587,7 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
                             aria-checked={chosen === value}
                             className="folderfolio-menu__item"
                             onClick={() => {
-                                setSort.mutate({ id: folder.id, scope: step, order: value });
+                                setSort.mutate({ id: folder.id, scope: which, order: value });
                                 onClose();
                             }}
                         >
@@ -435,6 +598,36 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
                         </button>
                     );
                 })}
+            </>
+        );
+    }
+
+    function stepName(which: Step): string {
+        return which === 'files'
+            ? t('sortFiles', 'Files')
+            : which === 'color'
+              ? t('colourRow', 'Colour')
+              : t('sortSubfolders', 'Subfolders');
+    }
+
+    // ------------------------------------------- step two (the narrow menu)
+    if (!flyout && step !== null) {
+        return (
+            <>
+                <button
+                    ref={backRef}
+                    type="button"
+                    role="menuitem"
+                    className="folderfolio-menu__back"
+                    onClick={() => leaveStep(step)}
+                >
+                    <span className="folderfolio-menu__back-icon" aria-hidden="true">
+                        <ChevronRightIcon size={12} />
+                    </span>
+                    {stepName(step)}
+                </button>
+
+                {options(step)}
             </>
         );
     }
@@ -678,7 +871,7 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
                         role="menuitem"
                         className="folderfolio-menu__item folderfolio-menu__item--step"
                         aria-haspopup="menu"
-                        onClick={() => setStep('color')}
+                        {...opens('color')}
                     >
                         {current === null ? (
                             <span className="folderfolio-swatches__empty" aria-hidden="true" />
@@ -695,14 +888,14 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
                         </span>
                         <ChevronRightIcon size={12} />
                     </button>
+                    {flyoutOf('color', t('folderColor', 'Folder colour'))}
 
                     <div className="folderfolio-menu__rule" role="separator" />
 
                     {/*
-                      Each row says what it is set to without being opened,
-                      which is the whole reason a two-step panel is bearable:
-                      the answer is on the first screen, and only changing it
-                      costs a second.
+                      Each row says what it is set to without being opened:
+                      the answer is on the first panel, and only changing it
+                      costs a submenu (or, in the narrow menu, a step).
                     */}
                     <p className="folderfolio-menu__label">
                         {t('sortInside', 'Sort inside')}
@@ -714,7 +907,7 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
                         role="menuitem"
                         className="folderfolio-menu__item folderfolio-menu__item--step"
                         aria-haspopup="menu"
-                        onClick={() => setStep('folders')}
+                        {...opens('folders')}
                     >
                         {t('sortSubfolders', 'Subfolders')}
                         <span className="folderfolio-menu__value">
@@ -722,6 +915,7 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
                         </span>
                         <ChevronRightIcon size={12} />
                     </button>
+                    {flyoutOf('folders', t('sortSubfolders', 'Subfolders'))}
 
                     {/* The file order is the media library's: a post list
                         keeps its own column sorting. */}
@@ -732,7 +926,7 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
                             role="menuitem"
                             className="folderfolio-menu__item folderfolio-menu__item--step"
                             aria-haspopup="menu"
-                            onClick={() => setStep('files')}
+                            {...opens('files')}
                         >
                             {t('sortFiles', 'Files')}
                             <span className="folderfolio-menu__value">
@@ -741,6 +935,7 @@ function FolderMenuItems({ folder, ordered, onDelete, onClose }: FolderMenuProps
                             <ChevronRightIcon size={12} />
                         </button>
                     ) : null}
+                    {isMedia() ? flyoutOf('files', t('sortFiles', 'Files')) : null}
 
 
                 </>
@@ -819,7 +1014,7 @@ export function RowMenu({
             role="menu"
             aria-label={props.folder.name}
         >
-            <FolderMenuItems {...props} />
+            <FolderMenuItems {...props} flyout />
         </div>,
         document.body
     );

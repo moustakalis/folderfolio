@@ -410,6 +410,29 @@
   padding: 7px 12px;
 }
 
+/*
+ * A submenu of the row's menu — Colour and the two Sort inside rows (Nick,
+ * 24 Sep: on hover, beside the panel). Inside the panel's element, fixed to
+ * the window: the panel's scroll does not clip it. Drawn as the panel is.
+ */
+.folderfolio-menu--sub {
+  position: fixed;
+  z-index: 1;
+  box-sizing: border-box;
+  width: 240px;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  padding: 4px 0;
+  background: var(--ff-panel);
+  border: 1px solid var(--ff-off);
+  box-shadow: 0 3px 10px rgba(29, 35, 39, 0.12);
+}
+
+/* The row whose submenu is open keeps its hover, so the two read as one. */
+.folderfolio-menu--row .folderfolio-menu__item[aria-expanded='true'] {
+  background: var(--ff-hover);
+}
+
 /* -------------------------------- Sort inside — the menu's second step */
 
 /**
