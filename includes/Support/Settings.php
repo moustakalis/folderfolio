@@ -575,7 +575,7 @@ final class Settings
      */
     private static function refusePostTypes($value, array $ticked): ?string
     {
-        if (!is_array($value) || !array_is_list($value)) {
+        if (!is_array($value) || array_values($value) !== $value) {
             return __('post_types is a list of post type names, such as post and page. An empty list means media only.', 'folderfolio');
         }
 
@@ -616,7 +616,7 @@ final class Settings
             }
 
             $list = is_array($abilities) ? $abilities : [];
-            $list = array_is_list($list) ? $list : array_keys(array_filter($list, [self::class, 'truthy']));
+            $list = array_values($list) === $list ? $list : array_keys(array_filter($list, [self::class, 'truthy']));
             $unknown = array_diff($list, self::ABILITIES);
 
             if (!is_array($abilities) || [] !== $unknown) {
@@ -661,7 +661,7 @@ final class Settings
             }
 
             // The form's shape (['create' => '1']) or a list (['create']).
-            $list = array_is_list($abilities) ? $abilities : array_keys(array_filter($abilities));
+            $list = array_values($abilities) === $abilities ? $abilities : array_keys(array_filter($abilities));
 
             foreach ($new as $ability) {
                 $grant = isset($defaults[$role])

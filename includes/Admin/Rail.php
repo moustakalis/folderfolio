@@ -270,7 +270,7 @@ final class Rail
                     aria-controls="folderfolio-rail"
                     aria-expanded="true"
                 >
-                    <?php echo self::icon('m15 18-6-6 6-6', 12); ?>
+                    <?php echo self::icon('m15 18-6-6 6-6', 12); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup built from a literal path, escaped inside icon() ?>
                     <?php esc_html_e('Collapse', 'folderfolio'); ?>
                 </button>
             </div>
@@ -293,7 +293,7 @@ final class Rail
                     title="<?php esc_attr_e('Show folders', 'folderfolio'); ?>"
                 >
                     <span class="screen-reader-text"><?php esc_html_e('Show folders', 'folderfolio'); ?></span>
-                    <?php echo self::icon('m9 18 6-6-6-6', 12); ?>
+                    <?php echo self::icon('m9 18 6-6-6-6', 12); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup built from a literal path, escaped inside icon() ?>
                 </button>
                 <span class="folderfolio-rail__tab-label" aria-hidden="true">
                     <?php esc_html_e('Folders', 'folderfolio'); ?>
@@ -318,8 +318,8 @@ final class Rail
             aria-controls="folderfolio-rail"
             aria-label="<?php esc_attr_e('Resize the folders panel', 'folderfolio'); ?>"
             aria-valuenow="<?php echo (int) $prefs['width']; ?>"
-            aria-valuemin="<?php echo RailPreferences::MIN_WIDTH; ?>"
-            aria-valuemax="<?php echo RailPreferences::MAX_WIDTH; ?>"
+            aria-valuemin="<?php echo (int) RailPreferences::MIN_WIDTH; ?>"
+            aria-valuemax="<?php echo (int) RailPreferences::MAX_WIDTH; ?>"
             hidden
         ></div>
 
@@ -645,8 +645,10 @@ final class Rail
             return __('Media folders', 'folderfolio');
         }
 
+        // Context, because "%s folders" is also a count ("12 folders") and the
+        // two are different sentences in most languages.
         /* translators: %s: a post type's plural name, such as "Pages". */
-        return sprintf(__('%s folders', 'folderfolio'), PostTypes::label($type));
+        return sprintf(_x('%s folders', 'the folder tree of a post type, as in “Pages folders”', 'folderfolio'), PostTypes::label($type));
     }
 
     /**
@@ -833,19 +835,16 @@ final class Rail
              * time, with the way out named after where it goes rather
              * than called "Back". On a sheet with no history stack, the
              * useful word is the destination.
-             *
-             * translators: %s is the parent folder's name, or "Top level".
              */
+            /* translators: %s is the parent folder's name, or "Top level". */
             'upToFolder' => __('Up to %s', 'folderfolio'),
             'noSubfolders' => __('Nothing inside this folder', 'folderfolio'),
             /*
              * The row's whole sentence for assistive tech. The chevron
              * that says "this goes somewhere" is decorative, so the words
              * have to carry it.
-             *
-             * translators: 1: folder name, 2: how many files, 3: how many
-             * folders are inside it.
              */
+            /* translators: 1: folder name, 2: how many files, 3: how many folders are inside it. */
             'folderWithSubfolders' => __(
                 '%1$s, %2$s files, %3$s folders inside',
                 'folderfolio'
@@ -884,7 +883,7 @@ final class Rail
             // A folder's kind — tier 3 item 14.
             'galleryKind' => __('Gallery', 'folderfolio'),
             'galleryImagesOnly' => __('images only', 'folderfolio'),
-            /* translators: %s is the name of the locked folder. */
+            /* translators: %s: the locked folder's name. */
             'lockedBy' => __('“%s” is locked. Someone who can lock folders can unlock it.', 'folderfolio'),
             'starredGroup' => __('Starred', 'folderfolio'),
             /* translators: 1: folder name, 2: its parent folder's name, 3: number of files. */
@@ -938,9 +937,8 @@ final class Rail
              * the files that are filed nowhere else — a file still in
              * another folder does not move to Unassigned, and the toast
              * used to say it did.
-             *
-             * translators: 1: folder name, 2: number of files, always 1.
              */
+            /* translators: 1: folder name, 2: number of files, always 1. */
             'deletedWithFile' => __(
                 'Deleted “%1$s” — %2$s file moved to Unassigned',
                 'folderfolio'
@@ -957,14 +955,12 @@ final class Rail
              * else. The counts are phrased separately and placed into the
              * body, because a template with "%s folders" baked into it
              * cannot be made singular by any translator.
-             *
-             * translators: 1: the other plugin's name, 2: a folder count
-             * already phrased, 3: a file count already phrased.
              */
             'emptyElsewhereTitle' => __(
                 'Your media is already filed — just not here.',
                 'folderfolio'
             ),
+            /* translators: 1: the other plugin's name, 2: a folder count already phrased, 3: a file count already phrased. */
             'emptyElsewhereBody' => __(
                 '%1$s has %2$s holding %3$s. Bringing them over adds them to FolderFolio — nothing is moved, and nothing is removed from where it is now.',
                 'folderfolio'
@@ -988,7 +984,7 @@ final class Rail
                 'folderfolio'
             ),
             'emptyElsewhereAction' => __('Review the import', 'folderfolio'),
-            /* translators: %s is the number of folders. */
+            /* translators: %s is a number of folders. */
             'folderTotal' => __('%s folders', 'folderfolio'),
             'folderTotalOne' => __('1 folder', 'folderfolio'),
 
@@ -1052,10 +1048,10 @@ final class Rail
              * rather than one string: with one filter set it announced
              * "1 filters active", which is the count at which this badge
              * appears most often.
-             *
-             * translators: %s is how many filters are currently set.
              */
+            /* translators: %s is how many filters are currently set. */
             'filterActive' => __('%s filter active', 'folderfolio'),
+            /* translators: %s is how many filters are currently set. */
             'filtersActive' => __('%s filters active', 'folderfolio'),
             'verbAdd' => __('Add to', 'folderfolio'),
             'verbMove' => __('Move to', 'folderfolio'),
@@ -1067,21 +1063,21 @@ final class Rail
             'movesOutOf' => __('Moves them out of “%s”', 'folderfolio'),
             'moveFailed' => __('Could not move those files.', 'folderfolio'),
             /* translators: 1: number of files, 2: the destination folder name. */
-            'movedFile' => __('Moved %s file to %s', 'folderfolio'),
+            'movedFile' => __('Moved %1$s file to %2$s', 'folderfolio'),
             /* translators: 1: number of files, 2: the destination folder name. */
-            'movedFiles' => __('Moved %s files to %s', 'folderfolio'),
+            'movedFiles' => __('Moved %1$s files to %2$s', 'folderfolio'),
             /* translators: %s: the name of the folder being viewed. */
             'arrangeIn' => __('In %s', 'folderfolio'),
             'moveToStart' => __('Move to start', 'folderfolio'),
             'moveToEnd' => __('Move to end', 'folderfolio'),
             /* translators: 1: number of files, 2: the folder they were placed in. */
-            'placedFileStart' => __('Moved %s file to the start of %s', 'folderfolio'),
+            'placedFileStart' => __('Moved %1$s file to the start of %2$s', 'folderfolio'),
             /* translators: 1: number of files, 2: the folder they were placed in. */
-            'placedFilesStart' => __('Moved %s files to the start of %s', 'folderfolio'),
+            'placedFilesStart' => __('Moved %1$s files to the start of %2$s', 'folderfolio'),
             /* translators: 1: number of files, 2: the folder they were placed in. */
-            'placedFileEnd' => __('Moved %s file to the end of %s', 'folderfolio'),
+            'placedFileEnd' => __('Moved %1$s file to the end of %2$s', 'folderfolio'),
             /* translators: 1: number of files, 2: the folder they were placed in. */
-            'placedFilesEnd' => __('Moved %s files to the end of %s', 'folderfolio'),
+            'placedFilesEnd' => __('Moved %1$s files to the end of %2$s', 'folderfolio'),
             'findFolder' => __('Find a folder', 'folderfolio'),
             'addsACopy' => __('Keeps them in their other folders too', 'folderfolio'),
             /* translators: %s is the number of folders not shown. */
@@ -1092,9 +1088,9 @@ final class Rail
             /* translators: %s is the number of selected media files. */
             'filesSelected' => __('%s files selected', 'folderfolio'),
             /* translators: 1: number of files, 2: a comma-separated list of folder names. */
-            'addedFile' => __('Added %s file to %s', 'folderfolio'),
+            'addedFile' => __('Added %1$s file to %2$s', 'folderfolio'),
             /* translators: 1: number of files, 2: a comma-separated list of folder names. */
-            'addedFiles' => __('Added %s files to %s', 'folderfolio'),
+            'addedFiles' => __('Added %1$s files to %2$s', 'folderfolio'),
             'createFailed' => __('Could not create that folder.', 'folderfolio'),
             'treeFailed' => __('Could not load your folders.', 'folderfolio'),
             'treeFailedWhere' => __(
@@ -1201,23 +1197,23 @@ final class Rail
             'folderWithSubfolders' => __('%1$s, %2$s items, %3$s folders inside', 'folderfolio'),
             'moveFailed' => __('Could not move those items.', 'folderfolio'),
             /* translators: 1: number of items, 2: the destination folder name. */
-            'movedFile' => __('Moved %s item to %s', 'folderfolio'),
+            'movedFile' => __('Moved %1$s item to %2$s', 'folderfolio'),
             /* translators: 1: number of items, 2: the destination folder name. */
-            'movedFiles' => __('Moved %s items to %s', 'folderfolio'),
+            'movedFiles' => __('Moved %1$s items to %2$s', 'folderfolio'),
             'addFailed' => __('Could not file those items.', 'folderfolio'),
             /* translators: %s is the number of selected items. */
             'fileSelected' => __('%s item selected', 'folderfolio'),
             /* translators: %s is the number of selected items. */
             'filesSelected' => __('%s items selected', 'folderfolio'),
             /* translators: 1: number of items, 2: a comma-separated list of folder names. */
-            'addedFile' => __('Added %s item to %s', 'folderfolio'),
+            'addedFile' => __('Added %1$s item to %2$s', 'folderfolio'),
             /* translators: 1: number of items, 2: a comma-separated list of folder names. */
-            'addedFiles' => __('Added %s items to %s', 'folderfolio'),
+            'addedFiles' => __('Added %1$s items to %2$s', 'folderfolio'),
             /* translators: 1: folder name, 2: number of items, always 1. */
             'deletedWithFile' => __('Deleted “%1$s” — %2$s item moved to Unassigned', 'folderfolio'),
             /* translators: 1: folder name, 2: number of items. */
             'deletedWithFiles' => __('Deleted “%1$s” — %2$s items moved to Unassigned', 'folderfolio'),
-            /* translators: %s is the folder the items are being moved out of. */
+            /* translators: %s is the folder the files are being moved out of. */
             'movesOutOf' => __('Moves them out of “%s”', 'folderfolio'),
         ];
     }

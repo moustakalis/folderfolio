@@ -48,7 +48,9 @@ class AttachmentFolderRepository
         ));
 
         return (string) $this->wpdb->prepare(
-            " INNER JOIN {$this->wpdb->posts} AS ff_p ON ff_p.ID = {$alias}.attachment_id AND ff_p.post_type = %s",
+            ' INNER JOIN %i AS ff_p ON ff_p.ID = %i.attachment_id AND ff_p.post_type = %s',
+            $this->wpdb->posts,
+            $alias,
             $objectType
         ) . " AND ff_p.post_status IN ({$statuses})";
     }
@@ -78,11 +80,15 @@ class AttachmentFolderRepository
      */
     public function attachmentIdsForFolder(int $folderId): array
     {
+        $wpdb = $this->wpdb;
+
         return array_map(
             'intval',
-            $this->wpdb->get_col(
-                $this->wpdb->prepare(
-                    "SELECT attachment_id FROM {$this->table()} WHERE folder_id = %d ORDER BY sort_order ASC, attachment_id ASC",
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table, no core API; read live, and the cached reader (GalleryQuery) keys on the 'folderfolio' last_changed every write bumps.
+            $wpdb->get_col(
+                $wpdb->prepare(
+                    'SELECT attachment_id FROM %i WHERE folder_id = %d ORDER BY sort_order ASC, attachment_id ASC',
+                    $this->table(),
                     $folderId
                 )
             ) ?: []
@@ -101,13 +107,17 @@ class AttachmentFolderRepository
             return [];
         }
 
+        $wpdb = $this->wpdb;
         $placeholders = implode(',', array_fill(0, count($attachmentIds), '%d'));
 
         /** @var list<array{attachment_id: string, sort_order: string}> $rows */
-        $rows = $this->wpdb->get_results(
-            $this->wpdb->prepare(
-                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-                "SELECT attachment_id, sort_order FROM {$this->table()} WHERE folder_id = %d AND attachment_id IN ($placeholders)",
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table, no core API; read live, and the cached reader (GalleryQuery) keys on the 'folderfolio' last_changed every write bumps.
+        $rows = $wpdb->get_results(
+            // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- the sniff cannot count the spread ids that fill the %d list.
+            $wpdb->prepare(
+                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- placeholders only: one %d per attachment id.
+                "SELECT attachment_id, sort_order FROM %i WHERE folder_id = %d AND attachment_id IN ($placeholders)",
+                $this->table(),
                 $folderId,
                 ...$attachmentIds
             ),
@@ -126,9 +136,13 @@ class AttachmentFolderRepository
     /** The lowest position in a folder, or null when it holds nothing. */
     public function firstPosition(int $folderId): ?int
     {
-        $min = $this->wpdb->get_var(
-            $this->wpdb->prepare(
-                "SELECT MIN(sort_order) FROM {$this->table()} WHERE folder_id = %d",
+        $wpdb = $this->wpdb;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table, no core API; read live, and the cached reader (GalleryQuery) keys on the 'folderfolio' last_changed every write bumps.
+        $min = $wpdb->get_var(
+            $wpdb->prepare(
+                'SELECT MIN(sort_order) FROM %i WHERE folder_id = %d',
+                $this->table(),
                 $folderId
             )
         );
@@ -147,6 +161,8 @@ class AttachmentFolderRepository
      */
     public function writePositions(int $folderId, array $attachmentIds): bool|WP_Error
     {
+        $wpdb = $this->wpdb;
+
         foreach (array_chunk($attachmentIds, 500, true) as $chunk) {
             $cases = [];
             $args = [];
@@ -159,12 +175,15 @@ class AttachmentFolderRepository
 
             $in = implode(',', array_fill(0, count($chunk), '%d'));
 
-            $result = $this->wpdb->query(
-                $this->wpdb->prepare(
-                    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-                    "UPDATE {$this->table()} SET sort_order = CASE attachment_id " . implode(' ', $cases)
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a write to our own table; changed() bumps the 'folderfolio' last_changed key.
+            $result = $wpdb->query(
+                // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- the sniff cannot count the CASE pairs or the %d list, which arrive as one spread.
+                $wpdb->prepare(
+                    // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- placeholders only: $cases is 'WHEN %d THEN %d' per file.
+                    'UPDATE %i SET sort_order = CASE attachment_id ' . implode(' ', $cases)
+                        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- placeholders only: one %d per file.
                         . " ELSE sort_order END WHERE folder_id = %d AND attachment_id IN ($in)",
-                    ...[...$args, $folderId, ...array_map('intval', array_values($chunk))]
+                    ...[$this->table(), ...$args, $folderId, ...array_map('intval', array_values($chunk))]
                 )
             );
 
@@ -188,11 +207,15 @@ class AttachmentFolderRepository
      */
     public function folderIdsForAttachment(int $attachmentId): array
     {
+        $wpdb = $this->wpdb;
+
         return array_map(
             'intval',
-            $this->wpdb->get_col(
-                $this->wpdb->prepare(
-                    "SELECT folder_id FROM {$this->table()} WHERE attachment_id = %d ORDER BY sort_order ASC, folder_id ASC",
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table, no core API; read live, and the cached reader (GalleryQuery) keys on the 'folderfolio' last_changed every write bumps.
+            $wpdb->get_col(
+                $wpdb->prepare(
+                    'SELECT folder_id FROM %i WHERE attachment_id = %d ORDER BY sort_order ASC, folder_id ASC',
+                    $this->table(),
                     $attachmentId
                 )
             ) ?: []
@@ -223,7 +246,8 @@ class AttachmentFolderRepository
             return [];
         }
 
-        $folders = $this->wpdb->prefix . 'folderfolio_folders';
+        $wpdb = $this->wpdb;
+        $folders = $wpdb->prefix . 'folderfolio_folders';
         $placeholders = implode(', ', array_fill(0, count($ids), '%d'));
 
         /*
@@ -233,17 +257,24 @@ class AttachmentFolderRepository
          * as a blank link. (Deletes clean up after themselves, so that row
          * should not exist; this is the cheap place to be sure.)
          */
-        $rows = $this->wpdb->get_results(
-            $this->wpdb->prepare(
+        // The interpolation sits mid-string, where a phpcs:ignore cannot reach.
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- placeholders only: one %d per attachment id.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table, no core API; read live, and the cached reader (GalleryQuery) keys on the 'folderfolio' last_changed every write bumps.
+        $rows = $wpdb->get_results(
+            // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- the sniff cannot count the spread ids that fill the %d list.
+            $wpdb->prepare(
                 "SELECT a.attachment_id, a.folder_id
-                 FROM {$this->table()} AS a
-                 INNER JOIN {$folders} AS f ON f.id = a.folder_id
+                 FROM %i AS a
+                 INNER JOIN %i AS f ON f.id = a.folder_id
                  WHERE a.attachment_id IN ({$placeholders})
                  ORDER BY f.path ASC",
+                $this->table(),
+                $folders,
                 ...$ids
             ),
             ARRAY_A
         ) ?: [];
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
         $out = [];
 
@@ -349,9 +380,15 @@ class AttachmentFolderRepository
      */
     public function all(): array
     {
-        $rows = $this->wpdb->get_results(
-            "SELECT folder_id, attachment_id FROM {$this->table()}
-             ORDER BY folder_id ASC, sort_order ASC, attachment_id ASC",
+        $wpdb = $this->wpdb;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table, no core API; read live, and the cached reader (GalleryQuery) keys on the 'folderfolio' last_changed every write bumps.
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                'SELECT folder_id, attachment_id FROM %i
+                 ORDER BY folder_id ASC, sort_order ASC, attachment_id ASC',
+                $this->table()
+            ),
             ARRAY_A
         ) ?: [];
 
@@ -379,10 +416,16 @@ class AttachmentFolderRepository
      */
     public function directCounts(?string $objectType = null): array
     {
+        $wpdb = $this->wpdb;
         $join = $this->statusJoin($objectType, 'a');
 
-        $rows = $this->wpdb->get_results(
-            "SELECT a.folder_id, COUNT(*) AS total FROM {$this->table()} AS a{$join} GROUP BY a.folder_id",
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- our own table, no core API; read live, and the cached reader (GalleryQuery) keys on the 'folderfolio' last_changed every write bumps; $join is statusJoin()'s prepare()d fragment.
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $join is statusJoin()'s fragment, built with prepare().
+                "SELECT a.folder_id, COUNT(*) AS total FROM %i AS a{$join} GROUP BY a.folder_id",
+                $this->table()
+            ),
             ARRAY_A
         ) ?: [];
 
@@ -415,19 +458,27 @@ class AttachmentFolderRepository
      */
     public function multiFiled(?string $objectType = null): array
     {
+        $wpdb = $this->wpdb;
         $table = $this->table();
         $join = $this->statusJoin($objectType, 'a');
 
         // Identifiers, and statuses prepared above; nothing here comes from a
         // request.
-        $rows = $this->wpdb->get_results(
-            "SELECT a.attachment_id, a.folder_id
-             FROM {$table} AS a
-             INNER JOIN (
-                 SELECT attachment_id FROM {$table}
-                 GROUP BY attachment_id
-                 HAVING COUNT(*) > 1
-             ) AS m ON m.attachment_id = a.attachment_id{$join}",
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- our own table, no core API; read live, and the cached reader (GalleryQuery) keys on the 'folderfolio' last_changed every write bumps; $join is statusJoin()'s prepare()d fragment.
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT a.attachment_id, a.folder_id
+                 FROM %i AS a
+                 INNER JOIN (
+                     SELECT attachment_id FROM %i
+                     GROUP BY attachment_id
+                     HAVING COUNT(*) > 1
+                 ) AS m ON m.attachment_id = a.attachment_id"
+                    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $join is statusJoin()'s fragment, built with prepare().
+                    . "{$join}",
+                $table,
+                $table
+            ),
             ARRAY_A
         ) ?: [];
 
@@ -463,16 +514,21 @@ class AttachmentFolderRepository
             return $this->typeCounts($objectType);
         }
 
-        // Not prepared: $table is built from $wpdb->prefix, and an identifier
-        // cannot be a bound parameter in any case. No user input reaches this.
+        // $table is built from $wpdb->prefix, and an identifier cannot be a
+        // bound value in any case — %i quotes it. No user input reaches this.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- joins our own table, no core API; read live, as the rail's count must be.
         $unassigned = (int) $wpdb->get_var(
-            "SELECT COUNT(*)
-             FROM {$wpdb->posts} p
-             WHERE p.post_type = 'attachment'
-               AND p.post_status <> 'trash'
-               AND NOT EXISTS (
-                   SELECT 1 FROM {$table} a WHERE a.attachment_id = p.ID
-               )"
+            $wpdb->prepare(
+                "SELECT COUNT(*)
+                 FROM %i p
+                 WHERE p.post_type = 'attachment'
+                   AND p.post_status <> 'trash'
+                   AND NOT EXISTS (
+                       SELECT 1 FROM %i a WHERE a.attachment_id = p.ID
+                   )",
+                $wpdb->posts,
+                $table
+            )
         );
 
         // Core's own, and it is cached — cheaper than a second COUNT(*) and it
@@ -493,22 +549,29 @@ class AttachmentFolderRepository
      */
     private function typeCounts(string $objectType): array
     {
+        $wpdb = $this->wpdb;
         $table = $this->table();
         $statuses = implode(', ', array_map(
             fn (string $status): string => (string) $this->wpdb->prepare('%s', $status),
             PostTypes::statuses($objectType)
         ));
 
-        $row = $this->wpdb->get_row(
-            $this->wpdb->prepare(
+        // The interpolation sits mid-string, where a phpcs:ignore cannot reach.
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $statuses is each status quoted by prepare('%s') above.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- joins our own table, no core API; read live, as the rail's count must be; $statuses is each status quoted by prepare('%s').
+        $row = $wpdb->get_row(
+            $wpdb->prepare(
                 "SELECT COUNT(*) AS total,
-                        SUM(NOT EXISTS (SELECT 1 FROM {$table} a WHERE a.attachment_id = p.ID)) AS unassigned
-                 FROM {$this->wpdb->posts} p
+                        SUM(NOT EXISTS (SELECT 1 FROM %i a WHERE a.attachment_id = p.ID)) AS unassigned
+                 FROM %i p
                  WHERE p.post_type = %s AND p.post_status IN ({$statuses})",
+                $table,
+                $wpdb->posts,
                 $objectType
             ),
             ARRAY_A
         );
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
         return [
             'all' => (int) ($row['total'] ?? 0),
@@ -518,16 +581,22 @@ class AttachmentFolderRepository
 
     public function subtreeCount(string $path, ?string $objectType = null): int
     {
-        $folders = $this->wpdb->prefix . 'folderfolio_folders';
+        $wpdb = $this->wpdb;
+        $folders = $wpdb->prefix . 'folderfolio_folders';
         $join = $this->statusJoin($objectType, 'a');
 
-        return (int) $this->wpdb->get_var(
-            $this->wpdb->prepare(
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- our own table, no core API; read live, and the cached reader (GalleryQuery) keys on the 'folderfolio' last_changed every write bumps; $join is statusJoin()'s prepare()d fragment.
+        return (int) $wpdb->get_var(
+            $wpdb->prepare(
                 "SELECT COUNT(DISTINCT a.attachment_id)
-                 FROM {$this->table()} AS a
-                 INNER JOIN {$folders} AS f ON f.id = a.folder_id{$join}
+                 FROM %i AS a
+                 INNER JOIN %i AS f ON f.id = a.folder_id"
+                    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $join is statusJoin()'s fragment, built with prepare().
+                    . "{$join}
                  WHERE f.path LIKE %s",
-                $this->wpdb->esc_like($path) . '%'
+                $this->table(),
+                $folders,
+                $wpdb->esc_like($path) . '%'
             )
         );
     }
@@ -539,15 +608,19 @@ class AttachmentFolderRepository
      */
     public function subtreeAttachmentIds(string $path): array
     {
-        $folders = $this->wpdb->prefix . 'folderfolio_folders';
+        $wpdb = $this->wpdb;
+        $folders = $wpdb->prefix . 'folderfolio_folders';
 
-        $ids = $this->wpdb->get_col(
-            $this->wpdb->prepare(
-                "SELECT DISTINCT a.attachment_id
-                 FROM {$this->table()} AS a
-                 INNER JOIN {$folders} AS f ON f.id = a.folder_id
-                 WHERE f.path LIKE %s",
-                $this->wpdb->esc_like($path) . '%'
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table, no core API; read live, and the cached reader (GalleryQuery) keys on the 'folderfolio' last_changed every write bumps.
+        $ids = $wpdb->get_col(
+            $wpdb->prepare(
+                'SELECT DISTINCT a.attachment_id
+                 FROM %i AS a
+                 INNER JOIN %i AS f ON f.id = a.folder_id
+                 WHERE f.path LIKE %s',
+                $this->table(),
+                $folders,
+                $wpdb->esc_like($path) . '%'
             )
         ) ?: [];
 
@@ -568,11 +641,16 @@ class AttachmentFolderRepository
             return true;
         }
 
+        $wpdb = $this->wpdb;
         $placeholders = implode(',', array_fill(0, count($folderIds), '%d'));
 
-        $deleted = $this->wpdb->query(
-            $this->wpdb->prepare(
-                "DELETE FROM {$this->table()} WHERE folder_id IN ({$placeholders})",
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a write to our own table; changed() bumps the 'folderfolio' last_changed key.
+        $deleted = $wpdb->query(
+            // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- the sniff cannot count the spread ids that fill the %d list.
+            $wpdb->prepare(
+                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- placeholders only: one %d per folder id.
+                "DELETE FROM %i WHERE folder_id IN ({$placeholders})",
+                $this->table(),
                 ...$folderIds
             )
         );
@@ -609,15 +687,20 @@ class AttachmentFolderRepository
      */
     public function copyFolder(int $fromFolderId, int $toFolderId): bool|WP_Error
     {
-        $inserted = $this->wpdb->query(
-            $this->wpdb->prepare(
-                "INSERT IGNORE INTO {$this->table()}
+        $wpdb = $this->wpdb;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a write to our own table; changed() bumps the 'folderfolio' last_changed key.
+        $inserted = $wpdb->query(
+            $wpdb->prepare(
+                'INSERT IGNORE INTO %i
                      (folder_id, attachment_id, sort_order, assigned_at, import_run)
                  SELECT %d, attachment_id, sort_order, %s, NULL
-                 FROM {$this->table()}
-                 WHERE folder_id = %d",
+                 FROM %i
+                 WHERE folder_id = %d',
+                $this->table(),
                 $toFolderId,
                 current_time('mysql', true),
+                $this->table(),
                 $fromFolderId
             )
         );
@@ -656,9 +739,13 @@ class AttachmentFolderRepository
             return 0;
         }
 
-        $deleted = $this->wpdb->query(
-            $this->wpdb->prepare(
-                "DELETE FROM {$this->table()} WHERE import_run = %s",
+        $wpdb = $this->wpdb;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a write to our own table; changed() bumps the 'folderfolio' last_changed key.
+        $deleted = $wpdb->query(
+            $wpdb->prepare(
+                'DELETE FROM %i WHERE import_run = %s',
+                $this->table(),
                 $importRun
             )
         );
@@ -687,22 +774,36 @@ class AttachmentFolderRepository
      */
     public function deleteOrphans(): int
     {
+        $wpdb = $this->wpdb;
         $table = $this->table();
-        $folders = $this->wpdb->prefix . 'folderfolio_folders';
+        $folders = $wpdb->prefix . 'folderfolio_folders';
 
-        // Identifiers cannot be bound and both are built from $wpdb->prefix.
-        $removed = (int) $this->wpdb->query(
-            "DELETE FROM {$table}
-             WHERE NOT EXISTS (
-                 SELECT 1 FROM {$folders} f WHERE f.id = {$table}.folder_id
-             )"
+        // Identifiers cannot be bound as values — %i quotes them — and both
+        // are built from $wpdb->prefix.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a write to our own table; changed() bumps the 'folderfolio' last_changed key.
+        $removed = (int) $wpdb->query(
+            $wpdb->prepare(
+                'DELETE FROM %i
+                 WHERE NOT EXISTS (
+                     SELECT 1 FROM %i f WHERE f.id = %i.folder_id
+                 )',
+                $table,
+                $folders,
+                $table
+            )
         );
 
-        $removed += (int) $this->wpdb->query(
-            "DELETE FROM {$table}
-             WHERE NOT EXISTS (
-                 SELECT 1 FROM {$this->wpdb->posts} p WHERE p.ID = {$table}.attachment_id
-             )"
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a write to our own table; changed() bumps the 'folderfolio' last_changed key.
+        $removed += (int) $wpdb->query(
+            $wpdb->prepare(
+                'DELETE FROM %i
+                 WHERE NOT EXISTS (
+                     SELECT 1 FROM %i p WHERE p.ID = %i.attachment_id
+                 )',
+                $table,
+                $wpdb->posts,
+                $table
+            )
         );
 
         $this->changed();

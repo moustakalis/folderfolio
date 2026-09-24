@@ -79,7 +79,8 @@ final class FolderSelect
         }
 
         $current = MediaLibraryFilter::normalizeFolderId(
-            $_GET[MediaLibraryFilter::QUERY_VAR] ?? null
+            // phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- a read-only filter; normalizeFolderId() is the sanitiser, an int or null
+            wp_unslash($_GET[MediaLibraryFilter::QUERY_VAR] ?? null)
         );
 
         $counts = $this->assignments->libraryCounts($postType);

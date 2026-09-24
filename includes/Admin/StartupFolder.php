@@ -148,7 +148,7 @@ final class StartupFolder
 
         // A POST to upload.php is an upload or a bulk action. Answering it
         // with a redirect would drop the body on the floor.
-        if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'GET') {
+        if (strtoupper(sanitize_key(wp_unslash((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')))) !== 'GET') {
             return false;
         }
 

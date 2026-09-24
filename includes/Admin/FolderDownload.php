@@ -129,7 +129,7 @@ final class FolderDownload
 
         header('Content-Length: ' . ($end - $start + 1));
 
-        if ('HEAD' === ($_SERVER['REQUEST_METHOD'] ?? 'GET')) {
+        if ('HEAD' === strtoupper(sanitize_key(wp_unslash((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'))))) {
             exit;
         }
 
@@ -184,7 +184,10 @@ final class FolderDownload
             return $whole;
         }
 
-        $ifRange = isset($_SERVER['HTTP_IF_RANGE']) ? trim(wp_unslash($_SERVER['HTTP_IF_RANGE'])) : '';
+        // An ETag or a date, compared byte for byte with our own ETag and never
+        // printed: sanitising it could only turn a match into a mismatch.
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+        $ifRange = isset($_SERVER['HTTP_IF_RANGE']) ? trim(wp_unslash((string) $_SERVER['HTTP_IF_RANGE'])) : '';
 
         if ('' !== $ifRange && $ifRange !== $etag) {
             return $whole;
@@ -227,14 +230,14 @@ final class FolderDownload
             @apache_setenv('no-gzip', '1'); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
         }
 
-        @ini_set('zlib.output_compression', '0'); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.PHP.IniSet.Risky
+        @ini_set('zlib.output_compression', '0'); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.PHP.IniSet.Risky, Squiz.PHP.DiscouragedFunctions.Discouraged -- a compressed stream would break Content-Length and Range
 
         while (ob_get_level() > 0) {
             ob_end_clean();
         }
 
         if (function_exists('set_time_limit')) {
-            @set_time_limit(0); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+            @set_time_limit(0); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, Squiz.PHP.DiscouragedFunctions.Discouraged -- a download is as long as the network makes it
         }
     }
 
@@ -252,6 +255,6 @@ final class FolderDownload
 
     private function fail(int $status, string $message): never
     {
-        wp_die(esc_html($message), '', ['response' => $status]);
+        wp_die(esc_html($message), '', ['response' => (int) $status]); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- an HTTP status code, not output
     }
 }

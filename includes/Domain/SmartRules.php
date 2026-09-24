@@ -207,7 +207,8 @@ final class SmartRules
                 case 'type':
                     $likes = array_map(
                         static fn (string $prefix): string => (string) $wpdb->prepare(
-                            "{$posts}.post_mime_type LIKE %s",
+                            '%i.post_mime_type LIKE %s',
+                            $posts,
                             $wpdb->esc_like($prefix) . '%'
                         ),
                         self::FILE_TYPES[(string) $value]
@@ -221,22 +222,25 @@ final class SmartRules
                         // Local midnight, N days ago: "the last 7 days" is a
                         // week of whole days, and the same SQL until tomorrow.
                         $from = current_datetime()->modify('-' . ((int) $value - 1) . ' days')->format('Y-m-d 00:00:00');
-                        $parts[] = (string) $wpdb->prepare("{$posts}.post_date >= %s", $from);
+                        $parts[] = (string) $wpdb->prepare('%i.post_date >= %s', $posts, $from);
                     } elseif ($rule['op'] === 'after') {
-                        $parts[] = (string) $wpdb->prepare("{$posts}.post_date >= %s", $value . ' 00:00:00');
+                        $parts[] = (string) $wpdb->prepare('%i.post_date >= %s', $posts, $value . ' 00:00:00');
                     } else {
-                        $parts[] = (string) $wpdb->prepare("{$posts}.post_date < %s", $value . ' 00:00:00');
+                        $parts[] = (string) $wpdb->prepare('%i.post_date < %s', $posts, $value . ' 00:00:00');
                     }
                     break;
 
                 case 'author':
                     $id = $value === 'me' ? get_current_user_id() : (int) $value;
-                    $parts[] = $id > 0 ? (string) $wpdb->prepare("{$posts}.post_author = %d", $id) : '1 = 0';
+                    $parts[] = $id > 0 ? (string) $wpdb->prepare('%i.post_author = %d', $posts, $id) : '1 = 0';
                     break;
 
                 case 'size':
                     $parts[] = (string) $wpdb->prepare(
-                        "EXISTS (SELECT 1 FROM {$wpdb->postmeta} AS ff_size WHERE ff_size.post_id = {$posts}.ID AND ff_size.meta_key = %s AND CAST(ff_size.meta_value AS UNSIGNED) " . ($rule['op'] === 'gt' ? '>' : '<') . ' %d)',
+                        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- the operator is one of two literals, '>' or '<', never the rule's own text.
+                        'EXISTS (SELECT 1 FROM %i AS ff_size WHERE ff_size.post_id = %i.ID AND ff_size.meta_key = %s AND CAST(ff_size.meta_value AS UNSIGNED) ' . ($rule['op'] === 'gt' ? '>' : '<') . ' %d)',
+                        $wpdb->postmeta,
+                        $posts,
                         FileSizes::META,
                         (int) $value
                     );
@@ -249,8 +253,11 @@ final class SmartRules
                 case 'name':
                     $like = '%' . $wpdb->esc_like((string) $value) . '%';
                     $parts[] = (string) $wpdb->prepare(
-                        "({$posts}.post_title LIKE %s OR EXISTS (SELECT 1 FROM {$wpdb->postmeta} AS ff_file WHERE ff_file.post_id = {$posts}.ID AND ff_file.meta_key = '_wp_attached_file' AND ff_file.meta_value LIKE %s))",
+                        "(%i.post_title LIKE %s OR EXISTS (SELECT 1 FROM %i AS ff_file WHERE ff_file.post_id = %i.ID AND ff_file.meta_key = '_wp_attached_file' AND ff_file.meta_value LIKE %s))",
+                        $posts,
                         $like,
+                        $wpdb->postmeta,
+                        $posts,
                         $like
                     );
                     break;

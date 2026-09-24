@@ -124,7 +124,7 @@ final class SettingsCommand
         if (isset($assoc['values'])) {
             $changes = json_decode((string) $assoc['values'], true);
 
-            if (!is_array($changes) || array_is_list($changes)) {
+            if (!is_array($changes) || array_values($changes) === $changes) {
                 WP_CLI::error('--values is a JSON object of settings, e.g. {"undo_window": 10}.');
             }
         } elseif (isset($args[0], $args[1])) {
@@ -193,7 +193,7 @@ final class SettingsCommand
         }
 
         if (is_array($value)) {
-            return $value === [] ? '—' : (array_is_list($value) ? implode(', ', array_map('strval', $value)) : (string) wp_json_encode($value));
+            return $value === [] ? '—' : (array_values($value) === $value ? implode(', ', array_map('strval', $value)) : (string) wp_json_encode($value));
         }
 
         return (string) $value;

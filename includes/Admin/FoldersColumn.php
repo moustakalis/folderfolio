@@ -241,7 +241,7 @@ final class FoldersColumn
                             : add_query_arg('post_type', $this->objectType, admin_url('edit.php'))
                     )
                 ),
-                $folderId,
+                (int) $folderId,
                 esc_html($label)
             );
         }

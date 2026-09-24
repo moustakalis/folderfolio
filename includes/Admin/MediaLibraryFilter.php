@@ -91,13 +91,15 @@ final class MediaLibraryFilter
             return;
         }
 
-        $smartId = self::normalizeFolderId($_GET[self::SMART_VAR] ?? null);
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- a read-only filter; normalizeFolderId() is the sanitiser, an int or null
+        $smartId = self::normalizeFolderId(wp_unslash($_GET[self::SMART_VAR] ?? null));
 
         if (null !== $smartId && $smartId > 0) {
             $query->set(self::SMART_VAR, $smartId);
         }
 
-        $folderId = self::normalizeFolderId($_GET[self::QUERY_VAR] ?? null);
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- a read-only filter; normalizeFolderId() is the sanitiser, an int or null
+        $folderId = self::normalizeFolderId(wp_unslash($_GET[self::QUERY_VAR] ?? null));
 
         if (null === $folderId) {
             return;
@@ -108,6 +110,7 @@ final class MediaLibraryFilter
         // A column header the person clicked is an order they chose on this
         // screen, and it beats the folder's own. Before tier 2 the folder's
         // won silently: clicking Title in a folder sorted by date did nothing.
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- only whether a sort was asked for
         if (isset($_GET['orderby'])) {
             return;
         }
@@ -151,7 +154,10 @@ final class MediaLibraryFilter
             return $args;
         }
 
-        $query = $_REQUEST['query'] ?? null;
+        // Core's own query-attachments request, which checked its nonce-free
+        // capability above; every key read from it is cast where it is used.
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+        $query = wp_unslash($_REQUEST['query'] ?? null);
 
         if (!is_array($query)) {
             return $args;

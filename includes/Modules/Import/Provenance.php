@@ -66,14 +66,16 @@ final class Provenance
         // Joined to the folders table because meta rows outlive a folder that
         // was deleted outside FolderService; a stale row would otherwise
         // resolve to an id nothing can be filed into.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table, read while importing; must be live, not cached.
         $id = $wpdb->get_var(
             $wpdb->prepare(
-                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-                "SELECT m.folder_id
-                 FROM {$this->table()} m
-                 INNER JOIN {$wpdb->prefix}folderfolio_folders f ON f.id = m.folder_id
+                'SELECT m.folder_id
+                 FROM %i m
+                 INNER JOIN %i f ON f.id = m.folder_id
                  WHERE m.meta_key = %s
-                 LIMIT 1",
+                 LIMIT 1',
+                $this->table(),
+                $wpdb->prefix . 'folderfolio_folders',
                 $this->key($sourceKey, $sourceFolderId)
             )
         );
@@ -98,13 +100,15 @@ final class Provenance
         $prefix = self::PREFIX . $sourceKey . ':';
 
         /** @var list<array{folder_id: string, meta_key: string}> $rows */
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table, read while importing; must be live, not cached.
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-                "SELECT m.folder_id, m.meta_key
-                 FROM {$this->table()} m
-                 INNER JOIN {$wpdb->prefix}folderfolio_folders f ON f.id = m.folder_id
-                 WHERE m.meta_key LIKE %s",
+                'SELECT m.folder_id, m.meta_key
+                 FROM %i m
+                 INNER JOIN %i f ON f.id = m.folder_id
+                 WHERE m.meta_key LIKE %s',
+                $this->table(),
+                $wpdb->prefix . 'folderfolio_folders',
                 // esc_like before the wildcard, or a source key containing an
                 // underscore matches keys it should not.
                 $wpdb->esc_like($prefix) . '%'
@@ -132,10 +136,11 @@ final class Provenance
         // REPLACE rather than a read then an insert: the primary key is
         // (folder_id, meta_key), so re-importing a folder whose provenance is
         // already recorded is one statement and no race.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a write to our own table while importing; nothing to cache.
         $wpdb->query(
             $wpdb->prepare(
-                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-                "REPLACE INTO {$this->table()} (folder_id, meta_key, meta_value) VALUES (%d, %s, %s)",
+                'REPLACE INTO %i (folder_id, meta_key, meta_value) VALUES (%d, %s, %s)',
+                $this->table(),
                 $folderId,
                 $this->key($sourceKey, $sourceFolderId),
                 '1'
@@ -152,10 +157,11 @@ final class Provenance
     {
         global $wpdb;
 
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a write to our own table while importing; nothing to cache.
         $wpdb->query(
             $wpdb->prepare(
-                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-                "DELETE FROM {$this->table()} WHERE folder_id = %d AND meta_key LIKE %s",
+                'DELETE FROM %i WHERE folder_id = %d AND meta_key LIKE %s',
+                $this->table(),
                 $folderId,
                 $wpdb->esc_like(self::PREFIX) . '%'
             )

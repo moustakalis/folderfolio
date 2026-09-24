@@ -113,7 +113,7 @@ final class JsonSource extends Source
 
         $rows = $document['folders'] ?? null;
 
-        if (!is_array($rows) || !array_is_list($rows) || $rows === []) {
+        if (!is_array($rows) || array_values($rows) !== $rows || $rows === []) {
             return self::refuse(__('This file has no folders in it.', 'folderfolio'));
         }
 
@@ -144,7 +144,7 @@ final class JsonSource extends Source
 
         $pairs = $document['assignments'] ?? [];
 
-        if (!is_array($pairs) || !array_is_list($pairs)) {
+        if (!is_array($pairs) || array_values($pairs) !== $pairs) {
             return self::refuse(__('The file assignments in this file are not in the expected shape.', 'folderfolio'));
         }
 
@@ -256,6 +256,7 @@ final class JsonSource extends Source
     {
         global $wpdb;
 
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a server variable, not data; read only to word a refusal.
         $packet = (int) $wpdb->get_var('SELECT @@max_allowed_packet');
 
         // The database's own reason first. The size is the fallback, and it

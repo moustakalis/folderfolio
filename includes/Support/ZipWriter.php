@@ -201,7 +201,7 @@ final class ZipWriter
         $hex = hash_file('crc32b', $path);
 
         if (false === $hex) {
-            throw new \RuntimeException(sprintf('Could not read %s.', $path));
+            throw new \RuntimeException(sprintf('Could not read %s.', $path)); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- never printed as HTML (a log line, or a WP_Error over REST or WP-CLI), and this class stays free of WordPress
         }
 
         return (int) hexdec($hex);
@@ -220,10 +220,14 @@ final class ZipWriter
 
     private function emitFile(string $path, int $size): void
     {
+        // A stream, read a chunk at a time into the response: WP_Filesystem
+        // has no streaming read, and its get_contents() would hold a 2GB
+        // video in memory.
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
         $handle = fopen($path, 'rb');
 
         if (false === $handle) {
-            throw new \RuntimeException(sprintf('Could not open %s.', $path));
+            throw new \RuntimeException(sprintf('Could not open %s.', $path)); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- never printed as HTML (a log line, or a WP_Error over REST or WP-CLI), and this class stays free of WordPress
         }
 
         try {
@@ -237,21 +241,21 @@ final class ZipWriter
             $left = $size - $from;
 
             while ($left > 0) {
-                $chunk = fread($handle, (int) min(self::CHUNK, $left));
+                $chunk = fread($handle, (int) min(self::CHUNK, $left)); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fread -- see fopen() above
 
                 // A file that shrank since it was measured would leave the
                 // archive short of the length already promised. Stop loudly:
                 // the connection closes early and the browser reports the
                 // download as failed, which is the truth.
                 if (false === $chunk || '' === $chunk) {
-                    throw new \RuntimeException(sprintf('%s is shorter than it was.', $path));
+                    throw new \RuntimeException(sprintf('%s is shorter than it was.', $path)); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- never printed as HTML (a log line, or a WP_Error over REST or WP-CLI), and this class stays free of WordPress
                 }
 
                 $left -= strlen($chunk);
                 $this->emit($chunk);
             }
         } finally {
-            fclose($handle);
+            fclose($handle); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- see fopen() above
         }
     }
 

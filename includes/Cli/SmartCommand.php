@@ -282,7 +282,7 @@ final class SmartCommand
     {
         $rules = json_decode($json, true);
 
-        if (!is_array($rules) || !array_is_list($rules)) {
+        if (!is_array($rules) || array_values($rules) !== $rules) {
             WP_CLI::error('--rules is a JSON list, e.g. [{"field":"type","op":"is","value":"image"}].');
         }
 

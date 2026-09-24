@@ -198,10 +198,15 @@ final class StatusReport
     {
         global $wpdb;
 
-        // Identifiers cannot be bound, and this one is built from $wpdb->prefix.
+        // Identifiers cannot be bound as values — %i quotes one — and this one
+        // is built from $wpdb->prefix.
         /** @var list<array{object_type: string, n: string}> $counts */
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own tables; the status report must show live counts, never a cache.
         $counts = $wpdb->get_results(
-            'SELECT object_type, COUNT(*) AS n FROM ' . $wpdb->prefix . 'folderfolio_folders GROUP BY object_type ORDER BY object_type = \'attachment\' DESC, object_type',
+            $wpdb->prepare(
+                'SELECT object_type, COUNT(*) AS n FROM %i GROUP BY object_type ORDER BY object_type = \'attachment\' DESC, object_type',
+                $wpdb->prefix . 'folderfolio_folders'
+            ),
             ARRAY_A
         ) ?: [];
 
@@ -215,7 +220,7 @@ final class StatusReport
 
         foreach ($counts as $count) {
             $parts[] = sprintf(
-                /* translators: 1: a screen's name, e.g. "Pages", 2: how many folders it has. */
+                /* translators: 1: a screen's name, e.g. "Pages", 2: a number of its folders or of its filed items, as in "Pages 12". */
                 __('%1$s %2$s', 'folderfolio'),
                 PostTypes::label((string) $count['object_type']),
                 number_format_i18n((int) $count['n'])
@@ -237,13 +242,18 @@ final class StatusReport
         $folders = $wpdb->prefix . 'folderfolio_folders';
 
         /** @var list<array{object_type: string, n: string}> $counts */
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own tables; the status report must show live counts, never a cache.
         $counts = $wpdb->get_results(
-            "SELECT f.object_type, COUNT(DISTINCT a.attachment_id) AS n
-             FROM {$table} a
-             JOIN {$folders} f ON f.id = a.folder_id
-             WHERE f.object_type <> 'attachment'
-             GROUP BY f.object_type
-             ORDER BY f.object_type",
+            $wpdb->prepare(
+                "SELECT f.object_type, COUNT(DISTINCT a.attachment_id) AS n
+                 FROM %i a
+                 JOIN %i f ON f.id = a.folder_id
+                 WHERE f.object_type <> 'attachment'
+                 GROUP BY f.object_type
+                 ORDER BY f.object_type",
+                $table,
+                $folders
+            ),
             ARRAY_A
         ) ?: [];
 
@@ -251,7 +261,7 @@ final class StatusReport
 
         foreach ($counts as $count) {
             $parts[] = sprintf(
-                /* translators: 1: a screen's name, e.g. "Pages", 2: how many of its items are in folders. */
+                /* translators: 1: a screen's name, e.g. "Pages", 2: a number of its folders or of its filed items, as in "Pages 12". */
                 __('%1$s %2$s', 'folderfolio'),
                 PostTypes::label((string) $count['object_type']),
                 number_format_i18n((int) $count['n'])
@@ -275,8 +285,9 @@ final class StatusReport
         $table = $wpdb->prefix . 'folderfolio_folders';
 
         /** @var array{path: string, depth: string, object_type: string}|null $deepest */
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own tables; the status report must show live counts, never a cache.
         $deepest = $wpdb->get_row(
-            "SELECT path, depth, object_type FROM {$table} ORDER BY depth DESC, id ASC LIMIT 1",
+            $wpdb->prepare('SELECT path, depth, object_type FROM %i ORDER BY depth DESC, id ASC LIMIT 1', $table),
             ARRAY_A
         );
 
@@ -293,10 +304,13 @@ final class StatusReport
         $placeholders = implode(', ', array_fill(0, count($ids), '%d'));
 
         /** @var list<array{id: string, name: string}> $rows */
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own tables; the status report must show live counts, never a cache.
         $rows = $wpdb->get_results(
+            // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- the sniff cannot count the spread ids that fill the %d list.
             $wpdb->prepare(
-                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-                "SELECT id, name FROM {$table} WHERE id IN ({$placeholders})",
+                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- placeholders only: one %d per id.
+                "SELECT id, name FROM %i WHERE id IN ({$placeholders})",
+                $table,
                 ...$ids
             ),
             ARRAY_A
@@ -366,11 +380,16 @@ final class StatusReport
         // (tier 3 item 12 put both in this table). `filedElsewhere()` says
         // those.
         /** @var array{row_count: string, file_count: string}|null $counts */
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own tables; the status report must show live counts, never a cache.
         $counts = $wpdb->get_row(
-            "SELECT COUNT(*) AS row_count, COUNT(DISTINCT a.attachment_id) AS file_count
-             FROM {$table} a
-             JOIN {$folders} f ON f.id = a.folder_id
-             WHERE f.object_type = 'attachment'",
+            $wpdb->prepare(
+                "SELECT COUNT(*) AS row_count, COUNT(DISTINCT a.attachment_id) AS file_count
+                 FROM %i a
+                 JOIN %i f ON f.id = a.folder_id
+                 WHERE f.object_type = 'attachment'",
+                $table,
+                $folders
+            ),
             ARRAY_A
         );
 

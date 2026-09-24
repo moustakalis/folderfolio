@@ -218,9 +218,8 @@ final class MediaModalIntegration
                  * the files that are filed nowhere else — a file still in
                  * another folder does not move to Unassigned, and the toast
                  * used to say it did.
-                 *
-                 * translators: 1: folder name, 2: number of files, always 1.
                  */
+                /* translators: 1: folder name, 2: number of files, always 1. */
                 'deletedWithFile' => __(
                     'Deleted “%1$s” — %2$s file moved to Unassigned',
                     'folderfolio'

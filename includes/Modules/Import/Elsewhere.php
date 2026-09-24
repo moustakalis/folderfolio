@@ -194,9 +194,11 @@ final class Elsewhere
     {
         global $wpdb;
 
-        // Identifiers cannot be bound, and this one is built from $wpdb->prefix.
+        // Identifiers cannot be bound as values — %i quotes one — and this one
+        // is built from $wpdb->prefix.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table; a live count, whether it is zero.
         return (int) $wpdb->get_var(
-            'SELECT COUNT(*) FROM ' . $wpdb->prefix . 'folderfolio_folders'
+            $wpdb->prepare('SELECT COUNT(*) FROM %i', $wpdb->prefix . 'folderfolio_folders')
         );
     }
 }

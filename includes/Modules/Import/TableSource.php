@@ -89,6 +89,7 @@ class TableSource extends Source
     {
         global $wpdb;
 
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- schema introspection; the answer must be live, never cached.
         $found = $wpdb->get_var(
             $wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($table))
         );
@@ -112,13 +113,11 @@ class TableSource extends Source
         }
 
         // Identifiers and the scope column are ours, from the catalogue, never
-        // from a request; the scope *value* is bound.
-        $sql = 'SELECT COUNT(*) FROM ' . $this->folders_() . $this->scopeWhere();
+        // from a request, and go in through %i; the scope *value* is bound.
+        $sql = 'SELECT COUNT(*) FROM %i' . $this->scopeWhere();
 
-        return (int) ($this->scopeValue === null
-            ? $wpdb->get_var($sql)
-            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-            : $wpdb->get_var($wpdb->prepare($sql, $this->scopeValue)));
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- another plugin's table, which no API of ours or core's reads; read once to plan an import. $sql is literal SQL and placeholders only; every identifier goes through %i.
+        return (int) $wpdb->get_var($wpdb->prepare($sql, $this->folders_(), ...$this->scopeArgs()));
     }
 
     public function assignmentCount(): int
@@ -132,14 +131,15 @@ class TableSource extends Source
         // Joined to the folder table so that a pair pointing at a folder of
         // another post type — or at a folder that no longer exists — is not
         // counted as something this import would bring over.
-        $sql = 'SELECT COUNT(*) FROM ' . $this->assignments_() . ' a'
-            . ' INNER JOIN ' . $this->folders_() . ' f ON f.id = a.' . $this->folderIdColumn
+        $sql = 'SELECT COUNT(*) FROM %i a'
+            . ' INNER JOIN %i f ON f.id = a.%i'
             . $this->scopeWhere('f.');
 
-        return (int) ($this->scopeValue === null
-            ? $wpdb->get_var($sql)
-            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-            : $wpdb->get_var($wpdb->prepare($sql, $this->scopeValue)));
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- another plugin's table, which no API of ours or core's reads; read once to plan an import. $sql is literal SQL and placeholders only; every identifier goes through %i.
+        return (int) $wpdb->get_var(
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $sql is literal SQL and placeholders only; every identifier goes through %i.
+            $wpdb->prepare($sql, $this->assignments_(), $this->folders_(), $this->folderIdColumn, ...$this->scopeArgs())
+        );
     }
 
     /**
@@ -153,15 +153,23 @@ class TableSource extends Source
             return [];
         }
 
-        $sql = 'SELECT id, ' . $this->parentColumn . ' AS parent, '
-            . $this->nameColumn . ' AS name, ' . $this->orderColumn . ' AS ord'
-            . ' FROM ' . $this->folders_() . $this->scopeWhere() . ' ORDER BY id ASC';
+        $sql = 'SELECT id, %i AS parent, %i AS name, %i AS ord'
+            . ' FROM %i' . $this->scopeWhere() . ' ORDER BY id ASC';
 
         /** @var list<array{id: string, parent: string, name: string, ord: string|null}> $rows */
-        $rows = ($this->scopeValue === null
-            ? $wpdb->get_results($sql, ARRAY_A)
-            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-            : $wpdb->get_results($wpdb->prepare($sql, $this->scopeValue), ARRAY_A)) ?: [];
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- another plugin's table, which no API of ours or core's reads; read once to plan an import. $sql is literal SQL and placeholders only; every identifier goes through %i.
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $sql is literal SQL and placeholders only; every identifier goes through %i.
+                $sql,
+                $this->parentColumn,
+                $this->nameColumn,
+                $this->orderColumn,
+                $this->folders_(),
+                ...$this->scopeArgs()
+            ),
+            ARRAY_A
+        ) ?: [];
 
         $folders = [];
 
@@ -192,11 +200,13 @@ class TableSource extends Source
         }
 
         /** @var list<string> $ids */
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- another plugin's table, which no API of ours or core's reads; read once to plan an import.
         $ids = $wpdb->get_col(
             $wpdb->prepare(
-                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-                'SELECT DISTINCT ' . $this->attachmentColumn . ' FROM ' . $this->assignments_()
-                    . ' WHERE ' . $this->folderIdColumn . ' = %d',
+                'SELECT DISTINCT %i FROM %i WHERE %i = %d',
+                $this->attachmentColumn,
+                $this->assignments_(),
+                $this->folderIdColumn,
                 $sourceFolderId
             )
         ) ?: [];
@@ -215,6 +225,21 @@ class TableSource extends Source
 
         $placeholder = is_int($this->scopeValue) ? '%d' : '%s';
 
-        return ' WHERE ' . $alias . $this->scopeColumn . ' = ' . $placeholder;
+        return ' WHERE ' . $alias . '%i = ' . $placeholder;
+    }
+
+    /**
+     * What scopeWhere()'s placeholders bind, in order: the column, then the
+     * value. Empty exactly when scopeWhere() is.
+     *
+     * @return list<string|int>
+     */
+    private function scopeArgs(): array
+    {
+        if (null === $this->scopeColumn || null === $this->scopeValue) {
+            return [];
+        }
+
+        return [$this->scopeColumn, $this->scopeValue];
     }
 }

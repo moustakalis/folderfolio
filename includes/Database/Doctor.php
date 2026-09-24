@@ -126,10 +126,15 @@ final class Doctor
     {
         global $wpdb;
 
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own tables; a health check must read live rows, never a cache.
         $ids = $wpdb->get_col(
-            "SELECT f.id FROM {$this->folders()} AS f
-             LEFT JOIN {$this->folders()} AS p ON p.id = f.parent_id
-             WHERE f.parent_id IS NOT NULL AND p.id IS NULL"
+            $wpdb->prepare(
+                "SELECT f.id FROM %i AS f
+                 LEFT JOIN %i AS p ON p.id = f.parent_id
+                 WHERE f.parent_id IS NOT NULL AND p.id IS NULL",
+                $this->folders(),
+                $this->folders()
+            )
         ) ?: [];
 
         return $this->finding(
@@ -153,8 +158,9 @@ final class Doctor
         global $wpdb;
 
         /** @var list<array{id: string, parent_id: string|null, path: string}> $rows */
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own tables; a health check must read live rows, never a cache.
         $rows = $wpdb->get_results(
-            "SELECT id, parent_id, path FROM {$this->folders()}",
+            $wpdb->prepare('SELECT id, parent_id, path FROM %i', $this->folders()),
             ARRAY_A
         ) ?: [];
 
@@ -196,8 +202,9 @@ final class Doctor
         global $wpdb;
 
         /** @var list<array{id: string, path: string, depth: string}> $rows */
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own tables; a health check must read live rows, never a cache.
         $rows = $wpdb->get_results(
-            "SELECT id, path, depth FROM {$this->folders()}",
+            $wpdb->prepare('SELECT id, path, depth FROM %i', $this->folders()),
             ARRAY_A
         ) ?: [];
 
@@ -230,8 +237,9 @@ final class Doctor
         global $wpdb;
 
         /** @var list<array{id: string, parent_id: string|null}> $rows */
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own tables; a health check must read live rows, never a cache.
         $rows = $wpdb->get_results(
-            "SELECT id, parent_id FROM {$this->folders()}",
+            $wpdb->prepare('SELECT id, parent_id FROM %i', $this->folders()),
             ARRAY_A
         ) ?: [];
 
@@ -275,10 +283,15 @@ final class Doctor
     {
         global $wpdb;
 
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own tables; a health check must read live rows, never a cache.
         $ids = $wpdb->get_col(
-            "SELECT DISTINCT a.folder_id FROM {$this->assignments()} AS a
-             LEFT JOIN {$this->folders()} AS f ON f.id = a.folder_id
-             WHERE f.id IS NULL"
+            $wpdb->prepare(
+                "SELECT DISTINCT a.folder_id FROM %i AS a
+                 LEFT JOIN %i AS f ON f.id = a.folder_id
+                 WHERE f.id IS NULL",
+                $this->assignments(),
+                $this->folders()
+            )
         ) ?: [];
 
         return $this->finding(
@@ -301,10 +314,15 @@ final class Doctor
     {
         global $wpdb;
 
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own tables; a health check must read live rows, never a cache.
         $ids = $wpdb->get_col(
-            "SELECT DISTINCT a.attachment_id FROM {$this->assignments()} AS a
-             LEFT JOIN {$wpdb->posts} AS p ON p.ID = a.attachment_id
-             WHERE p.ID IS NULL"
+            $wpdb->prepare(
+                "SELECT DISTINCT a.attachment_id FROM %i AS a
+                 LEFT JOIN %i AS p ON p.ID = a.attachment_id
+                 WHERE p.ID IS NULL",
+                $this->assignments(),
+                $wpdb->posts
+            )
         ) ?: [];
 
         return $this->finding(

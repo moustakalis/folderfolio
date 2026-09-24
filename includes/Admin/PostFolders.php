@@ -160,8 +160,8 @@ final class PostFolders
 
         // A GET parameter on a screen the person opened; the capability
         // checks inside assignAttachments() are what matter, not a nonce.
-        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-        $raw = $_GET[MediaLibraryFilter::QUERY_VAR] ?? null;
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- a GET on a screen the person opened; normalizeFolderId() is the sanitiser, an int or null
+        $raw = wp_unslash($_GET[MediaLibraryFilter::QUERY_VAR] ?? null);
         $folderId = MediaLibraryFilter::normalizeFolderId($raw);
 
         if (null === $folderId || $folderId <= 0) {

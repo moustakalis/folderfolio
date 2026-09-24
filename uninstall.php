@@ -31,9 +31,11 @@ function folderfolio_uninstall_site(): void
     foreach ($tables as $table) {
         $name = $wpdb->prefix . $table;
 
-        // Table names cannot be bound as parameters; these are built from the
-        // install's own prefix and a fixed list, never from input.
-        $wpdb->query("DROP TABLE IF EXISTS {$name}");
+        // Table names cannot be bound as parameters — %i quotes one as an
+        // identifier; these are built from the install's own prefix and a
+        // fixed list, never from input.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- dropping our own tables on uninstall; a schema change by definition.
+        $wpdb->query($wpdb->prepare('DROP TABLE IF EXISTS %i', $name));
     }
 
     // The ZIP download's cache of each file's checksum (FolderArchive).
@@ -62,8 +64,8 @@ function folderfolio_uninstall_site(): void
 }
 
 if (is_multisite()) {
-    foreach (get_sites(['fields' => 'ids', 'number' => 0]) as $siteId) {
-        switch_to_blog((int) $siteId);
+    foreach (get_sites(['fields' => 'ids', 'number' => 0]) as $folderfolio_site_id) {
+        switch_to_blog((int) $folderfolio_site_id);
         folderfolio_uninstall_site();
         restore_current_blog();
     }

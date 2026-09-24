@@ -261,7 +261,7 @@ final class FolderArchive
         }
 
         // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
-        $handle = is_dir(dirname($path)) && is_writable(dirname($path)) ? fopen($path, 'xb') : false;
+        $handle = is_dir(dirname($path)) && wp_is_writable(dirname($path)) ? fopen($path, 'xb') : false;
 
         if (false === $handle) {
             return new WP_Error(
@@ -404,7 +404,7 @@ final class FolderArchive
         $lines = [__('These files are in the folder but not in this download:', 'folderfolio'), ''];
 
         foreach ($leftOut as [$name, $reason]) {
-            /* translators: 1: a file's path inside the download, 2: why it was left out. */
+            /* translators: two phrases joined by a dash: 1: a file's path inside the download and why it was left out, or an ability and a role. */
             $lines[] = sprintf(__('%1$s — %2$s', 'folderfolio'), $name, $reason);
         }
 

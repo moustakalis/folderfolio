@@ -82,12 +82,15 @@ final class FileSizes
         $started = microtime(true);
 
         do {
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a one-off backfill that must see which files still lack a size; a cache would hide them.
             $ids = $wpdb->get_col(
                 $wpdb->prepare(
-                    "SELECT p.ID FROM {$wpdb->posts} AS p
-                     LEFT JOIN {$wpdb->postmeta} AS m ON m.post_id = p.ID AND m.meta_key = %s
+                    "SELECT p.ID FROM %i AS p
+                     LEFT JOIN %i AS m ON m.post_id = p.ID AND m.meta_key = %s
                      WHERE p.post_type = 'attachment' AND m.meta_id IS NULL
                      LIMIT %d",
+                    $wpdb->posts,
+                    $wpdb->postmeta,
                     self::META,
                     self::BATCH
                 )

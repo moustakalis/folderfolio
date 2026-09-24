@@ -123,6 +123,45 @@ jobs:
           path: dist/folderfolio.zip
           retention-days: 30
 
+  # What wordpress.org's reviewers run, against what would be uploaded: the
+  # ZIP the build job made, not the checkout. It was 493 findings (255
+  # errors) the first time it ran, on 24 Sep; it is 0 now and has to stay 0.
+  plugin-check:
+    name: Plugin Check
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download the plugin ZIP
+        uses: actions/download-artifact@v5
+        with:
+          name: folderfolio-plugin-${{ github.sha }}
+          path: dist
+
+      - name: Unpack it
+        run: unzip -q dist/folderfolio.zip -d dist/check
+
+      - name: Plugin Check
+        uses: WordPress/plugin-check-action@v1
+        with:
+          build-dir: dist/check/folderfolio
+
+      # The POT is generated, so it can go stale without anything failing:
+      # a string changed in PHP and the POT still has the old one. Regenerate
+      # it and compare, ignoring the creation date. The runner image's own
+      # PHP is enough for WP-CLI.
+      - name: The POT matches the source
+        run: |
+          curl -fsSLo /tmp/wp-cli.phar https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+          php /tmp/wp-cli.phar i18n make-pot . /tmp/folderfolio.pot --slug=folderfolio --domain=folderfolio \
+            --exclude=assets,node_modules,vendor,tests,tools,design,docs,var,dist,phpstan,public,bin \
+            --headers='{"Report-Msgid-Bugs-To":"https://github.com/moustakalis/folderfolio/issues"}'
+          diff <(grep -v '^"POT-Creation-Date' languages/folderfolio.pot) <(grep -v '^"POT-Creation-Date' /tmp/folderfolio.pot) \
+            || { echo "languages/folderfolio.pot is stale: run the make-pot line above and commit it." >&2; exit 1; }
+
   php-tests:
     name: PHP Tests (${{ matrix.php }}${{ matrix.multisite == '1' && ', multisite' || '' }})
     runs-on: ubuntu-latest

@@ -43,10 +43,13 @@ final class Media
             $placeholders = implode(', ', array_fill(0, count($chunk), '%d'));
 
             /** @var list<string> $rows */
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- which of these ids still exist, asked once per 500 while importing; must be live.
             $rows = $wpdb->get_col(
+                // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- the sniff cannot count the spread ids that fill the %d list.
                 $wpdb->prepare(
-                    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-                    "SELECT ID FROM {$wpdb->posts} WHERE post_type = 'attachment' AND ID IN ({$placeholders})",
+                    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- placeholders only: one %d per id.
+                    "SELECT ID FROM %i WHERE post_type = 'attachment' AND ID IN ({$placeholders})",
+                    $wpdb->posts,
                     ...$chunk
                 )
             ) ?: [];

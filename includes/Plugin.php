@@ -125,7 +125,10 @@ final class Plugin
             (new Network())->register();
         }
 
-        add_action('init', [$this, 'loadTextDomain']);
+        // No load_plugin_textdomain(): since WordPress 4.6 core loads a
+        // wordpress.org plugin's translations itself, from the language packs
+        // translate.wordpress.org builds from this source. languages/ carries
+        // the POT for anyone translating outside it.
 
         $this->registerCliCommands();
         add_action('rest_api_init', [$this, 'registerRestRoutes']);
@@ -225,15 +228,6 @@ final class Plugin
         \WP_CLI::add_command('folderfolio import', ImportCommand::class);
         \WP_CLI::add_command('folderfolio smart', SmartCommand::class);
         \WP_CLI::add_command('folderfolio settings', SettingsCommand::class);
-    }
-
-    public function loadTextDomain(): void
-    {
-        load_plugin_textdomain(
-            'folderfolio',
-            false,
-            dirname(plugin_basename(FOLDERFOLIO_PLUGIN_FILE)) . '/languages'
-        );
     }
 
     /**

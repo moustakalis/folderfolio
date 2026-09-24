@@ -565,7 +565,7 @@ final class SettingsPage
                                         <?php disabled($pinned); ?>
                                         aria-label="<?php
                                             echo esc_attr(sprintf(
-                                                /* translators: 1: ability, e.g. Organise. 2: role name, e.g. Editor. */
+                                                /* translators: two phrases joined by a dash: 1: a file's path inside the download and why it was left out, or an ability and a role. */
                                                 __('%1$s — %2$s', 'folderfolio'),
                                                 $label,
                                                 $name
@@ -747,9 +747,8 @@ final class SettingsPage
         // Sanitising is Settings::sanitize()'s job, and it is the same
         // function the REST and WP-CLI paths would use. Passing the raw array
         // in is deliberate: one place decides what a valid value is.
-        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash
         /** @var array<string, mixed> $raw */
-        $raw = wp_unslash($_POST);
+        $raw = wp_unslash($_POST); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.NonceVerification.Missing -- guard() checked the nonce; Settings::save() sanitises
 
         Settings::save($raw);
 
@@ -760,7 +759,7 @@ final class SettingsPage
     {
         $this->guard(self::TOOL_ACTION);
 
-        $tool = isset($_POST['tool']) ? sanitize_key(wp_unslash((string) $_POST['tool'])) : '';
+        $tool = isset($_POST['tool']) ? sanitize_key(wp_unslash((string) $_POST['tool'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- guard() checked the nonce
 
         if ('rebuild-paths' === $tool) {
             (new Schema())->backfillPaths(true);

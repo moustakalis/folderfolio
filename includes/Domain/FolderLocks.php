@@ -92,10 +92,13 @@ final class FolderLocks
      */
     private function ids(string $key): array
     {
-        $rows = $this->wpdb->get_col(
-            $this->wpdb->prepare(
-                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-                "SELECT folder_id FROM {$this->table()} WHERE meta_key = %s",
+        $wpdb = $this->wpdb;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table, no core API; locked() memoises the answer per request.
+        $rows = $wpdb->get_col(
+            $wpdb->prepare(
+                'SELECT folder_id FROM %i WHERE meta_key = %s',
+                $this->table(),
                 $key
             )
         ) ?: [];
@@ -132,20 +135,24 @@ final class FolderLocks
      */
     public function set(int $folderId, string $key, bool $on): bool|WP_Error
     {
+        $wpdb = $this->wpdb;
+
         $written = $on
-            ? $this->wpdb->query(
-                $this->wpdb->prepare(
-                    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-                    "REPLACE INTO {$this->table()} (folder_id, meta_key, meta_value) VALUES (%d, %s, %s)",
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a write to our own table; it bumps the 'folderfolio' last_changed key below.
+            ? $wpdb->query(
+                $wpdb->prepare(
+                    'REPLACE INTO %i (folder_id, meta_key, meta_value) VALUES (%d, %s, %s)',
+                    $this->table(),
                     $folderId,
                     $key,
                     '1'
                 )
             )
-            : $this->wpdb->query(
-                $this->wpdb->prepare(
-                    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-                    "DELETE FROM {$this->table()} WHERE folder_id = %d AND meta_key = %s",
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a write to our own table; it bumps the 'folderfolio' last_changed key below.
+            : $wpdb->query(
+                $wpdb->prepare(
+                    'DELETE FROM %i WHERE folder_id = %d AND meta_key = %s',
+                    $this->table(),
                     $folderId,
                     $key
                 )

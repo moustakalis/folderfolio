@@ -97,12 +97,15 @@ final class FolderSorts
      */
     public function for(int $folderId): array
     {
+        $wpdb = $this->wpdb;
+
         /** @var list<array{meta_key: string, meta_value: ?string}> $rows */
-        $rows = $this->wpdb->get_results(
-            $this->wpdb->prepare(
-                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-                "SELECT meta_key, meta_value FROM {$this->table()}
-                 WHERE folder_id = %d AND meta_key IN (%s, %s)",
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table, no core API; two indexed rows, read live.
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                'SELECT meta_key, meta_value FROM %i
+                 WHERE folder_id = %d AND meta_key IN (%s, %s)',
+                $this->table(),
                 $folderId,
                 self::FOLDERS,
                 self::FILES
@@ -133,12 +136,15 @@ final class FolderSorts
      */
     public function all(): array
     {
+        $wpdb = $this->wpdb;
+
         /** @var list<array{folder_id: string, meta_key: string, meta_value: ?string}> $rows */
-        $rows = $this->wpdb->get_results(
-            $this->wpdb->prepare(
-                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-                "SELECT folder_id, meta_key, meta_value FROM {$this->table()}
-                 WHERE meta_key IN (%s, %s)",
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table, no core API; one indexed read, live.
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                'SELECT folder_id, meta_key, meta_value FROM %i
+                 WHERE meta_key IN (%s, %s)',
+                $this->table(),
                 self::FOLDERS,
                 self::FILES
             ),
@@ -189,11 +195,14 @@ final class FolderSorts
             );
         }
 
+        $wpdb = $this->wpdb;
+
         if ($order === null) {
-            $this->wpdb->query(
-                $this->wpdb->prepare(
-                    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-                    "DELETE FROM {$this->table()} WHERE folder_id = %d AND meta_key = %s",
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a write to our own table; it bumps the 'folderfolio' last_changed key below.
+            $wpdb->query(
+                $wpdb->prepare(
+                    'DELETE FROM %i WHERE folder_id = %d AND meta_key = %s',
+                    $this->table(),
                     $folderId,
                     self::key($scope)
                 )
@@ -209,11 +218,12 @@ final class FolderSorts
         // REPLACE INTO, not an UPDATE: the primary key is (folder_id,
         // meta_key), so this is the whole of "set it, whether or not it was
         // set before" in one statement.
-        $written = $this->wpdb->query(
-            $this->wpdb->prepare(
-                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-                "REPLACE INTO {$this->table()} (folder_id, meta_key, meta_value)
-                 VALUES (%d, %s, %s)",
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a write to our own table; it bumps the 'folderfolio' last_changed key below.
+        $written = $wpdb->query(
+            $wpdb->prepare(
+                'REPLACE INTO %i (folder_id, meta_key, meta_value)
+                 VALUES (%d, %s, %s)',
+                $this->table(),
                 $folderId,
                 self::key($scope),
                 $order

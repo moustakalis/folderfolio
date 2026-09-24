@@ -98,9 +98,13 @@ class FolderRepository
      */
     public function find(int $id): ?array
     {
-        $row = $this->wpdb->get_row(
-            $this->wpdb->prepare(
-                "SELECT * FROM {$this->table()} WHERE id = %d",
+        $wpdb = $this->wpdb;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table, no core API; read live, and the cached reader (GalleryQuery) keys on the 'folderfolio' last_changed every write bumps.
+        $row = $wpdb->get_row(
+            $wpdb->prepare(
+                'SELECT * FROM %i WHERE id = %d',
+                $this->table(),
                 $id
             ),
             ARRAY_A
@@ -116,11 +120,15 @@ class FolderRepository
      */
     public function all(string $objectType = self::DEFAULT_OBJECT_TYPE): array
     {
-        return $this->wpdb->get_results(
-            $this->wpdb->prepare(
-                "SELECT * FROM {$this->table()}
+        $wpdb = $this->wpdb;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table, no core API; read live, and the cached reader (GalleryQuery) keys on the 'folderfolio' last_changed every write bumps.
+        return $wpdb->get_results(
+            $wpdb->prepare(
+                'SELECT * FROM %i
                  WHERE object_type = %s
-                 ORDER BY sort_order ASC, name ASC",
+                 ORDER BY sort_order ASC, name ASC',
+                $this->table(),
                 $objectType
             ),
             ARRAY_A
@@ -134,9 +142,13 @@ class FolderRepository
      */
     public function children(int $parentId): array
     {
-        return $this->wpdb->get_results(
-            $this->wpdb->prepare(
-                "SELECT * FROM {$this->table()} WHERE parent_id = %d ORDER BY sort_order ASC, name ASC",
+        $wpdb = $this->wpdb;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table, no core API; read live, and the cached reader (GalleryQuery) keys on the 'folderfolio' last_changed every write bumps.
+        return $wpdb->get_results(
+            $wpdb->prepare(
+                'SELECT * FROM %i WHERE parent_id = %d ORDER BY sort_order ASC, name ASC',
+                $this->table(),
                 $parentId
             ),
             ARRAY_A
@@ -159,19 +171,22 @@ class FolderRepository
     ): array {
         $sql = $parentId === null
             ? $this->wpdb->prepare(
-                "SELECT * FROM {$this->table()}
+                'SELECT * FROM %i
                  WHERE parent_id IS NULL AND object_type = %s
-                 ORDER BY sort_order ASC, name ASC",
+                 ORDER BY sort_order ASC, name ASC',
+                $this->table(),
                 $objectType
             )
             : $this->wpdb->prepare(
-                "SELECT * FROM {$this->table()}
+                'SELECT * FROM %i
                  WHERE parent_id = %d AND object_type = %s
-                 ORDER BY sort_order ASC, name ASC",
+                 ORDER BY sort_order ASC, name ASC',
+                $this->table(),
                 $parentId,
                 $objectType
             );
 
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $sql is one of the two prepare()d statements just above.
         return $this->wpdb->get_results($sql, ARRAY_A) ?: [];
     }
 
@@ -185,12 +200,16 @@ class FolderRepository
      */
     public function subtree(string $path): array
     {
-        return $this->wpdb->get_results(
-            $this->wpdb->prepare(
-                "SELECT * FROM {$this->table()}
+        $wpdb = $this->wpdb;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table, no core API; read live, and the cached reader (GalleryQuery) keys on the 'folderfolio' last_changed every write bumps.
+        return $wpdb->get_results(
+            $wpdb->prepare(
+                'SELECT * FROM %i
                  WHERE path LIKE %s
-                 ORDER BY depth ASC, sort_order ASC, name ASC",
-                $this->wpdb->esc_like($path) . '%'
+                 ORDER BY depth ASC, sort_order ASC, name ASC',
+                $this->table(),
+                $wpdb->esc_like($path) . '%'
             ),
             ARRAY_A
         ) ?: [];
@@ -203,10 +222,14 @@ class FolderRepository
      */
     public function subtreeIds(string $path): array
     {
-        $ids = $this->wpdb->get_col(
-            $this->wpdb->prepare(
-                "SELECT id FROM {$this->table()} WHERE path LIKE %s",
-                $this->wpdb->esc_like($path) . '%'
+        $wpdb = $this->wpdb;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table, no core API; read live, and the cached reader (GalleryQuery) keys on the 'folderfolio' last_changed every write bumps.
+        $ids = $wpdb->get_col(
+            $wpdb->prepare(
+                'SELECT id FROM %i WHERE path LIKE %s',
+                $this->table(),
+                $wpdb->esc_like($path) . '%'
             )
         ) ?: [];
 
@@ -227,19 +250,22 @@ class FolderRepository
     ): bool {
         $sql = $parentId === null
             ? $this->wpdb->prepare(
-                "SELECT id FROM {$this->table()}
-                 WHERE parent_id IS NULL AND name = %s AND object_type = %s",
+                'SELECT id FROM %i
+                 WHERE parent_id IS NULL AND name = %s AND object_type = %s',
+                $this->table(),
                 $name,
                 $objectType
             )
             : $this->wpdb->prepare(
-                "SELECT id FROM {$this->table()}
-                 WHERE parent_id = %d AND name = %s AND object_type = %s",
+                'SELECT id FROM %i
+                 WHERE parent_id = %d AND name = %s AND object_type = %s',
+                $this->table(),
                 $parentId,
                 $name,
                 $objectType
             );
 
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $sql is one of the two prepare()d statements just above.
         foreach ($this->wpdb->get_col($sql) ?: [] as $id) {
             if ($ignoreId === null || (int) $id !== $ignoreId) {
                 return true;
@@ -376,18 +402,21 @@ class FolderRepository
 
         $placeholders = implode(', ', array_fill(0, count($idsInOrder), '%d'));
 
-        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared -- the
         // interpolated parts are placeholder strings this method builds, never
         // caller data; every value goes through prepare() below.
+        // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- the sniff cannot count the CASE pairs or the %d list, which arrive as one spread.
         $sql = $this->wpdb->prepare(
-            "UPDATE {$this->table()}
-             SET sort_order = CASE id " . implode(' ', $cases) . " END,
+            'UPDATE %i
+             SET sort_order = CASE id ' . implode(' ', $cases) . " END,
                  updated_at = %s
              WHERE id IN ({$placeholders})",
+            $this->table(),
             ...$args
         );
-        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
 
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- $sql is prepare()d just above; its only interpolations are placeholder strings.
         if ($this->wpdb->query($sql) === false) {
             return new WP_Error(
                 'folderfolio_folder_reorder_failed',
@@ -419,16 +448,20 @@ class FolderRepository
         string $newPrefix,
         int $depthDelta
     ): bool|WP_Error {
-        $result = $this->wpdb->query(
-            $this->wpdb->prepare(
-                "UPDATE {$this->table()}
+        $wpdb = $this->wpdb;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a write to our own table; it bumps the 'folderfolio' last_changed key below.
+        $result = $wpdb->query(
+            $wpdb->prepare(
+                'UPDATE %i
                  SET path = CONCAT(%s, SUBSTRING(path, %d)),
                      depth = depth + %d
-                 WHERE path LIKE %s",
+                 WHERE path LIKE %s',
+                $this->table(),
                 $newPrefix,
                 strlen($oldPrefix) + 1,
                 $depthDelta,
-                $this->wpdb->esc_like($oldPrefix) . '%'
+                $wpdb->esc_like($oldPrefix) . '%'
             )
         );
 
@@ -451,10 +484,14 @@ class FolderRepository
      */
     public function deleteSubtree(string $path): int|WP_Error
     {
-        $deleted = $this->wpdb->query(
-            $this->wpdb->prepare(
-                "DELETE FROM {$this->table()} WHERE path LIKE %s",
-                $this->wpdb->esc_like($path) . '%'
+        $wpdb = $this->wpdb;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a write to our own table; it bumps the 'folderfolio' last_changed key below.
+        $deleted = $wpdb->query(
+            $wpdb->prepare(
+                'DELETE FROM %i WHERE path LIKE %s',
+                $this->table(),
+                $wpdb->esc_like($path) . '%'
             )
         );
 
@@ -509,21 +546,24 @@ class FolderRepository
     ): ?array {
         $sql = $parentId === null
             ? $this->wpdb->prepare(
-                "SELECT * FROM {$this->table()}
+                'SELECT * FROM %i
                  WHERE parent_id IS NULL AND name = %s AND object_type = %s
-                 LIMIT 1",
+                 LIMIT 1',
+                $this->table(),
                 $name,
                 $objectType
             )
             : $this->wpdb->prepare(
-                "SELECT * FROM {$this->table()}
+                'SELECT * FROM %i
                  WHERE parent_id = %d AND name = %s AND object_type = %s
-                 LIMIT 1",
+                 LIMIT 1',
+                $this->table(),
                 $parentId,
                 $name,
                 $objectType
             );
 
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $sql is one of the two prepare()d statements just above.
         $row = $this->wpdb->get_row($sql, ARRAY_A);
 
         return $row ?: null;

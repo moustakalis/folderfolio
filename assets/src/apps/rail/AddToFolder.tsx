@@ -334,8 +334,8 @@ function Flyout({ nodes, ids, source, anchor, onClose }: FlyoutProps) {
                                 'movedFile',
                                 'movedFiles',
                                 ids.length,
-                                'Moved %s file to %s',
-                                'Moved %s files to %s',
+                                'Moved %1$s file to %2$s',
+                                'Moved %1$s files to %2$s',
                                 ids.length,
                                 names
                             ),
@@ -368,8 +368,8 @@ function Flyout({ nodes, ids, source, anchor, onClose }: FlyoutProps) {
                             'addedFile',
                             'addedFiles',
                             ids.length,
-                            'Added %s file to %s',
-                            'Added %s files to %s',
+                            'Added %1$s file to %2$s',
+                            'Added %1$s files to %2$s',
                             ids.length,
                             names
                         ),
@@ -438,8 +438,8 @@ function Flyout({ nodes, ids, source, anchor, onClose }: FlyoutProps) {
                                                       'placedFileStart',
                                                       'placedFilesStart',
                                                       ids.length,
-                                                      'Moved %s file to the start of %s',
-                                                      'Moved %s files to the start of %s',
+                                                      'Moved %1$s file to the start of %2$s',
+                                                      'Moved %1$s files to the start of %2$s',
                                                       ids.length,
                                                       sourceName
                                                   )
@@ -447,8 +447,8 @@ function Flyout({ nodes, ids, source, anchor, onClose }: FlyoutProps) {
                                                       'placedFileEnd',
                                                       'placedFilesEnd',
                                                       ids.length,
-                                                      'Moved %s file to the end of %s',
-                                                      'Moved %s files to the end of %s',
+                                                      'Moved %1$s file to the end of %2$s',
+                                                      'Moved %1$s files to the end of %2$s',
                                                       ids.length,
                                                       sourceName
                                                   ),

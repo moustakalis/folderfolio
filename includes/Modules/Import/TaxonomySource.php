@@ -53,9 +53,11 @@ final class TaxonomySource extends Source
     {
         global $wpdb;
 
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- the source plugin may be inactive, its taxonomy unregistered, so no term API can read it; read once to plan an import.
         return (int) $wpdb->get_var(
             $wpdb->prepare(
-                "SELECT COUNT(*) FROM {$wpdb->term_taxonomy} WHERE taxonomy = %s",
+                'SELECT COUNT(*) FROM %i WHERE taxonomy = %s',
+                $wpdb->term_taxonomy,
                 $this->taxonomy
             )
         );
@@ -70,15 +72,19 @@ final class TaxonomySource extends Source
         // attachments only, but Enhanced Media Library's is not necessarily,
         // and importing a post's categories into a media library is the kind
         // of mess that is easier to avoid than to undo.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- the source plugin may be inactive, its taxonomy unregistered, so no term API can read it; read once to plan an import.
         return (int) $wpdb->get_var(
             $wpdb->prepare(
                 "SELECT COUNT(*)
-                 FROM {$wpdb->term_relationships} r
-                 INNER JOIN {$wpdb->term_taxonomy} tt
+                 FROM %i r
+                 INNER JOIN %i tt
                      ON tt.term_taxonomy_id = r.term_taxonomy_id
-                 INNER JOIN {$wpdb->posts} p
+                 INNER JOIN %i p
                      ON p.ID = r.object_id AND p.post_type = 'attachment'
                  WHERE tt.taxonomy = %s",
+                $wpdb->term_relationships,
+                $wpdb->term_taxonomy,
+                $wpdb->posts,
                 $this->taxonomy
             )
         );
@@ -92,13 +98,16 @@ final class TaxonomySource extends Source
         global $wpdb;
 
         /** @var list<array{term_id: string, parent: string, name: string}> $rows */
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- the source plugin may be inactive, its taxonomy unregistered, so no term API can read it; read once to plan an import.
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT tt.term_id, tt.parent, t.name
-                 FROM {$wpdb->term_taxonomy} tt
-                 INNER JOIN {$wpdb->terms} t ON t.term_id = tt.term_id
+                'SELECT tt.term_id, tt.parent, t.name
+                 FROM %i tt
+                 INNER JOIN %i t ON t.term_id = tt.term_id
                  WHERE tt.taxonomy = %s
-                 ORDER BY tt.term_id ASC",
+                 ORDER BY tt.term_id ASC',
+                $wpdb->term_taxonomy,
+                $wpdb->terms,
                 $this->taxonomy
             ),
             ARRAY_A
@@ -130,15 +139,19 @@ final class TaxonomySource extends Source
         // usually equal on a site that has never had a term in two taxonomies,
         // which is exactly why joining rather than assuming matters here.
         /** @var list<string> $ids */
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- the source plugin may be inactive, its taxonomy unregistered, so no term API can read it; read once to plan an import.
         $ids = $wpdb->get_col(
             $wpdb->prepare(
                 "SELECT r.object_id
-                 FROM {$wpdb->term_relationships} r
-                 INNER JOIN {$wpdb->term_taxonomy} tt
+                 FROM %i r
+                 INNER JOIN %i tt
                      ON tt.term_taxonomy_id = r.term_taxonomy_id
-                 INNER JOIN {$wpdb->posts} p
+                 INNER JOIN %i p
                      ON p.ID = r.object_id AND p.post_type = 'attachment'
                  WHERE tt.taxonomy = %s AND tt.term_id = %d",
+                $wpdb->term_relationships,
+                $wpdb->term_taxonomy,
+                $wpdb->posts,
                 $this->taxonomy,
                 $sourceFolderId
             )

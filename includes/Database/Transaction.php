@@ -116,9 +116,11 @@ final class Transaction
         $queued = count(self::$afterCommit);
 
         if ($owns) {
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- transaction control, not a data read; nothing to cache.
             $wpdb->query('START TRANSACTION');
         } else {
-            $wpdb->query("SAVEPOINT {$savepoint}");
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- transaction control, not a data read; nothing to cache.
+            $wpdb->query($wpdb->prepare('SAVEPOINT %i', $savepoint));
         }
 
         self::$depth++;
@@ -140,12 +142,14 @@ final class Transaction
         self::$depth--;
 
         if ($owns) {
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- transaction control, not a data read; nothing to cache.
             $wpdb->query('COMMIT');
         } else {
             // Not required for correctness — an unreleased savepoint is
             // discarded at commit — but it frees the server's record of it,
             // which matters when a batch loops through hundreds of these.
-            $wpdb->query("RELEASE SAVEPOINT {$savepoint}");
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- transaction control, not a data read; nothing to cache.
+            $wpdb->query($wpdb->prepare('RELEASE SAVEPOINT %i', $savepoint));
         }
 
         if ($outermost) {
@@ -240,12 +244,14 @@ final class Transaction
         self::$afterCommit = array_slice(self::$afterCommit, 0, $queued);
 
         if ($outermost) {
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- transaction control, not a data read; nothing to cache.
             $wpdb->query('ROLLBACK');
 
             return;
         }
 
-        $wpdb->query("ROLLBACK TO SAVEPOINT {$savepoint}");
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- transaction control, not a data read; nothing to cache.
+        $wpdb->query($wpdb->prepare('ROLLBACK TO SAVEPOINT %i', $savepoint));
     }
 
     /**

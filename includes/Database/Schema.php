@@ -196,9 +196,11 @@ class Schema
                 continue;
             }
 
-            // Identifiers cannot be bound, and $table is built from
-            // $wpdb->prefix — no caller-supplied value reaches this.
-            $wpdb->query("ALTER TABLE {$table} ENGINE=InnoDB");
+            // Identifiers cannot be bound as values — %i quotes one — and
+            // $table is built from $wpdb->prefix — no caller-supplied value
+            // reaches this.
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- converting our own table's engine; a schema change by definition, nothing to cache.
+            $wpdb->query($wpdb->prepare('ALTER TABLE %i ENGINE=InnoDB', $table));
         }
     }
 
@@ -213,6 +215,7 @@ class Schema
     {
         global $wpdb;
 
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- schema introspection; the answer must be live, never cached.
         $engine = $wpdb->get_var(
             $wpdb->prepare('SHOW TABLE STATUS LIKE %s', $table),
             1 // The Engine column.
@@ -228,6 +231,7 @@ class Schema
     {
         global $wpdb;
 
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- server introspection; the answer must be live, never cached.
         $support = $wpdb->get_var(
             "SELECT SUPPORT FROM information_schema.ENGINES WHERE ENGINE = 'InnoDB'"
         );
@@ -255,8 +259,9 @@ class Schema
         $table = $wpdb->prefix . 'folderfolio_folders';
 
         if (!$force) {
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table, read during a migration/repair; must not be cached.
             $pending = (int) $wpdb->get_var(
-                "SELECT COUNT(*) FROM {$table} WHERE path = '' OR path IS NULL"
+                $wpdb->prepare("SELECT COUNT(*) FROM %i WHERE path = '' OR path IS NULL", $table)
             );
 
             if ($pending === 0) {
@@ -265,8 +270,9 @@ class Schema
         }
 
         /** @var list<array{id: string, parent_id: string|null}> $rows */
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table, read during a migration/repair; must not be cached.
         $rows = $wpdb->get_results(
-            "SELECT id, parent_id FROM {$table}",
+            $wpdb->prepare('SELECT id, parent_id FROM %i', $table),
             ARRAY_A
         ) ?: [];
 
@@ -310,6 +316,7 @@ class Schema
             // right changes nothing, and MySQL counts only rows it changed —
             // so the number is what had drifted, which is what the CLI and
             // the facade say it is (24 Sep: it was every folder on the site).
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a repair write to our own table; nothing to cache.
             $written += (int) $wpdb->update(
                 $table,
                 ['path' => $path, 'depth' => count($chain) - 1],
@@ -331,11 +338,10 @@ class Schema
     {
         global $wpdb;
 
-        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is built from $wpdb->prefix.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table, read once during a migration; must not be cached.
         $hexes = $wpdb->get_col(
-            "SELECT DISTINCT color FROM {$table} WHERE color LIKE '#%'"
+            $wpdb->prepare('SELECT DISTINCT color FROM %i WHERE color LIKE %s', $table, '#%')
         );
-        // phpcs:enable
 
         foreach ($hexes as $hex) {
             // null when the value is not a hex this can read — '#nope', or a
@@ -344,6 +350,7 @@ class Schema
             // that is none of them would fail every later save of that folder.
             $swatch = Swatches::nearest((string) $hex);
 
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a write to our own table during a migration; nothing to cache.
             $wpdb->update(
                 $table,
                 ['color' => $swatch],
@@ -366,14 +373,16 @@ class Schema
     {
         global $wpdb;
 
-        $existing = $wpdb->get_col("SHOW COLUMNS FROM {$table}") ?: [];
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- schema introspection; the answer must be live, never cached.
+        $existing = $wpdb->get_col($wpdb->prepare('SHOW COLUMNS FROM %i', $table)) ?: [];
 
         foreach ($columns as $column) {
             if (!in_array($column, $existing, true)) {
                 continue;
             }
 
-            $wpdb->query("ALTER TABLE {$table} DROP COLUMN `{$column}`");
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- dropping a dead column from our own table; a schema change by definition.
+            $wpdb->query($wpdb->prepare('ALTER TABLE %i DROP COLUMN %i', $table, $column));
         }
     }
 
@@ -386,6 +395,7 @@ class Schema
     {
         global $wpdb;
 
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- schema introspection; the answer must be live, never cached.
         $exists = $wpdb->get_var(
             $wpdb->prepare('SHOW TABLES LIKE %s', $table)
         );
@@ -394,10 +404,12 @@ class Schema
             return;
         }
 
-        if ((int) $wpdb->get_var("SELECT COUNT(*) FROM {$table}") > 0) {
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table, counted during a migration; must not be cached.
+        if ((int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM %i', $table)) > 0) {
             return;
         }
 
-        $wpdb->query("DROP TABLE {$table}");
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- replacing our own empty table; a schema change by definition.
+        $wpdb->query($wpdb->prepare('DROP TABLE %i', $table));
     }
 }
