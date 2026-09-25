@@ -93,6 +93,41 @@ class UploadTargetTest extends WP_UnitTestCase
         self::assertSame([$folderId], $this->folderIdsFor($attachmentId));
     }
 
+    /**
+     * Review M2: Assign files is asked of an upload too. It lived only in the
+     * REST permission callbacks, and an upload passes through none of them.
+     */
+    public function test_without_assign_files_an_upload_stays_unfiled(): void
+    {
+        $folderId = $this->newFolder('Logos');
+        $_REQUEST[UploadTarget::PARAM] = (string) $folderId;
+
+        $deny = static fn (bool $allowed, string $ability): bool => $ability === 'assign' ? false : $allowed;
+        add_filter('folderfolio_user_can', $deny, 10, 2);
+        $refused = $this->upload();
+        remove_filter('folderfolio_user_can', $deny, 10);
+
+        self::assertSame([], $this->folderIdsFor($refused));
+
+        // The positive control: the same request, the ability held.
+        self::assertSame([$folderId], $this->folderIdsFor($this->upload()));
+    }
+
+    /**
+     * A site's own rule is not a person's request, and still files.
+     */
+    public function test_a_sites_rule_files_whoever_uploads(): void
+    {
+        $folderId = $this->newFolder('Products');
+        add_filter('folderfolio_default_folder_for_upload', static fn () => $folderId, 10);
+        add_filter('folderfolio_user_can', static fn (bool $allowed, string $ability): bool => $ability === 'assign' ? false : $allowed, 10, 2);
+
+        $attachmentId = $this->upload();
+        remove_all_filters('folderfolio_user_can');
+
+        self::assertSame([$folderId], $this->folderIdsFor($attachmentId));
+    }
+
     public function test_an_upload_that_names_no_folder_is_filed_nowhere(): void
     {
         $this->newFolder('Logos');

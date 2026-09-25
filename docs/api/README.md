@@ -386,6 +386,11 @@ add_action( 'folderfolio_folder_created', function ( $folder ) {
 
 File new uploads automatically. Return a folder id, or `null` to leave the upload unfiled.
 
+The folder an upload *request* names (`folderfolio_folder`, which the rail sends for the folder
+being looked at) is this filter's answer at priority 5 — and only for someone with **Assign
+files** for that folder's type; for anyone else the request names no folder and the file uploads
+unfiled. A callback of your own is the site's rule and files whoever uploads.
+
 ```php
 add_filter( 'folderfolio_default_folder_for_upload', function ( $folderId, $attachmentId ) {
     $folder = FolderFolio::getOrCreateByPath( 'Uploads/' . gmdate( 'Y/m' ) );
@@ -482,7 +487,7 @@ made at the top.
 | `POST` | `/folders` — `{name, parent_id?, color?, icon?, object_type?}` | create |
 | `GET` | `/folders/{id}` — the folder, its ancestors and its count | use |
 | `PATCH` | `/folders/{id}` — name, colour, icon | rename |
-| `DELETE` | `/folders/{id}?children=reparent\|cascade&reassign_to=` | delete |
+| `DELETE` | `/folders/{id}?children=reparent\|cascade&reassign_to=` | delete (+ assign with `reassign_to`) |
 | `POST` | `/folders/{id}/move` — `{parent_id}` | rename |
 | `POST` | `/folders/reorder` — `{parent_id?, ids}`, the whole level in order | rename |
 | `POST` | `/folders/{id}/duplicate` — `{parent_id?, with_files?, order?}` | create + rename (+ assign with files) |

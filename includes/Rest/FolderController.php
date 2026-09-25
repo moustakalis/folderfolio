@@ -591,7 +591,17 @@ class FolderController
 
     public function canDeleteFolders(WP_REST_Request $request): bool
     {
-        return Capabilities::can('delete', $this->objectType($request));
+        $type = $this->objectType($request);
+
+        // A delete that moves the folder's files somewhere first is also a
+        // filing, and files only for someone who may file (review M2).
+        $reassign = $request->get_param('reassign_to');
+
+        if ($reassign !== null && $reassign !== '' && !Capabilities::can('assign', $type)) {
+            return false;
+        }
+
+        return Capabilities::can('delete', $type);
     }
 
     public function canLockFolders(WP_REST_Request $request): bool

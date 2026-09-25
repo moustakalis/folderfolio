@@ -183,6 +183,34 @@ class FolderControllerTest extends WP_UnitTestCase
 
     /**
      * @test
+     *
+     * Review M2: a delete that files the folder's contents somewhere first is
+     * a filing too, and needs Assign files as well as Delete.
+     */
+    public function a_delete_that_reassigns_files_needs_assign_too(): void
+    {
+        $keep = $this->folder('Keep');
+        $first = $this->folder('First');
+        $second = $this->folder('Second');
+
+        $delete = function (int $id, array $params): int {
+            $request = new WP_REST_Request('DELETE', "/folderfolio/v1/folders/{$id}");
+            foreach ($params as $key => $value) {
+                $request->set_param($key, $value);
+            }
+            return rest_do_request($request)->get_status();
+        };
+
+        $this->editorWithout('assign');
+        $this->assertSame(403, $delete($first, ['children' => 'cascade', 'reassign_to' => $keep]));
+        $this->assertSame(200, $delete($second, ['children' => 'cascade']));
+
+        remove_all_filters('folderfolio_user_can');
+        $this->assertSame(200, $delete($first, ['children' => 'cascade', 'reassign_to' => $keep]));
+    }
+
+    /**
+     * @test
      */
     public function bulk_create_needs_the_create_ability(): void
     {

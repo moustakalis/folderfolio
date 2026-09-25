@@ -42,12 +42,17 @@ use FolderFolio\Domain\FolderRepository;
  * rather than `getOrCreateByPath()` applies here with more force, because
  * nobody typed this parameter on purpose. An id, or nothing.
  *
- * ## Where the permission check is
+ * ## Where the permission checks are
  *
- * Not here. This answers *which folder*, and `UploadRouter` hands the answer
- * to `FolderService::assignAttachments()`, which checks the `assign` ability
- * and `edit_post` on the attachment. Doing it twice, in two places, is how
- * the two get to disagree.
+ * Two, and they ask different things. Here: may this person file into this
+ * folder's tree at all — the **Assign files** ability, for the folder's own
+ * type (review M2). The ability lives in the REST permission callbacks, and
+ * an upload does not pass through one, so without this an Author whose
+ * Assign files box was unticked still filed every upload. A request that may
+ * not file is left for the site's own rule, as if it named no folder: the
+ * file uploads unfiled. Then `UploadRouter` hands the answer to
+ * `FolderService::assignAttachments()`, which checks `edit_post` on the
+ * attachment and the folder's kind.
  */
 final class UploadTarget
 {
@@ -141,7 +146,17 @@ final class UploadTarget
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- WordPress has already authorised the upload that created this attachment; this only reads which folder it named, and the assignment is capability-checked in FolderService.
         $named = self::read($_REQUEST);
 
-        return $named ?? $folderId;
+        if ($named === null) {
+            return $folderId;
+        }
+
+        $folder = (new FolderRepository())->find($named);
+
+        if ($folder === null || !Capabilities::can('assign', (string) $folder['object_type'])) {
+            return $folderId;
+        }
+
+        return $named;
     }
 
     /**

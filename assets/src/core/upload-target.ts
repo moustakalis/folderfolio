@@ -55,6 +55,7 @@
 
 import { setStructureHooks, watchStructure, type StructureHooks } from './folder-upload';
 import { installSelectFolder } from './select-folder';
+import { can } from '../lib/can';
 
 const PARAM = 'folderfolio_folder';
 
@@ -269,11 +270,16 @@ export function watchUploadTarget(
     // `0` is Unassigned and `null` is All media. Neither is a folder, and an
     // upload made while looking at either is exactly the upload that should
     // stay unfiled.
-    current = initial !== null && initial > 0 ? initial : null;
+    // Filing an upload is filing: without Assign files the request names no
+    // folder, the server would not file it anyway (review M2), and the grid
+    // then shows the upload where it really is — unfiled.
+    const mayFile = can('assign');
+
+    current = mayFile && initial !== null && initial > 0 ? initial : null;
     apply();
 
     subscribe((selectedId) => {
-        const next = selectedId !== null && selectedId > 0 ? selectedId : null;
+        const next = mayFile && selectedId !== null && selectedId > 0 ? selectedId : null;
 
         if (next === current) {
             return;
