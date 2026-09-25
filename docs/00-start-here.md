@@ -1859,8 +1859,8 @@ links keep the folder, nothing changes without one, the date filter stays
 core's (board `JNf58KfGsi2o8qdVU5Jjcf`); ~~(3) the narrow sheet as A~~ (`cec1c68`) — Starred,
 Smart, the search line and the folders one scroller, the search line sticky,
 *Top level* beneath it, both renderers (board `NF7bQktuksgBSi4rCfoLvf`);
-~~(4) plurals on the client~~ (`a654d7b`) — every counted label one `_n_noop()` whose translated forms all reach `tn()` with the translation's `pluralRule`; (5) keep `Requires at least: 6.4` and
-give it a CI leg; (6) the settings leftovers and tier 1's debts;
+~~(4) plurals on the client~~ (`a654d7b`) — every counted label one `_n_noop()` whose translated forms all reach `tn()` with the translation's `pluralRule`; ~~(5) keep `Requires at least: 6.4` and
+give it a CI leg~~ (`258c74c`); (6) the settings leftovers and tier 1's debts;
 (7) `v1.0.0-rc.1` once CI is green on Playground too; (8) screenshots, taken
 by Claude in Comet on a clean Playground with CC0 photos, last — then
 `v1.0.0` and SVN.
@@ -1872,6 +1872,13 @@ clipped with `overflow: clip` — an `overflow: hidden` inline-block sits on its
 bottom edge (3.8px low). **The rig's server is `php -d … -S 127.0.0.1:9411`**:
 kill it with `grep -F -- "-S 127.0.0.1:9411"`, not `grep "php -S"`, before
 re-running `setup.sh`.
+
+**WordPress 6.4 is tested since `258c74c`.** CI's *PHP 8.1, WordPress 6.4* leg
+runs integration on the newest 6.4.x (resolved through the stable-check API).
+Run once in the container on 6.4.12: integration 177 / 177 on one site and on a
+network, e2e 124 / 124 after one test fix. `isEditorPanelOpened` lives in
+`core/edit-post` on 6.4 and moved to `core/editor` in 6.5; the plugin's own
+panel already fell back to `wp.editPost`.
 
 Checks at `a654d7b`: PHPStan clean, unit 175, integration 177 / 177 on one site
 and on a network, e2e 124 / 124 (rig), JS unit 73, Plugin Check 0.
