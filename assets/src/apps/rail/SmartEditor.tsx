@@ -38,6 +38,92 @@ const UNITS = [
     { key: 'GB', bytes: 1024 * MB },
 ] as const;
 
+type Unit = (typeof UNITS)[number];
+
+/** The unit a stored size is shown in: the largest it reaches, KB at least. */
+export function unitFor(bytes: number): Unit {
+    return [...UNITS].reverse().find((u) => bytes >= u.bytes) ?? UNITS[0];
+}
+
+/** A size in a unit, as a person would write it: at most two decimals. */
+export function sizeText(bytes: number, unit: Unit): string {
+    return String(Math.round((bytes / unit.bytes) * 100) / 100);
+}
+
+/**
+ * The Size rule's number and unit — review L13.
+ *
+ * The unit was worked out again from the byte value on every render, so the
+ * field fought the person typing: "1.5" became 15, 2048 KB snapped to 2 MB,
+ * the field could not be emptied, and a value from the API showed as
+ * 0.19073486328125 MB. The typed text and the chosen unit are this
+ * component's; bytes are worked out from them only when one changes, and a
+ * size that arrives from outside (another smart folder opened) starts it
+ * again.
+ */
+function SizeValue({
+    bytes,
+    label,
+    unitLabel,
+    onChange,
+}: {
+    bytes: number;
+    label: string;
+    unitLabel: string;
+    onChange: (value: number) => void;
+}) {
+    const [unit, setUnit] = useState<Unit>(() => unitFor(bytes));
+    const [text, setText] = useState(() => sizeText(bytes, unitFor(bytes)));
+    const sent = useRef(bytes);
+
+    useEffect(() => {
+        if (bytes !== sent.current) {
+            sent.current = bytes;
+            const next = unitFor(bytes);
+            setUnit(next);
+            setText(sizeText(bytes, next));
+        }
+    }, [bytes]);
+
+    function send(value: string, inUnit: Unit) {
+        const number = Number.parseFloat(value.replace(',', '.'));
+        const next = Number.isFinite(number) && number > 0 ? Math.round(number * inUnit.bytes) : 0;
+        sent.current = next;
+        onChange(next);
+    }
+
+    return (
+        <span className="folderfolio-smart-rule__pair">
+            <input
+                aria-label={label}
+                type="text"
+                inputMode="decimal"
+                value={text}
+                onChange={(event) => {
+                    setText(event.target.value);
+                    send(event.target.value, unit);
+                }}
+            />
+            <select
+                aria-label={unitLabel}
+                value={unit.key}
+                onChange={(event) => {
+                    // The number stays and means the new unit: "2" and MB is 2 MB.
+                    const next = UNITS.find((u) => u.key === event.target.value) ?? UNITS[1];
+                    setUnit(next);
+                    send(text, next);
+                }}
+            >
+                {UNITS.map((u) => (
+                    <option key={u.key} value={u.key}>
+                        {u.key}
+                    </option>
+                ))}
+            </select>
+        </span>
+    );
+}
+
 function fieldLabel(field: Field): string {
     switch (field) {
         case 'type':
@@ -479,36 +565,15 @@ function Value({
                 </select>
             );
 
-        case 'size': {
-            const bytes = Number(rule.value) || 0;
-            const unit = [...UNITS].reverse().find((u) => bytes >= u.bytes && bytes % u.bytes === 0) ?? UNITS[1];
-
+        case 'size':
             return (
-                <span className="folderfolio-smart-rule__pair">
-                    <input
-                        aria-label={label}
-                        type="number"
-                        min={0}
-                        value={String(bytes / unit.bytes)}
-                        onChange={(event) => onChange(Math.max(0, Math.round((Number(event.target.value) || 0) * unit.bytes)))}
-                    />
-                    <select
-                        aria-label={t('smartSizeUnit', 'Rule %s: unit', String(index + 1))}
-                        value={unit.key}
-                        onChange={(event) => {
-                            const next = UNITS.find((u) => u.key === event.target.value) ?? UNITS[1];
-                            onChange(Math.round((bytes / unit.bytes) * next.bytes));
-                        }}
-                    >
-                        {UNITS.map((u) => (
-                            <option key={u.key} value={u.key}>
-                                {u.key}
-                            </option>
-                        ))}
-                    </select>
-                </span>
+                <SizeValue
+                    bytes={Number(rule.value) || 0}
+                    label={label}
+                    unitLabel={t('smartSizeUnit', 'Rule %s: unit', String(index + 1))}
+                    onChange={onChange}
+                />
             );
-        }
 
         case 'filed':
             return rule.op === 'in' ? (

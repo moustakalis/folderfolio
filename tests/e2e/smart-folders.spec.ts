@@ -168,6 +168,72 @@ test.describe('smart folders', () => {
         }
     });
 
+    /**
+     * The Size field keeps what is typed — review L13.
+     *
+     * Its unit was worked out from the byte value on every render: "1.5"
+     * became 15, 2048 KB snapped to 2 MB, the field could not be emptied, and
+     * a value from the API read 0.19073486328125 MB.
+     */
+    test('the Size field takes decimals, keeps its unit and shows a stored size rounded', async ({ page }) => {
+        await page.goto('/wp-admin/upload.php?mode=grid');
+        await page.locator('#folderfolio-rail').waitFor();
+        await resetSmart(page);
+
+        const id = await page.evaluate(async () =>
+            (await (window as any).wp.apiFetch({
+                path: '/folderfolio/v1/smart',
+                method: 'POST',
+                data: { name: 'Big ones', rules: [{ field: 'size', op: 'gt', value: 200000 }] },
+            })).data.id as number
+        );
+        const stored = () =>
+            page.evaluate(async (smart) => {
+                const list = (await (window as any).wp.apiFetch({ path: '/folderfolio/v1/smart' })).data as any[];
+                return list.find((item) => item.id === smart)?.rules?.[0]?.value;
+            }, id);
+
+        try {
+            await page.reload();
+            const group = page.getByRole('group', { name: 'Smart folders' });
+            await group.getByRole('button', { name: /^Big ones/ }).click();
+            await group.getByRole('button', { name: 'Edit “Big ones”' }).click();
+
+            const dialog = page.getByRole('dialog', { name: 'Edit smart folder' });
+            const value = dialog.getByLabel('Rule 1: value');
+            const unit = dialog.getByLabel('Rule 1: unit');
+
+            // 200,000 bytes, rounded for a person.
+            await expect(value).toHaveValue('195.31');
+            await expect(unit).toHaveValue('KB');
+
+            // Emptied, then typed a key at a time: the dot survives.
+            await value.fill('');
+            await expect(value).toHaveValue('');
+            await value.pressSequentially('1.5');
+            await expect(value).toHaveValue('1.5');
+
+            // A new unit keeps the number: 1.5 MB.
+            await unit.selectOption('MB');
+            await expect(value).toHaveValue('1.5');
+            await expect(unit).toHaveValue('MB');
+
+            // 2048 in KB stays 2048 KB.
+            await unit.selectOption('KB');
+            await value.fill('2048');
+            await expect(unit).toHaveValue('KB');
+            await expect(value).toHaveValue('2048');
+
+            await unit.selectOption('MB');
+            await value.fill('1.5');
+            await dialog.getByRole('button', { name: 'Save' }).click();
+            await expect(dialog).toBeHidden();
+            await expect.poll(stored).toBe(1572864);
+        } finally {
+            await resetSmart(page);
+        }
+    });
+
     test('the list view filters by a smart folder too, and keeps it through a search', async ({ page }) => {
         await page.goto('/wp-admin/upload.php?mode=list');
         await page.locator('#folderfolio-rail').waitFor();
