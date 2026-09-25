@@ -619,6 +619,43 @@ test.describe('the media picker', () => {
         // And it is a column of the frame, not something floating over it.
         await expect(page.locator('.media-modal .media-frame-content .attachments-browser')).toBeVisible();
     });
+
+    // Tier 1's standing debt, closed 25 Sep: the picker's QueryClient had no
+    // MutationCache, so a refusal there rolled back and said nothing.
+    test('a refused write in the picker is said on its notice sheet', async ({ page }) => {
+        await page.goto('/wp-admin/themes.php');
+        await resetFolders(page);
+        await createFolder(page, 'Alpha');
+        await createFolder(page, 'Bravo');
+
+        try {
+            await page.reload();
+            await page.evaluate(() => {
+                const frame = (window as any).wp.media({ title: 'Select', multiple: false });
+                frame.open();
+            });
+            await page.locator('.media-modal').waitFor();
+
+            const libraryTab = page.locator('.media-router .media-menu-item', { hasText: /media library/i });
+
+            if (await libraryTab.count()) {
+                await libraryTab.click();
+            }
+
+            const column = page.locator('.folderfolio-frame');
+            await column.locator('.folderfolio-row', { hasText: /^Alpha/ }).first().click();
+            await column.locator('.folderfolio-row__menu').click();
+            await page.getByRole('menuitem', { name: 'Rename' }).click();
+            await column.locator('.folderfolio-row__input').fill('Bravo');
+            await page.keyboard.press('Enter');
+
+            const notice = page.locator('.folderfolio-toast--notice');
+            await expect(notice).toHaveAttribute('role', 'alert');
+            await expect(notice).toContainText('already exists');
+        } finally {
+            await resetFolders(page);
+        }
+    });
 });
 
 /**

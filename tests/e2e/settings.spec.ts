@@ -166,6 +166,30 @@ test.describe('the settings screen', () => {
         await expect(page.getByRole('checkbox', { name: 'Delete — Administrator' })).toBeChecked();
     });
 
+    // Settings finding A12: why the row cannot be changed is the line under
+    // it, not a sentence four rows away — and it does not widen the role
+    // column, which would push every tick from its name.
+    test('the administrator row says why it is pinned, directly under it', async ({ page }) => {
+        await page.goto(SETTINGS);
+
+        const create = page.getByRole('checkbox', { name: 'Create — Administrator' });
+        await expect(create).toHaveAccessibleDescription(/Administrators always have every permission/);
+
+        const layout = await page.evaluate(() => {
+            const pinned = document.querySelector('.folderfolio-matrix__pinned')!;
+            const note = pinned.nextElementSibling!;
+            const role = pinned.querySelector('th')!.getBoundingClientRect().width;
+            (note as HTMLElement).style.display = 'none';
+            const without = pinned.querySelector('th')!.getBoundingClientRect().width;
+            (note as HTMLElement).style.display = '';
+
+            return { next: note.className, role, without };
+        });
+
+        expect(layout.next).toContain('folderfolio-matrix__note-row');
+        expect(layout.role).toBe(layout.without);
+    });
+
     /**
      * The help line under Folder counts leads with the option that is in
      * force.
@@ -587,7 +611,9 @@ test.describe('the settings screen', () => {
                     return {
                         width: w,
                         columns: matrix.querySelectorAll('thead th').length,
-                        roles: matrix.querySelectorAll('tbody tr').length,
+                        // A role's row has a row header; the Administrator's note line (A12)
+                        // does not.
+                        roles: matrix.querySelectorAll('tbody tr:has(th)').length,
                         table: Math.round(mb.width * 10) / 10,
                         content: Math.round(content * 10) / 10,
                         overContent: Math.round((mb.width - content) * 10) / 10,
@@ -934,6 +960,11 @@ test.describe('the settings screen', () => {
         // The report is in a textarea rather than behind the copy button
         // alone, so it can still be selected by hand with scripts off.
         await expect(page.locator('#folderfolio-report')).toHaveValue(/FolderFolio \d/);
+
+        // Folded (settings finding A7): the table above already shows it.
+        await expect(page.locator('#folderfolio-report')).toBeHidden();
+        await page.getByText('Show the report as text').click();
+        await expect(page.locator('#folderfolio-report')).toBeVisible();
 
         await expect(page.getByRole('button', { name: 'Repair folder tree' })).toBeVisible();
         await expect(page.getByRole('button', { name: 'Forget deleted files' })).toBeVisible();

@@ -563,6 +563,9 @@ final class SettingsPage
                                         value="1"
                                         <?php checked($pinned || in_array($ability, $granted, true)); ?>
                                         <?php disabled($pinned); ?>
+                                        <?php if ($pinned) : ?>
+                                            aria-describedby="folderfolio-matrix-pinned"
+                                        <?php endif; ?>
                                         aria-label="<?php
                                             echo esc_attr(sprintf(
                                                 /* translators: two phrases joined by a dash: 1: a file's path inside the download and why it was left out, or an ability and a role. */
@@ -581,12 +584,30 @@ final class SettingsPage
                                 </td>
                             <?php endforeach; ?>
                         </tr>
+                        <?php
+                        /*
+                         * Settings finding A12: why the Administrator row
+                         * cannot be changed was a sentence under the table,
+                         * four rows from the row it explained. It is the
+                         * line directly under that row now, and the row's
+                         * boxes point at it. Not inside the role cell: there
+                         * it either widened the column by 80px (pushing every
+                         * tick from its name) or wrapped to three lines.
+                         */
+                        ?>
+                        <?php if ($pinned) : ?>
+                            <tr class="folderfolio-matrix__note-row">
+                                <td colspan="<?php echo esc_attr((string) (count($abilities) + 1)); ?>" id="folderfolio-matrix-pinned" class="folderfolio-matrix__note">
+                                    <?php esc_html_e('Administrators always have every permission, so their row cannot be changed.', 'folderfolio'); ?>
+                                </td>
+                            </tr>
+                        <?php endif; ?>
                     <?php endforeach; ?>
                 </tbody>
             </table>
 
             <p class="folderfolio-matrix__why">
-                <?php esc_html_e('This table can only narrow WordPress’s own permissions — it never widens them. Administrators always have every folder permission. Everyone else needs a tick here and WordPress’s own permission for that screen: uploading files for media, editing posts for posts, editing pages for pages. On those screens, Assign files means filing posts and pages.', 'folderfolio'); ?>
+                <?php esc_html_e('This table can only narrow WordPress’s own permissions — it never widens them. Every role but Administrator needs a tick here and WordPress’s own permission for that screen: uploading files for media, editing posts for posts, editing pages for pages. On those screens, Assign files means filing posts and pages.', 'folderfolio'); ?>
             </p>
         </div>
         <?php
@@ -678,12 +699,25 @@ final class SettingsPage
             </button>
         </div>
 
-        <label class="screen-reader-text" for="folderfolio-report">
-            <?php esc_html_e('Status report', 'folderfolio'); ?>
-        </label>
-        <textarea id="folderfolio-report" class="folderfolio-report" rows="10" readonly><?php
-            echo esc_textarea($report->text());
-        ?></textarea>
+        <?php
+        /*
+         * Settings finding A7's second half: the report is the table above
+         * it, in text, plus the versions — for pasting into a support thread.
+         * Open under the table it repeated all seven rows at full size, the
+         * largest thing on the tab. Closed, it is one line; *Copy report*
+         * copies it either way, and with scripts off it opens to be selected
+         * by hand.
+         */
+        ?>
+        <details class="folderfolio-report-wrap">
+            <summary><?php esc_html_e('Show the report as text', 'folderfolio'); ?></summary>
+            <label class="screen-reader-text" for="folderfolio-report">
+                <?php esc_html_e('Status report', 'folderfolio'); ?>
+            </label>
+            <textarea id="folderfolio-report" class="folderfolio-report" rows="10" readonly><?php
+                echo esc_textarea($report->text());
+            ?></textarea>
+        </details>
         <?php
     }
 

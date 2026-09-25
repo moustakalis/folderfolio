@@ -4,9 +4,9 @@
  *
  * Everything else on screen 08 is a form that posts to admin-post.php, which
  * is why this file is forty lines and not an app. The report is already in a
- * readonly <textarea> on the page: with this script the button copies it, and
- * without it the textarea can still be selected by hand. That is the whole
- * enhancement.
+ * readonly <textarea> on the page, folded in a <details>: with this script
+ * the button copies it, and without it the textarea opens to be selected by
+ * hand. That is the whole enhancement.
  */
 
 const COPY_ATTR = 'data-folderfolio-copy';
@@ -33,6 +33,9 @@ async function copy(button: HTMLButtonElement): Promise<void> {
         // which is better than a button that silently does nothing.
         await navigator.clipboard.writeText(target.value);
     } catch {
+        // The report is folded away in a <details> (settings finding A7);
+        // a closed one cannot be focused or selected, so open it first.
+        target.closest('details')?.setAttribute('open', '');
         target.focus();
         target.select();
 

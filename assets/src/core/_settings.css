@@ -28,9 +28,16 @@
  * So the canvas goes white instead, below. Every token keeps the ground it was
  * measured against, every pair stays true, and the frame is simply gone.
  *
- * The one thing that does not move is the 880px ceiling: the roles matrix is
- * four narrow columns against a role name, and at full window width the ticks
- * end up an inch from the row they belong to.
+ * The one thing that does not move is the 880px ceiling. Its first reason —
+ * the roles matrix's ticks an inch from their row — went when the matrix
+ * learned to shrink to fit (it is 648px wide whatever it is given). Finding
+ * 10 asked on 21 Sep whether the ceiling should go with it, since on a white
+ * page the 374px to its right is empty page rather than canvas. Re-judged
+ * 25 Sep, measured at 1456: lifted, the only things that move are the ones
+ * that should not — the Status table runs to 1206px with its values ending
+ * at 949, and Copy report, flush right, lands 794px from the repair buttons
+ * it sits beside (420 capped). The settings fields and the matrix do not
+ * move at all. So the column stays, and its right edge is the Status tab's.
  */
 
 .folderfolio-settings {
@@ -430,6 +437,21 @@
   color: var(--ff-muted);
 }
 
+/*
+ * Why the Administrator row cannot be changed: the line directly under it
+ * (A12). The pinned row gives up its bottom rule so the two read as one.
+ */
+.folderfolio-matrix tbody tr.folderfolio-matrix__pinned {
+  border-bottom: 0;
+}
+
+.folderfolio-matrix td.folderfolio-matrix__note {
+  padding: 0 8px 8px;
+  font-size: 11.5px;
+  text-align: start;
+  color: var(--ff-muted);
+}
+
 .folderfolio-matrix__why {
   margin: 8px 0 0;
   font-size: 11.5px;
@@ -519,9 +541,26 @@
   justify-self: end;
 }
 
+/* Folded by default (settings finding A7): the table above says it already. */
+.folderfolio-report-wrap {
+  margin-top: 16px;
+}
+
+.folderfolio-report-wrap > summary {
+  cursor: pointer;
+  width: max-content;
+  max-width: 100%;
+  color: var(--ff-accent-text);
+}
+
+.folderfolio-report-wrap > summary:focus-visible {
+  outline: 2px solid var(--ff-sel);
+  outline-offset: 1px;
+}
+
 .folderfolio-report {
   width: 100%;
-  margin-top: 16px;
+  margin-top: 8px;
   font-family: Menlo, Consolas, monospace;
   font-size: 12px;
   line-height: 1.6;
@@ -690,6 +729,16 @@
     display: block;
     padding: 0;
     text-align: start;
+  }
+
+  /* The Administrator row's note spans the stacked row, under its boxes. */
+  .folderfolio-matrix tbody tr.folderfolio-matrix__note-row {
+    padding-top: 0;
+  }
+
+  .folderfolio-matrix tbody td.folderfolio-matrix__note {
+    grid-column: 1 / -1;
+    padding: 0;
   }
 
   .folderfolio-matrix__cell {

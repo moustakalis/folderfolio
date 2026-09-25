@@ -12,7 +12,7 @@
  * the other's.
  */
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createRoot } from 'react-dom/client';
 
 import { Frame } from './modal/Frame';
@@ -20,6 +20,7 @@ import { treeKey } from './rail/queries';
 import { useRail } from './rail/store';
 import { publishBrowsers } from '../lib/media-frame';
 import { watchUploadTarget } from '../core/upload-target';
+import { errorMessage } from '../core/api';
 
 /**
  * Make the frame's collection reachable before any frame is built.
@@ -44,14 +45,26 @@ if (!publishBrowsers()) {
  * both entries. See core/upload-target.ts.
  */
 const client = new QueryClient({
+    /*
+     * Every refused or failed write says so, as it does in the rail
+     * (apps/rail.tsx). The picker shares the rail's components — the ⋮ menu,
+     * rename, paste, star — and those leave the telling to this cache, so
+     * until 25 Sep a refusal in the picker (a duplicate name, a locked
+     * folder, a permission) rolled back and said nothing. Tier 1's standing
+     * debt; the notice sheet itself arrived with the ZIP download.
+     */
+    mutationCache: new MutationCache({
+        onMutate: () => useRail.getState().dismissNotice(),
+        onError: (error) => useRail.getState().showNotice(errorMessage(error)),
+    }),
     defaultOptions: {
         queries: { retry: 1, refetchOnWindowFocus: false },
     },
 });
 
-// A dropped directory's new folders are drawn in the picker's column. The
-// picker has no notice sheet (a standing debt), so a folder that could not be
-// made is not said here; the files still upload.
+// A dropped directory's new folders are drawn in the picker's column, and a
+// folder that could not be made is said on the same notice sheet; the files
+// still upload.
 watchUploadTarget(
     (listener) => useRail.subscribe((state) => listener(state.selectedId)),
     useRail.getState().selectedId,
@@ -59,6 +72,7 @@ watchUploadTarget(
         changed: () => {
             void client.invalidateQueries({ queryKey: treeKey });
         },
+        notice: (message) => useRail.getState().showNotice(message),
     }
 );
 

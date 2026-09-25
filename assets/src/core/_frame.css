@@ -239,3 +239,16 @@
 .folderfolio.folderfolio-toasts {
   z-index: 170000;
 }
+
+/*
+ * The same for the menus the picker's column portals to the body: the row's
+ * ⋮ (and the steps inside it) and the anchored menus. At 100000 they opened
+ * *under* the media modal (160000) — the ⋮ in the picker drew its whole menu
+ * behind the modal's backdrop, where nothing could be pressed. Found 25 Sep
+ * by the e2e written for the picker's notice sheet, whose Rename was never
+ * clickable; it had been so since the ⋮ moved to the body (`abbd720`).
+ */
+.folderfolio.folderfolio-menu--row,
+.folderfolio.folderfolio-menu--anchored {
+  z-index: 170000;
+}

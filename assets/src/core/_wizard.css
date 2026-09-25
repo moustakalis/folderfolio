@@ -47,8 +47,14 @@
   border-inline-end: 0;
 }
 
+/*
+ * *You are here* in the accent, like the settings tabs above it and the
+ * segmented control's checked option: one colour for "chosen" on the screen.
+ * The marker was --ff-bar (the admin menu's chrome) until 25 Sep, the last
+ * current-state on the page in a colour of its own.
+ */
 .folderfolio-wizard__step[aria-current='step'] {
-  border-bottom-color: var(--ff-bar);
+  border-bottom-color: var(--ff-sel);
   color: var(--ff-ink);
 }
 
@@ -65,20 +71,17 @@
 
 /*
  * The current step's number is a filled marker, so it needs a foreground and
- * a background that are a pair. It set --ff-on-sel on --ff-bar, which are not
- * one: --ff-bar is the admin menu's chrome ground and --ff-on-sel is the ink
- * that belongs on --ff-sel. Both are near-black on Fresh, so it looked right.
- * On Midnight --ff-on-sel flips dark while the bar stays dark — 1.09:1, the
- * number invisible on the one step you are actually on.
- *
- * Same fault, same week, as the settings screen's segmented control, and the
- * fourth of its kind in this codebase. --ff-ink on --ff-panel is a pair by
- * definition, and it matches what that control now does.
+ * a background that are a pair. It once set --ff-on-sel on --ff-bar, which
+ * are not one — 1.09:1 on Midnight, the number invisible on the step you are
+ * on — and then --ff-ink on --ff-panel, a pair but not the accent the tab
+ * marker and the segmented control had moved to. --ff-on-sel on --ff-sel is
+ * the pair the first version was reaching for: white on the scheme's theme
+ * colour, 4.57:1 at worst (Light), which TokensTest holds.
  */
 .folderfolio-wizard__step[aria-current='step'] .folderfolio-wizard__num {
-  background: var(--ff-ink);
-  color: var(--ff-panel);
-  border-color: var(--ff-ink);
+  background: var(--ff-sel);
+  color: var(--ff-on-sel);
+  border-color: var(--ff-sel);
 }
 
 .folderfolio-wizard__title {

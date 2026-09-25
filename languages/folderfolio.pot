@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-09-25T12:08:32+00:00\n"
+"POT-Creation-Date: 2026-09-25T13:29:37+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: folderfolio\n"
@@ -1569,7 +1569,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: includes/Admin/SettingsPage.php:137
-#: includes/Admin/SettingsPage.php:780
+#: includes/Admin/SettingsPage.php:814
 msgid "You do not have permission to manage FolderFolio settings."
 msgstr ""
 
@@ -1685,66 +1685,74 @@ msgid "Role"
 msgstr ""
 
 #. translators: two phrases joined by a dash: 1: a file's path inside the download and why it was left out, or an ability and a role.
-#: includes/Admin/SettingsPage.php:569
+#: includes/Admin/SettingsPage.php:572
 #: includes/Domain/FolderArchive.php:408
 #, php-format
 msgid "%1$s — %2$s"
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:589
-msgid "This table can only narrow WordPress’s own permissions — it never widens them. Administrators always have every folder permission. Everyone else needs a tick here and WordPress’s own permission for that screen: uploading files for media, editing posts for posts, editing pages for pages. On those screens, Assign files means filing posts and pages."
+#: includes/Admin/SettingsPage.php:601
+msgid "Administrators always have every permission, so their row cannot be changed."
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:633
+#: includes/Admin/SettingsPage.php:610
+msgid "This table can only narrow WordPress’s own permissions — it never widens them. Every role but Administrator needs a tick here and WordPress’s own permission for that screen: uploading files for media, editing posts for posts, editing pages for pages. On those screens, Assign files means filing posts and pages."
+msgstr ""
+
+#: includes/Admin/SettingsPage.php:654
 msgid "Health check"
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:635
+#: includes/Admin/SettingsPage.php:656
 msgid "What FolderFolio has stored on this site, and the repairs to run if anything has drifted out of step. Nothing here changes until you press one."
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:675
+#: includes/Admin/SettingsPage.php:696
 msgid "Copied"
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:677
+#: includes/Admin/SettingsPage.php:698
 msgid "Copy report"
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:682
+#: includes/Admin/SettingsPage.php:713
+msgid "Show the report as text"
+msgstr ""
+
+#: includes/Admin/SettingsPage.php:715
 msgid "Status report"
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:704
+#: includes/Admin/SettingsPage.php:738
 msgid "Repair folder tree"
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:705
+#: includes/Admin/SettingsPage.php:739
 msgid "Forget deleted files"
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:816
+#: includes/Admin/SettingsPage.php:850
 msgid "Settings saved."
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:839
+#: includes/Admin/SettingsPage.php:873
 msgid "Nothing needed repairing — every folder already agrees with its parent."
 msgstr ""
 
 #. translators: %s: how many folders were repaired.
-#: includes/Admin/SettingsPage.php:842
+#: includes/Admin/SettingsPage.php:876
 #, php-format
 msgid "Repaired %s folder — it agrees with its parent again."
 msgid_plural "Repaired %s folders — they agree with their parents again."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/Admin/SettingsPage.php:858
+#: includes/Admin/SettingsPage.php:892
 msgid "Nothing to forget — every entry points at a file and a folder that still exist."
 msgstr ""
 
 #. translators: %s: how many folder entries were removed.
-#: includes/Admin/SettingsPage.php:861
+#: includes/Admin/SettingsPage.php:895
 #, php-format
 msgid "Forgot %s entry for a file or folder that no longer exists."
 msgid_plural "Forgot %s entries for files or folders that no longer exist."
