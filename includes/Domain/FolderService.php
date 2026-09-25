@@ -548,7 +548,12 @@ class FolderService
 
         // A rename changes a locked folder's shape; a colour or an icon does
         // not, and stays allowed (Nick's answer 6, board 3ZU8VGkJemznTvKp8tNnvY).
-        if (isset($data['name']) && $data['name'] !== $existing->name) {
+        // A new sort_order moves it within its level, which reorder and pin
+        // both refuse on a locked folder, so this does too (review L1).
+        if (
+            (isset($data['name']) && $data['name'] !== $existing->name)
+            || (array_key_exists('sort_order', $data) && $data['sort_order'] !== $existing->sortOrder)
+        ) {
             $locked = $this->locks->guard($existing->path, $this->nameOf());
 
             if ($locked !== null) {
@@ -875,7 +880,9 @@ class FolderService
      */
     private function lockedFolderMoved(array $existing, array $requested): ?WP_Error
     {
-        if ($this->locks->exempt()) {
+        $first = $existing === [] ? null : $this->get($existing[0]);
+
+        if ($this->locks->exempt($first->objectType ?? PostTypes::MEDIA)) {
             return null;
         }
 

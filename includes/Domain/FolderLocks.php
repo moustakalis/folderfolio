@@ -9,6 +9,7 @@ if (!defined('ABSPATH')) {
 }
 
 use FolderFolio\Support\Capabilities;
+use FolderFolio\Support\PostTypes;
 use WP_Error;
 use wpdb;
 
@@ -56,15 +57,16 @@ final class FolderLocks
 
     private wpdb $wpdb;
 
-    /** @var callable(): bool */
+    /** @var callable(string): bool */
     private $bypass;
 
     /** @var array<int, true>|null */
     private ?array $locked = null;
 
     /**
-     * @param (callable(): bool)|null $bypass Whether the current request is
-     *        exempt — the `lock` ability, unless a test says otherwise.
+     * @param (callable(string): bool)|null $bypass Whether the current request
+     *        is exempt for a folder of the given type — the `lock` ability
+     *        for that type, unless a test says otherwise.
      *
      * WP-CLI is exempt too. A lock is a permission between the people who use
      * the admin; whoever runs `wp folderfolio` has the database already, and a
@@ -76,8 +78,12 @@ final class FolderLocks
         global $wpdb;
 
         $this->wpdb = $wpdb;
-        $this->bypass = $bypass ?? static fn (): bool => (defined('WP_CLI') && constant('WP_CLI'))
-            || Capabilities::can('lock');
+        // For the locked folder's own type (review L2): the /lock route asks
+        // with the folder's type, and the exemption asked about media — so a
+        // person who may lock Posts folders but not upload files was stopped
+        // by their own lock.
+        $this->bypass = $bypass ?? static fn (string $type): bool => (defined('WP_CLI') && constant('WP_CLI'))
+            || Capabilities::can('lock', $type);
     }
 
     private function table(): string
@@ -209,7 +215,7 @@ final class FolderLocks
     {
         $id = $this->lockingId($path);
 
-        if ($id === null || ($this->bypass)()) {
+        if ($id === null || ($this->bypass)($this->typeOf($id))) {
             return null;
         }
 
@@ -226,14 +232,10 @@ final class FolderLocks
      */
     public function guardSubtree(array $subtreeIds, callable $name): ?WP_Error
     {
-        if (($this->bypass)()) {
-            return null;
-        }
-
         $locked = $this->locked();
 
         foreach ($subtreeIds as $id) {
-            if (isset($locked[$id])) {
+            if (isset($locked[$id]) && !($this->bypass)($this->typeOf($id))) {
                 return self::refusal($name($id) ?? '');
             }
         }
@@ -244,9 +246,25 @@ final class FolderLocks
     /**
      * Whether this person is exempt from locks — the `lock` ability.
      */
-    public function exempt(): bool
+    public function exempt(string $objectType = PostTypes::MEDIA): bool
     {
-        return ($this->bypass)();
+        return ($this->bypass)($objectType);
+    }
+
+    /**
+     * The type of the tree a folder is in. Asked only of a folder that is
+     * locked, so only when a lock is in the way.
+     */
+    private function typeOf(int $folderId): string
+    {
+        $wpdb = $this->wpdb;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table; asked only when a lock is in the way.
+        $type = $wpdb->get_var(
+            $wpdb->prepare('SELECT object_type FROM %i WHERE id = %d', $wpdb->prefix . 'folderfolio_folders', $folderId)
+        );
+
+        return is_string($type) && $type !== '' ? $type : PostTypes::MEDIA;
     }
 
     public static function refusal(string $name): WP_Error

@@ -212,4 +212,55 @@ class FolderLocksTest extends WP_UnitTestCase
         wp_set_current_user(self::factory()->user->create(['role' => 'administrator']));
         $this->assertTrue(Capabilities::can('lock'));
     }
+
+    /**
+     * Review L1: PATCH sort_order moved a locked folder within its level,
+     * which reorder and pin both refuse.
+     *
+     * @test
+     */
+    public function a_new_sort_order_is_a_move_a_lock_refuses(): void
+    {
+        [, $acme] = $this->acme($this->service(true));
+        $user = $this->service(false);
+
+        $this->assertLocked($user->update($acme->id, ['sort_order' => -5]));
+
+        // The same order, a colour: not a move.
+        $this->assertInstanceOf(Folder::class, $user->update($acme->id, ['sort_order' => $acme->sortOrder, 'color' => 'moss']));
+        $this->assertInstanceOf(Folder::class, $this->service(true)->update($acme->id, ['sort_order' => -5]));
+    }
+
+    /**
+     * Review L2: the exemption is asked about the locked folder's own type.
+     *
+     * @test
+     */
+    public function the_exemption_is_asked_for_the_locked_folders_type(): void
+    {
+        $asked = [];
+        $service = new FolderService(
+            new FolderRepository(),
+            new AttachmentFolderRepository(),
+            new FolderSorts(),
+            new FolderLocks(static function (string $type) use (&$asked): bool {
+                $asked[] = $type;
+
+                return 'post' === $type;
+            })
+        );
+
+        $news = $this->service(true)->create(['name' => 'News', 'object_type' => 'post']);
+        $this->service(true)->mark($news->id, FolderLocks::LOCKED, true);
+        // Both locks before the service reads them: locks are read once per
+        // request.
+        [, $acme] = $this->acme($this->service(true));
+
+        // May lock Posts folders, and nothing else: their own lock does not stop them.
+        $this->assertInstanceOf(Folder::class, $service->update($news->id, ['name' => 'Newsroom']));
+        $this->assertSame(['post'], array_values(array_unique($asked)));
+
+        // A media lock still does.
+        $this->assertLocked($service->update($acme->id, ['name' => 'Acme Ltd']));
+    }
 }
