@@ -193,4 +193,27 @@ class ScreenStringsTest extends TestCase
 
         $this->assertSame([], $numberless);
     }
+
+    /**
+     * A count followed by the thing counted is a counted label, whichever
+     * helper it was written for. Three were `__()` strings read by `t()` —
+     * "1 files, 1 folders inside" in English, and wrong in every language
+     * with more forms — until review L12.
+     */
+    public function test_no_plain_string_counts_a_noun(): void
+    {
+        [$php] = $this->phpStrings();
+
+        $counted = [];
+
+        foreach ($php as $key => $strings) {
+            foreach ($strings as $string) {
+                if (preg_match('/%(\d+\$)?s (more|files?|folders?|items?|lines?|attachments?)\b/', $string)) {
+                    $counted[] = "{$key}: \"{$string}\"";
+                }
+            }
+        }
+
+        $this->assertSame([], $counted, 'a count in a plain string: make it a Plurals::forms(_n_noop()) entry and read it with tn()');
+    }
 }

@@ -848,11 +848,17 @@ final class Rail
              * that says "this goes somewhere" is decorative, so the words
              * have to carry it.
              */
-            /* translators: 1: folder name, 2: how many files, 3: how many folders are inside it. */
-            'folderWithSubfolders' => __(
-                '%1$s, %2$s files, %3$s folders inside',
-                'folderfolio'
-            ),
+            /*
+             * Two counts, so two plural entries and a frame that joins them
+             * (review L12): one sentence can take only one count's form, and
+             * "1 files, 1 folders inside" was the English of `t()`.
+             */
+            /* translators: 1: folder name, 2: how many files ("3 files"), 3: how many folders are inside it ("2 folders inside"). */
+            'folderWithSubfolders' => __('%1$s, %2$s, %3$s', 'folderfolio'),
+            /* translators: %s: number of files in a folder. */
+            'levelRowFiles' => Plurals::forms(_n_noop('%s file', '%s files', 'folderfolio')),
+            /* translators: %s: number of folders inside a folder. */
+            'levelRowFolders' => Plurals::forms(_n_noop('%s folder inside', '%s folders inside', 'folderfolio')),
             'createAtRoot' => __('New folder at the top level', 'folderfolio'),
             'createInFolder' => __('New folder inside the selected folder', 'folderfolio'),
             'searchPlaceholder' => __('Search folders', 'folderfolio'),
@@ -1076,7 +1082,7 @@ final class Rail
             'findFolder' => __('Find a folder', 'folderfolio'),
             'addsACopy' => __('Keeps them in their other folders too', 'folderfolio'),
             /* translators: %s is the number of folders not shown. */
-            'andMoreFolders' => __('%s more — keep typing to narrow', 'folderfolio'),
+            'andMoreFolders' => Plurals::forms(_n_noop('%s more — keep typing to narrow', '%s more — keep typing to narrow', 'folderfolio')),
             'addFailed' => __('Could not file those files.', 'folderfolio'),
             /* translators: %s is the number of selected media files. */
             'fileSelected' => Plurals::forms(_n_noop('%s file selected', '%s files selected', 'folderfolio')),
@@ -1186,8 +1192,8 @@ final class Rail
 
         return [
             'allMedia' => null === $object ? $type : (string) $object->labels->all_items,
-            /* translators: 1: folder name, 2: how many items, 3: how many folders are inside it. */
-            'folderWithSubfolders' => __('%1$s, %2$s items, %3$s folders inside', 'folderfolio'),
+            /* translators: %s: number of items in a folder. */
+            'levelRowFiles' => Plurals::forms(_n_noop('%s item', '%s items', 'folderfolio')),
             'moveFailed' => __('Could not move those items.', 'folderfolio'),
             /* translators: 1: number of items, 2: the destination folder name. */
             'movedFile' => Plurals::forms(_n_noop(

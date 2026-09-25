@@ -57,7 +57,7 @@ import { ChevronRightIcon, FolderIcon, FolderOpenIcon } from './icons';
 import { CreateRow, GhostRows, NameInput } from './Row';
 import type { FolderNode } from './queries';
 import { sortTree, useRail } from './store';
-import { t } from '../../core/api';
+import { t, tn } from '../../core/api';
 import { swatchStyle } from '../../lib/swatches';
 import { EmptyTree } from './EmptyTree';
 import { RowMarks, useMarkWords } from './RowMarks';
@@ -391,10 +391,10 @@ function LevelRow({
                         ? `${node.name}, ${node.total_count}`
                         : t(
                               'folderWithSubfolders',
-                              '%1$s, %2$s files, %3$s folders inside',
+                              '%1$s, %2$s, %3$s',
                               node.name,
-                              String(node.total_count),
-                              String(inside)
+                              tn('levelRowFiles', 'levelRowFilesMany', node.total_count, '%s file', '%s files', node.total_count),
+                              tn('levelRowFolders', 'levelRowFoldersMany', inside, '%s folder inside', '%s folders inside', inside)
                           )) + marks
                 }
                 onClick={onOpen}

@@ -57,7 +57,7 @@ import {
 } from './queries';
 import { sortTree, useRail } from './store';
 import { useAnchoredPanel } from './useAnchoredPanel';
-import { t } from '../../core/api';
+import { t, tn } from '../../core/api';
 
 /**
  * How many rows the list renders at once.
@@ -323,7 +323,7 @@ function Panel({ nodes, anchor, onClose }: PanelProps) {
                 {/* Never a silent cap — see the bulk flyout. */}
                 {hidden > 0 ? (
                     <p className="folderfolio-flyout__more">
-                        {t('andMoreFolders', '%s more — keep typing to narrow', hidden)}
+                        {tn('andMoreFolders', 'andMoreFoldersMany', hidden, '%s more — keep typing to narrow', '%s more — keep typing to narrow', hidden)}
                     </p>
                 ) : null}
             </div>

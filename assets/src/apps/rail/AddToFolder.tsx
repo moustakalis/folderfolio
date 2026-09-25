@@ -574,8 +574,11 @@ function Flyout({ nodes, ids, source, anchor, onClose }: FlyoutProps) {
                 */}
                 {hidden > 0 ? (
                     <p className="folderfolio-flyout__more">
-                        {t(
+                        {tn(
                             'andMoreFolders',
+                            'andMoreFoldersMany',
+                            hidden,
+                            '%s more — keep typing to narrow',
                             '%s more — keep typing to narrow',
                             hidden
                         )}
