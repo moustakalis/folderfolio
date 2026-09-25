@@ -1860,7 +1860,7 @@ core's (board `JNf58KfGsi2o8qdVU5Jjcf`); ~~(3) the narrow sheet as A~~ (`cec1c68
 Smart, the search line and the folders one scroller, the search line sticky,
 *Top level* beneath it, both renderers (board `NF7bQktuksgBSi4rCfoLvf`);
 ~~(4) plurals on the client~~ (`a654d7b`) — every counted label one `_n_noop()` whose translated forms all reach `tn()` with the translation's `pluralRule`; ~~(5) keep `Requires at least: 6.4` and
-give it a CI leg~~ (`258c74c`); (6) the settings leftovers and tier 1's debts;
+give it a CI leg~~ (`258c74c`); ~~(6) the settings leftovers and tier 1's debts~~ (`0ac0ea8`);
 (7) `v1.0.0-rc.1` once CI is green on Playground too; (8) screenshots, taken
 by Claude in Comet on a clean Playground with CC0 photos, last — then
 `v1.0.0` and SVN.
@@ -1872,6 +1872,16 @@ clipped with `overflow: clip` — an `overflow: hidden` inline-block sits on its
 bottom edge (3.8px low). **The rig's server is `php -d … -S 127.0.0.1:9411`**:
 kill it with `grep -F -- "-S 127.0.0.1:9411"`, not `grep "php -S"`, before
 re-running `setup.sh`.
+
+**Step 6, `0ac0ea8`:** the wizard's current step is in the accent; the Status
+report is folded in a `<details>`; the Administrator row's reason is the line
+under it; the 880px cap stays (lifted, only the Status table and Copy report
+move, both for the worse). **Anything portaled to the body sits under the
+media modal (160000) unless `_frame.css` lifts it** — toasts, the row ⋮ and
+anchored menus are at 170000; the picker's ⋮ had been behind the modal since
+`abbd720`. The picker's QueryClient has the rail's `MutationCache`.
+`StartupFolderTest` holds the redirect. `bin/stage-plugin.sh` needs its target
+directory.
 
 **WordPress 6.4 is tested since `258c74c`.** CI's *PHP 8.1, WordPress 6.4* leg
 runs integration on the newest 6.4.x (resolved through the stable-check API).
