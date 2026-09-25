@@ -15,12 +15,14 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { pickForm } from '../core/plural';
 
 interface PostFoldersConfig {
     objectType: string;
     canAssign: boolean;
     manageUrl: string;
-    i18n: Record<string, string>;
+    pluralRule?: string;
+    i18n: Record<string, string | string[]>;
 }
 
 interface Node {
@@ -63,7 +65,19 @@ const config = (window as unknown as { folderFolioPost?: PostFoldersConfig }).fo
 const wp = (window as unknown as { wp?: EditorGlobals }).wp;
 
 function t(key: string, fallback: string): string {
-    return config?.i18n?.[key] ?? fallback;
+    const entry = config?.i18n?.[key];
+
+    return typeof entry === 'string' ? entry : fallback;
+}
+
+/** A counted label: the server's forms and rule (Support\Plurals), or English's two. */
+function tn(one: string, many: string, count: number, fallbackOne: string, fallbackMany: string): string {
+    const forms = config?.i18n?.[one];
+    const template = Array.isArray(forms) && forms.length > 0
+        ? pickForm(forms, count, config?.pluralRule)
+        : (count === 1 ? t(one, fallbackOne) : t(many, fallbackMany));
+
+    return template.replace('%s', String(count));
 }
 
 function flatten(nodes: Node[], depth = 0, out: Flat[] = []): Flat[] {
@@ -202,7 +216,7 @@ function Panel() {
 
         return count === 0
             ? t('inNoFolder', 'Not in any folder.')
-            : (count === 1 ? t('inOneFolder', 'In 1 folder.') : t('inFolders', 'In %s folders.').replace('%s', String(count)));
+            : tn('inOneFolder', 'inFolders', count, 'In %s folder.', 'In %s folders.');
     }, [count, folders]);
 
     if (!config || !Checkbox) {

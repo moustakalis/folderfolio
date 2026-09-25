@@ -1,3 +1,5 @@
+import { pickForm } from './plural';
+
 export interface ApiEnvelope<T> {
   success: boolean;
   data: T;
@@ -67,8 +69,15 @@ export function typedPath(path: string): string {
  * Placeholders are %s, in order, as in the PHP side.
  */
 export function t(key: string, fallback: string, ...values: Array<string | number>): string {
-  const template = window.folderFolio?.i18n?.[key] ?? fallback;
+  const entry = window.folderFolio?.i18n?.[key];
 
+  // A plural entry is an array of forms and is read by `tn()`; asked for as
+  // a plain label it is the fallback, never "a,b,c".
+  return fill(typeof entry === 'string' ? entry : fallback, values);
+}
+
+/** Put `values` into a template's `%s` / `%1$s` placeholders. */
+function fill(template: string, values: Array<string | number>): string {
   // Positional placeholders first. A sentence with two values in it has to be
   // translatable into a language that wants them in the other order, which is
   // what `%1$s` is for and why WordPress's own strings use it; filling those
@@ -86,20 +95,18 @@ export function t(key: string, fallback: string, ...values: Array<string | numbe
 }
 
 /**
- * A label with a singular and a plural form.
+ * A label with a singular and a plural form — or as many forms as the site's
+ * language has.
  *
- * "1 files selected" is the kind of thing nobody reports and everybody sees.
- * The two forms are two keys in the same config object, chosen here by the
- * count, which is the same arrangement `t()` uses and needs no second
- * translation mechanism on the client.
+ * "1 files selected" is the kind of thing nobody reports and everybody sees,
+ * and "5 plik" is the Polish of it. The server sends a counted label as one
+ * entry under the `one` key holding **every form of the translation**, in
+ * its order (Support\Plurals, from `_n_noop()`), and the config's
+ * `pluralRule` is the translation's own Plural-Forms expression; this picks
+ * the form the count takes. English is `n != 1` over two forms.
  *
- * The honest limitation: this is English's two-form rule applied to every
- * language. Languages with three or more plural forms — Polish, Russian,
- * Arabic — need the CLDR rule that only wp-i18n's `_n()` carries, and using it
- * would mean shipping JSON translation files alongside the .po this plugin's
- * PHP already uses. That is a decision about how the plugin is translated, not
- * about this label; until it is taken, one form each is better than one form
- * for both.
+ * `many` and the two fallbacks are what renders when the entry is missing —
+ * a config from an older writer, or a test page — with English's rule.
  */
 export function tn(
   one: string,
@@ -114,6 +121,12 @@ export function tn(
   // has one of them deciding the plural and both of them appearing, and a
   // helper that silently filled the first placeholder would put the wrong one
   // there half the time.
+  const forms = window.folderFolio?.i18n?.[one];
+
+  if (Array.isArray(forms) && forms.length > 0) {
+    return fill(pickForm(forms, count, window.folderFolio?.pluralRule), values);
+  }
+
   return count === 1 ? t(one, fallbackOne, ...values) : t(many, fallbackMany, ...values);
 }
 

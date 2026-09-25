@@ -13,6 +13,7 @@ use FolderFolio\Modules\Import\Elsewhere;
 use FolderFolio\Support\Assets;
 use FolderFolio\Support\Capabilities;
 use FolderFolio\Support\ClientConfig;
+use FolderFolio\Support\Plurals;
 use FolderFolio\Support\PostTypes;
 use FolderFolio\Support\Settings;
 
@@ -816,7 +817,10 @@ final class Rail
      * site's language. `MediaModalIntegration::config()` merges this map
      * under its own now. Found while adding the ZIP download's strings.
      *
-     * @return array<string, string>
+     * A counted label is a list: every form of the translation
+     * (Support\Plurals::forms()), read by the client's `tn()`.
+     *
+     * @return array<string, string|list<string>>
      */
     public static function strings(): array
     {
@@ -938,16 +942,12 @@ final class Rail
              * another folder does not move to Unassigned, and the toast
              * used to say it did.
              */
-            /* translators: 1: folder name, 2: number of files, always 1. */
-            'deletedWithFile' => __(
-                'Deleted “%1$s” — %2$s file moved to Unassigned',
-                'folderfolio'
-            ),
             /* translators: 1: folder name, 2: number of files. */
-            'deletedWithFiles' => __(
+            'deletedWithFile' => Plurals::forms(_n_noop(
+                'Deleted “%1$s” — %2$s file moved to Unassigned',
                 'Deleted “%1$s” — %2$s files moved to Unassigned',
                 'folderfolio'
-            ),
+            )),
             'emptyTree' => __('No folders yet', 'folderfolio'),
 
             /*
@@ -966,27 +966,18 @@ final class Rail
                 'folderfolio'
             ),
             /* translators: %s is a number of folders. */
-            'emptyElsewhereFolderOne' => __('%s folder', 'folderfolio'),
-            /* translators: %s is a number of folders. */
-            'emptyElsewhereFolderMany' => __('%s folders', 'folderfolio'),
+            'emptyElsewhereFolderOne' => Plurals::forms(_n_noop('%s folder', '%s folders', 'folderfolio')),
             /* translators: %s is a number of files. */
-            'emptyElsewhereFileOne' => __('%s file', 'folderfolio'),
-            /* translators: %s is a number of files. */
-            'emptyElsewhereFileMany' => __('%s files', 'folderfolio'),
+            'emptyElsewhereFileOne' => Plurals::forms(_n_noop('%s file', '%s files', 'folderfolio')),
             /* translators: %s is a number of other plugins. */
-            'emptyElsewhereOtherOne' => __(
+            'emptyElsewhereOtherOne' => Plurals::forms(_n_noop(
                 '%s other plugin has folders here too.',
-                'folderfolio'
-            ),
-            /* translators: %s is a number of other plugins. */
-            'emptyElsewhereOtherMany' => __(
                 '%s other plugins have folders here too.',
                 'folderfolio'
-            ),
+            )),
             'emptyElsewhereAction' => __('Review the import', 'folderfolio'),
             /* translators: %s is a number of folders. */
-            'folderTotal' => __('%s folders', 'folderfolio'),
-            'folderTotalOne' => __('1 folder', 'folderfolio'),
+            'folderTotalOne' => Plurals::forms(_n_noop('%s folder', '%s folders', 'folderfolio')),
 
             // The colour picker behind More — screen 11, §9.8. The ten
             // names are labels for a swatch, not colour codes: they are
@@ -1050,9 +1041,7 @@ final class Rail
              * appears most often.
              */
             /* translators: %s is how many filters are currently set. */
-            'filterActive' => __('%s filter active', 'folderfolio'),
-            /* translators: %s is how many filters are currently set. */
-            'filtersActive' => __('%s filters active', 'folderfolio'),
+            'filterActive' => Plurals::forms(_n_noop('%s filter active', '%s filters active', 'folderfolio')),
             'verbAdd' => __('Add to', 'folderfolio'),
             'verbMove' => __('Move to', 'folderfolio'),
             'moveNeedsFolder' => __(
@@ -1063,34 +1052,40 @@ final class Rail
             'movesOutOf' => __('Moves them out of “%s”', 'folderfolio'),
             'moveFailed' => __('Could not move those files.', 'folderfolio'),
             /* translators: 1: number of files, 2: the destination folder name. */
-            'movedFile' => __('Moved %1$s file to %2$s', 'folderfolio'),
-            /* translators: 1: number of files, 2: the destination folder name. */
-            'movedFiles' => __('Moved %1$s files to %2$s', 'folderfolio'),
+            'movedFile' => Plurals::forms(_n_noop(
+                'Moved %1$s file to %2$s',
+                'Moved %1$s files to %2$s',
+                'folderfolio'
+            )),
             /* translators: %s: the name of the folder being viewed. */
             'arrangeIn' => __('In %s', 'folderfolio'),
             'moveToStart' => __('Move to start', 'folderfolio'),
             'moveToEnd' => __('Move to end', 'folderfolio'),
             /* translators: 1: number of files, 2: the folder they were placed in. */
-            'placedFileStart' => __('Moved %1$s file to the start of %2$s', 'folderfolio'),
+            'placedFileStart' => Plurals::forms(_n_noop(
+                'Moved %1$s file to the start of %2$s',
+                'Moved %1$s files to the start of %2$s',
+                'folderfolio'
+            )),
             /* translators: 1: number of files, 2: the folder they were placed in. */
-            'placedFilesStart' => __('Moved %1$s files to the start of %2$s', 'folderfolio'),
-            /* translators: 1: number of files, 2: the folder they were placed in. */
-            'placedFileEnd' => __('Moved %1$s file to the end of %2$s', 'folderfolio'),
-            /* translators: 1: number of files, 2: the folder they were placed in. */
-            'placedFilesEnd' => __('Moved %1$s files to the end of %2$s', 'folderfolio'),
+            'placedFileEnd' => Plurals::forms(_n_noop(
+                'Moved %1$s file to the end of %2$s',
+                'Moved %1$s files to the end of %2$s',
+                'folderfolio'
+            )),
             'findFolder' => __('Find a folder', 'folderfolio'),
             'addsACopy' => __('Keeps them in their other folders too', 'folderfolio'),
             /* translators: %s is the number of folders not shown. */
             'andMoreFolders' => __('%s more — keep typing to narrow', 'folderfolio'),
             'addFailed' => __('Could not file those files.', 'folderfolio'),
             /* translators: %s is the number of selected media files. */
-            'fileSelected' => __('%s file selected', 'folderfolio'),
-            /* translators: %s is the number of selected media files. */
-            'filesSelected' => __('%s files selected', 'folderfolio'),
+            'fileSelected' => Plurals::forms(_n_noop('%s file selected', '%s files selected', 'folderfolio')),
             /* translators: 1: number of files, 2: a comma-separated list of folder names. */
-            'addedFile' => __('Added %1$s file to %2$s', 'folderfolio'),
-            /* translators: 1: number of files, 2: a comma-separated list of folder names. */
-            'addedFiles' => __('Added %1$s files to %2$s', 'folderfolio'),
+            'addedFile' => Plurals::forms(_n_noop(
+                'Added %1$s file to %2$s',
+                'Added %1$s files to %2$s',
+                'folderfolio'
+            )),
             'createFailed' => __('Could not create that folder.', 'folderfolio'),
             'treeFailed' => __('Could not load your folders.', 'folderfolio'),
             'treeFailedWhere' => __(
@@ -1105,9 +1100,7 @@ final class Rail
             'dismiss' => __('Dismiss', 'folderfolio'),
             'startupFolderNote' => __('The media library opens in this folder. Press Clear filter above to see everything.', 'folderfolio'),
             /* translators: 1: number of folders, 2: the folder they are in. */
-            'folderIn' => __('%1$s folder in %2$s', 'folderfolio'),
-            /* translators: 1: number of folders, 2: the folder they are in. */
-            'foldersIn' => __('%1$s folders in %2$s', 'folderfolio'),
+            'folderIn' => Plurals::forms(_n_noop('%1$s folder in %2$s', '%1$s folders in %2$s', 'folderfolio')),
             // Download a folder as a ZIP — tier 2 item 11 (apps/rail/download.ts).
             'downloadZip' => __('Download as ZIP', 'folderfolio'),
             'download' => __('Download', 'folderfolio'),
@@ -1117,9 +1110,11 @@ final class Rail
             'zipNoneReadable' => __('None of the files in “%s” can be downloaded.', 'folderfolio'),
             'zipRefused' => __('This folder cannot be downloaded.', 'folderfolio'),
             /* translators: 1: folder name, 2: a size such as "1.3 GB", 3: number of files. */
-            'zipConfirmOne' => __('“%1$s” is %2$s, %3$s file. A download this large can stop partway on some hosts — your browser’s Resume continues it.', 'folderfolio'),
-            /* translators: 1: folder name, 2: a size such as "1.3 GB", 3: number of files. */
-            'zipConfirmMany' => __('“%1$s” is %2$s in %3$s files. A download this large can stop partway on some hosts — your browser’s Resume continues it.', 'folderfolio'),
+            'zipConfirmOne' => Plurals::forms(_n_noop(
+                '“%1$s” is %2$s, %3$s file. A download this large can stop partway on some hosts — your browser’s Resume continues it.',
+                '“%1$s” is %2$s in %3$s files. A download this large can stop partway on some hosts — your browser’s Resume continues it.',
+                'folderfolio'
+            )),
             // Smart folders — tier 3 item 13 (apps/rail/SmartGroup.tsx, SmartEditor.tsx).
             'smartGroup' => __('Smart folders', 'folderfolio'),
             'smartLabel' => __('Smart', 'folderfolio'),
@@ -1167,10 +1162,8 @@ final class Rail
             'smartAddRule' => __('Add a rule', 'folderfolio'),
             'smartNeedsRule' => __('Add a rule to see what it matches.', 'folderfolio'),
             'smartCounting' => __('Counting…', 'folderfolio'),
-            /* translators: %s: a number of files, always 1. */
-            'smartMatchesOne' => __('Matches %s file', 'folderfolio'),
             /* translators: %s: a number of files. */
-            'smartMatchesMany' => __('Matches %s files', 'folderfolio'),
+            'smartMatchesOne' => Plurals::forms(_n_noop('Matches %s file', 'Matches %s files', 'folderfolio')),
             'smartDeleteAsk' => __('Delete this smart folder? No files are touched.', 'folderfolio'),
             'keep' => __('Keep', 'folderfolio'),
         ];
@@ -1185,7 +1178,7 @@ final class Rail
      * put "posts" or "Seiten" into a sentence built around a %s count in
      * every language; "items" is one word to translate once.
      *
-     * @return array<string, string>
+     * @return array<string, string|list<string>>
      */
     private static function itemStrings(string $type): array
     {
@@ -1197,22 +1190,26 @@ final class Rail
             'folderWithSubfolders' => __('%1$s, %2$s items, %3$s folders inside', 'folderfolio'),
             'moveFailed' => __('Could not move those items.', 'folderfolio'),
             /* translators: 1: number of items, 2: the destination folder name. */
-            'movedFile' => __('Moved %1$s item to %2$s', 'folderfolio'),
-            /* translators: 1: number of items, 2: the destination folder name. */
-            'movedFiles' => __('Moved %1$s items to %2$s', 'folderfolio'),
+            'movedFile' => Plurals::forms(_n_noop(
+                'Moved %1$s item to %2$s',
+                'Moved %1$s items to %2$s',
+                'folderfolio'
+            )),
             'addFailed' => __('Could not file those items.', 'folderfolio'),
             /* translators: %s is the number of selected items. */
-            'fileSelected' => __('%s item selected', 'folderfolio'),
-            /* translators: %s is the number of selected items. */
-            'filesSelected' => __('%s items selected', 'folderfolio'),
+            'fileSelected' => Plurals::forms(_n_noop('%s item selected', '%s items selected', 'folderfolio')),
             /* translators: 1: number of items, 2: a comma-separated list of folder names. */
-            'addedFile' => __('Added %1$s item to %2$s', 'folderfolio'),
-            /* translators: 1: number of items, 2: a comma-separated list of folder names. */
-            'addedFiles' => __('Added %1$s items to %2$s', 'folderfolio'),
-            /* translators: 1: folder name, 2: number of items, always 1. */
-            'deletedWithFile' => __('Deleted “%1$s” — %2$s item moved to Unassigned', 'folderfolio'),
+            'addedFile' => Plurals::forms(_n_noop(
+                'Added %1$s item to %2$s',
+                'Added %1$s items to %2$s',
+                'folderfolio'
+            )),
             /* translators: 1: folder name, 2: number of items. */
-            'deletedWithFiles' => __('Deleted “%1$s” — %2$s items moved to Unassigned', 'folderfolio'),
+            'deletedWithFile' => Plurals::forms(_n_noop(
+                'Deleted “%1$s” — %2$s item moved to Unassigned',
+                'Deleted “%1$s” — %2$s items moved to Unassigned',
+                'folderfolio'
+            )),
             /* translators: %s is the folder the files are being moved out of. */
             'movesOutOf' => __('Moves them out of “%s”', 'folderfolio'),
         ];

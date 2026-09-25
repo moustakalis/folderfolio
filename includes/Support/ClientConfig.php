@@ -31,6 +31,9 @@ if (!defined('ABSPATH')) {
  * `Capabilities::can()`: an ability is a fact about the user, and a screen
  * that wants to offer less narrows it in its own bundle (the gallery does,
  * `restrictAbilities()` in lib/can.ts), never in a global other bundles read.
+ *
+ * `pluralRule` is added to every config here: the expression that chooses
+ * among the forms of a counted label (Support\Plurals, `tn()`).
  */
 final class ClientConfig
 {
@@ -39,6 +42,11 @@ final class ClientConfig
      */
     public static function script(array $config): string
     {
+        // Every bundle with counted labels needs the rule that picks among
+        // their forms (Plurals), and it is the same on every screen, so it is
+        // stated here once rather than by each writer.
+        $config['pluralRule'] ??= Plurals::rule();
+
         return '(function(own){'
             . 'var had=window.folderFolio||{};'
             . 'var merged=Object.assign({},own,had);'

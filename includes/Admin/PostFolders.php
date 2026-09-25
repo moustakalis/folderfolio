@@ -10,6 +10,7 @@ if (!defined('ABSPATH')) {
 
 use FolderFolio\Domain\FolderService;
 use FolderFolio\Support\Capabilities;
+use FolderFolio\Support\Plurals;
 use FolderFolio\Support\PostTypes;
 
 /**
@@ -122,12 +123,13 @@ final class PostFolders
             'manageUrl' => esc_url_raw(
                 PostTypes::MEDIA === $type ? admin_url('upload.php') : add_query_arg('post_type', $type, admin_url('edit.php'))
             ),
+            // Picks among a counted label's forms — see Support\Plurals.
+            'pluralRule' => Plurals::rule(),
             'i18n' => [
                 'panel' => __('Folders', 'folderfolio'),
                 'inNoFolder' => __('Not in any folder.', 'folderfolio'),
-                'inOneFolder' => __('In 1 folder.', 'folderfolio'),
-                /* translators: %s: a number of folders, 2 or more. */
-                'inFolders' => __('In %s folders.', 'folderfolio'),
+                /* translators: %s: a number of folders. */
+                'inOneFolder' => Plurals::forms(_n_noop('In %s folder.', 'In %s folders.', 'folderfolio')),
                 'noFolders' => __('There are no folders here yet.', 'folderfolio'),
                 'manage' => __('Make one on the list screen', 'folderfolio'),
                 'manageAll' => __('Manage folders', 'folderfolio'),

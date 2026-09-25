@@ -294,7 +294,7 @@ function summaryOfPlan(plan: BulkPlan): string {
             'bulkPlanErrorsOne',
             'bulkPlanErrorsMany',
             counts.errors,
-            'Nothing has been created. One line cannot be used — it is marked below.',
+            'Nothing has been created. %s line cannot be used — it is marked below.',
             'Nothing has been created. %s of these lines cannot be used — they are marked below.',
             counts.errors
         );
@@ -318,7 +318,7 @@ function summaryOfPlan(plan: BulkPlan): string {
               'bulkPlanSomeOne',
               'bulkPlanSomeMany',
               counts.unchanged,
-              'Nothing has been created yet. This would add %1$s; one line is already there.',
+              'Nothing has been created yet. This would add %1$s; %2$s line is already there.',
               'Nothing has been created yet. This would add %1$s; %2$s lines are already there.',
               folders,
               counts.unchanged

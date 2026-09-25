@@ -261,7 +261,13 @@ interface FolderFolioConfig {
   typeLabels?: { all: string; plural: string; singular: string; tree: string };
   /** This person's starred folders — Admin\\Rail::appConfig(), tier 2 item 10. */
   stars?: number[];
-  i18n: Record<string, string>;
+  /**
+   * The screen's labels. A counted label is an array: every form of the
+   * translation, in its order, chosen by `pluralRule` (`tn()`).
+   */
+  i18n: Record<string, string | string[]>;
+  /** The translation's Plural-Forms expression — Support\\Plurals::rule(). */
+  pluralRule?: string;
 
   /**
    * Site settings — screen 08. Optional because two bundles write this object

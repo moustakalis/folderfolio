@@ -11,6 +11,7 @@ if (!defined('ABSPATH')) {
 use FolderFolio\Support\Assets;
 use FolderFolio\Support\Capabilities;
 use FolderFolio\Support\ClientConfig;
+use FolderFolio\Support\Plurals;
 use FolderFolio\Support\Settings;
 
 /**
@@ -219,16 +220,12 @@ final class MediaModalIntegration
                  * another folder does not move to Unassigned, and the toast
                  * used to say it did.
                  */
-                /* translators: 1: folder name, 2: number of files, always 1. */
-                'deletedWithFile' => __(
-                    'Deleted “%1$s” — %2$s file moved to Unassigned',
-                    'folderfolio'
-                ),
                 /* translators: 1: folder name, 2: number of files. */
-                'deletedWithFiles' => __(
+                'deletedWithFile' => Plurals::forms(_n_noop(
+                    'Deleted “%1$s” — %2$s file moved to Unassigned',
                     'Deleted “%1$s” — %2$s files moved to Unassigned',
                     'folderfolio'
-                ),
+                )),
                 'treeFailed' => __('Could not load your folders.', 'folderfolio'),
                 /* translators: %s is the search term that matched nothing. */
                 'noMatch' => __('No folder matches “%s”.', 'folderfolio'),

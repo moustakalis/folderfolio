@@ -9,6 +9,7 @@ if (!defined('ABSPATH')) {
 }
 
 use FolderFolio\Support\ClientConfig;
+use FolderFolio\Support\Plurals;
 
 /**
  * The Import tab of the settings screen — screen 07's four-step wizard.
@@ -148,10 +149,12 @@ class ImportPage
                 'importFileSame' => __('An export of this site', 'folderfolio'),
                 'importFileSameDetail' => __('Colours, galleries and orders come with the folders it creates; folders that already exist keep their own.', 'folderfolio'),
                 'importFileOther' => __('An export of another site', 'folderfolio'),
-                /* translators: 1: number of file assignments, always 1. 2: the other site's address. */
-                'importFileOtherFile' => __('Only the folders are imported. Its %1$s file assignment names a file on %2$s by number, and that number is a different file here.', 'folderfolio'),
                 /* translators: 1: number of file assignments. 2: the other site's address. */
-                'importFileOtherFiles' => __('Only the folders are imported. Its %1$s file assignments name files on %2$s by number, and those numbers are different files here.', 'folderfolio'),
+                'importFileOtherFile' => Plurals::forms(_n_noop(
+                    'Only the folders are imported. Its %1$s file assignment names a file on %2$s by number, and that number is a different file here.',
+                    'Only the folders are imported. Its %1$s file assignments name files on %2$s by number, and those numbers are different files here.',
+                    'folderfolio'
+                )),
                 'importFileOtherNone' => __('Only the folders are imported — it carries no file assignments. Colours, galleries and orders come with the folders it creates.', 'folderfolio'),
                 'actionFailed' => __('That could not be done.', 'folderfolio'),
                 'importNothingToImport' => __('Nothing to import', 'folderfolio'),
@@ -159,13 +162,9 @@ class ImportPage
                 'importInactive' => __('plugin deactivated, data still present', 'folderfolio'),
                 'importTwoQuestions' => __('Plugins you have deactivated are listed too: their folders stay in the database after they are switched off, and that is what FolderFolio reads.', 'folderfolio'),
                 /* translators: %s is a number of folders. */
-                'importFolderOne' => __('%s folder', 'folderfolio'),
-                /* translators: %s is a number of folders. */
-                'importFolderMany' => __('%s folders', 'folderfolio'),
+                'importFolderOne' => Plurals::forms(_n_noop('%s folder', '%s folders', 'folderfolio')),
                 /* translators: %s is a number of file assignments. */
-                'importFileOne' => __('%s file assignment', 'folderfolio'),
-                /* translators: %s is a number of file assignments. */
-                'importFileMany' => __('%s file assignments', 'folderfolio'),
+                'importFileOne' => Plurals::forms(_n_noop('%s file assignment', '%s file assignments', 'folderfolio')),
 
                 // Step 2.
                 /* translators: %s is a plugin name, e.g. FileBird. */
@@ -174,49 +173,53 @@ class ImportPage
                 'importPreviewLede' => __('This is what pressing Import would do.', 'folderfolio'),
                 'importPlanning' => __('Reading the folders…', 'folderfolio'),
                 /* translators: %s is a number of folders. */
-                'importCreateOne' => __('%s folder created', 'folderfolio'),
+                'importCreateOne' => Plurals::forms(_n_noop('%s folder created', '%s folders created', 'folderfolio')),
                 /* translators: %s is a number of folders. */
-                'importCreateMany' => __('%s folders created', 'folderfolio'),
-                /* translators: %s is a number of folders. */
-                'importMergeOne' => __('%s folder merged by name', 'folderfolio'),
-                /* translators: %s is a number of folders. */
-                'importMergeMany' => __('%s folders merged by name', 'folderfolio'),
+                'importMergeOne' => Plurals::forms(_n_noop(
+                    '%s folder merged by name',
+                    '%s folders merged by name',
+                    'folderfolio'
+                )),
                 /* translators: %s is a list of folder names. */
                 'importMergeDetail' => __('%s already exist — files are added to yours, not duplicated.', 'folderfolio'),
                 /* translators: %s is a number of duplicate folder names. */
-                'importDupOne' => __('%s duplicate name collapsed', 'folderfolio'),
-                /* translators: %s is a number of duplicate folder names. */
-                'importDupMany' => __('%s duplicate names collapsed', 'folderfolio'),
+                'importDupOne' => Plurals::forms(_n_noop(
+                    '%s duplicate name collapsed',
+                    '%s duplicate names collapsed',
+                    'folderfolio'
+                )),
                 /* translators: 1: a plugin name. 2: a list of folder paths. */
                 'importDupDetail' => __('%1$s has more than one folder called %2$s in the same place. They become one folder here, holding both sets of files.', 'folderfolio'),
                 /* translators: %s is a number of folders. */
-                'importAgainOne' => __('%s folder already imported', 'folderfolio'),
-                /* translators: %s is a number of folders. */
-                'importAgainMany' => __('%s folders already imported', 'folderfolio'),
+                'importAgainOne' => Plurals::forms(_n_noop(
+                    '%s folder already imported',
+                    '%s folders already imported',
+                    'folderfolio'
+                )),
                 'importAgainDetail' => __('A previous import made these. They are matched by where they came from, so renaming one did not break the link.', 'folderfolio'),
                 /* translators: %s is a number of files. */
-                'importFilesOne' => __('%s file added to folders', 'folderfolio'),
-                /* translators: %s is a number of files. */
-                'importFilesMany' => __('%s files added to folders', 'folderfolio'),
+                'importFilesOne' => Plurals::forms(_n_noop(
+                    '%s file added to folders',
+                    '%s files added to folders',
+                    'folderfolio'
+                )),
                 'importFilesDetail' => __('Added, never moved: nothing leaves a folder you made.', 'folderfolio'),
                 /* translators: %s is a number of files already in the destination folder. */
                 'importFilesDetailAlready' => __('Added, never moved: nothing leaves a folder you made. %s are already filed where this would put them.', 'folderfolio'),
                 /* translators: %s is a number of files. */
-                'importSkipOne' => __('%s file skipped', 'folderfolio'),
-                /* translators: %s is a number of files. */
-                'importSkipMany' => __('%s files skipped', 'folderfolio'),
+                'importSkipOne' => Plurals::forms(_n_noop('%s file skipped', '%s files skipped', 'folderfolio')),
                 /* translators: %s is a list of attachment ids. */
                 'importSkipDetail' => __('Attachments %s are referenced but no longer exist in the media library.', 'folderfolio'),
                 /* translators: %s is a number of folders. */
-                'importStrandedOne' => __('%s folder could not be placed', 'folderfolio'),
-                /* translators: %s is a number of folders. */
-                'importStrandedMany' => __('%s folders could not be placed', 'folderfolio'),
+                'importStrandedOne' => Plurals::forms(_n_noop(
+                    '%s folder could not be placed',
+                    '%s folders could not be placed',
+                    'folderfolio'
+                )),
                 /* translators: 1: a plugin name. 2: a list of folder names. */
                 'importStrandedDetail' => __('Their parent is missing in %1$s, or they sit in a loop. %2$s', 'folderfolio'),
                 /* translators: %s is a number of folders. */
-                'importRunOne' => __('Import %s folder', 'folderfolio'),
-                /* translators: %s is a number of folders. */
-                'importRunMany' => __('Import %s folders', 'folderfolio'),
+                'importRunOne' => Plurals::forms(_n_noop('Import %s folder', 'Import %s folders', 'folderfolio')),
                 'importRunFiles' => __('Import', 'folderfolio'),
                 'importCancel' => __('Cancel', 'folderfolio'),
                 'importNoAccount' => __('No account, no licence, no telemetry.', 'folderfolio'),
@@ -228,21 +231,21 @@ class ImportPage
                 /* translators: 1: folders done. 2: folders in total. */
                 'importProgressOf' => __('Folders — %1$s of %2$s', 'folderfolio'),
                 /* translators: %s is a number of folders. */
-                'importCreatedOne' => __('%s folder created', 'folderfolio'),
+                'importCreatedOne' => Plurals::forms(_n_noop('%s folder created', '%s folders created', 'folderfolio')),
                 /* translators: %s is a number of folders. */
-                'importCreatedMany' => __('%s folders created', 'folderfolio'),
-                /* translators: %s is a number of folders. */
-                'importMergedOne' => __('%s folder merged into an existing name', 'folderfolio'),
-                /* translators: %s is a number of folders. */
-                'importMergedMany' => __('%s folders merged into existing names', 'folderfolio'),
+                'importMergedOne' => Plurals::forms(_n_noop(
+                    '%s folder merged into an existing name',
+                    '%s folders merged into existing names',
+                    'folderfolio'
+                )),
                 /* translators: %s is a number of files. */
-                'importAddedOne' => __('%s file added', 'folderfolio'),
-                /* translators: %s is a number of files. */
-                'importAddedMany' => __('%s files added', 'folderfolio'),
+                'importAddedOne' => Plurals::forms(_n_noop('%s file added', '%s files added', 'folderfolio')),
                 /* translators: %s is a number of duplicate folder names. */
-                'importDupCollapsedOne' => __('%s duplicate name collapsed', 'folderfolio'),
-                /* translators: %s is a number of duplicate folder names. */
-                'importDupCollapsedMany' => __('%s duplicate names collapsed', 'folderfolio'),
+                'importDupCollapsedOne' => Plurals::forms(_n_noop(
+                    '%s duplicate name collapsed',
+                    '%s duplicate names collapsed',
+                    'folderfolio'
+                )),
                 'importStop' => __('Stop after this folder', 'folderfolio'),
                 'importStopping' => __('Stopping…', 'folderfolio'),
 
@@ -252,17 +255,19 @@ class ImportPage
                 'importDoneSentence' => __('%s. No file left a folder you had already made.', 'folderfolio'),
                 'importDoneNothing' => __('Nothing needed importing — everything was already here.', 'folderfolio'),
                 /* translators: %s is a number of folders. */
-                'importDoneCreatedOne' => __('%s folder created', 'folderfolio'),
+                'importDoneCreatedOne' => Plurals::forms(_n_noop(
+                    '%s folder created',
+                    '%s folders created',
+                    'folderfolio'
+                )),
                 /* translators: %s is a number of folders. */
-                'importDoneCreatedMany' => __('%s folders created', 'folderfolio'),
-                /* translators: %s is a number of folders. */
-                'importDoneMergedOne' => __('%s merged by name', 'folderfolio'),
-                /* translators: %s is a number of folders. */
-                'importDoneMergedMany' => __('%s merged by name', 'folderfolio'),
+                'importDoneMergedOne' => Plurals::forms(_n_noop(
+                    '%s merged by name',
+                    '%s merged by name',
+                    'folderfolio'
+                )),
                 /* translators: %s is a number of files. */
-                'importDoneAddedOne' => __('%s file added', 'folderfolio'),
-                /* translators: %s is a number of files. */
-                'importDoneAddedMany' => __('%s files added', 'folderfolio'),
+                'importDoneAddedOne' => Plurals::forms(_n_noop('%s file added', '%s files added', 'folderfolio')),
                 /* translators: 1: a plugin name. 2: a number of duplicate names. */
                 'importDupNote' => __('%1$s had %2$s duplicate folder names in the same place. Each set became one folder here, holding all of their files.', 'folderfolio'),
                 'importUndoneTitle' => __('Import undone', 'folderfolio'),
@@ -297,28 +302,27 @@ class ImportPage
                 'bulkPreviewing' => __('Reading…', 'folderfolio'),
                 'bulkCreating' => __('Creating…', 'folderfolio'),
                 /* translators: %s is a number of folders. */
-                'bulkCreateOne' => __('Create %s folder', 'folderfolio'),
+                'bulkCreateOne' => Plurals::forms(_n_noop('Create %s folder', 'Create %s folders', 'folderfolio')),
                 /* translators: %s is a number of folders. */
-                'bulkCreateMany' => __('Create %s folders', 'folderfolio'),
-                /* translators: %s is a number of folders. */
-                'bulkFolderOne' => __('%s folder', 'folderfolio'),
-                /* translators: %s is a number of folders. */
-                'bulkFolderMany' => __('%s folders', 'folderfolio'),
-                'bulkPlanErrorsOne' => __('Nothing has been created. One line cannot be used — it is marked below.', 'folderfolio'),
+                'bulkFolderOne' => Plurals::forms(_n_noop('%s folder', '%s folders', 'folderfolio')),
                 /* translators: %s is a number of lines that could not be used. */
-                'bulkPlanErrorsMany' => __('Nothing has been created. %s of these lines cannot be used — they are marked below.', 'folderfolio'),
+                'bulkPlanErrorsOne' => Plurals::forms(_n_noop(
+                    'Nothing has been created. %s line cannot be used — it is marked below.',
+                    'Nothing has been created. %s of these lines cannot be used — they are marked below.',
+                    'folderfolio'
+                )),
                 'bulkPlanNothing' => __('Every folder on this list is already there. Nothing to create.', 'folderfolio'),
-                /* translators: %1$s is a phrase such as "12 folders". */
-                'bulkPlanSomeOne' => __('Nothing has been created yet. This would add %1$s; one line is already there.', 'folderfolio'),
                 /* translators: 1: a phrase such as "12 folders". 2: a number of lines already present. */
-                'bulkPlanSomeMany' => __('Nothing has been created yet. This would add %1$s; %2$s lines are already there.', 'folderfolio'),
+                'bulkPlanSomeOne' => Plurals::forms(_n_noop(
+                    'Nothing has been created yet. This would add %1$s; %2$s line is already there.',
+                    'Nothing has been created yet. This would add %1$s; %2$s lines are already there.',
+                    'folderfolio'
+                )),
                 /* translators: %s is a phrase such as "12 folders". */
                 'bulkPlanAll' => __('Nothing has been created yet. This would add %s.', 'folderfolio'),
                 'bulkRunNothing' => __('Every folder on this list was already there. Nothing was created.', 'folderfolio'),
                 /* translators: %s is a number of folders. */
-                'bulkRunOne' => __('%s folder created.', 'folderfolio'),
-                /* translators: %s is a number of folders. */
-                'bulkRunMany' => __('%s folders created.', 'folderfolio'),
+                'bulkRunOne' => Plurals::forms(_n_noop('%s folder created.', '%s folders created.', 'folderfolio')),
                 'bulkRowNew' => __('new', 'folderfolio'),
                 'bulkRowCreated' => __('created', 'folderfolio'),
                 'bulkRowExists' => __('already there', 'folderfolio'),

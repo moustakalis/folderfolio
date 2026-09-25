@@ -34,7 +34,7 @@ import { useRail } from './store';
 import { can } from '../../lib/can';
 import { useIsNarrow } from '../../lib/narrow';
 import { applyFolderFilter, FOLDER_QUERY_VAR, keepServerOrder, showUploads, stampServerOrder, watchFolderLinks } from '../../lib/filter';
-import { isMedia, t } from '../../core/api';
+import { isMedia, t, tn } from '../../core/api';
 import { watchListWidth } from '../../lib/list-width';
 
 export function Rail({
@@ -556,18 +556,7 @@ function FooterTotal({ nodes, pending }: { nodes: FolderNode[]; pending: boolean
 
     const total = countTree(nodes);
 
-    /*
-     * Two strings rather than a plural function: the label set is handed over
-     * in window.folderFolio.i18n, not registered with wp.i18n, so there is no
-     * plural resolver on this side. Languages with more than two forms get
-     * the general one — the same trade every other counted string in this
-     * bundle makes, and the reason to revisit it is all of them at once.
-     */
-    const label = pending
-        ? ''
-        : total === 1
-          ? t('folderTotalOne', '1 folder')
-          : t('folderTotal', '%s folders', String(total));
+    const label = pending ? '' : tn('folderTotalOne', 'folderTotal', total, '%s folder', '%s folders', total);
 
     return createPortal(label, slot);
 }
