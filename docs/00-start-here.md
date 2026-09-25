@@ -1851,8 +1851,9 @@ unless you pick a folder*, and *Paid elsewhere, free here* (fifteen features,
 by feature, never by vendor).
 
 **Answered 25 Sep** (`claude/progress-2026-09-25-the-answers.md`), in build
-order: (1) drop the unused `folderfolio_user_preferences` table, and A8 as an
-honest repair; (2) review #24 as C plus a lead-in label — inside a folder the
+order: ~~(1) drop the unused `folderfolio_user_preferences` table, and A8 as an
+honest repair~~ (`f3bb801`); ~~(2) review #24 as C plus a lead-in label~~
+(`deea873`, `Admin\FolderViews`) — inside a folder the
 status line reads *📁 In Launch: All (3) | Published (2) | Drafts (1)*, the
 links keep the folder, nothing changes without one, the date filter stays
 core's (board `JNf58KfGsi2o8qdVU5Jjcf`); (3) the narrow sheet as A — Starred,
@@ -1865,7 +1866,16 @@ by Claude in Comet on a clean Playground with CC0 photos, last — then
 `v1.0.0` and SVN.
 
 **`WP_List_Table::views()` joins its items with `" |</li>"`** — #24's label goes
-inside the first view's markup, as real text, not in an `<li>` of its own.
+inside the first view's markup, as real text, not in an `<li>` of its own. Each
+item is `white-space: nowrap`, so the name is capped at `min(16em, 45vw)`, and
+clipped with `overflow: clip` — an `overflow: hidden` inline-block sits on its
+bottom edge (3.8px low). **The rig's server is `php -d … -S 127.0.0.1:9411`**:
+kill it with `grep -F -- "-S 127.0.0.1:9411"`, not `grep "php -S"`, before
+re-running `setup.sh`.
+
+Checks at `deea873`: PHPStan clean, unit 173, integration 171 / 171 on one site
+and on a network, e2e 121 / 121 (rig), Plugin Check 0. The Playground e2e is
+owed before the RC.
 
 Checks at `7fb0c73`: PHPStan clean, unit 173, integration 159 / 159 on one
 site and on a network, e2e 119 / 119 (rig), JS unit 61, Plugin Check 0.
