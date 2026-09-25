@@ -592,6 +592,14 @@ test.describe('the rail across viewport widths', () => {
         await expect(
             rows.filter({ hasText: 'Brand' })
         ).toHaveAttribute('aria-current', 'true');
+        // The current row's name is the one in bold. The row's own 600 never
+        // reached it — the name sets 400 — until the rule said it on the name.
+        await expect(
+            rows.filter({ hasText: 'Brand' }).locator('.folderfolio-row__name')
+        ).toHaveCSS('font-weight', '600');
+        await expect(
+            rows.filter({ hasText: 'Audio' }).locator('.folderfolio-row__name')
+        ).toHaveCSS('font-weight', '400');
 
         // …and above the breakpoint the tree is back, untouched.
         await page.setViewportSize({ width: 1280, height: 900 });

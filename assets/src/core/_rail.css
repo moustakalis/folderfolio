@@ -982,6 +982,13 @@ body.folderfolio-resizing * {
     font-weight: 600;
   }
 
+  /* The name sets its own weight (`_row.css`, 400), so the row's 600 above
+     never reached it: the current row was marked by its bar alone. Said on
+     the name, where it is painted. */
+  .folderfolio-levels__row[aria-current='true'] .folderfolio-row__name {
+    font-weight: 600;
+  }
+
   /* The affordance, sized as a target even though the whole row is the
      target — so that a thumb landing on it is landing on something, rather
      than on 16px of glyph with 14px of nothing around it. */
