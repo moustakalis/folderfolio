@@ -1865,7 +1865,19 @@ give it a CI leg~~ (`258c74c`); ~~(6) the settings leftovers and tier 1's debts~
 by Claude in Comet on a clean Playground with 41 CC0 photos from the WordPress
 Photo Directory; `docs/screenshots.md` says how, and credits each photo) — and
 with them `d486e6b`, the narrow sheet's current row bold as its rule said.
-Then `v1.0.0` (on the docs commit; push `main`, wait for CI, then both tags)
+**On 25 Sep Nick pushed v1 back a week** (`claude/progress-2026-09-25i-the-week-and-the-review.md`):
+(9) a code review — 31 findings, 3 high, 13 medium, 15 low, 0 critical, on the
+board `claude.ai/artifact/7PrXPLx7pBjfSk5aSN2tDZ`, fixes after his picks; the
+highs: an empty `path` from an unchecked second write in
+`FolderRepository::create()` makes a cascade delete match every folder (H1); on
+a phone a new folder or a rename can never be saved, because `Levels` reuses the
+tree's name input without the tree's key handler (H2, reproduced); the wide ⋮
+menu cannot be used from the keyboard, because the portaled menu's keydowns
+bubble through the React tree into the tree's Enter/Space handler (H3); (10) an
+Elementor *Folder gallery* widget matching the block (Elementor, not Divi);
+(11) a manual test — a checklist he ticks, one run by Claude on a fresh
+Playground, then his run. **The local `v1.0.0` tag was deleted** (`rc.1` stays).
+Then `v1.0.0` (on the release commit; push `main`, wait for CI, then both tags)
 and the wp.org submission: the ZIP from `bin/build-zip.sh`, uploaded at
 wordpress.org/plugins/developers/add/ — SVN, and `.wordpress-org/` as its
 `/assets`, exist only once the review approves it.
