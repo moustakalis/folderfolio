@@ -255,9 +255,14 @@ test.describe('folders for posts', () => {
                 const wp = (window as any).wp;
                 wp.data.dispatch('core/edit-post')?.openGeneralSidebar?.('edit-post/document');
                 const name = 'folderfolio-post-folders/folderfolio-post-folders';
+                // The panel state moved from core/edit-post to core/editor in
+                // WordPress 6.5; 6.4 — the plugin's floor — has only the first.
+                const store = typeof wp.data.select('core/editor').isEditorPanelOpened === 'function'
+                    ? 'core/editor'
+                    : 'core/edit-post';
 
-                if (!wp.data.select('core/editor').isEditorPanelOpened(name)) {
-                    wp.data.dispatch('core/editor').toggleEditorPanelOpened(name);
+                if (!wp.data.select(store).isEditorPanelOpened(name)) {
+                    wp.data.dispatch(store).toggleEditorPanelOpened(name);
                 }
             });
 

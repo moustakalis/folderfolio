@@ -163,7 +163,7 @@ jobs:
             || { echo "languages/folderfolio.pot is stale: run the make-pot line above and commit it." >&2; exit 1; }
 
   php-tests:
-    name: PHP Tests (${{ matrix.php }}${{ matrix.multisite == '1' && ', multisite' || '' }})
+    name: PHP Tests (${{ matrix.php }}${{ matrix.wp != 'latest' && format(', WordPress {0}', matrix.wp) || '' }}${{ matrix.multisite == '1' && ', multisite' || '' }})
     runs-on: ubuntu-latest
 
     strategy:
@@ -171,12 +171,22 @@ jobs:
       matrix:
         php: ['8.1', '8.2', '8.3', '8.4']
         multisite: ['0']
+        wp: ['latest']
         # One leg on a network (review item #27): the tables a network
         # activation, a new site and a deleted site each owe. NetworkTest is
         # skipped everywhere else, and the rest of the suite runs here too.
+        #
+        # One leg on the oldest WordPress the plugin claims (`Requires at
+        # least: 6.4`), on the oldest PHP it claims. A floor nothing tests is
+        # a guess; this is the combination most likely to find a call into an
+        # API that arrived later. Its newest point release, resolved below.
         include:
           - php: '8.3'
             multisite: '1'
+            wp: 'latest'
+          - php: '8.1'
+            multisite: '0'
+            wp: '6.4'
 
     services:
       mysql:
@@ -231,12 +241,25 @@ jobs:
       # The WordPress version is resolved here, in one step, for two reasons:
       # the cache key has to name it, and all four PHP legs should test against
       # the same WordPress rather than each resolving "latest" for itself on a
-      # release day.
+      # release day. A branch (the floor leg's `6.4`) resolves to its newest
+      # point release — the one a site on that branch is actually running.
       - name: Resolve the WordPress version
         id: wp
+        env:
+          WP_BRANCH: ${{ matrix.wp }}
         run: |
-          version="$(curl -fsS https://api.wordpress.org/core/version-check/1.7/ \
-            | php -r 'echo json_decode(stream_get_contents(STDIN))->offers[0]->current;')"
+          if [ "${WP_BRANCH}" = "latest" ]; then
+            version="$(curl -fsS https://api.wordpress.org/core/version-check/1.7/ \
+              | php -r 'echo json_decode(stream_get_contents(STDIN))->offers[0]->current;')"
+          else
+            version="$(curl -fsS https://api.wordpress.org/core/stable-check/1.0/ \
+              | php -r '$b = getenv("WP_BRANCH");
+                  $v = array_filter(array_keys(json_decode(stream_get_contents(STDIN), true)),
+                      fn ($x) => $x === $b || str_starts_with($x, $b . "."));
+                  usort($v, "version_compare");
+                  echo end($v);')"
+          fi
+          [ -n "${version}" ] || { echo "Could not resolve WordPress ${WP_BRANCH}." >&2; exit 1; }
           echo "version=${version}" >> "$GITHUB_OUTPUT"
           echo "WordPress ${version}"
 
