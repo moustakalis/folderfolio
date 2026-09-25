@@ -427,7 +427,7 @@ class FolderController
         register_rest_route($ns, '/health', [
             'methods' => WP_REST_Server::READABLE,
             'callback' => [$this, 'health'],
-            'permission_callback' => [$this, 'canUseFolders'],
+            'permission_callback' => [$this, 'canReadHealth'],
         ]);
 
     }
@@ -902,9 +902,14 @@ class FolderController
         $id = (int) $request['id'];
         $deep = (bool) $request->get_param('include_descendants');
 
+        // Only what this person may read (review L3): a folder of Posts holds
+        // other people's drafts, and a media folder private files, and the
+        // ids were a list of them for anyone who could see the tree.
+        $ids = $this->readable($this->folders->attachmentIds($id, $deep));
+
         return $this->success([
-            'attachment_ids' => $this->folders->attachmentIds($id, $deep),
-            'count' => $this->folders->countAttachments($id, $deep),
+            'attachment_ids' => $ids,
+            'count' => count($ids),
         ]);
     }
 
@@ -1023,6 +1028,40 @@ class FolderController
                 $this->folders->foldersOf((int) $request['id'])
             ),
         ]);
+    }
+
+    /**
+     * The ids among these that the current user may read, in their order.
+     *
+     * `read_post` for each, the rule core's own screens use — a draft is
+     * someone else's to read only with their editing rights, which WP_Query's
+     * `perm => readable` does not ask. The posts are primed in one query
+     * first, so the checks read from the cache.
+     *
+     * @param list<int> $ids
+     * @return list<int>
+     */
+    private function readable(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        _prime_post_caches($ids, false, false);
+
+        return array_values(array_filter(
+            $ids,
+            static fn (int $id): bool => current_user_can('read_post', $id)
+        ));
+    }
+
+    /**
+     * Versions are for the person who runs the site (review L3): the route
+     * was open to anyone who could upload, and the client never calls it.
+     */
+    public function canReadHealth(): bool
+    {
+        return current_user_can('manage_options');
     }
 
     public function health(): WP_REST_Response

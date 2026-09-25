@@ -222,6 +222,10 @@ final class SmartFolders
         $query = new \WP_Query([
             'post_type' => $objectType,
             'post_status' => PostTypes::statuses($objectType),
+            // Only what this person may read (review L3): a count that
+            // included others' private files let a rule such as "title
+            // contains …" probe their names one letter at a time.
+            'perm' => 'readable',
             'fields' => 'ids',
             'posts_per_page' => 1,
             'update_post_meta_cache' => false,
@@ -250,6 +254,10 @@ final class SmartFolders
         $query = new \WP_Query([
             'post_type' => $objectType,
             'post_status' => PostTypes::statuses($objectType),
+            // Only what this person may read (review L3): a count that
+            // included others' private files let a rule such as "title
+            // contains …" probe their names one letter at a time.
+            'perm' => 'readable',
             'fields' => 'ids',
             'posts_per_page' => -1,
             'orderby' => 'date',

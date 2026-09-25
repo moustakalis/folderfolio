@@ -502,7 +502,7 @@ made at the top.
 | `POST` | `/folders/bulk/plan` — `{text, parent_id?, object_type?}`, writes nothing | create |
 | `POST` | `/folders/bulk` — the same, all or nothing | create |
 | `GET` | `/folders/{id}/ancestors` | use |
-| `GET` | `/folders/{id}/attachments` — `?include_descendants=1` | use |
+| `GET` | `/folders/{id}/attachments` — `?include_descendants=1`; only the items this person may read | use |
 | `GET` | `/counts` — `?object_type=`; every folder's counts and the fixed rows' | use |
 | **Filing** | | |
 | `POST` | `/assignments` — `{attachment_ids, folder_id, mode: add\|move}` | assign, and `edit_post` per item |
@@ -531,7 +531,7 @@ made at the top.
 | `POST` | `/repair` — `{tool: rebuild-paths\|remove-orphans}` → `{fixed}` | `manage_options` |
 | `GET` | `/preferences` — the person's own rail: open, width, startup folder, stars | use |
 | `POST` | `/preferences` — `{rail: {…}}`, the keys to change | use |
-| `GET` | `/health` — `{status, version, wordpress, php}` | use |
+| `GET` | `/health` — `{status, version, wordpress, php}` | `manage_options` |
 
 <a id="smart-folders-rules"></a>**Smart folders** (1.0, media first) are a name and rules, every rule must match. A rule is
 `{field, op, value}`: `type` `is`/`is_not` `image|video|audio|document`; `date` `last` (days),
