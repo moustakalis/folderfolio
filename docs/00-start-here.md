@@ -63,7 +63,7 @@ media type, date and folder filters now collapse behind one `Filter` button.
 After: 136px at 1100, 156px at 636 and 400 alike, 109px in list at 636, and
 1440px unchanged. The curve no longer rises as the column narrows.
 
-What remains before 1.0 on wp.org: **screenshots** (Nick is supplying them),
+What remains before 1.0 on wp.org (18 Sep; all done by 25 Sep): **screenshots** (taken 25 Sep, `71aa069`),
 the **POT**, **Plugin Check in CI**, an RC tag, and the review items below.
 
 Checks at the end of 18 Sep: **PHPStan clean, 107 unit, 47 integration, 40
@@ -1861,9 +1861,27 @@ Smart, the search line and the folders one scroller, the search line sticky,
 *Top level* beneath it, both renderers (board `NF7bQktuksgBSi4rCfoLvf`);
 ~~(4) plurals on the client~~ (`a654d7b`) — every counted label one `_n_noop()` whose translated forms all reach `tn()` with the translation's `pluralRule`; ~~(5) keep `Requires at least: 6.4` and
 give it a CI leg~~ (`258c74c`); ~~(6) the settings leftovers and tier 1's debts~~ (`0ac0ea8`);
-~~(7) `v1.0.0-rc.1`~~ (tagged on `c4dea35` after the Playground e2e went 126 / 126 in 47 min; push `main`, wait for CI, then the tag); (8) screenshots, taken
-by Claude in Comet on a clean Playground with CC0 photos, last — then
-`v1.0.0` and SVN.
+~~(7) `v1.0.0-rc.1`~~ (tagged on `c4dea35` after the Playground e2e went 126 / 126 in 47 min; push `main`, wait for CI, then the tag); ~~(8) screenshots~~ (`71aa069`, taken
+by Claude in Comet on a clean Playground with 41 CC0 photos from the WordPress
+Photo Directory; `docs/screenshots.md` says how, and credits each photo) — and
+with them `d486e6b`, the narrow sheet's current row bold as its rule said.
+Then `v1.0.0` (on the docs commit; push `main`, wait for CI, then both tags)
+and the wp.org submission: the ZIP from `bin/build-zip.sh`, uploaded at
+wordpress.org/plugins/developers/add/ — SVN, and `.wordpress-org/` as its
+`/assets`, exist only once the review approves it.
+
+**Screenshots on Playground, the mechanics.** The Playground tab holds the site
+two iframes deep, where the extension's `find` and `file_upload` cannot reach;
+open `/scope:<name>/wp-admin/…` in a second tab while the first stays open, and
+the site runs top-level. `file_upload` takes a staged
+`/mnt/user-data/uploads/…` path, not a device path. The window is 1456 × 628 CSS
+at DPR 2: a screenshot comes back downscaled to 1568 wide, but `zoom` with
+`save_to_disk` returns native pixels for a region up to 728 × 334 CSS — so each
+shot is an iframe at its CSS size moved under the viewport in tiles and
+stitched at 2× (overlaps pixel-identical). The block editor will not load in
+that iframe; shot 7 was taken top-level. **Files written to the Mac through
+`device_commit_files` gain a C2PA `caBX` chunk** (5.7 KB) — pixels unchanged,
+md5 different.
 
 **`WP_List_Table::views()` joins its items with `" |</li>"`** — #24's label goes
 inside the first view's markup, as real text, not in an `<li>` of its own. Each
