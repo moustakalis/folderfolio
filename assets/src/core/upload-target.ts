@@ -60,6 +60,29 @@ import { can } from '../lib/can';
 const PARAM = 'folderfolio_folder';
 
 const live = new Set<WpUploader>();
+
+/**
+ * Forget uploaders whose *Select Files* button has left the page (review
+ * L14): one is built for every picker opened, and each was kept and
+ * re-pointed on every selection for the rest of the session. An uploader
+ * with no button (a drop target alone) is kept.
+ */
+function pruneLive(): void {
+    for (const uploader of live) {
+        const button = uploader.browser?.[0];
+
+        if (button && !button.isConnected) {
+            live.delete(uploader);
+        }
+    }
+}
+
+/** How many uploaders are held — for the test of the pruning. */
+export function liveUploaderCount(): number {
+    pruneLive();
+
+    return live.size;
+}
 let current: number | null = null;
 
 /**
@@ -99,6 +122,8 @@ function apply(): void {
         }
     }
 
+    pruneLive();
+
     for (const uploader of live) {
         try {
             uploader.param(PARAM, value());
@@ -124,6 +149,7 @@ function watchUploaders(): void {
     const original = proto.init;
 
     const wrapper = function (this: WpUploader, ...args: unknown[]): void {
+        pruneLive();
         live.add(this);
 
         // Its parameters were copied from the defaults a moment ago, in the

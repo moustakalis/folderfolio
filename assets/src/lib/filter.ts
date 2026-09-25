@@ -294,8 +294,32 @@ interface UploadView extends MediaCollection {
     validator?: (model: unknown) => boolean;
 }
 
-/** Every grid collection on the page — the library's, or each picker's. */
-const uploadViews = new Set<UploadView>();
+/**
+ * Every grid collection on the page — the library's, or each picker's — and
+ * the element of the browser view that shows it.
+ *
+ * With the element so that a grid no longer on the page can be let go
+ * (review L14): every Image or Gallery picker opened in the block editor
+ * added one and nothing took it out, so the set grew for the session and
+ * every upload iterated all of them.
+ */
+const uploadViews = new Map<UploadView, Element | null>();
+
+/** Forget the grids whose element has left the page. */
+function pruneUploadViews(): void {
+    for (const [view, el] of uploadViews) {
+        if (el && !el.isConnected) {
+            uploadViews.delete(view);
+        }
+    }
+}
+
+/** How many grids are held — for the test that holds the pruning to account. */
+export function uploadViewCount(): number {
+    pruneUploadViews();
+
+    return uploadViews.size;
+}
 
 /**
  * A grid that should show uploads made while it is on screen.
@@ -308,8 +332,9 @@ const uploadViews = new Set<UploadView>();
  * not one of them. It is in the props from the first selection on, `''`
  * included, so once a folder had been chosen no grid showed an upload at all.
  */
-export function showUploads(collection: UploadView): void {
-    uploadViews.add(collection);
+export function showUploads(collection: UploadView, el: Element | null = null): void {
+    pruneUploadViews();
+    uploadViews.set(collection, el);
 }
 
 /**
@@ -330,7 +355,9 @@ export function showUploads(collection: UploadView): void {
  * still asked, so an image does not appear under a *Video* filter.
  */
 export function showUpload(model: unknown, folder: string): void {
-    for (const view of uploadViews) {
+    pruneUploadViews();
+
+    for (const view of uploadViews.keys()) {
         const raw = view.props.get(FOLDER_QUERY_VAR);
         const viewing = raw === '' || raw === null || raw === undefined ? '' : String(raw);
         const smart = view.props.get(SMART_QUERY_VAR);
@@ -371,7 +398,9 @@ export function showUpload(model: unknown, folder: string): void {
  * back builds the tile from the finished model.
  */
 export function redrawUpload(model: unknown): void {
-    for (const view of uploadViews) {
+    pruneUploadViews();
+
+    for (const view of uploadViews.keys()) {
         if (typeof view.get === 'function' && view.get(model) && view.remove && view.add) {
             view.remove(model);
             view.add(model);

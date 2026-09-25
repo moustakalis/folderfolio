@@ -82,7 +82,7 @@ export function publishBrowsers(): boolean {
         if (collection?.props) {
             keepServerOrder(collection);
             // An upload made in a folder shows while it uploads — showUploads().
-            showUploads(collection);
+            showUploads(collection, this.el ?? null);
         }
 
         return result;

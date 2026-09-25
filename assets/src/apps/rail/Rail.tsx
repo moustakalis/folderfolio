@@ -289,7 +289,8 @@ export function Rail({
         stampServerOrder();
 
         const attach = (): boolean => {
-            const collection = window.wp?.media?.frame?.content?.get?.()?.collection;
+            const browser = window.wp?.media?.frame?.content?.get?.();
+            const collection = browser?.collection;
 
             if (!collection?.props) {
                 return false;
@@ -298,7 +299,7 @@ export function Rail({
             keepServerOrder(collection as Parameters<typeof keepServerOrder>[0]);
             // And an upload made in a folder shows while it uploads —
             // showUploads() has why core does not.
-            showUploads(collection as Parameters<typeof showUploads>[0]);
+            showUploads(collection as Parameters<typeof showUploads>[0], (browser as { el?: Element } | undefined)?.el ?? null);
 
             return true;
         };
