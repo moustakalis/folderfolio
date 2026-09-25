@@ -169,11 +169,12 @@ class Schema
             $wpdb->query($wpdb->prepare('DROP TABLE IF EXISTS %i', $wpdb->prefix . $retired));
         }
 
-        // Carry an install created before the engine was pinned. Only the two
-        // tables the transactional write paths touch — the meta table is
-        // single-row-per-key and never take part in a multi-statement
-        // sequence, so rewriting them would be a table rebuild for nothing.
-        $this->ensureInnoDb([$table_folders, $table_assignments]);
+        // Carry an install created before the engine was pinned: every table
+        // a transactional write path touches. The meta table is one of them
+        // since a delete takes a folder's meta with it (review M13), so it is
+        // converted too (review L9) — a MyISAM meta table would keep rows a
+        // rolled-back delete had removed.
+        $this->ensureInnoDb([$table_folders, $table_assignments, $table_meta]);
 
         // Fill in path/depth for any row that predates those columns. Safe to
         // run every time: it only touches rows whose path is still empty.
@@ -329,7 +330,14 @@ class Schema
                 }
 
                 array_unshift($chain, $cursor);
-                $cursor = $parents[$cursor] ?? null;
+                $next = $parents[$cursor] ?? null;
+
+                // A parent that is not a folder any more ends the chain, as
+                // Doctor's check reads it: such a folder's path starts at
+                // itself. Walking on put the missing id at the front, Doctor
+                // then expected a path without it, and the Status tab asked
+                // for a repair that could never clear (review L9).
+                $cursor = $next !== null && array_key_exists($next, $parents) ? $next : null;
             }
 
             if ($chain === []) {

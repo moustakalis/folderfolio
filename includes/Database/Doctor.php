@@ -73,7 +73,9 @@ final class Doctor
     {
         $wrong = [];
 
-        foreach ([$this->folders(), $this->assignments()] as $table) {
+        global $wpdb;
+
+        foreach ([$this->folders(), $this->assignments(), $wpdb->prefix . 'folderfolio_folder_meta'] as $table) {
             $engine = Schema::engineOf($table);
 
             if ($engine !== null && $engine !== 'innodb') {

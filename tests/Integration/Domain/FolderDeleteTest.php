@@ -145,4 +145,47 @@ class FolderDeleteTest extends WP_UnitTestCase
         $this->assertGreaterThanOrEqual(1, (new \FolderFolio\Domain\AttachmentFolderRepository())->deleteOrphans());
         $this->assertSame(0, $this->metaCount(987654));
     }
+
+    /**
+     * @test
+     *
+     * Review L8 (here for its fixture): a media export carries the media
+     * tree's assignments and no other tree's.
+     */
+    public function an_export_carries_only_its_own_trees_assignments(): void
+    {
+        $media = $this->make('Media folder');
+        $posts = $this->service->create(['name' => 'Post folder', 'object_type' => 'post']);
+        $file = $this->file();
+        $post = self::factory()->post->create();
+        $this->service->assignAttachments($media->id, [$file]);
+        $this->service->assignAttachments($posts->id, [$post]);
+
+        $document = (new \FolderFolio\Domain\FolderExport())->document(true);
+
+        $this->assertSame([['folder' => $media->id, 'attachments' => [$file]]], $document['assignments']);
+    }
+
+    /**
+     * @test
+     *
+     * Review L9: for a folder whose parent is gone, the repair and Doctor
+     * compute the same path, so a repair clears the finding.
+     */
+    public function repair_and_doctor_agree_about_an_orphans_path(): void
+    {
+        $orphan = $this->make('Orphan');
+        $child = $this->make('Its child', $orphan->id);
+
+        global $wpdb;
+        $wpdb->update("{$wpdb->prefix}folderfolio_folders", ['parent_id' => 999999], ['id' => $orphan->id]);
+
+        $codes = static fn (): array => array_column((new \FolderFolio\Database\Doctor())->check(), 'code');
+
+        (new Schema())->backfillPaths(true);
+        $this->assertNotContains('path_drift', $codes());
+        $this->assertNotContains('depth_drift', $codes());
+        $this->assertSame(0, (new Schema())->backfillPaths(true), 'a second repair has nothing to do');
+        $this->assertSame("/{$orphan->id}/{$child->id}/", $this->service->get($child->id)->path);
+    }
 }

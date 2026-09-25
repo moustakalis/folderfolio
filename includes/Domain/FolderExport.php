@@ -108,21 +108,31 @@ final class FolderExport
         ];
 
         if ($withAssignments) {
-            $document['assignments'] = $this->assignmentList();
+            $document['assignments'] = $this->assignmentList(array_column($folders, 'id'));
         }
 
         return $document;
     }
 
     /**
+     * The assignments of the folders in this file, and no others.
+     *
+     * The table holds every tree's rows; a media export carried the Posts
+     * tree's too, for folders not in the file, and the import report counted
+     * rows it would never apply (review L8).
+     *
+     * @param list<int> $folderIds
      * @return list<array{folder: int, attachments: list<int>}>
      */
-    private function assignmentList(): array
+    private function assignmentList(array $folderIds): array
     {
+        $exported = array_flip($folderIds);
         $grouped = [];
 
         foreach ($this->assignments->all() as $pair) {
-            $grouped[$pair['folder_id']][] = $pair['attachment_id'];
+            if (isset($exported[$pair['folder_id']])) {
+                $grouped[$pair['folder_id']][] = $pair['attachment_id'];
+            }
         }
 
         $out = [];

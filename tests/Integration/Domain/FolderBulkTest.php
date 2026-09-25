@@ -96,4 +96,22 @@ class FolderBulkTest extends WP_UnitTestCase
         $this->assertWPError($this->bulk->run("Fine\n" . $deep));
         $this->assertSame([], $this->service->tree(), 'not even the line that was fine');
     }
+
+    /**
+     * Review L7: `parent_id: 0` is the top level to the preview, and was a
+     * missing folder to the run.
+     *
+     * @test
+     */
+    public function parent_zero_runs_at_the_top_level_as_it_previews(): void
+    {
+        $plan = $this->bulk->plan("Zero A\nZero A/Inside", 0);
+        $this->assertNotWPError($plan);
+
+        $result = $this->bulk->run("Zero A\nZero A/Inside", 0);
+        $this->assertNotWPError($result);
+
+        $names = array_column($this->service->tree(), 'name');
+        $this->assertContains('Zero A', $names);
+    }
 }

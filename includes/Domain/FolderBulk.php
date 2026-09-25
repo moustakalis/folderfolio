@@ -219,6 +219,13 @@ final class FolderBulk
         ?int $parentId = null,
         string $objectType = FolderRepository::DEFAULT_OBJECT_TYPE
     ): array|WP_Error {
+        // `0` is the top level to the plan (destination()), and was passed on
+        // as a parent id to the lookup, which found no folder 0 — a list that
+        // previewed fine then failed (review L7). Said once, here.
+        if ($parentId === 0) {
+            $parentId = null;
+        }
+
         /** @var array<string, mixed>|WP_Error $result */
         $result = Transaction::run(function () use ($text, $parentId, $objectType): array|WP_Error {
             $plan = $this->plan($text, $parentId, $objectType);

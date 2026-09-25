@@ -242,6 +242,12 @@ final class Plugin
      */
     public function forgetAttachment($attachmentId): void
     {
+        // As forgetPost(): a file deleted before the tables exist — a network
+        // site nobody has opened yet — would print a database error (L9).
+        if (get_option(self::DB_VERSION_OPTION) === false) {
+            return;
+        }
+
         (new AttachmentFolderRepository())->deleteForAttachment((int) $attachmentId);
     }
 
