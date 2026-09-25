@@ -267,6 +267,13 @@ body.folderfolio-has-rail .folderfolio-rail {
   background-attachment: local, local, scroll, scroll;
 }
 
+/* In the narrow sheet the level's own band sticks beneath the search line, so
+   a row brought into view — the new-folder field as it takes focus — sits
+   below both. Without it the field opened 20px under the band. */
+.folderfolio-rail__scroll:has(.folderfolio-levels__head) {
+  scroll-padding-top: calc(var(--ff-controls-h, 0px) + var(--ff-row-h));
+}
+
 /* The folders, below the search line. Not a scroller of its own any more. */
 .folderfolio-rail__body {
   padding: 6px 0 12px;
