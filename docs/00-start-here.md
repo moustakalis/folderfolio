@@ -1856,7 +1856,7 @@ honest repair~~ (`f3bb801`); ~~(2) review #24 as C plus a lead-in label~~
 (`deea873`, `Admin\FolderViews`) — inside a folder the
 status line reads *📁 In Launch: All (3) | Published (2) | Drafts (1)*, the
 links keep the folder, nothing changes without one, the date filter stays
-core's (board `JNf58KfGsi2o8qdVU5Jjcf`); (3) the narrow sheet as A — Starred,
+core's (board `JNf58KfGsi2o8qdVU5Jjcf`); ~~(3) the narrow sheet as A~~ (`cec1c68`) — Starred,
 Smart, the search line and the folders one scroller, the search line sticky,
 *Top level* beneath it, both renderers (board `NF7bQktuksgBSi4rCfoLvf`);
 (4) plurals on the client before 1.0; (5) keep `Requires at least: 6.4` and
@@ -1873,8 +1873,17 @@ bottom edge (3.8px low). **The rig's server is `php -d … -S 127.0.0.1:9411`**:
 kill it with `grep -F -- "-S 127.0.0.1:9411"`, not `grep "php -S"`, before
 re-running `setup.sh`.
 
-Checks at `deea873`: PHPStan clean, unit 173, integration 171 / 171 on one site
-and on a network, e2e 121 / 121 (rig), Plugin Check 0. The Playground e2e is
+Checks at `cec1c68`: PHPStan clean, unit 173, integration 171 / 171 on one site
+and on a network, e2e 124 / 124 (rig), JS unit 61, Plugin Check 0.
+
+**The rail is one scroller since `cec1c68`**: `.folderfolio-rail__scroll` holds
+Starred, Smart, the sticky search line and the folders; *Top level* sticks at
+`--ff-controls-h`; the line's menus are `AnchoredMenu`s on the body (a sticky
+band is a stacking context and the scroller clips). **The grid's
+`keepServerOrder()` / `showUploads()` attach through a MutationObserver on
+`#wp-media-grid`** — the rail mounts before the media frame exists, and the old
+retry, which waited only if a frame was already there, had been passing by the
+margin of an effect's timing. The Playground e2e is
 owed before the RC.
 
 Checks at `7fb0c73`: PHPStan clean, unit 173, integration 159 / 159 on one
