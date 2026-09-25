@@ -761,16 +761,14 @@ final class SettingsPage
 
         $tool = isset($_POST['tool']) ? sanitize_key(wp_unslash((string) $_POST['tool'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- guard() checked the nonce
 
+        // Each tool reports what it actually changed, and the notice says
+        // that number — a repair with nothing to repair says so (A8).
         if ('rebuild-paths' === $tool) {
-            (new Schema())->backfillPaths(true);
-
-            $this->redirect('status', 'paths');
+            $this->redirect('status', 'paths', (new Schema())->backfillPaths(true));
         }
 
         if ('remove-orphans' === $tool) {
-            (new AttachmentFolderRepository())->deleteOrphans();
-
-            $this->redirect('status', 'orphans');
+            $this->redirect('status', 'orphans', (new AttachmentFolderRepository())->deleteOrphans());
         }
 
         $this->redirect('status');
@@ -789,12 +787,16 @@ final class SettingsPage
      * Post, redirect, get. A settings screen that re-renders on POST is a
      * settings screen that re-saves on refresh.
      */
-    private function redirect(string $tab, string $done = ''): void
+    private function redirect(string $tab, string $done = '', ?int $count = null): void
     {
         $args = ['page' => self::SLUG, 'tab' => $tab];
 
         if ('' !== $done) {
             $args['folderfolio-done'] = $done;
+        }
+
+        if (null !== $count) {
+            $args['folderfolio-count'] = $count;
         }
 
         wp_safe_redirect(add_query_arg($args, admin_url('admin.php')));
@@ -810,19 +812,69 @@ final class SettingsPage
             ? sanitize_key(wp_unslash((string) $_GET['folderfolio-done']))
             : '';
 
-        $messages = [
-            'saved' => __('Settings saved.', 'folderfolio'),
-            'paths' => __('Folder tree repaired — every folder agrees with its parent again.', 'folderfolio'),
-            'orphans' => __('Entries for files that no longer exist have been cleared out.', 'folderfolio'),
-        ];
+        if ('saved' === $done) {
+            $this->notice('success', __('Settings saved.', 'folderfolio'));
 
-        if (!isset($messages[$done])) {
             return;
         }
 
+        if (!in_array($done, ['paths', 'orphans'], true)) {
+            return;
+        }
+
+        // What the tool changed, carried through the redirect. A link without
+        // it (a bookmark, an old tab) says nothing rather than guessing.
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        if (!isset($_GET['folderfolio-count'])) {
+            return;
+        }
+
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $count = absint(wp_unslash($_GET['folderfolio-count']));
+
+        if ('paths' === $done) {
+            $this->notice(
+                0 === $count ? 'info' : 'success',
+                0 === $count
+                    ? __('Nothing needed repairing — every folder already agrees with its parent.', 'folderfolio')
+                    : sprintf(
+                        /* translators: %s: how many folders were repaired. */
+                        _n(
+                            'Repaired %s folder — it agrees with its parent again.',
+                            'Repaired %s folders — they agree with their parents again.',
+                            $count,
+                            'folderfolio'
+                        ),
+                        number_format_i18n($count)
+                    )
+            );
+
+            return;
+        }
+
+        $this->notice(
+            0 === $count ? 'info' : 'success',
+            0 === $count
+                ? __('Nothing to forget — every entry points at a file and a folder that still exist.', 'folderfolio')
+                : sprintf(
+                    /* translators: %s: how many folder entries were removed. */
+                    _n(
+                        'Forgot %s entry for a file or folder that no longer exists.',
+                        'Forgot %s entries for files or folders that no longer exist.',
+                        $count,
+                        'folderfolio'
+                    ),
+                    number_format_i18n($count)
+                )
+        );
+    }
+
+    private function notice(string $kind, string $message): void
+    {
         printf(
-            '<div class="notice notice-success is-dismissible"><p>%s</p></div>',
-            esc_html($messages[$done])
+            '<div class="notice notice-%1$s is-dismissible"><p>%2$s</p></div>',
+            esc_attr($kind),
+            esc_html($message)
         );
     }
 }

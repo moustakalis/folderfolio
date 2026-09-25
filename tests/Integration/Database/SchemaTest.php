@@ -78,4 +78,80 @@ class SchemaTest extends WP_UnitTestCase
             'Running the migration twice leaves one column, not two and not none.'
         );
     }
+
+    /**
+     * Settings finding A8, Nick's call on 25 Sep: an honest repair. On a tree
+     * that is in step the repair writes nothing and says 0 — until then it
+     * issued one UPDATE per folder and the Status tab claimed a repair.
+     *
+     * @test
+     */
+    public function a_repair_on_a_tree_in_step_writes_nothing(): void
+    {
+        (new Schema())->migrate();
+        wp_set_current_user(self::factory()->user->create(['role' => 'administrator']));
+
+        $root = \FolderFolio::createFolder('Repair root');
+        $child = \FolderFolio::createFolder('Repair child', $root->id);
+        \FolderFolio::createFolder('Repair grandchild', $child->id);
+
+        $updates = $this->countUpdates(fn () => $this->assertSame(0, (new Schema())->backfillPaths(true)));
+
+        $this->assertSame(0, $updates, 'Not one UPDATE on a tree whose paths are right.');
+    }
+
+    /**
+     * The case the old short-circuit could not see: a path that is wrong but
+     * not empty. The forced check finds it, writes that row and no other.
+     *
+     * @test
+     */
+    public function a_repair_rewrites_only_the_rows_that_drifted(): void
+    {
+        global $wpdb;
+
+        (new Schema())->migrate();
+        wp_set_current_user(self::factory()->user->create(['role' => 'administrator']));
+
+        $root = \FolderFolio::createFolder('Drift root');
+        $child = \FolderFolio::createFolder('Drift child', $root->id);
+        $other = \FolderFolio::createFolder('Drift other');
+        $table = $wpdb->prefix . 'folderfolio_folders';
+
+        $wpdb->update($table, ['path' => '/999/' . $child->id . '/'], ['id' => $child->id]);
+        $wpdb->update($table, ['depth' => 4], ['id' => $other->id]);
+
+        $this->assertSame(0, (new Schema())->backfillPaths(), 'Unforced, only empty paths are looked for.');
+
+        $updates = $this->countUpdates(fn () => $this->assertSame(2, (new Schema())->backfillPaths(true)));
+
+        $this->assertSame(2, $updates, 'One UPDATE per drifted row, and none for the root that was right.');
+        $this->assertSame('/' . $root->id . '/' . $child->id . '/', \FolderFolio::getFolder($child->id)->path);
+        $this->assertSame(0, (int) $wpdb->get_var($wpdb->prepare('SELECT depth FROM %i WHERE id = %d', $table, $other->id)));
+        $this->assertSame(0, (new Schema())->backfillPaths(true), 'And a second run finds nothing.');
+    }
+
+    /**
+     * @param callable(): void $run
+     */
+    private function countUpdates(callable $run): int
+    {
+        global $wpdb;
+
+        $count = 0;
+        $table = $wpdb->prefix . 'folderfolio_folders';
+        $watch = static function (string $query) use (&$count, $table): string {
+            if (preg_match('/^\s*UPDATE\s+`?' . preg_quote($table, '/') . '`?\s/i', $query)) {
+                $count++;
+            }
+
+            return $query;
+        };
+
+        add_filter('query', $watch);
+        $run();
+        remove_filter('query', $watch);
+
+        return $count;
+    }
 }

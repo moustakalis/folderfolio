@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-09-24T16:58:40+00:00\n"
+"POT-Creation-Date: 2026-09-25T09:35:25+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: folderfolio\n"
@@ -1708,7 +1708,7 @@ msgid "Deleted “%1$s” — %2$s items moved to Unassigned"
 msgstr ""
 
 #: includes/Admin/SettingsPage.php:137
-#: includes/Admin/SettingsPage.php:782
+#: includes/Admin/SettingsPage.php:780
 msgid "You do not have permission to manage FolderFolio settings."
 msgstr ""
 
@@ -1862,17 +1862,33 @@ msgstr ""
 msgid "Forget deleted files"
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:814
+#: includes/Admin/SettingsPage.php:816
 msgid "Settings saved."
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:815
-msgid "Folder tree repaired — every folder agrees with its parent again."
+#: includes/Admin/SettingsPage.php:839
+msgid "Nothing needed repairing — every folder already agrees with its parent."
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:816
-msgid "Entries for files that no longer exist have been cleared out."
+#. translators: %s: how many folders were repaired.
+#: includes/Admin/SettingsPage.php:842
+#, php-format
+msgid "Repaired %s folder — it agrees with its parent again."
+msgid_plural "Repaired %s folders — they agree with their parents again."
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/Admin/SettingsPage.php:858
+msgid "Nothing to forget — every entry points at a file and a folder that still exist."
 msgstr ""
+
+#. translators: %s: how many folder entries were removed.
+#: includes/Admin/SettingsPage.php:861
+#, php-format
+msgid "Forgot %s entry for a file or folder that no longer exists."
+msgid_plural "Forgot %s entries for files or folders that no longer exist."
+msgstr[0] ""
+msgstr[1] ""
 
 #: includes/api.php:296
 #: includes/api.php:313

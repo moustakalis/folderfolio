@@ -938,4 +938,23 @@ test.describe('the settings screen', () => {
         await expect(page.getByRole('button', { name: 'Repair folder tree' })).toBeVisible();
         await expect(page.getByRole('button', { name: 'Forget deleted files' })).toBeVisible();
     });
+
+    // Settings finding A8 (Nick, 25 Sep): the tools report what they changed.
+    // On a tree in step the repair used to rewrite every folder and announce
+    // a repair; now it says there was nothing to do.
+    test('Status tools say what they changed, and nothing when nothing was wrong', async ({ page }) => {
+        await page.goto(`${SETTINGS}&tab=status`);
+        await page.getByRole('button', { name: 'Repair folder tree' }).click();
+        await page.waitForURL(/folderfolio-done=paths/);
+        await expect(
+            page.locator('.notice-info', {
+                hasText: 'Nothing needed repairing — every folder already agrees with its parent.',
+            })
+        ).toBeVisible();
+        await expect(page.locator('.notice-success', { hasText: 'Repaired' })).toHaveCount(0);
+
+        await page.getByRole('button', { name: 'Forget deleted files' }).click();
+        await page.waitForURL(/folderfolio-done=orphans/);
+        await expect(page.locator('.notice-info', { hasText: 'Nothing to forget' })).toBeVisible();
+    });
 });

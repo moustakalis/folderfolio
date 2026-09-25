@@ -25,6 +25,19 @@ class Schema
         'folderfolio_folders',
         'folderfolio_attachment_folders',
         'folderfolio_folder_meta',
+    ];
+
+    /**
+     * Tables an earlier version created and this one does not.
+     *
+     * `folderfolio_user_preferences` was made on every install from the first
+     * version and nothing ever read or wrote it — a person's rail lives in a
+     * user option (`RailPreferences`). Dropped before 1.0 (Nick, 25 Sep), while
+     * no site has data in it, because a table that ships is a table migrated
+     * for ever. migrate() drops each one; a deleted network site and
+     * uninstall.php drop them too, for a site that never ran the upgrade.
+     */
+    public const RETIRED_TABLES = [
         'folderfolio_user_preferences',
     ];
 
@@ -146,19 +159,18 @@ class Schema
 
         \dbDelta($sql_meta);
 
-        // User preferences table.
-        $table_preferences = $wpdb->prefix . 'folderfolio_user_preferences';
-        $sql_preferences = "CREATE TABLE {$table_preferences} (
-            user_id BIGINT UNSIGNED NOT NULL,
-            preferences LONGTEXT NULL,
-            PRIMARY KEY  (user_id)
-        ) {$engine} {$charset_collate};";
-
-        \dbDelta($sql_preferences);
+        // Tables an earlier version made and nothing ever used (RETIRED_TABLES).
+        // Unconditional: no version of the plugin wrote a row to any of them.
+        foreach (self::RETIRED_TABLES as $retired) {
+            // Identifiers cannot be bound as values — %i quotes one — and the
+            // name is built from $wpdb->prefix and a fixed list.
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- dropping our own retired table; a schema change by definition.
+            $wpdb->query($wpdb->prepare('DROP TABLE IF EXISTS %i', $wpdb->prefix . $retired));
+        }
 
         // Carry an install created before the engine was pinned. Only the two
-        // tables the transactional write paths touch — the meta and preference
-        // tables are single-row-per-key and never take part in a multi-statement
+        // tables the transactional write paths touch — the meta table is
+        // single-row-per-key and never take part in a multi-statement
         // sequence, so rewriting them would be a table rebuild for nothing.
         $this->ensureInnoDb([$table_folders, $table_assignments]);
 
@@ -249,8 +261,15 @@ class Schema
      * folder plugin needs a repair tool is enough evidence to build one before
      * the support inbox asks for it.
      *
-     * @param bool $force Rebuild every row, not only rows with an empty path.
-     * @return int Number of rows that had drifted, and were changed.
+     * Every row's path and depth are computed, and **only a row whose stored
+     * values differ is written**. A repair on a tree that is in step issues no
+     * UPDATE at all — until 25 Sep it wrote every folder (1,053 on the dev
+     * site), and the Status tab then announced a repair that had not happened
+     * (settings finding A8, Nick's call: an honest repair).
+     *
+     * @param bool $force Check every row. Without it — the migration's call —
+     *                    nothing is read unless some row has an empty path.
+     * @return int Folders whose path or depth had drifted, and were rewritten.
      */
     public function backfillPaths(bool $force = false): int
     {
@@ -269,18 +288,26 @@ class Schema
             }
         }
 
-        /** @var list<array{id: string, parent_id: string|null}> $rows */
+        /** @var list<array{id: string, parent_id: string|null, path: string|null, depth: string|null}> $rows */
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table, read during a migration/repair; must not be cached.
         $rows = $wpdb->get_results(
-            $wpdb->prepare('SELECT id, parent_id FROM %i', $table),
+            $wpdb->prepare('SELECT id, parent_id, path, depth FROM %i', $table),
             ARRAY_A
         ) ?: [];
 
         /** @var array<int, int|null> $parents */
         $parents = [];
 
+        /** @var array<int, array{path: string, depth: int|null}> $stored */
+        $stored = [];
+
         foreach ($rows as $row) {
-            $parents[(int) $row['id']] = $row['parent_id'] === null ? null : (int) $row['parent_id'];
+            $id = (int) $row['id'];
+            $parents[$id] = $row['parent_id'] === null ? null : (int) $row['parent_id'];
+            $stored[$id] = [
+                'path' => (string) $row['path'],
+                'depth' => $row['depth'] === null ? null : (int) $row['depth'],
+            ];
         }
 
         $written = 0;
@@ -311,17 +338,24 @@ class Schema
             $path = FolderPath::SEPARATOR
                 . implode(FolderPath::SEPARATOR, $chain)
                 . FolderPath::SEPARATOR;
+            $depth = count($chain) - 1;
 
-            // Every row is written; a row whose path and depth were already
-            // right changes nothing, and MySQL counts only rows it changed —
-            // so the number is what had drifted, which is what the CLI and
-            // the facade say it is (24 Sep: it was every folder on the site).
-            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a repair write to our own table; nothing to cache.
+            if ($stored[$id]['path'] === $path && $stored[$id]['depth'] === $depth) {
+                continue;
+            }
+
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a repair write to our own table; last_changed is bumped below.
             $written += (int) $wpdb->update(
                 $table,
-                ['path' => $path, 'depth' => count($chain) - 1],
+                ['path' => $path, 'depth' => $depth],
                 ['id' => $id]
             );
+        }
+
+        // A path is what subtree reads and the tree are built from; every
+        // write to our tables bumps the key the folder queries are cached by.
+        if ($written > 0) {
+            wp_cache_set_last_changed('folderfolio');
         }
 
         return $written;

@@ -24,11 +24,16 @@ function folderfolio_uninstall_site(): void
     $tables = [
         'folderfolio_attachment_folders',
         'folderfolio_folder_meta',
-        'folderfolio_user_preferences',
         'folderfolio_folders',
     ];
 
-    foreach ($tables as $table) {
+    // Schema::RETIRED_TABLES — made by an earlier version and dropped by the
+    // upgrade, which a site may not have run before the plugin was deleted.
+    $retired = [
+        'folderfolio_user_preferences',
+    ];
+
+    foreach ([...$tables, ...$retired] as $table) {
         $name = $wpdb->prefix . $table;
 
         // Table names cannot be bound as parameters — %i quotes one as an

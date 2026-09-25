@@ -141,7 +141,7 @@ class NetworkTest extends WP_UnitTestCase
     {
         $this->activateForNetwork();
         $siteId = self::factory()->blog->create();
-        $this->assertCount(4, $this->tablesOf($siteId), 'Precondition.');
+        $this->assertCount(count(Schema::TABLES), $this->tablesOf($siteId), 'Precondition.');
 
         wp_delete_site($siteId);
 

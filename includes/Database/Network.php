@@ -61,7 +61,9 @@ final class Network
         $tables = is_array($tables) ? $tables : [];
         $prefix = $wpdb->get_blog_prefix((int) $siteId);
 
-        foreach (Schema::TABLES as $table) {
+        // The retired ones too: a site nobody opened wp-admin on since the
+        // upgrade still has them.
+        foreach ([...Schema::TABLES, ...Schema::RETIRED_TABLES] as $table) {
             $tables[] = $prefix . $table;
         }
 
