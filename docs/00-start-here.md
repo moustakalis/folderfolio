@@ -1883,7 +1883,7 @@ wordpress.org/plugins/developers/add/ — SVN, and `.wordpress-org/` as its
 `/assets`, exist only once the review approves it.
 
 **(9) is done: Nick picked all 31 and all 31 are fixed** (26 Sep, `35f7bca` →
-`ff51187`, record `claude/progress-2026-09-26-the-review-fixed.md`; the board's
+`9898279`, record `claude/progress-2026-09-26-the-review-fixed.md`; the board's
 cards now name each commit and its test). Each fix has a negative control — a
 test that fails with the fix taken back out. What changed in how the plugin
 behaves: a role without Assign files uploads unfiled (M2); PATCH `sort_order`
@@ -1896,8 +1896,9 @@ folder's meta; the cache key moves on after the commit; an import's Stop is its
 own option, one batch runs at a time (`GET_LOCK`), a folder it makes is marked
 with its run, and a problem with one folder is a warning, not the end of the
 run. Checks: PHPStan clean, unit 178, integration 220 / 220 on one site and on
-a network, e2e 133 / 133 (rig), JS unit 80, Plugin Check 0, the POT
-regenerated. **If this repo sits in an iCloud-synced folder, `git am` leaves a
+a network, e2e 133 / 133 on the rig and on Playground (spec by spec; the
+undo-window test rewritten to watch the rail, `9898279`), JS unit 80, Plugin
+Check 0, the POT regenerated. Next: (10) the Elementor widget. **If this repo sits in an iCloud-synced folder, `git am` leaves a
 `name 2.ext` copy beside each file it rewrites**; find them with `find . -name
 "* 2.*"` and move them out before building.
 
