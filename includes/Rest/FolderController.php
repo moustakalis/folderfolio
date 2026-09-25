@@ -61,6 +61,12 @@ class FolderController
 {
     public const REST_NAMESPACE = 'folderfolio/v1';
 
+    /**
+     * The type of a request whose folders disagree: no tree has it, so every
+     * ability refuses it (review M1).
+     */
+    private const NO_TYPE = '';
+
     public function __construct(
         private readonly FolderService $folders = new FolderService()
     ) {
@@ -460,34 +466,64 @@ class FolderController
      *
      * A route with a folder in it answers from the folder, so a request cannot
      * borrow a type it may use to act on a tree it may not: the route's own
-     * folder, then the one a file goes into (`folder_id`), then the parent a
-     * folder is made or arranged under, then the first folder of a level
-     * being arranged. Only a request naming no folder at all — the tree, the
-     * counts, a folder or a list made at the top — reads `object_type`. A
-     * folder that does not exist falls through, and the handler says "not
-     * found".
+     * folder, the one a file goes into (`folder_id`) and the parent a folder is
+     * made or arranged under (`parent_id`). When none of those is given, the
+     * first folder of a level being arranged; and only a request naming no
+     * folder at all — the tree, the counts, a folder or a list made at the top
+     * — reads `object_type`. A folder that does not exist falls through, and
+     * the handler says "not found".
+     *
+     * `id` is read from the **route**, never from the body or the query string
+     * (review M1): `/folders/reorder` has no `{id}`, and a stray `id` naming a
+     * media folder made the check ask about media while the list arranged
+     * another type's tree. And the folders a request names must agree: two of
+     * different types are answered with no type at all, which every ability
+     * refuses — the service would refuse the write anyway, and the check must
+     * not have asked about the wrong tree first.
      */
     public function objectType(WP_REST_Request $request): string
     {
-        $ids = $request->get_param('ids');
-        $candidates = [
-            $request->get_param('id'),
-            $request->get_param('folder_id'),
-            $request->get_param('parent_id'),
-            is_array($ids) ? ($ids[0] ?? null) : null,
-        ];
+        $route = $request->get_url_params();
+        $types = [];
 
-        foreach ($candidates as $id) {
-            if (is_numeric($id) && (int) $id > 0) {
-                $folder = $this->folders->get((int) $id);
+        foreach ([$route['id'] ?? null, $request->get_param('folder_id'), $request->get_param('parent_id')] as $id) {
+            $type = $this->typeOfFolder($id);
 
-                if ($folder !== null) {
-                    return $folder->objectType;
-                }
+            if ($type !== null) {
+                $types[$type] = true;
             }
         }
 
+        if ($types === []) {
+            $ids = $request->get_param('ids');
+            $type = $this->typeOfFolder(is_array($ids) ? ($ids[0] ?? null) : null);
+
+            if ($type !== null) {
+                $types[$type] = true;
+            }
+        }
+
+        if (count($types) > 1) {
+            return self::NO_TYPE;
+        }
+
+        if ($types !== []) {
+            return (string) array_key_first($types);
+        }
+
         return PostTypes::fromRequest($request->get_param('object_type'));
+    }
+
+    /**
+     * The type of the folder an id names, or null when it names none.
+     */
+    private function typeOfFolder(mixed $id): ?string
+    {
+        if (!is_numeric($id) || (int) $id <= 0) {
+            return null;
+        }
+
+        return $this->folders->get((int) $id)?->objectType;
     }
 
     /**

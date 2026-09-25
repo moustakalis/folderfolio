@@ -131,6 +131,58 @@ class FolderControllerTest extends WP_UnitTestCase
 
     /**
      * @test
+     *
+     * Review M1: the type a permission is asked about comes from the route's
+     * own folder, never from a stray `id` in the body or the query string.
+     * `/folders/reorder` has no `{id}`; an `id` naming a media folder made the
+     * check ask about media while the list rearranged the Posts tree.
+     */
+    public function a_stray_id_cannot_borrow_another_types_permission(): void
+    {
+        $media = $this->folder('Media folder');
+        $one = $this->postFolder('Post one');
+        $two = $this->postFolder('Post two');
+
+        // Organise for media, not for Posts.
+        wp_set_current_user($this->factory->user->create(['role' => 'editor']));
+        add_filter(
+            'folderfolio_user_can',
+            static fn (bool $allowed, string $ability, string $type): bool => $ability === 'rename' && $type === 'post' ? false : $allowed,
+            10,
+            3
+        );
+
+        $this->assertSame(403, $this->post('/folders/reorder', ['ids' => [$two, $one]]));
+        $this->assertSame(403, $this->post('/folders/reorder', ['ids' => [$two, $one], 'id' => $media]));
+
+        $query = new WP_REST_Request('POST', '/folderfolio/v1/folders/reorder');
+        $query->set_query_params(['id' => $media]);
+        $query->set_body_params(['ids' => [$two, $one]]);
+        $this->assertSame(403, rest_do_request($query)->get_status());
+
+        // Two folders of different types in one request answer to neither.
+        $this->assertSame(403, $this->post("/folders/{$media}/move", ['parent_id' => $one]));
+
+        // The positive control: the same person arranges media.
+        $this->assertSame(200, $this->post('/folders/reorder', ['ids' => [$media]]));
+
+        remove_all_filters('folderfolio_user_can');
+        wp_set_current_user($this->adminUserId);
+        $names = array_column((new \FolderFolio\Domain\FolderService())->tree('post'), 'name');
+        $this->assertSame(['Post one', 'Post two'], $names, 'the Posts tree was not rearranged');
+    }
+
+    private function postFolder(string $name): int
+    {
+        $request = new WP_REST_Request('POST', '/folderfolio/v1/folders');
+        $request->set_param('name', $name);
+        $request->set_param('object_type', 'post');
+
+        return (int) rest_do_request($request)->get_data()['data']['id'];
+    }
+
+    /**
+     * @test
      */
     public function bulk_create_needs_the_create_ability(): void
     {
