@@ -748,3 +748,45 @@ body.folderfolio-dragging .folderfolio-row {
     content: none;
   }
 }
+
+/*
+ * Review #24 (Nick, 25 Sep): inside a folder the status line above a post
+ * list counts the folder, and says so — "📁 In Launch: All (3) | …". The
+ * lead-in is Admin\FolderViews' markup inside core's `.subsubsub`, outside
+ * the rail's `.folderfolio` scope, so it takes core's ink rather than a token.
+ * A long name is clipped here and carried whole in its title; the words
+ * around it ("In", ":") never are.
+ */
+.subsubsub .folderfolio-views-in {
+  white-space: nowrap;
+}
+
+.subsubsub .folderfolio-views-in .dashicons {
+  width: 16px;
+  height: 16px;
+  margin-inline-end: 4px;
+  font-size: 16px;
+  vertical-align: text-bottom;
+}
+
+/*
+ * `clip`, not `hidden`: an inline-block that is a scroll container takes its
+ * bottom edge as its baseline, and the name sat 3.8px below "In" and the
+ * counts (measured 25 Sep). A clipped box keeps its text's baseline, and
+ * text-overflow still draws the ellipsis. `hidden` first for a browser
+ * without `clip`, where the name is merely a few pixels low.
+ *
+ * Core's status items are `white-space: nowrap`, so the lead-in and *All (3)*
+ * share one unbreakable line. On a phone the line is 16px, 16em is 256px, and
+ * a long name pushed the page 63px sideways at 320 (23px at 360). 45vw is
+ * 144px there and leaves ~38px for a longer word than *All* or a count in
+ * the thousands.
+ */
+.subsubsub .folderfolio-views-in__name {
+  display: inline-block;
+  max-width: min(16em, 45vw);
+  overflow: hidden;
+  overflow: clip;
+  font-weight: 600;
+  text-overflow: ellipsis;
+}

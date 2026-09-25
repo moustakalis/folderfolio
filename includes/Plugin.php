@@ -11,6 +11,7 @@ if (!defined('ABSPATH')) {
 use FolderFolio\Admin\FolderDownload;
 use FolderFolio\Admin\FolderSelect;
 use FolderFolio\Admin\FoldersColumn;
+use FolderFolio\Admin\FolderViews;
 use FolderFolio\Admin\PostFolders;
 use FolderFolio\Admin\ImportPage;
 use FolderFolio\Admin\MediaLibraryFilter;
@@ -192,6 +193,10 @@ final class Plugin
             // The Folders column in the list table — the only column
             // FolderFolio adds, and where list mode's drill-down happens.
             (new FoldersColumn())->register();
+
+            // Inside a folder, the status line above a post list counts the
+            // folder and keeps it in its links — review #24.
+            (new FolderViews())->register();
 
             // One instance each. Menu places the screen and hands
             // SettingsPage its hook suffix; SettingsPage owns the three tabs

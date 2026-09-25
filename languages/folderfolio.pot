@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-09-25T09:35:25+00:00\n"
+"POT-Creation-Date: 2026-09-25T09:44:53+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: folderfolio\n"
@@ -100,10 +100,17 @@ msgid "Filter by folder"
 msgstr ""
 
 #: includes/Admin/FolderSelect.php:109
+#: includes/Admin/FolderViews.php:201
 #: includes/Admin/MediaModalIntegration.php:208
 #: includes/Admin/Rail.php:830
 #: includes/Blocks/Gallery.php:149
 msgid "Unassigned"
+msgstr ""
+
+#. translators: %s: a folder's name. Leads the status links above a post list, whose counts are this folder's.
+#: includes/Admin/FolderViews.php:184
+#, php-format
+msgid "In %s:"
 msgstr ""
 
 #: includes/Admin/ImportPage.php:80

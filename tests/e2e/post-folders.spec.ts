@@ -119,6 +119,60 @@ test.describe('folders for posts', () => {
         }
     });
 
+    // Review #24 (Nick, 25 Sep): inside a folder the status line counts the
+    // folder, keeps it in its links, and says whose counts they are. Swapped
+    // in place by the list refresh; untouched outside a folder.
+    test('inside a folder the status line counts the folder and keeps it in its links', async ({ page }) => {
+        await page.goto('/wp-admin/edit.php');
+        await page.locator('#folderfolio-rail').waitFor();
+        await resetFolders(page, 'post');
+
+        const launch = await createFolder(page, 'Launch', null, 'post');
+        const published = [await makePost(page, 'Launch one'), await makePost(page, 'Launch two')];
+        const draft = await page.evaluate(
+            async () =>
+                (await (window as any).wp.apiFetch({
+                    path: '/wp/v2/posts',
+                    method: 'POST',
+                    data: { title: 'Launch draft', status: 'draft' },
+                })).id as number
+        );
+        const loose = await makePost(page, 'Not in Launch');
+        const line = () => page.locator('.subsubsub');
+
+        try {
+            await file(page, launch.id, [...published, draft]);
+            await page.goto('/wp-admin/edit.php');
+            await waitForTree(page, 'Launch');
+
+            // Outside a folder: core's line, no lead-in.
+            await expect(line().locator('.folderfolio-views-in')).toHaveCount(0);
+
+            await page.locator('.folderfolio-tree .folderfolio-row', { hasText: 'Launch' }).first().click();
+            await expect(line().locator('.folderfolio-views-in')).toHaveText('In Launch:');
+            await expect(line().locator('li.all')).toContainText('All (3)');
+            await expect(line().locator('li.publish')).toContainText('(2)');
+            await expect(line().locator('li.draft')).toContainText('(1)');
+
+            for (const href of await line().locator('a').evaluateAll((links) => links.map((a) => (a as HTMLAnchorElement).href))) {
+                expect(new URL(href).searchParams.get('folderfolio_folder'), href).toBe(String(launch.id));
+            }
+
+            // Drafts stays in the folder: one row, the folder still selected.
+            await line().locator('li.draft a').click();
+            await expect.poll(() => rowIds(page)).toEqual([draft]);
+            expect(new URL(page.url()).searchParams.get('folderfolio_folder')).toBe(String(launch.id));
+            await expect(line().locator('li.draft a')).toHaveClass(/current/);
+
+            // Back out of the folder in place: core's line again.
+            await page.locator('.folderfolio-rail .folderfolio-row', { hasText: 'All Posts' }).first().click();
+            await expect(line().locator('.folderfolio-views-in')).toHaveCount(0);
+        } finally {
+            await removePosts(page, [...published, draft, loose]);
+            await resetFolders(page, 'post');
+        }
+    });
+
     test('Quick Edit still opens after a folder filters the list', async ({ page }) => {
         await page.goto('/wp-admin/edit.php');
         await page.locator('#folderfolio-rail').waitFor();
