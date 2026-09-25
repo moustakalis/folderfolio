@@ -7,7 +7,7 @@
  * without re-counting the whole library.
  */
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 
 import { apiFetch, ApiEnvelope, errorMessage, isMedia, objectType, typedPath } from '../../core/api';
 import { useRail } from './store';
@@ -83,6 +83,40 @@ export interface LibraryCounts {
 export const treeKey = ['folderfolio', 'tree'] as const;
 export const countsKey = ['folderfolio', 'counts'] as const;
 
+/**
+ * Folders deleted in the rail whose undo window is still open — review M9.
+ *
+ * The server still has them until the window closes, so any tree fetched in
+ * the meantime has them too: deleting A and then B within five seconds
+ * committed A, A's commit refetched the tree, and B came back while its toast
+ * still said "Deleted B" — and files dropped on it then went when it did.
+ * Every tree that reaches the cache is pruned of these first.
+ */
+export const pendingDeletes = new Set<number>();
+
+export function withoutPending(nodes: FolderNode[]): FolderNode[] {
+    let pruned = nodes;
+
+    for (const id of pendingDeletes) {
+        pruned = pruneTree(pruned, id);
+    }
+
+    return pruned;
+}
+
+/**
+ * Put a tree a write answered with into the cache — review L15.
+ *
+ * Cancelled first: a refetch already in flight (a drop starts one) was
+ * started before this write and returns the tree without it, and if it
+ * returned last it overwrote this one — a lock shown unlocked until the next
+ * refetch that nothing was going to make.
+ */
+export async function writeTree(client: QueryClient, tree: FolderNode[]): Promise<void> {
+    await client.cancelQueries({ queryKey: treeKey });
+    client.setQueryData(treeKey, withoutPending(tree));
+}
+
 export function useTree() {
     return useQuery({
         queryKey: treeKey,
@@ -94,7 +128,7 @@ export function useTree() {
                 typedPath('/folders')
             );
 
-            return response.data ?? [];
+            return withoutPending(response.data ?? []);
         },
         // The tree is small and changes only when this user changes it, so
         // there is no point re-fetching it on every window focus. Mutations
@@ -281,8 +315,8 @@ export function useOrderFiles() {
             return response.data;
         },
 
-        onSuccess: (data) => {
-            client.setQueryData(treeKey, data.tree);
+        onSuccess: async (data) => {
+            await writeTree(client, data.tree);
             window.dispatchEvent(new CustomEvent('folderfolio:library-changed'));
         },
     });
@@ -367,6 +401,7 @@ export function useDeleteFolder() {
         remove(id: number): { commit: () => Promise<void>; restore: () => void } {
             const previous = client.getQueryData<FolderNode[]>(treeKey);
 
+            pendingDeletes.add(id);
             client.setQueryData<FolderNode[]>(treeKey, (nodes) => pruneTree(nodes ?? [], id));
 
             return {
@@ -384,16 +419,24 @@ export function useDeleteFolder() {
                          */
                         useRail.getState().showNotice(errorMessage(error));
                     } finally {
+                        // Committed or refused, it is not pending any more:
+                        // the next tree says whether it is there.
+                        pendingDeletes.delete(id);
                         void client.invalidateQueries({ queryKey: treeKey });
                         void client.invalidateQueries({ queryKey: countsKey });
                     }
                 },
                 restore: () => {
+                    pendingDeletes.delete(id);
+
+                    // The tree from before this delete, less whatever else is
+                    // still waiting to be deleted — a second folder deleted
+                    // since must not come back with this one.
                     if (previous) {
-                        client.setQueryData(treeKey, previous);
-                    } else {
-                        void client.invalidateQueries({ queryKey: treeKey });
+                        client.setQueryData(treeKey, withoutPending(previous));
                     }
+
+                    void client.invalidateQueries({ queryKey: treeKey });
                 },
             };
         },
@@ -816,9 +859,7 @@ export function useSetFolderMark() {
             return response.data;
         },
 
-        onSuccess: (data) => {
-            client.setQueryData(treeKey, data.tree);
-        },
+        onSuccess: (data) => writeTree(client, data.tree),
     });
 }
 
@@ -841,9 +882,7 @@ export function useSetFolderKind() {
             return response.data;
         },
 
-        onSuccess: (data) => {
-            client.setQueryData(treeKey, data.tree);
-        },
+        onSuccess: (data) => writeTree(client, data.tree),
     });
 }
 

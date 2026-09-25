@@ -17,6 +17,8 @@ import { useState } from 'react';
 
 import { Menu } from '../rail/Menu';
 import { EllipsisIcon } from '../rail/icons';
+import { hasLockInside, isBlocked } from '../rail/locks';
+import { can } from '../../lib/can';
 import type { FolderNode } from '../rail/queries';
 import { useRail, type SortOrder } from '../rail/store';
 import { t } from '../../core/api';
@@ -41,6 +43,18 @@ export function FrameHeader({
     const sort = useRail((s) => s.sort);
     const setSort = useRail((s) => s.setSort);
     const [open, setOpen] = useState(false);
+
+    /*
+     * The same gates the rail's ⋮ menu asks — review M10. An action the role
+     * does not hold is hidden (Nick's rule, 04c4c7b); one a lock stops right
+     * now is greyed. Without them a Contributor, or anyone on a locked folder,
+     * deleted from here: the row vanished, the toast ran, and then the server
+     * refused and the folder came back with a notice.
+     */
+    const blocked = selected !== null && isBlocked(selected);
+    const creating = can('create');
+    const renaming = can('rename');
+    const deleting = can('delete');
 
     function startCreate() {
         const parentId = selectedId !== null && selectedId > 0 ? selectedId : null;
@@ -75,21 +89,27 @@ export function FrameHeader({
 
                 {open ? (
                     <Menu onClose={() => setOpen(false)}>
-                        <button
-                            type="button"
-                            role="menuitem"
-                            className="folderfolio-menu__item"
-                            onClick={startCreate}
-                        >
-                            <span className="folderfolio-menu__tick" aria-hidden="true" />
-                            {t('newFolder', 'New folder')}
-                        </button>
+                        {creating ? (
+                            <button
+                                type="button"
+                                role="menuitem"
+                                className="folderfolio-menu__item"
+                                // Inside the selected folder, which a lock
+                                // over it keeps closed.
+                                disabled={blocked}
+                                onClick={startCreate}
+                            >
+                                <span className="folderfolio-menu__tick" aria-hidden="true" />
+                                {t('newFolder', 'New folder')}
+                            </button>
+                        ) : null}
 
+                        {renaming ? (
                         <button
                             type="button"
                             role="menuitem"
                             className="folderfolio-menu__item"
-                            disabled={selected === null}
+                            disabled={selected === null || blocked}
                             onClick={() => {
                                 if (selected) {
                                     edit({
@@ -106,12 +126,14 @@ export function FrameHeader({
                             <span className="folderfolio-menu__tick" aria-hidden="true" />
                             {t('rename', 'Rename')}
                         </button>
+                        ) : null}
 
+                        {deleting ? (
                         <button
                             type="button"
                             role="menuitem"
                             className="folderfolio-menu__item"
-                            disabled={selected === null}
+                            disabled={selected === null || blocked || (selected !== null && hasLockInside(selected))}
                             onClick={() => {
                                 onDelete();
                                 setOpen(false);
@@ -120,8 +142,11 @@ export function FrameHeader({
                             <span className="folderfolio-menu__tick" aria-hidden="true" />
                             {t('delete', 'Delete')}
                         </button>
+                        ) : null}
 
-                        <div className="folderfolio-menu__rule" role="separator" />
+                        {creating || renaming || deleting ? (
+                            <div className="folderfolio-menu__rule" role="separator" />
+                        ) : null}
 
                         {SORTS.map((option) => (
                             <button

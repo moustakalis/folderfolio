@@ -136,6 +136,46 @@ test.describe('the folder rail', () => {
         // "create it again", because the id is what every assignment refers to.
         expect(await folderNames(page)).toContain('Archive');
     });
+
+    /**
+     * A second delete inside the first one's window — review M9.
+     *
+     * The second delete commits the first, and that commit refetches the
+     * tree while the server still has the second folder: it came back, with
+     * its toast still saying "Deleted".
+     */
+    test('a folder in its undo window stays gone when the tree refetches', async ({ page }) => {
+        await createFolder(page, 'First');
+        await createFolder(page, 'Second');
+        await page.reload();
+        await waitForTree(page, 'Second');
+
+        const body = page.locator('.folderfolio-rail__body');
+        const remove = async (name: string) => {
+            await page.locator('.folderfolio-row', { hasText: name }).click();
+            await page.locator('.folderfolio-row__menu').click();
+            await page.getByRole('menuitem', { name: /^delete$/i }).click();
+        };
+
+        await remove('First');
+        // wp.apiFetch sends a DELETE as a POST with a method override.
+        const committed = page.waitForResponse(
+            (r) =>
+                r.url().includes('/folderfolio/v1/folders/')
+                && (r.request().method() === 'DELETE' || r.request().headers()['x-http-method-override'] === 'DELETE')
+        );
+        await remove('Second');
+
+        // First's delete reaches the server, and the tree is fetched again…
+        await committed;
+        await page.waitForResponse((r) => r.request().method() === 'GET' && /folderfolio\/v1\/folders(\?|$)/.test(r.url()));
+        await page.waitForTimeout(300);
+
+        // …and Second, still in its window, is not in it.
+        await expect(page.locator('.folderfolio-toast')).toContainText('Second');
+        await expect(body).not.toContainText('Second');
+        expect(await folderNames(page)).toContain('Second');
+    });
 });
 
 test.describe('the breadcrumb', () => {

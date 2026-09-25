@@ -656,6 +656,77 @@ test.describe('the media picker', () => {
             await resetFolders(page);
         }
     });
+
+    /**
+     * The picker's header menu asks what the rail's ⋮ asks — review M10.
+     *
+     * New folder, Rename and Delete showed for everyone and ignored locks: a
+     * Contributor deleted, the row vanished, and the server said no.
+     */
+    test('the picker header menu hides what the role lacks and greys what a lock stops', async ({ page }) => {
+        await page.goto('/wp-admin/themes.php');
+        await resetFolders(page);
+        const alpha = await createFolder(page, 'Alpha');
+        // Locked before the picker loads its tree. An administrator passes a
+        // lock, so it greys nothing until Lock is taken away below.
+        await page.evaluate(async (id) => {
+            await (window as any).wp.apiFetch({ path: `/folderfolio/v1/folders/${id}/lock`, method: 'POST', data: { locked: true } });
+        }, alpha.id);
+
+        try {
+            await page.reload();
+            await page.evaluate(() => {
+                const frame = (window as any).wp.media({ title: 'Select', multiple: false });
+                frame.open();
+            });
+            await page.locator('.media-modal').waitFor();
+
+            const libraryTab = page.locator('.media-router .media-menu-item', { hasText: /media library/i });
+
+            if (await libraryTab.count()) {
+                await libraryTab.click();
+            }
+
+            const column = page.locator('.folderfolio-frame');
+            const more = column.locator('.folderfolio-frame__more');
+            const item = (name: string) => page.getByRole('menuitem', { name, exact: true });
+
+            await column.locator('.folderfolio-row', { hasText: /^Alpha/ }).first().click();
+
+            // A role with Create but neither Organise nor Delete.
+            await page.evaluate(() => {
+                const can = (window as any).folderFolio.can;
+                (window as any).__can = { ...can };
+                can.rename = false;
+                can.delete = false;
+            });
+            await more.click();
+            await expect(item('New folder')).toBeVisible();
+            await expect(item('Rename')).toHaveCount(0);
+            await expect(item('Delete')).toHaveCount(0);
+            await page.keyboard.press('Escape');
+
+            // Every ability back but Lock: now Alpha's lock stops this person.
+            await page.evaluate(() => {
+                const w = window as any;
+                Object.assign(w.folderFolio.can, w.__can, { lock: false });
+            });
+
+            await more.click();
+            await expect(item('Rename')).toBeDisabled();
+            await expect(item('Delete')).toBeDisabled();
+            await expect(item('New folder')).toBeDisabled();
+        } finally {
+            await page.evaluate(async (id) => {
+                const w = window as any;
+                if (w.__can) {
+                    Object.assign(w.folderFolio.can, w.__can);
+                }
+                await w.wp.apiFetch({ path: `/folderfolio/v1/folders/${id}/lock`, method: 'POST', data: { locked: false } });
+            }, alpha.id).catch(() => undefined);
+            await resetFolders(page);
+        }
+    });
 });
 
 /**
