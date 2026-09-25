@@ -309,7 +309,8 @@
  * The buttons are as tall as the narrow row's touch target allows (36px in a
  * 44px row). Save is the one primary action in the row, so it carries the
  * accent; while the name is empty it is disabled and its icon is `--ff-off`,
- * the inactive-control token, on the field's own background.
+ * the inactive-control token, on the row itself — WCAG 1.4.3 exempts an
+ * inactive control, and `TokensTest` exempts it by its `:disabled`.
  */
 .folderfolio-row__edit {
   display: grid;
@@ -348,7 +349,7 @@
 
 .folderfolio-row__edit-btn.folderfolio-row__edit-btn--save:disabled {
   color: var(--ff-off);
-  background: var(--ff-field);
+  background: transparent;
   border-color: var(--ff-field-line);
   cursor: default;
 }
