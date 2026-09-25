@@ -150,31 +150,49 @@ test.describe('the folder rail', () => {
         await page.reload();
         await waitForTree(page, 'Second');
 
-        const body = page.locator('.folderfolio-rail__body');
         const remove = async (name: string) => {
             await page.locator('.folderfolio-row', { hasText: name }).click();
             await page.locator('.folderfolio-row__menu').click();
             await page.getByRole('menuitem', { name: /^delete$/i }).click();
         };
 
-        await remove('First');
         // wp.apiFetch sends a DELETE as a POST with a method override.
-        const committed = page.waitForResponse(
-            (r) =>
+        let deletes = 0;
+        page.on('response', (r) => {
+            if (
                 r.url().includes('/folderfolio/v1/folders/')
                 && (r.request().method() === 'DELETE' || r.request().headers()['x-http-method-override'] === 'DELETE')
-        );
+            ) {
+                deletes += 1;
+            }
+        });
+
+        // Until Second's own delete is sent, the rail must never show it while
+        // its toast says it is deleted — watched in the page, so a slow server
+        // (Playground) cannot make the check race the undo window.
+        await page.evaluate(() => {
+            const w = window as any;
+            w.__ffBack = false;
+            const body = document.querySelector('.folderfolio-rail__body')!;
+            w.__ffWatch = new MutationObserver(() => {
+                const rows = [...body.querySelectorAll('.folderfolio-row__name')].map((n) => n.textContent);
+                if (rows.includes('Second') && document.querySelector('.folderfolio-toast')?.textContent?.includes('Second')) {
+                    w.__ffBack = true;
+                }
+            });
+            w.__ffWatch.observe(body, { childList: true, subtree: true, characterData: true });
+        });
+
+        await remove('First');
+        // The second delete commits the first, whose answer refetches the tree
+        // while the server still has Second.
         await remove('Second');
 
-        // First's delete reaches the server, and the tree is fetched again…
-        await committed;
-        await page.waitForResponse((r) => r.request().method() === 'GET' && /folderfolio\/v1\/folders(\?|$)/.test(r.url()));
-        await page.waitForTimeout(300);
+        await expect.poll(() => deletes, { timeout: 30_000 }).toBe(2);
 
-        // …and Second, still in its window, is not in it.
-        await expect(page.locator('.folderfolio-toast')).toContainText('Second');
-        await expect(body).not.toContainText('Second');
-        expect(await folderNames(page)).toContain('Second');
+        expect(await page.evaluate(() => (window as any).__ffBack)).toBe(false);
+        await page.evaluate(() => (window as any).__ffWatch.disconnect());
+        expect(await folderNames(page)).not.toContain('Second');
     });
 });
 

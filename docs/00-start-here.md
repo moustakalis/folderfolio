@@ -1882,6 +1882,25 @@ and the wp.org submission: the ZIP from `bin/build-zip.sh`, uploaded at
 wordpress.org/plugins/developers/add/ — SVN, and `.wordpress-org/` as its
 `/assets`, exist only once the review approves it.
 
+**(9) is done: Nick picked all 31 and all 31 are fixed** (26 Sep, `35f7bca` →
+`ff51187`, record `claude/progress-2026-09-26-the-review-fixed.md`; the board's
+cards now name each commit and its test). Each fix has a negative control — a
+test that fails with the fix taken back out. What changed in how the plugin
+behaves: a role without Assign files uploads unfiled (M2); PATCH `sort_order`
+on a locked folder is refused (L1); smart counts and folder id lists are the
+items the person may read, and `/health` needs `manage_options` (L3). What to
+know from them: a name is saved and cancelled from the input itself
+(`EditActionsContext`), in both renderers; the tree's key handler takes only a
+row's own keys; `folderfolio_max_depth` is capped at 22; a delete takes the
+folder's meta; the cache key moves on after the commit; an import's Stop is its
+own option, one batch runs at a time (`GET_LOCK`), a folder it makes is marked
+with its run, and a problem with one folder is a warning, not the end of the
+run. Checks: PHPStan clean, unit 178, integration 220 / 220 on one site and on
+a network, e2e 133 / 133 (rig), JS unit 80, Plugin Check 0, the POT
+regenerated. **If this repo sits in an iCloud-synced folder, `git am` leaves a
+`name 2.ext` copy beside each file it rewrites**; find them with `find . -name
+"* 2.*"` and move them out before building.
+
 **Screenshots on Playground, the mechanics.** The Playground tab holds the site
 two iframes deep, where the extension's `find` and `file_upload` cannot reach;
 open `/scope:<name>/wp-admin/…` in a second tab while the first stays open, and
