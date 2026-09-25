@@ -570,10 +570,18 @@ class FolderRepository
         }
 
         $wpdb = $this->wpdb;
-        $placeholders = implode(', ', array_fill(0, count($ids), '%d'));
+        $placeholders = implode(',', array_fill(0, count($ids), '%d'));
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- a write to our own table, bumped below; $placeholders is one %d per id, all bound here.
-        $deleted = $wpdb->query($wpdb->prepare("DELETE FROM %i WHERE folder_id IN ({$placeholders})", $wpdb->prefix . 'folderfolio_folder_meta', ...$ids));
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a write to our own table; the 'folderfolio' last_changed key is bumped below.
+        $deleted = $wpdb->query(
+            // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- the sniff cannot count the spread ids that fill the %d list.
+            $wpdb->prepare(
+                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- placeholders only: one %d per folder id.
+                "DELETE FROM %i WHERE folder_id IN ({$placeholders})",
+                $wpdb->prefix . 'folderfolio_folder_meta',
+                ...$ids
+            )
+        );
 
         if ($deleted === false) {
             return new WP_Error(
