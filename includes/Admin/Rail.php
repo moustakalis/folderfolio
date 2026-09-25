@@ -855,7 +855,7 @@ final class Rail
              */
             /* translators: 1: folder name, 2: how many files ("3 files"), 3: how many folders are inside it ("2 folders inside"). */
             'folderWithSubfolders' => __('%1$s, %2$s, %3$s', 'folderfolio'),
-            /* translators: %s: number of files in a folder. */
+            /* translators: %s is a number of files. */
             'levelRowFiles' => Plurals::forms(_n_noop('%s file', '%s files', 'folderfolio')),
             /* translators: %s: number of folders inside a folder. */
             'levelRowFolders' => Plurals::forms(_n_noop('%s folder inside', '%s folders inside', 'folderfolio')),

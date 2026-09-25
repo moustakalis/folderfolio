@@ -208,8 +208,10 @@ class ImportPage
                 'importFilesDetailAlready' => __('Added, never moved: nothing leaves a folder you made. %s are already filed where this would put them.', 'folderfolio'),
                 /* translators: %s is a number of files. */
                 'importSkipOne' => Plurals::forms(_n_noop('%s file skipped', '%s files skipped', 'folderfolio')),
+                /* translators: %s: number of files that are not images, named by the source for a gallery. */
                 'importNotImagesOne' => Plurals::forms(_n_noop('%s file left out of a gallery', '%s files left out of a gallery', 'folderfolio')),
                 'importNotImagesDetail' => __('A gallery holds images only. These are not images, so they stay where they are.', 'folderfolio'),
+                /* translators: %s: number of notes the import left — a folder it could not make, files it could not file. */
                 'importNotesOne' => Plurals::forms(_n_noop('%s thing to look at', '%s things to look at', 'folderfolio')),
                 /* translators: %s is a list of attachment ids. */
                 'importSkipDetail' => __('Attachments %s are referenced but no longer exist in the media library.', 'folderfolio'),

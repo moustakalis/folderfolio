@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-09-25T13:29:37+00:00\n"
+"POT-Creation-Date: 2026-09-25T21:21:22+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: folderfolio\n"
@@ -48,16 +48,16 @@ msgstr ""
 #: includes/Domain/FolderService.php:132
 #: includes/Domain/FolderService.php:175
 #: includes/Domain/FolderService.php:216
-#: includes/Domain/FolderService.php:520
-#: includes/Domain/FolderService.php:594
-#: includes/Domain/FolderService.php:762
-#: includes/Domain/FolderService.php:923
-#: includes/Domain/FolderService.php:1172
-#: includes/Domain/FolderService.php:1320
-#: includes/Domain/FolderService.php:1504
-#: includes/Rest/FolderController.php:699
-#: includes/Rest/FolderController.php:735
-#: includes/Rest/FolderController.php:920
+#: includes/Domain/FolderService.php:536
+#: includes/Domain/FolderService.php:615
+#: includes/Domain/FolderService.php:783
+#: includes/Domain/FolderService.php:946
+#: includes/Domain/FolderService.php:1195
+#: includes/Domain/FolderService.php:1366
+#: includes/Domain/FolderService.php:1550
+#: includes/Rest/FolderController.php:745
+#: includes/Rest/FolderController.php:781
+#: includes/Rest/FolderController.php:971
 msgid "Folder not found."
 msgstr ""
 
@@ -95,7 +95,7 @@ msgid "All media"
 msgstr ""
 
 #: includes/Admin/FolderSelect.php:98
-#: includes/Admin/Rail.php:1005
+#: includes/Admin/Rail.php:1011
 msgid "Filter by folder"
 msgstr ""
 
@@ -136,12 +136,12 @@ msgid "Choose a source"
 msgstr ""
 
 #: includes/Admin/ImportPage.php:131
-#: includes/Admin/ImportPage.php:301
+#: includes/Admin/ImportPage.php:306
 msgid "Preview"
 msgstr ""
 
 #: includes/Admin/ImportPage.php:132
-#: includes/Admin/ImportPage.php:223
+#: includes/Admin/ImportPage.php:228
 #: includes/Admin/SettingsPage.php:194
 msgid "Import"
 msgstr ""
@@ -221,7 +221,7 @@ msgid "Only the folders are imported — it carries no file assignments. Colours
 msgstr ""
 
 #: includes/Admin/ImportPage.php:159
-#: includes/Admin/Rail.php:929
+#: includes/Admin/Rail.php:935
 msgid "That could not be done."
 msgstr ""
 
@@ -243,10 +243,10 @@ msgstr ""
 
 #. translators: %s is a number of folders.
 #: includes/Admin/ImportPage.php:165
-#: includes/Admin/ImportPage.php:307
+#: includes/Admin/ImportPage.php:312
 #: includes/Admin/PluginsRow.php:87
-#: includes/Admin/Rail.php:969
-#: includes/Admin/Rail.php:980
+#: includes/Admin/Rail.php:975
+#: includes/Admin/Rail.php:986
 #, php-format
 msgid "%s folder"
 msgid_plural "%s folders"
@@ -281,8 +281,8 @@ msgstr ""
 
 #. translators: %s is a number of folders.
 #: includes/Admin/ImportPage.php:176
-#: includes/Admin/ImportPage.php:234
-#: includes/Admin/ImportPage.php:258
+#: includes/Admin/ImportPage.php:239
+#: includes/Admin/ImportPage.php:263
 #, php-format
 msgid "%s folder created"
 msgid_plural "%s folders created"
@@ -305,7 +305,7 @@ msgstr ""
 
 #. translators: %s is a number of duplicate folder names.
 #: includes/Admin/ImportPage.php:186
-#: includes/Admin/ImportPage.php:244
+#: includes/Admin/ImportPage.php:249
 #, php-format
 msgid "%s duplicate name collapsed"
 msgid_plural "%s duplicate names collapsed"
@@ -356,14 +356,34 @@ msgid_plural "%s files skipped"
 msgstr[0] ""
 msgstr[1] ""
 
-#. translators: %s is a list of attachment ids.
+#. translators: %s: number of files that are not images, named by the source for a gallery.
 #: includes/Admin/ImportPage.php:212
+#, php-format
+msgid "%s file left out of a gallery"
+msgid_plural "%s files left out of a gallery"
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/Admin/ImportPage.php:213
+msgid "A gallery holds images only. These are not images, so they stay where they are."
+msgstr ""
+
+#. translators: %s: number of notes the import left — a folder it could not make, files it could not file.
+#: includes/Admin/ImportPage.php:215
+#, php-format
+msgid "%s thing to look at"
+msgid_plural "%s things to look at"
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s is a list of attachment ids.
+#: includes/Admin/ImportPage.php:217
 #, php-format
 msgid "Attachments %s are referenced but no longer exist in the media library."
 msgstr ""
 
 #. translators: %s is a number of folders.
-#: includes/Admin/ImportPage.php:214
+#: includes/Admin/ImportPage.php:219
 #, php-format
 msgid "%s folder could not be placed"
 msgid_plural "%s folders could not be placed"
@@ -371,48 +391,48 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: a plugin name. 2: a list of folder names.
-#: includes/Admin/ImportPage.php:220
+#: includes/Admin/ImportPage.php:225
 #, php-format
 msgid "Their parent is missing in %1$s, or they sit in a loop. %2$s"
 msgstr ""
 
 #. translators: %s is a number of folders.
-#: includes/Admin/ImportPage.php:222
+#: includes/Admin/ImportPage.php:227
 #, php-format
 msgid "Import %s folder"
 msgid_plural "Import %s folders"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/Admin/ImportPage.php:224
+#: includes/Admin/ImportPage.php:229
 #: includes/Admin/Rail.php:831
 msgid "Cancel"
 msgstr ""
 
-#: includes/Admin/ImportPage.php:225
+#: includes/Admin/ImportPage.php:230
 msgid "No account, no licence, no telemetry."
 msgstr ""
 
-#: includes/Admin/ImportPage.php:228
+#: includes/Admin/ImportPage.php:233
 msgid "Importing"
 msgstr ""
 
-#: includes/Admin/ImportPage.php:229
+#: includes/Admin/ImportPage.php:234
 msgid "You can leave this page — the import continues and picks up where it left off."
 msgstr ""
 
-#: includes/Admin/ImportPage.php:230
+#: includes/Admin/ImportPage.php:235
 msgid "Import progress"
 msgstr ""
 
 #. translators: 1: folders done. 2: folders in total.
-#: includes/Admin/ImportPage.php:232
+#: includes/Admin/ImportPage.php:237
 #, php-format
 msgid "Folders — %1$s of %2$s"
 msgstr ""
 
 #. translators: %s is a number of folders.
-#: includes/Admin/ImportPage.php:236
+#: includes/Admin/ImportPage.php:241
 #, php-format
 msgid "%s folder merged into an existing name"
 msgid_plural "%s folders merged into existing names"
@@ -420,38 +440,38 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s is a number of files.
-#: includes/Admin/ImportPage.php:242
-#: includes/Admin/ImportPage.php:270
+#: includes/Admin/ImportPage.php:247
+#: includes/Admin/ImportPage.php:275
 #, php-format
 msgid "%s file added"
 msgid_plural "%s files added"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/Admin/ImportPage.php:249
+#: includes/Admin/ImportPage.php:254
 msgid "Stop after this folder"
 msgstr ""
 
-#: includes/Admin/ImportPage.php:250
+#: includes/Admin/ImportPage.php:255
 msgid "Stopping…"
 msgstr ""
 
-#: includes/Admin/ImportPage.php:253
+#: includes/Admin/ImportPage.php:258
 msgid "Import finished"
 msgstr ""
 
 #. translators: %s is a list such as "26 folders created, 36 files added".
-#: includes/Admin/ImportPage.php:255
+#: includes/Admin/ImportPage.php:260
 #, php-format
 msgid "%s. No file left a folder you had already made."
 msgstr ""
 
-#: includes/Admin/ImportPage.php:256
+#: includes/Admin/ImportPage.php:261
 msgid "Nothing needed importing — everything was already here."
 msgstr ""
 
 #. translators: %s is a number of folders.
-#: includes/Admin/ImportPage.php:264
+#: includes/Admin/ImportPage.php:269
 #, php-format
 msgid "%s merged by name"
 msgid_plural "%s merged by name"
@@ -459,105 +479,105 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: a plugin name. 2: a number of duplicate names.
-#: includes/Admin/ImportPage.php:272
+#: includes/Admin/ImportPage.php:277
 #, php-format
 msgid "%1$s had %2$s duplicate folder names in the same place. Each set became one folder here, holding all of their files."
 msgstr ""
 
-#: includes/Admin/ImportPage.php:273
+#: includes/Admin/ImportPage.php:278
 msgid "Import undone"
 msgstr ""
 
-#: includes/Admin/ImportPage.php:274
+#: includes/Admin/ImportPage.php:279
 msgid "The folders this import created are gone, and so are the files it filed. Anything you had already made was left alone."
 msgstr ""
 
 #. translators: 1: a list of attachment ids. 2: a plugin name.
-#: includes/Admin/ImportPage.php:276
+#: includes/Admin/ImportPage.php:281
 #, php-format
 msgid "Attachments %1$s are referenced by %2$s but no longer exist in the media library."
 msgstr ""
 
 #. translators: %s is a list of folder names.
-#: includes/Admin/ImportPage.php:278
+#: includes/Admin/ImportPage.php:283
 #, php-format
 msgid "Their parent is missing, or they sit in a loop: %s. They were brought over at the top level rather than dropped."
 msgstr ""
 
-#: includes/Admin/ImportPage.php:279
+#: includes/Admin/ImportPage.php:284
 msgid "Open Media Library"
 msgstr ""
 
-#: includes/Admin/ImportPage.php:280
+#: includes/Admin/ImportPage.php:285
 msgid "Undo this import"
 msgstr ""
 
-#: includes/Admin/ImportPage.php:281
+#: includes/Admin/ImportPage.php:286
 msgid "Back to the sources"
 msgstr ""
 
-#: includes/Admin/ImportPage.php:282
+#: includes/Admin/ImportPage.php:287
 msgid "Undo removes the folders this import created and the files it filed. A folder you have added your own files to since is kept."
 msgstr ""
 
-#: includes/Admin/ImportPage.php:283
+#: includes/Admin/ImportPage.php:288
 msgid "Every folder records where it came from, so a second run reconciles instead of duplicating."
 msgstr ""
 
-#: includes/Admin/ImportPage.php:284
+#: includes/Admin/ImportPage.php:289
 msgid "The import could not continue."
 msgstr ""
 
-#: includes/Admin/ImportPage.php:289
+#: includes/Admin/ImportPage.php:294
 msgid "Take it with you"
 msgstr ""
 
-#: includes/Admin/ImportPage.php:290
+#: includes/Admin/ImportPage.php:295
 msgid "Download the media library’s folders as a file — names, nesting, colours, galleries and the order everything sits in. Keep it before a big reorganisation, move it to another site, or just have it."
 msgstr ""
 
-#: includes/Admin/ImportPage.php:291
+#: includes/Admin/ImportPage.php:296
 msgid "Include which files are in which folder"
 msgstr ""
 
-#: includes/Admin/ImportPage.php:292
+#: includes/Admin/ImportPage.php:297
 msgid "Makes a much larger file on a big library."
 msgstr ""
 
-#: includes/Admin/ImportPage.php:293
+#: includes/Admin/ImportPage.php:298
 msgid "Export folder structure"
 msgstr ""
 
-#: includes/Admin/ImportPage.php:294
+#: includes/Admin/ImportPage.php:299
 msgid "Preparing…"
 msgstr ""
 
-#: includes/Admin/ImportPage.php:295
+#: includes/Admin/ImportPage.php:300
 msgid "The export could not be produced."
 msgstr ""
 
-#: includes/Admin/ImportPage.php:298
+#: includes/Admin/ImportPage.php:303
 msgid "Many at once"
 msgstr ""
 
-#: includes/Admin/ImportPage.php:299
+#: includes/Admin/ImportPage.php:304
 msgid "Paste a list and get the folders, in the media library. One per line, and a slash nests — Brand/Logos makes both. Nothing is created until you have seen what would be."
 msgstr ""
 
-#: includes/Admin/ImportPage.php:300
+#: includes/Admin/ImportPage.php:305
 msgid "Folders, one per line"
 msgstr ""
 
-#: includes/Admin/ImportPage.php:302
+#: includes/Admin/ImportPage.php:307
 msgid "Reading…"
 msgstr ""
 
-#: includes/Admin/ImportPage.php:303
+#: includes/Admin/ImportPage.php:308
 msgid "Creating…"
 msgstr ""
 
 #. translators: %s is a number of folders.
-#: includes/Admin/ImportPage.php:305
+#: includes/Admin/ImportPage.php:310
 #, php-format
 msgid "Create %s folder"
 msgid_plural "Create %s folders"
@@ -565,19 +585,19 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s is a number of lines that could not be used.
-#: includes/Admin/ImportPage.php:309
+#: includes/Admin/ImportPage.php:314
 #, php-format
 msgid "Nothing has been created. %s line cannot be used — it is marked below."
 msgid_plural "Nothing has been created. %s of these lines cannot be used — they are marked below."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/Admin/ImportPage.php:314
+#: includes/Admin/ImportPage.php:319
 msgid "Every folder on this list is already there. Nothing to create."
 msgstr ""
 
 #. translators: 1: a phrase such as "12 folders". 2: a number of lines already present.
-#: includes/Admin/ImportPage.php:316
+#: includes/Admin/ImportPage.php:321
 #, php-format
 msgid "Nothing has been created yet. This would add %1$s; %2$s line is already there."
 msgid_plural "Nothing has been created yet. This would add %1$s; %2$s lines are already there."
@@ -585,45 +605,45 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s is a phrase such as "12 folders".
-#: includes/Admin/ImportPage.php:322
+#: includes/Admin/ImportPage.php:327
 #, php-format
 msgid "Nothing has been created yet. This would add %s."
 msgstr ""
 
-#: includes/Admin/ImportPage.php:323
+#: includes/Admin/ImportPage.php:328
 msgid "Every folder on this list was already there. Nothing was created."
 msgstr ""
 
 #. translators: %s is a number of folders.
-#: includes/Admin/ImportPage.php:325
+#: includes/Admin/ImportPage.php:330
 #, php-format
 msgid "%s folder created."
 msgid_plural "%s folders created."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/Admin/ImportPage.php:326
+#: includes/Admin/ImportPage.php:331
 msgid "new"
 msgstr ""
 
-#: includes/Admin/ImportPage.php:327
+#: includes/Admin/ImportPage.php:332
 msgid "created"
 msgstr ""
 
-#: includes/Admin/ImportPage.php:328
+#: includes/Admin/ImportPage.php:333
 msgid "already there"
 msgstr ""
 
-#: includes/Admin/ImportPage.php:329
+#: includes/Admin/ImportPage.php:334
 msgid "The list could not be read."
 msgstr ""
 
-#: includes/Admin/ImportPage.php:330
+#: includes/Admin/ImportPage.php:335
 msgid "The folders could not be created."
 msgstr ""
 
 #: includes/Admin/MediaModalIntegration.php:180
-#: includes/Admin/Rail.php:859
+#: includes/Admin/Rail.php:865
 msgid "Folder actions"
 msgstr ""
 
@@ -632,18 +652,18 @@ msgid "Uploads go to the selected folder."
 msgstr ""
 
 #: includes/Admin/MediaModalIntegration.php:190
-#: includes/Admin/Rail.php:904
+#: includes/Admin/Rail.php:910
 msgid "or select a folder"
 msgstr ""
 
 #: includes/Admin/MediaModalIntegration.php:191
-#: includes/Admin/Rail.php:905
+#: includes/Admin/Rail.php:911
 msgid "You can upload these files but not make folders, so they are uploading without their folders."
 msgstr ""
 
 #. translators: %s: the reason, a sentence from the server.
 #: includes/Admin/MediaModalIntegration.php:193
-#: includes/Admin/Rail.php:907
+#: includes/Admin/Rail.php:913
 #, php-format
 msgid "The folders in this upload could not be made, so its files are uploading without them. %s"
 msgstr ""
@@ -654,90 +674,90 @@ msgid "New folder"
 msgstr ""
 
 #: includes/Admin/MediaModalIntegration.php:195
-#: includes/Admin/Rail.php:860
+#: includes/Admin/Rail.php:866
 msgid "Rename"
 msgstr ""
 
 #: includes/Admin/MediaModalIntegration.php:196
-#: includes/Admin/Rail.php:861
+#: includes/Admin/Rail.php:867
 msgid "Rename folder"
 msgstr ""
 
 #: includes/Admin/MediaModalIntegration.php:197
-#: includes/Admin/Rail.php:862
+#: includes/Admin/Rail.php:868
 msgid "Name for the new folder"
 msgstr ""
 
 #: includes/Admin/MediaModalIntegration.php:198
-#: includes/Admin/Rail.php:863
+#: includes/Admin/Rail.php:869
 #: includes/Admin/SettingsPage.php:517
 msgid "Delete"
 msgstr ""
 
 #: includes/Admin/MediaModalIntegration.php:199
-#: includes/Admin/Rail.php:1097
+#: includes/Admin/Rail.php:1103
 msgid "Clear filter"
 msgstr ""
 
 #: includes/Admin/MediaModalIntegration.php:200
-#: includes/Admin/Rail.php:1098
+#: includes/Admin/Rail.php:1104
 msgid "Start here"
 msgstr ""
 
 #: includes/Admin/MediaModalIntegration.php:201
-#: includes/Admin/Rail.php:1099
+#: includes/Admin/Rail.php:1105
 msgid "Open the media library in this folder"
 msgstr ""
 
 #: includes/Admin/MediaModalIntegration.php:202
-#: includes/Admin/Rail.php:1100
+#: includes/Admin/Rail.php:1106
 msgid "Dismiss"
 msgstr ""
 
 #: includes/Admin/MediaModalIntegration.php:203
-#: includes/Admin/Rail.php:1101
+#: includes/Admin/Rail.php:1107
 msgid "The media library opens in this folder. Press Clear filter above to see everything."
 msgstr ""
 
 #: includes/Admin/MediaModalIntegration.php:204
-#: includes/Admin/Rail.php:931
+#: includes/Admin/Rail.php:937
 #: includes/Admin/SettingsPage.php:495
 msgid "Name, A to Z"
 msgstr ""
 
 #: includes/Admin/MediaModalIntegration.php:205
-#: includes/Admin/Rail.php:932
+#: includes/Admin/Rail.php:938
 #: includes/Admin/SettingsPage.php:496
 msgid "Name, Z to A"
 msgstr ""
 
 #: includes/Admin/MediaModalIntegration.php:206
-#: includes/Admin/Rail.php:933
+#: includes/Admin/Rail.php:939
 #: includes/Admin/SettingsPage.php:497
 #: includes/Blocks/Gallery.php:180
 msgid "Newest first"
 msgstr ""
 
 #: includes/Admin/MediaModalIntegration.php:207
-#: includes/Admin/Rail.php:934
+#: includes/Admin/Rail.php:940
 #: includes/Admin/SettingsPage.php:498
 #: includes/Blocks/Gallery.php:181
 msgid "Oldest first"
 msgstr ""
 
 #: includes/Admin/MediaModalIntegration.php:210
-#: includes/Admin/Rail.php:858
+#: includes/Admin/Rail.php:864
 #: includes/Blocks/Gallery.php:150
 msgid "Search folders"
 msgstr ""
 
 #: includes/Admin/MediaModalIntegration.php:211
-#: includes/Admin/Rail.php:895
+#: includes/Admin/Rail.php:901
 msgid "Folder path"
 msgstr ""
 
 #: includes/Admin/MediaModalIntegration.php:212
-#: includes/Admin/Rail.php:951
+#: includes/Admin/Rail.php:957
 #: includes/Blocks/Gallery.php:151
 #: includes/Database/StatusReport.php:295
 #: includes/Database/StatusReport.php:301
@@ -751,20 +771,20 @@ msgid "Retry"
 msgstr ""
 
 #: includes/Admin/MediaModalIntegration.php:214
-#: includes/Admin/Rail.php:936
+#: includes/Admin/Rail.php:942
 msgid "Undo"
 msgstr ""
 
 #. translators: %s is the folder name.
 #: includes/Admin/MediaModalIntegration.php:216
-#: includes/Admin/Rail.php:938
+#: includes/Admin/Rail.php:944
 #, php-format
 msgid "Deleted “%s”"
 msgstr ""
 
 #. translators: 1: folder name, 2: number of files.
 #: includes/Admin/MediaModalIntegration.php:224
-#: includes/Admin/Rail.php:946
+#: includes/Admin/Rail.php:952
 #, php-format
 msgid "Deleted “%1$s” — %2$s file moved to Unassigned"
 msgid_plural "Deleted “%1$s” — %2$s files moved to Unassigned"
@@ -772,14 +792,14 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: includes/Admin/MediaModalIntegration.php:229
-#: includes/Admin/Rail.php:1090
+#: includes/Admin/Rail.php:1096
 #: includes/Blocks/Gallery.php:153
 msgid "Could not load your folders."
 msgstr ""
 
 #. translators: %s is the search term that matched nothing.
 #: includes/Admin/MediaModalIntegration.php:231
-#: includes/Admin/Rail.php:1096
+#: includes/Admin/Rail.php:1102
 #: includes/Blocks/Gallery.php:155
 #, php-format
 msgid "No folder matches “%s”."
@@ -802,7 +822,8 @@ msgstr ""
 
 #. translators: %s is a number of files.
 #: includes/Admin/PluginsRow.php:92
-#: includes/Admin/Rail.php:971
+#: includes/Admin/Rail.php:859
+#: includes/Admin/Rail.php:977
 #: includes/Database/StatusReport.php:404
 #, php-format
 msgid "%s file"
@@ -815,7 +836,7 @@ msgid "FolderFolio can copy them across — added, never moved, and nothing is r
 msgstr ""
 
 #: includes/Admin/PluginsRow.php:111
-#: includes/Admin/Rail.php:978
+#: includes/Admin/Rail.php:984
 msgid "Review the import"
 msgstr ""
 
@@ -848,7 +869,7 @@ msgid "The folders could not be loaded."
 msgstr ""
 
 #: includes/Admin/PostFolders.php:137
-#: includes/Domain/FolderRepository.php:357
+#: includes/Domain/FolderRepository.php:384
 msgid "The folder could not be changed."
 msgstr ""
 
@@ -905,318 +926,326 @@ msgstr ""
 msgid "Nothing inside this folder"
 msgstr ""
 
-#. translators: 1: folder name, 2: how many files, 3: how many folders are inside it.
-#: includes/Admin/Rail.php:852
+#. translators: 1: folder name, 2: how many files ("3 files"), 3: how many folders are inside it ("2 folders inside").
+#: includes/Admin/Rail.php:857
 #, php-format
-msgid "%1$s, %2$s files, %3$s folders inside"
+msgid "%1$s, %2$s, %3$s"
 msgstr ""
 
-#: includes/Admin/Rail.php:856
+#. translators: %s: number of folders inside a folder.
+#: includes/Admin/Rail.php:861
+#, php-format
+msgid "%s folder inside"
+msgid_plural "%s folders inside"
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/Admin/Rail.php:862
 msgid "New folder at the top level"
 msgstr ""
 
-#: includes/Admin/Rail.php:857
+#: includes/Admin/Rail.php:863
 msgid "New folder inside the selected folder"
 msgstr ""
 
-#: includes/Admin/Rail.php:869
+#: includes/Admin/Rail.php:875
 msgid "Move up"
 msgstr ""
 
-#: includes/Admin/Rail.php:870
+#: includes/Admin/Rail.php:876
 msgid "Move down"
 msgstr ""
 
-#: includes/Admin/Rail.php:871
+#: includes/Admin/Rail.php:877
 msgid "Sort inside"
 msgstr ""
 
-#: includes/Admin/Rail.php:872
+#: includes/Admin/Rail.php:878
 msgid "Subfolders"
 msgstr ""
 
-#: includes/Admin/Rail.php:873
+#: includes/Admin/Rail.php:879
 msgid "Files"
 msgstr ""
 
-#: includes/Admin/Rail.php:874
+#: includes/Admin/Rail.php:880
 msgid "Same as everywhere"
 msgstr ""
 
-#: includes/Admin/Rail.php:875
+#: includes/Admin/Rail.php:881
 msgid "Expand all"
 msgstr ""
 
-#: includes/Admin/Rail.php:876
+#: includes/Admin/Rail.php:882
 msgid "Collapse all"
 msgstr ""
 
-#: includes/Admin/Rail.php:878
+#: includes/Admin/Rail.php:884
 msgid "Pin, star and lock"
 msgstr ""
 
-#: includes/Admin/Rail.php:879
+#: includes/Admin/Rail.php:885
 msgid "Pin"
 msgstr ""
 
-#: includes/Admin/Rail.php:880
+#: includes/Admin/Rail.php:886
 msgid "Star"
 msgstr ""
 
-#: includes/Admin/Rail.php:881
+#: includes/Admin/Rail.php:887
 #: includes/Admin/SettingsPage.php:520
 msgid "Lock"
 msgstr ""
 
-#: includes/Admin/Rail.php:883
+#: includes/Admin/Rail.php:889
 msgid "pinned"
 msgstr ""
 
-#: includes/Admin/Rail.php:884
+#: includes/Admin/Rail.php:890
 msgid "starred"
 msgstr ""
 
-#: includes/Admin/Rail.php:885
+#: includes/Admin/Rail.php:891
 msgid "locked"
 msgstr ""
 
-#: includes/Admin/Rail.php:886
+#: includes/Admin/Rail.php:892
 #: includes/Blocks/Gallery.php:162
 msgid "gallery"
 msgstr ""
 
-#: includes/Admin/Rail.php:888
+#: includes/Admin/Rail.php:894
 #: includes/Blocks/Gallery.php:197
 msgid "Gallery"
 msgstr ""
 
-#: includes/Admin/Rail.php:889
+#: includes/Admin/Rail.php:895
 msgid "images only"
 msgstr ""
 
 #. translators: %s: the locked folder's name.
-#: includes/Admin/Rail.php:891
-#: includes/Domain/FolderLocks.php:258
+#: includes/Admin/Rail.php:897
+#: includes/Domain/FolderLocks.php:276
 #, php-format
 msgid "“%s” is locked. Someone who can lock folders can unlock it."
 msgstr ""
 
-#: includes/Admin/Rail.php:892
+#: includes/Admin/Rail.php:898
 msgid "Starred"
 msgstr ""
 
 #. translators: 1: folder name, 2: its parent folder's name, 3: number of files.
-#: includes/Admin/Rail.php:894
+#: includes/Admin/Rail.php:900
 #, php-format
 msgid "%1$s in %2$s, %3$s"
 msgstr ""
 
-#: includes/Admin/Rail.php:896
+#: includes/Admin/Rail.php:902
 msgid "Show the levels in between"
 msgstr ""
 
-#: includes/Admin/Rail.php:909
+#: includes/Admin/Rail.php:915
 msgid "Cut"
 msgstr ""
 
-#: includes/Admin/Rail.php:910
+#: includes/Admin/Rail.php:916
 msgid "Copy"
 msgstr ""
 
-#: includes/Admin/Rail.php:911
+#: includes/Admin/Rail.php:917
 msgid "Copy with files"
 msgstr ""
 
 #. translators: %s is the name of the folder waiting to be pasted.
-#: includes/Admin/Rail.php:913
+#: includes/Admin/Rail.php:919
 #, php-format
 msgid "Paste “%s” · cut"
 msgstr ""
 
 #. translators: %s is the name of the folder waiting to be pasted.
-#: includes/Admin/Rail.php:915
+#: includes/Admin/Rail.php:921
 #, php-format
 msgid "Paste “%s” · copy"
 msgstr ""
 
 #. translators: %s is the name of the folder waiting to be pasted, with its files.
-#: includes/Admin/Rail.php:917
+#: includes/Admin/Rail.php:923
 #, php-format
 msgid "Paste “%s” · with files"
 msgstr ""
 
-#: includes/Admin/Rail.php:918
+#: includes/Admin/Rail.php:924
 msgid "Inside this folder"
 msgstr ""
 
-#: includes/Admin/Rail.php:919
+#: includes/Admin/Rail.php:925
 msgid "Beside this folder"
 msgstr ""
 
 #. translators: %s is a folder name.
-#: includes/Admin/Rail.php:921
+#: includes/Admin/Rail.php:927
 #, php-format
 msgid "Cut “%s”. Paste it inside or beside another folder."
 msgstr ""
 
 #. translators: %s is a folder name.
-#: includes/Admin/Rail.php:923
+#: includes/Admin/Rail.php:929
 #, php-format
 msgid "Copied “%s”. Paste it inside or beside another folder."
 msgstr ""
 
 #. translators: %s is a folder name.
-#: includes/Admin/Rail.php:925
+#: includes/Admin/Rail.php:931
 #, php-format
 msgid "Pasted “%s”"
 msgstr ""
 
-#: includes/Admin/Rail.php:930
+#: includes/Admin/Rail.php:936
 msgid "Sort"
 msgstr ""
 
-#: includes/Admin/Rail.php:935
+#: includes/Admin/Rail.php:941
 #: includes/Admin/SettingsPage.php:501
 msgid "Custom order"
 msgstr ""
 
-#: includes/Admin/Rail.php:959
+#: includes/Admin/Rail.php:965
 msgid "Your media is already filed — just not here."
 msgstr ""
 
 #. translators: 1: the other plugin's name, 2: a folder count already phrased, 3: a file count already phrased.
-#: includes/Admin/Rail.php:964
+#: includes/Admin/Rail.php:970
 #, php-format
 msgid "%1$s has %2$s holding %3$s. Bringing them over adds them to FolderFolio — nothing is moved, and nothing is removed from where it is now."
 msgstr ""
 
 #. translators: %s is a number of other plugins.
-#: includes/Admin/Rail.php:973
+#: includes/Admin/Rail.php:979
 #, php-format
 msgid "%s other plugin has folders here too."
 msgid_plural "%s other plugins have folders here too."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/Admin/Rail.php:986
+#: includes/Admin/Rail.php:992
 msgid "More"
 msgstr ""
 
-#: includes/Admin/Rail.php:987
+#: includes/Admin/Rail.php:993
 msgid "Folder colour"
 msgstr ""
 
 #. translators: %s is the folder name.
-#: includes/Admin/Rail.php:989
+#: includes/Admin/Rail.php:995
 #, php-format
 msgid "Colour for %s"
 msgstr ""
 
-#: includes/Admin/Rail.php:990
+#: includes/Admin/Rail.php:996
 msgid "No colour"
 msgstr ""
 
-#: includes/Admin/Rail.php:992
+#: includes/Admin/Rail.php:998
 msgid "Colour"
 msgstr ""
 
-#: includes/Admin/Rail.php:993
+#: includes/Admin/Rail.php:999
 msgid "Slate"
 msgstr ""
 
-#: includes/Admin/Rail.php:994
+#: includes/Admin/Rail.php:1000
 msgid "Red"
 msgstr ""
 
-#: includes/Admin/Rail.php:995
+#: includes/Admin/Rail.php:1001
 msgid "Clay"
 msgstr ""
 
-#: includes/Admin/Rail.php:996
+#: includes/Admin/Rail.php:1002
 msgid "Ochre"
 msgstr ""
 
-#: includes/Admin/Rail.php:997
+#: includes/Admin/Rail.php:1003
 msgid "Moss"
 msgstr ""
 
-#: includes/Admin/Rail.php:998
+#: includes/Admin/Rail.php:1004
 msgid "Teal"
 msgstr ""
 
-#: includes/Admin/Rail.php:999
+#: includes/Admin/Rail.php:1005
 msgid "Steel"
 msgstr ""
 
-#: includes/Admin/Rail.php:1000
+#: includes/Admin/Rail.php:1006
 msgid "Indigo"
 msgstr ""
 
-#: includes/Admin/Rail.php:1001
+#: includes/Admin/Rail.php:1007
 msgid "Plum"
 msgstr ""
 
-#: includes/Admin/Rail.php:1002
+#: includes/Admin/Rail.php:1008
 msgid "Ink"
 msgstr ""
 
-#: includes/Admin/Rail.php:1006
+#: includes/Admin/Rail.php:1012
 msgid "Add to folder"
 msgstr ""
 
-#: includes/Admin/Rail.php:1015
+#: includes/Admin/Rail.php:1021
 msgid "Add to folder…"
 msgstr ""
 
-#: includes/Admin/Rail.php:1016
+#: includes/Admin/Rail.php:1022
 msgid "Move to folder"
 msgstr ""
 
-#: includes/Admin/Rail.php:1020
+#: includes/Admin/Rail.php:1026
 msgid "What to do with the selection"
 msgstr ""
 
-#: includes/Admin/Rail.php:1023
+#: includes/Admin/Rail.php:1029
 msgid "Search media"
 msgstr ""
 
-#: includes/Admin/Rail.php:1034
+#: includes/Admin/Rail.php:1040
 msgid "Filters"
 msgstr ""
 
 #. translators: %s is how many filters are currently set.
-#: includes/Admin/Rail.php:1044
+#: includes/Admin/Rail.php:1050
 #, php-format
 msgid "%s filter active"
 msgid_plural "%s filters active"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/Admin/Rail.php:1045
+#: includes/Admin/Rail.php:1051
 msgid "Add to"
 msgstr ""
 
-#: includes/Admin/Rail.php:1046
+#: includes/Admin/Rail.php:1052
 msgid "Move to"
 msgstr ""
 
-#: includes/Admin/Rail.php:1047
+#: includes/Admin/Rail.php:1053
 msgid "Open a folder first — a move needs a folder to move out of."
 msgstr ""
 
 #. translators: %s is the folder the files are being moved out of.
-#: includes/Admin/Rail.php:1052
-#: includes/Admin/Rail.php:1214
+#: includes/Admin/Rail.php:1058
+#: includes/Admin/Rail.php:1220
 #, php-format
 msgid "Moves them out of “%s”"
 msgstr ""
 
-#: includes/Admin/Rail.php:1053
+#: includes/Admin/Rail.php:1059
 msgid "Could not move those files."
 msgstr ""
 
 #. translators: 1: number of files, 2: the destination folder name.
-#: includes/Admin/Rail.php:1055
+#: includes/Admin/Rail.php:1061
 #, php-format
 msgid "Moved %1$s file to %2$s"
 msgid_plural "Moved %1$s files to %2$s"
@@ -1224,21 +1253,21 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: the name of the folder being viewed.
-#: includes/Admin/Rail.php:1061
+#: includes/Admin/Rail.php:1067
 #, php-format
 msgid "In %s"
 msgstr ""
 
-#: includes/Admin/Rail.php:1062
+#: includes/Admin/Rail.php:1068
 msgid "Move to start"
 msgstr ""
 
-#: includes/Admin/Rail.php:1063
+#: includes/Admin/Rail.php:1069
 msgid "Move to end"
 msgstr ""
 
 #. translators: 1: number of files, 2: the folder they were placed in.
-#: includes/Admin/Rail.php:1065
+#: includes/Admin/Rail.php:1071
 #, php-format
 msgid "Moved %1$s file to the start of %2$s"
 msgid_plural "Moved %1$s files to the start of %2$s"
@@ -1246,33 +1275,35 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: number of files, 2: the folder they were placed in.
-#: includes/Admin/Rail.php:1071
+#: includes/Admin/Rail.php:1077
 #, php-format
 msgid "Moved %1$s file to the end of %2$s"
 msgid_plural "Moved %1$s files to the end of %2$s"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/Admin/Rail.php:1076
+#: includes/Admin/Rail.php:1082
 msgid "Find a folder"
 msgstr ""
 
-#: includes/Admin/Rail.php:1077
+#: includes/Admin/Rail.php:1083
 msgid "Keeps them in their other folders too"
 msgstr ""
 
 #. translators: %s is the number of folders not shown.
-#: includes/Admin/Rail.php:1079
+#: includes/Admin/Rail.php:1085
 #, php-format
 msgid "%s more — keep typing to narrow"
-msgstr ""
+msgid_plural "%s more — keep typing to narrow"
+msgstr[0] ""
+msgstr[1] ""
 
-#: includes/Admin/Rail.php:1080
+#: includes/Admin/Rail.php:1086
 msgid "Could not file those files."
 msgstr ""
 
 #. translators: %s is the number of selected media files.
-#: includes/Admin/Rail.php:1082
+#: includes/Admin/Rail.php:1088
 #, php-format
 msgid "%s file selected"
 msgid_plural "%s files selected"
@@ -1280,272 +1311,274 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: number of files, 2: a comma-separated list of folder names.
-#: includes/Admin/Rail.php:1084
+#: includes/Admin/Rail.php:1090
 #, php-format
 msgid "Added %1$s file to %2$s"
 msgid_plural "Added %1$s files to %2$s"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/Admin/Rail.php:1089
+#: includes/Admin/Rail.php:1095
 msgid "Could not create that folder."
 msgstr ""
 
-#: includes/Admin/Rail.php:1091
+#: includes/Admin/Rail.php:1097
 msgid "The request to /folderfolio/v1/folders did not succeed."
 msgstr ""
 
 #. translators: 1: number of folders, 2: the folder they are in.
-#: includes/Admin/Rail.php:1103
+#: includes/Admin/Rail.php:1109
 #, php-format
 msgid "%1$s folder in %2$s"
 msgid_plural "%1$s folders in %2$s"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/Admin/Rail.php:1105
+#: includes/Admin/Rail.php:1111
 msgid "Download as ZIP"
 msgstr ""
 
-#: includes/Admin/Rail.php:1106
+#: includes/Admin/Rail.php:1112
 #: includes/Admin/SettingsPage.php:521
 msgid "Download"
 msgstr ""
 
 #. translators: %s: folder name.
-#: includes/Admin/Rail.php:1108
+#: includes/Admin/Rail.php:1114
 #, php-format
 msgid "“%s” has no files to download."
 msgstr ""
 
 #. translators: %s: folder name.
-#: includes/Admin/Rail.php:1110
+#: includes/Admin/Rail.php:1116
 #, php-format
 msgid "None of the files in “%s” can be downloaded."
 msgstr ""
 
-#: includes/Admin/Rail.php:1111
+#: includes/Admin/Rail.php:1117
 msgid "This folder cannot be downloaded."
 msgstr ""
 
 #. translators: 1: folder name, 2: a size such as "1.3 GB", 3: number of files.
-#: includes/Admin/Rail.php:1113
+#: includes/Admin/Rail.php:1119
 #, php-format
 msgid "“%1$s” is %2$s, %3$s file. A download this large can stop partway on some hosts — your browser’s Resume continues it."
 msgid_plural "“%1$s” is %2$s in %3$s files. A download this large can stop partway on some hosts — your browser’s Resume continues it."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/Admin/Rail.php:1119
+#: includes/Admin/Rail.php:1125
 msgid "Smart folders"
 msgstr ""
 
-#: includes/Admin/Rail.php:1120
+#: includes/Admin/Rail.php:1126
 msgid "Smart"
 msgstr ""
 
-#: includes/Admin/Rail.php:1121
+#: includes/Admin/Rail.php:1127
 msgid "New smart folder"
 msgstr ""
 
-#: includes/Admin/Rail.php:1122
+#: includes/Admin/Rail.php:1128
 msgid "Edit smart folder"
 msgstr ""
 
 #. translators: %s: a smart folder's name.
-#: includes/Admin/Rail.php:1124
+#: includes/Admin/Rail.php:1130
 #, php-format
 msgid "Edit “%s”"
 msgstr ""
 
-#: includes/Admin/Rail.php:1125
-#: includes/Admin/Rail.php:1133
+#: includes/Admin/Rail.php:1131
+#: includes/Admin/Rail.php:1139
 msgid "Name"
 msgstr ""
 
-#: includes/Admin/Rail.php:1126
+#: includes/Admin/Rail.php:1132
 msgid "For example: Unfiled images this month"
 msgstr ""
 
-#: includes/Admin/Rail.php:1127
+#: includes/Admin/Rail.php:1133
 msgid "Shows what matches every rule"
 msgstr ""
 
-#: includes/Admin/Rail.php:1128
+#: includes/Admin/Rail.php:1134
 msgid "Type"
 msgstr ""
 
-#: includes/Admin/Rail.php:1129
+#: includes/Admin/Rail.php:1135
 msgid "Uploaded"
 msgstr ""
 
-#: includes/Admin/Rail.php:1130
+#: includes/Admin/Rail.php:1136
 msgid "Uploaded by"
 msgstr ""
 
-#: includes/Admin/Rail.php:1131
+#: includes/Admin/Rail.php:1137
 msgid "Size"
 msgstr ""
 
-#: includes/Admin/Rail.php:1132
+#: includes/Admin/Rail.php:1138
 #: includes/Blocks/Gallery.php:172
 msgid "Folder"
 msgstr ""
 
-#: includes/Admin/Rail.php:1134
+#: includes/Admin/Rail.php:1140
 msgid "is"
 msgstr ""
 
-#: includes/Admin/Rail.php:1135
+#: includes/Admin/Rail.php:1141
 msgid "is not"
 msgstr ""
 
-#: includes/Admin/Rail.php:1136
+#: includes/Admin/Rail.php:1142
 msgid "in the last"
 msgstr ""
 
-#: includes/Admin/Rail.php:1137
+#: includes/Admin/Rail.php:1143
 msgid "on or after"
 msgstr ""
 
-#: includes/Admin/Rail.php:1138
+#: includes/Admin/Rail.php:1144
 msgid "before"
 msgstr ""
 
-#: includes/Admin/Rail.php:1139
+#: includes/Admin/Rail.php:1145
 msgid "larger than"
 msgstr ""
 
-#: includes/Admin/Rail.php:1140
+#: includes/Admin/Rail.php:1146
 msgid "smaller than"
 msgstr ""
 
-#: includes/Admin/Rail.php:1141
+#: includes/Admin/Rail.php:1147
 msgid "is none"
 msgstr ""
 
-#: includes/Admin/Rail.php:1142
+#: includes/Admin/Rail.php:1148
 msgid "is any"
 msgstr ""
 
-#: includes/Admin/Rail.php:1143
+#: includes/Admin/Rail.php:1149
 msgid "is within"
 msgstr ""
 
-#: includes/Admin/Rail.php:1144
+#: includes/Admin/Rail.php:1150
 msgid "contains"
 msgstr ""
 
-#: includes/Admin/Rail.php:1145
+#: includes/Admin/Rail.php:1151
 msgid "an image"
 msgstr ""
 
-#: includes/Admin/Rail.php:1146
+#: includes/Admin/Rail.php:1152
 msgid "a video"
 msgstr ""
 
-#: includes/Admin/Rail.php:1147
+#: includes/Admin/Rail.php:1153
 msgid "audio"
 msgstr ""
 
-#: includes/Admin/Rail.php:1148
+#: includes/Admin/Rail.php:1154
 msgid "a document"
 msgstr ""
 
-#: includes/Admin/Rail.php:1149
+#: includes/Admin/Rail.php:1155
 msgid "days"
 msgstr ""
 
-#: includes/Admin/Rail.php:1150
+#: includes/Admin/Rail.php:1156
 msgid "me — whoever is looking"
 msgstr ""
 
-#: includes/Admin/Rail.php:1151
-msgid "For example: logo"
-msgstr ""
-
-#. translators: %s: the rule's number, 1 or more.
-#: includes/Admin/Rail.php:1153
-#, php-format
-msgid "Rule %s: about"
-msgstr ""
-
-#. translators: %s: the rule's number, 1 or more.
-#: includes/Admin/Rail.php:1155
-#, php-format
-msgid "Rule %s: how"
-msgstr ""
-
-#. translators: %s: the rule's number, 1 or more.
 #: includes/Admin/Rail.php:1157
-#, php-format
-msgid "Rule %s: value"
+msgid "For example: logo"
 msgstr ""
 
 #. translators: %s: the rule's number, 1 or more.
 #: includes/Admin/Rail.php:1159
 #, php-format
-msgid "Rule %s: unit"
+msgid "Rule %s: about"
 msgstr ""
 
 #. translators: %s: the rule's number, 1 or more.
 #: includes/Admin/Rail.php:1161
 #, php-format
+msgid "Rule %s: how"
+msgstr ""
+
+#. translators: %s: the rule's number, 1 or more.
+#: includes/Admin/Rail.php:1163
+#, php-format
+msgid "Rule %s: value"
+msgstr ""
+
+#. translators: %s: the rule's number, 1 or more.
+#: includes/Admin/Rail.php:1165
+#, php-format
+msgid "Rule %s: unit"
+msgstr ""
+
+#. translators: %s: the rule's number, 1 or more.
+#: includes/Admin/Rail.php:1167
+#, php-format
 msgid "Remove rule %s"
 msgstr ""
 
-#: includes/Admin/Rail.php:1162
+#: includes/Admin/Rail.php:1168
 msgid "Add a rule"
 msgstr ""
 
-#: includes/Admin/Rail.php:1163
+#: includes/Admin/Rail.php:1169
 msgid "Add a rule to see what it matches."
 msgstr ""
 
-#: includes/Admin/Rail.php:1164
+#: includes/Admin/Rail.php:1170
 msgid "Counting…"
 msgstr ""
 
 #. translators: %s: a number of files.
-#: includes/Admin/Rail.php:1166
+#: includes/Admin/Rail.php:1172
 #, php-format
 msgid "Matches %s file"
 msgid_plural "Matches %s files"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/Admin/Rail.php:1167
+#: includes/Admin/Rail.php:1173
 msgid "Delete this smart folder? No files are touched."
 msgstr ""
 
-#: includes/Admin/Rail.php:1168
+#: includes/Admin/Rail.php:1174
 msgid "Keep"
 msgstr ""
 
-#. translators: 1: folder name, 2: how many items, 3: how many folders are inside it.
-#: includes/Admin/Rail.php:1190
+#. translators: %s: number of items in a folder.
+#: includes/Admin/Rail.php:1196
 #, php-format
-msgid "%1$s, %2$s items, %3$s folders inside"
-msgstr ""
+msgid "%s item"
+msgid_plural "%s items"
+msgstr[0] ""
+msgstr[1] ""
 
-#: includes/Admin/Rail.php:1191
+#: includes/Admin/Rail.php:1197
 msgid "Could not move those items."
 msgstr ""
 
 #. translators: 1: number of items, 2: the destination folder name.
-#: includes/Admin/Rail.php:1193
+#: includes/Admin/Rail.php:1199
 #, php-format
 msgid "Moved %1$s item to %2$s"
 msgid_plural "Moved %1$s items to %2$s"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/Admin/Rail.php:1198
+#: includes/Admin/Rail.php:1204
 msgid "Could not file those items."
 msgstr ""
 
 #. translators: %s is the number of selected items.
-#: includes/Admin/Rail.php:1200
+#: includes/Admin/Rail.php:1206
 #, php-format
 msgid "%s item selected"
 msgid_plural "%s items selected"
@@ -1553,7 +1586,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: number of items, 2: a comma-separated list of folder names.
-#: includes/Admin/Rail.php:1202
+#: includes/Admin/Rail.php:1208
 #, php-format
 msgid "Added %1$s item to %2$s"
 msgid_plural "Added %1$s items to %2$s"
@@ -1561,7 +1594,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: folder name, 2: number of items.
-#: includes/Admin/Rail.php:1208
+#: includes/Admin/Rail.php:1214
 #, php-format
 msgid "Deleted “%1$s” — %2$s item moved to Unassigned"
 msgid_plural "Deleted “%1$s” — %2$s items moved to Unassigned"
@@ -1759,9 +1792,9 @@ msgid_plural "Forgot %s entries for files or folders that no longer exist."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/api.php:296
-#: includes/api.php:313
-#: includes/Domain/SmartFolders.php:336
+#: includes/api.php:298
+#: includes/api.php:315
+#: includes/Domain/SmartFolders.php:344
 msgid "Smart folder not found."
 msgstr ""
 
@@ -1878,32 +1911,36 @@ msgid "Showing “%s”"
 msgstr ""
 
 #. translators: %s: comma-separated list of table names with their storage engine.
-#: includes/Database/Doctor.php:92
+#: includes/Database/Doctor.php:95
 #, php-format
 msgid "These tables are not InnoDB, so folder changes cannot be undone if one fails part-way: %s."
 msgstr ""
 
-#: includes/Database/Doctor.php:143
+#: includes/Database/Doctor.php:146
 msgid "Folders whose parent no longer exists. They are unreachable in the tree."
 msgstr ""
 
-#: includes/Database/Doctor.php:192
+#: includes/Database/Doctor.php:195
 msgid "Folders whose stored path disagrees with their parent. Fix with Repair folder tree on the Status tab, or wp folderfolio rebuild-paths."
 msgstr ""
 
-#: includes/Database/Doctor.php:222
+#: includes/Database/Doctor.php:225
 msgid "Folders whose depth disagrees with their path. Fix with Repair folder tree on the Status tab, or wp folderfolio rebuild-paths."
 msgstr ""
 
-#: includes/Database/Doctor.php:272
+#: includes/Database/Doctor.php:275
 msgid "Folders that are their own ancestor. Move them to the top level to break the loop."
 msgstr ""
 
-#: includes/Database/Doctor.php:300
+#: includes/Database/Doctor.php:303
 msgid "Assignments pointing at a folder that no longer exists."
 msgstr ""
 
-#: includes/Database/Doctor.php:331
+#: includes/Database/Doctor.php:332
+msgid "Folder settings (lock, pin, sort, kind) kept for a folder that no longer exists."
+msgstr ""
+
+#: includes/Database/Doctor.php:363
 msgid "Assignments for media that no longer exists."
 msgstr ""
 
@@ -2000,7 +2037,7 @@ msgid "The new order could not be saved."
 msgstr ""
 
 #: includes/Domain/AttachmentFolderRepository.php:307
-#: includes/Domain/AttachmentFolderRepository.php:711
+#: includes/Domain/AttachmentFolderRepository.php:721
 msgid "The files could not be filed in the folder."
 msgstr ""
 
@@ -2013,7 +2050,7 @@ msgid "The deleted file’s folder entries could not be removed."
 msgstr ""
 
 #: includes/Domain/AttachmentFolderRepository.php:359
-#: includes/Domain/AttachmentFolderRepository.php:661
+#: includes/Domain/AttachmentFolderRepository.php:671
 msgid "The folder entries could not be removed."
 msgstr ""
 
@@ -2064,46 +2101,46 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %d: maximum nesting depth.
-#: includes/Domain/FolderBulk.php:149
-#: includes/Domain/FolderService.php:1734
+#: includes/Domain/FolderBulk.php:148
+#: includes/Domain/FolderService.php:1779
 #, php-format
 msgid "Folders can be nested up to %d levels deep."
 msgstr ""
 
-#: includes/Domain/FolderBulk.php:242
+#: includes/Domain/FolderBulk.php:248
 msgid "Some lines could not be used. Fix the ones marked below and try again."
 msgstr ""
 
 #. translators: %d: maximum number of lines accepted at once.
-#: includes/Domain/FolderBulk.php:317
+#: includes/Domain/FolderBulk.php:323
 #, php-format
 msgid "Up to %d lines at a time. Split the list and run it twice."
 msgstr ""
 
-#: includes/Domain/FolderBulk.php:338
-#: includes/Domain/FolderService.php:1865
+#: includes/Domain/FolderBulk.php:344
+#: includes/Domain/FolderService.php:1910
 msgid "Folder names must be 191 characters or fewer."
 msgstr ""
 
-#: includes/Domain/FolderBulk.php:350
+#: includes/Domain/FolderBulk.php:356
 msgid "No folder name on this line."
 msgstr ""
 
-#: includes/Domain/FolderBulk.php:403
+#: includes/Domain/FolderBulk.php:409
 #: includes/Domain/FolderService.php:452
-#: includes/Domain/FolderService.php:625
-#: includes/Domain/FolderService.php:777
-#: includes/Domain/FolderService.php:936
+#: includes/Domain/FolderService.php:646
+#: includes/Domain/FolderService.php:798
+#: includes/Domain/FolderService.php:959
 msgid "The selected parent folder does not exist."
 msgstr ""
 
-#: includes/Domain/FolderBulk.php:413
+#: includes/Domain/FolderBulk.php:419
 #: includes/Domain/FolderService.php:113
 msgid "That folder holds a different kind of content."
 msgstr ""
 
 #: includes/Domain/FolderKinds.php:134
-#: includes/Domain/FolderLocks.php:166
+#: includes/Domain/FolderLocks.php:172
 msgid "That could not be saved."
 msgstr ""
 
@@ -2121,22 +2158,26 @@ msgid_plural "“%1$s” is a gallery, and a gallery holds images only. %2$d of 
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/Domain/FolderRepository.php:312
-#: includes/Domain/FolderService.php:498
-#: includes/Domain/FolderService.php:1132
+#: includes/Domain/FolderRepository.php:321
+#: includes/Domain/FolderRepository.php:348
+#: includes/Domain/FolderService.php:508
+#: includes/Domain/FolderService.php:1155
 msgid "The folder could not be created."
 msgstr ""
 
-#: includes/Domain/FolderRepository.php:423
+#: includes/Domain/FolderRepository.php:450
 msgid "The new folder order could not be saved."
 msgstr ""
 
-#: includes/Domain/FolderRepository.php:471
+#: includes/Domain/FolderRepository.php:481
+#: includes/Domain/FolderRepository.php:505
 msgid "The folder could not be moved."
 msgstr ""
 
-#: includes/Domain/FolderRepository.php:501
-#: includes/Domain/FolderRepository.php:525
+#: includes/Domain/FolderRepository.php:524
+#: includes/Domain/FolderRepository.php:542
+#: includes/Domain/FolderRepository.php:581
+#: includes/Domain/FolderRepository.php:605
 msgid "The folder could not be deleted."
 msgstr ""
 
@@ -2156,106 +2197,110 @@ msgid_plural "“%1$s” holds %2$d files that are not images. Move them out fir
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/Domain/FolderService.php:483
-#: includes/Domain/FolderService.php:555
+#: includes/Domain/FolderService.php:486
+msgid "Folders are not turned on for that content type."
+msgstr ""
+
+#: includes/Domain/FolderService.php:493
+#: includes/Domain/FolderService.php:576
 msgid "A folder with that name already exists here."
 msgstr ""
 
-#: includes/Domain/FolderService.php:601
-#: includes/Domain/FolderService.php:749
+#: includes/Domain/FolderService.php:622
+#: includes/Domain/FolderService.php:770
 msgid "A folder cannot be its own parent."
 msgstr ""
 
-#: includes/Domain/FolderService.php:649
+#: includes/Domain/FolderService.php:670
 msgid "A folder cannot be moved inside one of its descendants."
 msgstr ""
 
-#: includes/Domain/FolderService.php:669
+#: includes/Domain/FolderService.php:690
 msgid "A folder with that name already exists there."
 msgstr ""
 
-#: includes/Domain/FolderService.php:735
+#: includes/Domain/FolderService.php:756
 msgid "No folders were given to arrange."
 msgstr ""
 
-#: includes/Domain/FolderService.php:742
+#: includes/Domain/FolderService.php:763
 msgid "The same folder was listed more than once."
 msgstr ""
 
-#: includes/Domain/FolderService.php:795
+#: includes/Domain/FolderService.php:816
 msgid "Those folders do not all belong to the same level."
 msgstr ""
 
-#: includes/Domain/FolderService.php:811
-#: includes/Domain/FolderService.php:986
-#: includes/Domain/FolderService.php:1118
+#: includes/Domain/FolderService.php:832
+#: includes/Domain/FolderService.php:1009
+#: includes/Domain/FolderService.php:1141
 msgid "This folder list is out of date. Reload the page and try again."
 msgstr ""
 
-#: includes/Domain/FolderService.php:958
+#: includes/Domain/FolderService.php:981
 msgid "A folder cannot be pasted inside itself."
 msgstr ""
 
 #. translators: %s: the name of the folder that was copied.
-#: includes/Domain/FolderService.php:1022
+#: includes/Domain/FolderService.php:1045
 #, php-format
 msgid "%s copy"
 msgstr ""
 
 #. translators: 1: the name of the folder that was copied, 2: a number, 2 or more.
-#: includes/Domain/FolderService.php:1024
+#: includes/Domain/FolderService.php:1047
 #, php-format
 msgid "%1$s copy %2$d"
 msgstr ""
 
-#: includes/Domain/FolderService.php:1179
+#: includes/Domain/FolderService.php:1202
 msgid "Choose whether subfolders are kept or deleted."
 msgstr ""
 
-#: includes/Domain/FolderService.php:1204
+#: includes/Domain/FolderService.php:1238
 msgid "Choose a valid destination folder."
 msgstr ""
 
-#: includes/Domain/FolderService.php:1327
+#: includes/Domain/FolderService.php:1373
 msgid "Choose whether to add to the folder or move into it."
 msgstr ""
 
-#: includes/Domain/FolderService.php:1510
+#: includes/Domain/FolderService.php:1556
 msgid "Say where the files go: start, end, before or after a file."
 msgstr ""
 
-#: includes/Domain/FolderService.php:1521
+#: includes/Domain/FolderService.php:1567
 msgid "Only files in this folder can be arranged in it. Reload the page and try again."
 msgstr ""
 
-#: includes/Domain/FolderService.php:1531
+#: includes/Domain/FolderService.php:1577
 msgid "The file they were dropped beside is not in this folder any more. Reload the page and try again."
 msgstr ""
 
-#: includes/Domain/FolderService.php:1633
+#: includes/Domain/FolderService.php:1679
 msgid "Choose a different destination folder."
 msgstr ""
 
-#: includes/Domain/FolderService.php:1773
+#: includes/Domain/FolderService.php:1818
 msgid "One or more selected media items are invalid."
 msgstr ""
 
-#: includes/Domain/FolderService.php:1774
+#: includes/Domain/FolderService.php:1819
 msgid "One or more of the selected items cannot be filed in this folder."
 msgstr ""
 
-#: includes/Domain/FolderService.php:1781
+#: includes/Domain/FolderService.php:1826
 msgid "You are not allowed to organise one or more of the selected media items."
 msgstr ""
 
-#: includes/Domain/FolderService.php:1851
-#: includes/Domain/FolderService.php:1858
-#: includes/Domain/FolderService.php:1989
+#: includes/Domain/FolderService.php:1896
+#: includes/Domain/FolderService.php:1903
+#: includes/Domain/FolderService.php:2034
 msgid "A folder name is required."
 msgstr ""
 
 #. translators: %s: comma-separated list of the ten folder colour names.
-#: includes/Domain/FolderService.php:1878
+#: includes/Domain/FolderService.php:1923
 #, php-format
 msgid "Choose one of the folder colours: %s."
 msgstr ""
@@ -2282,24 +2327,24 @@ msgstr ""
 msgid "A site can have up to %d smart folders."
 msgstr ""
 
-#: includes/Domain/SmartFolders.php:276
+#: includes/Domain/SmartFolders.php:284
 msgid "Give the smart folder a name."
 msgstr ""
 
-#: includes/Domain/SmartFolders.php:280
+#: includes/Domain/SmartFolders.php:288
 msgid "That name is too long."
 msgstr ""
 
-#: includes/Domain/SmartFolders.php:287
+#: includes/Domain/SmartFolders.php:295
 msgid "A smart folder with that name already exists."
 msgstr ""
 
-#: includes/Domain/SmartFolders.php:298
+#: includes/Domain/SmartFolders.php:306
 msgid "Add at least one rule — a smart folder with none would be everything."
 msgstr ""
 
 #: includes/Modules/Import/Catalog.php:173
-#: includes/Modules/Import/Runner.php:114
+#: includes/Modules/Import/Runner.php:120
 #: includes/Rest/ImportController.php:194
 #: includes/Rest/ImportController.php:230
 msgid "An import is already running. Wait for it to finish, or stop it first."
@@ -2367,28 +2412,67 @@ msgstr ""
 msgid "The file was read, but this site’s database would not keep it for the import. Try again, and ask your host if it keeps happening."
 msgstr ""
 
-#: includes/Modules/Import/Runner.php:156
+#: includes/Modules/Import/Runner.php:172
+#: includes/Modules/Import/Runner.php:195
 msgid "There is no import to continue."
 msgstr ""
 
-#: includes/Modules/Import/Runner.php:169
+#: includes/Modules/Import/Runner.php:208
 msgid "The plugin this import was reading from is no longer available."
 msgstr ""
 
-#: includes/Modules/Import/Runner.php:276
+#. translators: 1: folder name in the plugin being imported from, 2: the reason.
+#: includes/Modules/Import/Runner.php:273
+#, php-format
+msgid "“%1$s” was not imported: %2$s"
+msgstr ""
+
+#: includes/Modules/Import/Runner.php:392
 msgid "The import stopped moving forward. Run it again to continue from where it stopped."
 msgstr ""
 
-#: includes/Modules/Import/Runner.php:287
+#: includes/Modules/Import/Runner.php:403
 msgid "There is no import to stop."
 msgstr ""
 
-#: includes/Modules/Import/Runner.php:322
+#: includes/Modules/Import/Runner.php:440
 msgid "There is no finished import to undo."
 msgstr ""
 
+#. translators: %s: folder name.
+#: includes/Modules/Import/Runner.php:484
+#, php-format
+msgid "“%s” was kept: files were put in it after the import."
+msgstr ""
+
+#. translators: 1: folder name, 2: the reason.
+#: includes/Modules/Import/Runner.php:497
+#, php-format
+msgid "“%1$s” was kept: %2$s"
+msgstr ""
+
+#. translators: 1: number of files, 2: gallery name.
+#: includes/Modules/Import/Runner.php:670
+#, php-format
+msgid "%1$s file is not an image and was not filed into the gallery “%2$s”."
+msgid_plural "%1$s files are not images and were not filed into the gallery “%2$s”."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: 1: folder name, 2: the reason.
+#: includes/Modules/Import/Runner.php:702
+#, php-format
+msgid "Files for “%1$s” were not filed: %2$s"
+msgstr ""
+
+#. translators: %d: the folder's id in the plugin it is being imported from.
+#: includes/Modules/Import/SourceFolder.php:82
+#, php-format
+msgid "Untitled folder %d"
+msgstr ""
+
 #. translators: 1: folder name, 2: a size such as "2 GB".
-#: includes/Rest/FolderController.php:718
+#: includes/Rest/FolderController.php:764
 #, php-format
 msgid "“%1$s” is larger than this site allows in one download (%2$s). Download a subfolder at a time instead."
 msgstr ""
