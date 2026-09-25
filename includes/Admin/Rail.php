@@ -760,7 +760,7 @@ final class Rail
              * refused. The server asks the same filter again; this is the
              * affordance, not the rule.
              */
-            'maxDepth' => (int) apply_filters('folderfolio_max_depth', FolderPath::MAX_DEPTH),
+            'maxDepth' => FolderPath::capDepth(apply_filters('folderfolio_max_depth', FolderPath::MAX_DEPTH)),
 
             /*
              * This person's own startup folder, and deliberately NOT the

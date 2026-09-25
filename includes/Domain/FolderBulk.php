@@ -96,8 +96,7 @@ final class FolderBulk
             return $lines;
         }
 
-        /** @var int $maxDepth */
-        $maxDepth = apply_filters('folderfolio_max_depth', FolderPath::MAX_DEPTH);
+        $maxDepth = FolderPath::capDepth(apply_filters('folderfolio_max_depth', FolderPath::MAX_DEPTH));
 
         $index = $this->index($objectType);
 

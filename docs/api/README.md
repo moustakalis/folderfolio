@@ -397,7 +397,9 @@ add_filter( 'folderfolio_default_folder_for_upload', function ( $folderId, $atta
 #### `folderfolio_max_depth( int $depth ): int`
 
 Default 20. Nesting is unlimited as a product promise; the cap exists so that exceeding it is
-a clear error rather than a silent truncation.
+a clear error rather than a silent truncation. **A value above 22 is read as 22** — the most
+levels the `path` column (VARCHAR(255)) can hold with ten-digit folder ids — and a path that
+would still not fit is refused, never stored.
 
 #### `folderfolio_count_mode( string $mode ): string`
 

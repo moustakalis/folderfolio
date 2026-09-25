@@ -42,6 +42,27 @@ final class FolderPath
      */
     public const MAX_DEPTH = 20;
 
+    /**
+     * Width of the `path` column (`Schema`: VARCHAR(255)).
+     *
+     * A path longer than this is refused, never stored: in strict mode MySQL
+     * rejects the write, and outside it MySQL truncates it with a warning.
+     * Either way the row would be left with a path that is not its own, and
+     * every subtree read is a prefix match on it (review H1).
+     */
+    public const MAX_LENGTH = 255;
+
+    /**
+     * The deepest `folderfolio_max_depth` may raise the limit to.
+     *
+     * A folder at depth d has d + 1 ids in its path. With ids of up to ten
+     * digits (ten billion folders) each takes 11 characters, plus the leading
+     * separator: 23 × 11 + 1 = 254 fits the column, 24 does not. So 22 levels
+     * below the top is what the column can hold for any id this table will
+     * issue; `MAX_LENGTH` still refuses anything longer.
+     */
+    public const DEPTH_CEILING = 22;
+
     public const SEPARATOR = '/';
 
     /**
@@ -56,6 +77,18 @@ final class FolderPath
         }
 
         return $parentPath . $id . self::SEPARATOR;
+    }
+
+    /**
+     * The depth limit a site asked for, held to what the column can store.
+     *
+     * @param mixed $filtered The `folderfolio_max_depth` filter's answer.
+     */
+    public static function capDepth(mixed $filtered): int
+    {
+        $depth = is_numeric($filtered) ? (int) $filtered : self::MAX_DEPTH;
+
+        return max(0, min($depth, self::DEPTH_CEILING));
     }
 
     /**

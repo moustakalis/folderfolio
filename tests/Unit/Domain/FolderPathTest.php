@@ -133,4 +133,27 @@ final class FolderPathTest extends TestCase
         self::assertSame('/7/', $moved);
         self::assertSame('/7/12/', FolderPath::rewrite('/1/7/12/', '/1/7/', $moved));
     }
+
+    public function test_the_depth_filter_is_held_to_what_the_column_holds(): void
+    {
+        // Review H1: a filter raised past what VARCHAR(255) holds used to make
+        // the path write fail and leave the folder with an empty path.
+        self::assertSame(FolderPath::DEPTH_CEILING, FolderPath::capDepth(500));
+        self::assertSame(12, FolderPath::capDepth(12));
+        self::assertSame(12, FolderPath::capDepth('12'));
+        self::assertSame(0, FolderPath::capDepth(-3));
+        self::assertSame(FolderPath::MAX_DEPTH, FolderPath::capDepth('lots'));
+    }
+
+    public function test_the_ceiling_fits_the_column_with_ten_digit_ids(): void
+    {
+        $path = null;
+        for ($depth = 0; $depth <= FolderPath::DEPTH_CEILING; $depth++) {
+            $path = FolderPath::build($path, 9_999_999_999);
+        }
+
+        self::assertSame(FolderPath::DEPTH_CEILING, FolderPath::depth($path));
+        self::assertLessThanOrEqual(FolderPath::MAX_LENGTH, strlen($path));
+        self::assertGreaterThan(FolderPath::MAX_LENGTH, strlen(FolderPath::build($path, 9_999_999_999)));
+    }
 }

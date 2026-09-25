@@ -200,6 +200,10 @@ class FolderRepository
      */
     public function subtree(string $path): array
     {
+        if (!self::isSubtreePath($path)) {
+            return [];
+        }
+
         $wpdb = $this->wpdb;
 
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table, no core API; read live, and the cached reader (GalleryQuery) keys on the 'folderfolio' last_changed every write bumps.
@@ -222,6 +226,10 @@ class FolderRepository
      */
     public function subtreeIds(string $path): array
     {
+        if (!self::isSubtreePath($path)) {
+            return [];
+        }
+
         $wpdb = $this->wpdb;
 
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table, no core API; read live, and the cached reader (GalleryQuery) keys on the 'folderfolio' last_changed every write bumps.
@@ -280,7 +288,8 @@ class FolderRepository
      *
      * The path contains the folder's own id, which only exists after the
      * insert, so this is two statements rather than one. The row is never
-     * visible with an empty path to anything but this method.
+     * visible with an empty path to anything but this method: if the second
+     * statement fails, the row is deleted and the create is an error.
      *
      * @param FolderCreateData $data
      * @param string|null      $parentPath Parent's path, or null for a root folder.
@@ -316,11 +325,29 @@ class FolderRepository
         $id = (int) $this->wpdb->insert_id;
         $path = FolderPath::build($parentPath, $id);
 
-        $this->wpdb->update(
-            $this->table(),
-            ['path' => $path, 'depth' => FolderPath::depth($path)],
-            ['id' => $id]
-        );
+        // The second write is checked, and a row it could not finish is taken
+        // back out. An empty path matches every row in a `LIKE path%` read, so
+        // a folder left with one would make a cascade delete of it delete
+        // every folder on the site (review H1). A path too long for the column
+        // is refused here rather than handed to MySQL, which outside strict
+        // mode truncates it and reports success.
+        $written = strlen($path) <= FolderPath::MAX_LENGTH
+            ? $this->wpdb->update(
+                $this->table(),
+                ['path' => $path, 'depth' => FolderPath::depth($path)],
+                ['id' => $id]
+            )
+            : false;
+
+        if ($written === false) {
+            $this->wpdb->delete($this->table(), ['id' => $id]);
+            wp_cache_set_last_changed('folderfolio');
+
+            return new WP_Error(
+                'folderfolio_folder_create_failed',
+                __('The folder could not be created.', 'folderfolio')
+            );
+        }
 
         wp_cache_set_last_changed('folderfolio');
 
@@ -448,6 +475,13 @@ class FolderRepository
         string $newPrefix,
         int $depthDelta
     ): bool|WP_Error {
+        if (!self::isSubtreePath($oldPrefix) || !self::isSubtreePath($newPrefix)) {
+            return new WP_Error(
+                'folderfolio_folder_move_failed',
+                __('The folder could not be moved.', 'folderfolio')
+            );
+        }
+
         $wpdb = $this->wpdb;
 
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a write to our own table; it bumps the 'folderfolio' last_changed key below.
@@ -484,6 +518,13 @@ class FolderRepository
      */
     public function deleteSubtree(string $path): int|WP_Error
     {
+        if (!self::isSubtreePath($path)) {
+            return new WP_Error(
+                'folderfolio_folder_delete_failed',
+                __('The folder could not be deleted.', 'folderfolio')
+            );
+        }
+
         $wpdb = $this->wpdb;
 
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a write to our own table; it bumps the 'folderfolio' last_changed key below.
@@ -567,5 +608,17 @@ class FolderRepository
         $row = $this->wpdb->get_row($sql, ARRAY_A);
 
         return $row ?: null;
+    }
+
+    /**
+     * Is this a path a subtree may be read, moved or deleted by?
+     *
+     * Every subtree statement is `WHERE path LIKE '<path>%'`. An empty path,
+     * or a bare separator, is a prefix of every row, so it would read — or
+     * delete — the whole table. A real folder's path is at least `/<id>/`.
+     */
+    private static function isSubtreePath(string $path): bool
+    {
+        return FolderPath::ids($path) !== [];
     }
 }

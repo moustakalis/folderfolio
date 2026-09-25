@@ -581,6 +581,11 @@ class AttachmentFolderRepository
 
     public function subtreeCount(string $path, ?string $objectType = null): int
     {
+        // An empty path is a prefix of every folder's (review H1).
+        if (FolderPath::ids($path) === []) {
+            return 0;
+        }
+
         $wpdb = $this->wpdb;
         $folders = $wpdb->prefix . 'folderfolio_folders';
         $join = $this->statusJoin($objectType, 'a');
@@ -608,6 +613,11 @@ class AttachmentFolderRepository
      */
     public function subtreeAttachmentIds(string $path): array
     {
+        // An empty path is a prefix of every folder's (review H1).
+        if (FolderPath::ids($path) === []) {
+            return [];
+        }
+
         $wpdb = $this->wpdb;
         $folders = $wpdb->prefix . 'folderfolio_folders';
 

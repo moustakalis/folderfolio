@@ -1723,8 +1723,7 @@ class FolderService
      */
     private function guardDepth(int $depth): bool|WP_Error
     {
-        /** @var int $max */
-        $max = apply_filters('folderfolio_max_depth', FolderPath::MAX_DEPTH);
+        $max = FolderPath::capDepth(apply_filters('folderfolio_max_depth', FolderPath::MAX_DEPTH));
 
         if ($depth > $max) {
             return new WP_Error(
