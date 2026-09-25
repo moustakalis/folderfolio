@@ -926,6 +926,24 @@ body.folderfolio-resizing * {
     font-weight: 600;
   }
 
+  /* The title's name in the title's weight — trap 136 again: the bar declared
+     600 and `.folderfolio-row__name` (400) painted the text. Found looking at
+     the sheet after review H2. */
+  .folderfolio-levels__here .folderfolio-row__name {
+    font-weight: 600;
+  }
+
+  /* The new-folder row in the sheet is the tree's CreateRow, which keeps a
+     switcher slot and the tree's 12px inset; the sheet's rows have neither,
+     so the field's icon sat 28px right of every icon under it. */
+  .folderfolio-levels .folderfolio-row.is-renaming {
+    padding-left: 10px;
+  }
+
+  .folderfolio-levels .folderfolio-row.is-renaming .folderfolio-row__switcher {
+    display: none;
+  }
+
   /* The title while it is being renamed (review H2): the field and its two
      buttons take the name's track, and the bar is no longer a button. */
   .folderfolio-levels__here.is-renaming {

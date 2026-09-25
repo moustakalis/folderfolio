@@ -659,9 +659,15 @@ test.describe('the rail across viewport widths', () => {
 
             await expect(rows).toHaveText([/Audio/, /Brand/]);
 
-            // 1. New folder at the top level, saved with Enter.
+            // 1. New folder at the top level, saved with Enter. The field's
+            //    icon lines up with the icons of the rows under it.
             await newFolder.click();
             await expect(input).toBeFocused();
+            const lefts = await page.evaluate(() => [
+                document.querySelector('.folderfolio-levels .is-renaming .folderfolio-row__icon')!.getBoundingClientRect().left,
+                document.querySelector('.folderfolio-levels__row .folderfolio-row__icon')!.getBoundingClientRect().left,
+            ]);
+            expect(Math.round(lefts[0])).toBe(Math.round(lefts[1]));
             await input.fill('Posters');
             await input.press('Enter');
             await expect(input).toHaveCount(0);
@@ -678,6 +684,8 @@ test.describe('the rail across viewport widths', () => {
             // 3. Inside Brand, saved with the on-screen Save.
             await rows.filter({ hasText: 'Brand' }).click();
             await expect(rows).toHaveText([/Logos/]);
+            // The title's name in the title's weight.
+            await expect(page.locator('.folderfolio-levels__here .folderfolio-row__name')).toHaveCSS('font-weight', '600');
             await newFolder.click();
             const save = page.locator('.folderfolio-levels .folderfolio-row__edit-btn--save');
             await expect(save).toBeDisabled();
