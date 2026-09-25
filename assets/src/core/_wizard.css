@@ -275,6 +275,18 @@
   overflow-wrap: anywhere;
 }
 
+/* The run's notes — one folder or one file each (review L4, M8, L6). wp-admin
+   styles a bare `ul` with no marker and a 1em inline margin; say both. */
+.folderfolio-wizard__notes {
+  margin: 0;
+  padding-inline-start: 18px;
+  list-style: disc;
+}
+
+.folderfolio-wizard__notes li {
+  margin: 0 0 4px;
+}
+
 .folderfolio-wizard__error {
   padding: 12px 14px;
   margin: 14px 0;

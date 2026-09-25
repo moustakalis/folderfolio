@@ -44,6 +44,9 @@ final class Provenance
 {
     private const PREFIX = 'import:';
 
+    /** The provenance value of a folder an import created: this, then the run id. */
+    private const CREATED = 'created:';
+
     private function table(): string
     {
         global $wpdb;
@@ -129,7 +132,17 @@ final class Provenance
         return $map;
     }
 
-    public function record(int $folderId, string $sourceKey, int $sourceFolderId): void
+    /**
+     * Record where a folder came from — and, for one this import made, which
+     * run made it.
+     *
+     * `$createdBy` is the run's id, and it is what undo asks for (review M6):
+     * the run record's list of created folders is saved once per batch, so a
+     * batch interrupted half-way (a Ctrl-C, a timeout) lost the ids of the
+     * folders it had already made, and undo left them behind. The mark is
+     * written with the provenance, as each folder lands.
+     */
+    public function record(int $folderId, string $sourceKey, int $sourceFolderId, ?string $createdBy = null): void
     {
         global $wpdb;
 
@@ -143,9 +156,31 @@ final class Provenance
                 $this->table(),
                 $folderId,
                 $this->key($sourceKey, $sourceFolderId),
-                '1'
+                null === $createdBy ? '1' : self::CREATED . $createdBy
             )
         );
+    }
+
+    /**
+     * The folders one run created, by their mark.
+     *
+     * @return list<int>
+     */
+    public function createdBy(string $runId): array
+    {
+        global $wpdb;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table, read by undo; must be live, not cached.
+        $ids = $wpdb->get_col(
+            $wpdb->prepare(
+                'SELECT DISTINCT folder_id FROM %i WHERE meta_key LIKE %s AND meta_value = %s',
+                $this->table(),
+                $wpdb->esc_like(self::PREFIX) . '%',
+                self::CREATED . $runId
+            )
+        ) ?: [];
+
+        return array_values(array_map('intval', $ids));
     }
 
     /**

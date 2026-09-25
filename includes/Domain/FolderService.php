@@ -477,6 +477,16 @@ class FolderService
             }
         }
 
+        // A type with folders turned off has no tree to add to. The REST routes
+        // never reach here for one (their permission asks the same), but the
+        // facade and WP-CLI did, and made folders nobody could see (review L6).
+        if (!PostTypes::isEnabled($objectType)) {
+            return new WP_Error(
+                'folderfolio_type_without_folders',
+                __('Folders are not turned on for that content type.', 'folderfolio')
+            );
+        }
+
         if ($this->folders->siblingNameExists($data['name'] ?? '', $parentId, null, $objectType)) {
             return new WP_Error(
                 'folderfolio_duplicate_name',
@@ -499,7 +509,13 @@ class FolderService
             );
         }
 
-        do_action('folderfolio_folder_created', $folder);
+        // After the commit, like every other hook here (review M12): inside a
+        // bulk create or a paste this runs in an open transaction, and a
+        // listener heard about folders a later refusal rolled back — or ended
+        // the transaction early by committing. Outside one it runs at once.
+        Transaction::after(static function () use ($folder): void {
+            do_action('folderfolio_folder_created', $folder);
+        });
 
         return $folder;
     }

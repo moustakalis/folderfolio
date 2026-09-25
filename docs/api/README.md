@@ -218,8 +218,9 @@ FolderFolio::orderFiles( $gallery->id, [ $cover ], 'start' );   // the cover fir
 
 #### `lockFolder( int $id, bool $locked = true ): Folder|WP_Error`
 
-A locked folder and everything beneath it cannot be renamed, moved, deleted or filed into by
-anyone without the `lock` ability (`folderfolio_locked`).
+A locked folder and everything beneath it cannot be renamed, moved, reordered, deleted or have
+folders made inside it by anyone without the `lock` ability (`folderfolio_locked`). Files can still
+be filed into it, and its colour and orders changed: a lock keeps its shape. WP-CLI passes a lock.
 
 #### `pinFolder( int $id, bool $pinned = true ): Folder|WP_Error`
 

@@ -577,9 +577,9 @@ final class FolderCommand
     /**
      * Lock a folder, and everything beneath it.
      *
-     * A locked folder cannot be renamed, moved, deleted or filed into by
-     * anyone without the lock ability. A command run is not stopped by a
-     * lock.
+     * A locked folder cannot be renamed, moved, reordered, deleted or have
+     * folders made inside it by anyone without the lock ability; files can
+     * still be filed into it. A command run is not stopped by a lock.
      *
      * ## OPTIONS
      *

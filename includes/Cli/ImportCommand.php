@@ -124,6 +124,14 @@ final class ImportCommand
         $source = $this->source((string) ($args[0] ?? ''));
         $plan = $this->planner->plan($source);
 
+        // Reading a file for a preview stored the whole document (up to ~6 MB)
+        // as an option for a run, and nothing ever removed it (review L6). A
+        // preview is not a run: the plan is made, so let it go. `import run`
+        // reads the file again.
+        if ($source instanceof JsonSource) {
+            JsonSource::forget($source->key());
+        }
+
         if (($assoc['format'] ?? 'table') === 'json') {
             $out = $plan->toArray();
 
@@ -264,6 +272,10 @@ final class ImportCommand
             $rows[] = ['field' => 'Error', 'value' => $run->error];
         }
 
+        foreach ($run->warnings as $warning) {
+            $rows[] = ['field' => 'Warning', 'value' => $warning];
+        }
+
         Utils\format_items('table', $rows, ['field', 'value']);
     }
 
@@ -347,6 +359,10 @@ final class ImportCommand
 
         if ($undone instanceof WP_Error) {
             WP_CLI::error($undone->get_error_message());
+        }
+
+        foreach ($undone->warnings as $warning) {
+            WP_CLI::warning($warning);
         }
 
         WP_CLI::success('Import undone. Anything you had already made was left alone.');
@@ -453,6 +469,11 @@ final class ImportCommand
             $result->filesAdded,
             $result->skippedTotal
         );
+
+        // Per folder, and not a failure of the import (review L4, M8).
+        foreach ($result->warnings as $warning) {
+            WP_CLI::warning($warning);
+        }
 
         if ('' !== $result->error) {
             WP_CLI::warning($result->error);

@@ -89,6 +89,12 @@ final class Runner
      */
     public const SKIPPED_KEPT = 100;
 
+    /**
+     * How many unmoved steps `toEnd()` waits through — half a second each,
+     * two minutes in all — before it calls the run stalled.
+     */
+    private const PATIENCE = 240;
+
     public function __construct(
         private readonly RunStore $store = new RunStore(),
         private readonly FolderService $service = new FolderService(),
@@ -117,6 +123,9 @@ final class Runner
         }
 
         $tree = SourceTree::of($source->folders());
+
+        // A stop asked of a run that is over means nothing to the next one.
+        $this->store->clearStop();
 
         $run = new Run(
             // Bounded, because it is written into `import_run VARCHAR(32)` on
@@ -148,6 +157,36 @@ final class Runner
      */
     public function step(): Run|WP_Error
     {
+        // One batch at a time — review M5. Two tabs, or a tab and the CLI,
+        // each read the run record, did a batch and wrote the whole record
+        // back, so each overwrote the other's progress and the ids of the
+        // folders it had made. A named database lock, held for the batch: it
+        // goes with the connection if the request dies, so there is nothing
+        // to go stale. A step that cannot have it changes nothing and says
+        // where the run is.
+        if (!$this->lock()) {
+            $run = $this->store->current();
+
+            return $run ?? new WP_Error(
+                'folderfolio_import_not_started',
+                __('There is no import to continue.', 'folderfolio'),
+                ['status' => 404]
+            );
+        }
+
+        try {
+            return $this->batch();
+        } finally {
+            $this->unlock();
+        }
+    }
+
+    /**
+     * @return Run|WP_Error
+     */
+    private function batch(): Run|WP_Error
+    {
+        // Read inside the lock, so it is the record the last batch saved.
         $run = $this->store->current();
 
         if (null === $run) {
@@ -175,7 +214,8 @@ final class Runner
             return $run;
         }
 
-        if (Run::STOPPING === $run->status) {
+        // Stop is its own option, which only Stop writes (M5).
+        if (Run::STOPPING === $run->status || $this->store->stopRequested($run->id)) {
             return $this->finish($run);
         }
 
@@ -187,19 +227,31 @@ final class Runner
         // stale the moment somebody adds a folder in the old plugin mid-run.
         $targets = $this->targetsSoFar($run, $source->key());
 
+        // Carry on after the folder the last batch ended on, found by its id
+        // (review L5). The cursor is a position in a list rebuilt every batch,
+        // so a folder deleted in the old plugin before it shifted every later
+        // folder back one, and the one now at the cursor was never imported.
+        // When that folder is itself gone, one step back: redoing a folder is
+        // idempotent, skipping one is not.
+        $start = $this->resume($run, $entries);
+
         $isFile = $source instanceof JsonSource;
-        $end = min($run->cursor + ($isFile ? self::FILE_BATCH : self::BATCH), count($entries));
+        $end = min($start + ($isFile ? self::FILE_BATCH : self::BATCH), count($entries));
         $began = microtime(true);
-        $from = $run->cursor;
         $budget = $isFile
             ? (float) apply_filters('folderfolio_import_file_batch_seconds', self::FILE_BATCH_SECONDS)
             : INF;
 
-        for ($i = $run->cursor; $i < $end; ++$i) {
+        for ($i = $start; $i < $end; ++$i) {
             // Checked before a folder, never inside one: at least one folder
             // lands per call, so a slow site still gets through.
-            // $from, not $run->cursor: the cursor moves as each folder lands.
-            if ($i > $from && microtime(true) - $began > $budget) {
+            if ($i > $start && microtime(true) - $began > $budget) {
+                break;
+            }
+
+            // Stop takes effect before the next folder, not only between
+            // batches: "Stop after this file" should not mean 24 more.
+            if ($i > $start && $this->store->stopRequested($run->id)) {
                 break;
             }
 
@@ -212,24 +264,78 @@ final class Runner
             $result = $this->importFolder($run, $source, $entry['folder'], $targets);
 
             if (is_wp_error($result)) {
-                $run->error = $result->get_error_message();
-                $run->cursor = $i + 1;
-                $this->store->save($run);
-
-                return $this->finish($run);
+                // One folder, not the import (review M8): it is named in the
+                // report with its reason, and the run goes on. Its subfolders
+                // land at the top level, which keeps their files.
+                ++$run->foldersSkipped;
+                $run->warn(sprintf(
+                    /* translators: 1: folder name in the plugin being imported from, 2: the reason. */
+                    __('“%1$s” was not imported: %2$s', 'folderfolio'),
+                    $entry['folder']->folderName(),
+                    $result->get_error_message()
+                ));
+            } else {
+                $targets[$entry['folder']->id] = $result;
             }
 
-            $targets[$entry['folder']->id] = $result;
             $run->cursor = $i + 1;
+            $run->lastSourceId = $entry['folder']->id;
         }
 
-        if ($run->cursor >= count($entries)) {
+        if ($run->cursor >= count($entries) || $this->store->stopRequested($run->id)) {
             return $this->finish($run);
         }
 
         $this->store->save($run);
 
         return $run;
+    }
+
+    /**
+     * Where this batch starts, given the list as it is now.
+     *
+     * @param list<array{folder: SourceFolder, trail: list<string>}> $entries
+     */
+    private function resume(Run $run, array $entries): int
+    {
+        if (null === $run->lastSourceId || 0 === $run->cursor) {
+            return $run->cursor;
+        }
+
+        foreach ($entries as $index => $entry) {
+            if ($entry['folder']->id === $run->lastSourceId) {
+                return $index + 1;
+            }
+        }
+
+        return max(0, min($run->cursor, count($entries)) - 1);
+    }
+
+    /**
+     * The per-site name of the one-batch-at-a-time lock. MySQL allows 64
+     * characters; the prefix is the site's table prefix.
+     */
+    private function lockName(): string
+    {
+        global $wpdb;
+
+        return substr('folderfolio_import_' . $wpdb->prefix, 0, 64);
+    }
+
+    private function lock(): bool
+    {
+        global $wpdb;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a named lock, not a data read; nothing to cache.
+        return '1' === (string) $wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s, 0)', $this->lockName()));
+    }
+
+    private function unlock(): void
+    {
+        global $wpdb;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- releasing a named lock, not a data read; nothing to cache.
+        $wpdb->query($wpdb->prepare('SELECT RELEASE_LOCK(%s)', $this->lockName()));
     }
 
     /**
@@ -270,7 +376,17 @@ final class Runner
             $still = $run->cursor === $last ? $still + 1 : 0;
             $last = $run->cursor;
 
-            if ($still >= 3) {
+            // A cursor that did not move is usually another request's batch
+            // holding the lock (a tab left open). Wait for it rather than
+            // calling that a stall: half a second at a time, for as long as
+            // one batch may reasonably take.
+            if ($still > 0 && $still < self::PATIENCE) {
+                usleep(500000);
+
+                continue;
+            }
+
+            if ($still >= self::PATIENCE) {
                 return new WP_Error(
                     'folderfolio_import_stalled',
                     __('The import stopped moving forward. Run it again to continue from where it stopped.', 'folderfolio')
@@ -288,8 +404,10 @@ final class Runner
         }
 
         if (!$run->isFinished()) {
+            // Not by writing the record, which the batch in flight would
+            // overwrite (M5): the batch reads this and stops.
+            $this->store->requestStop($run->id);
             $run->status = Run::STOPPING;
-            $this->store->save($run);
         }
 
         return $run;
@@ -332,22 +450,59 @@ final class Runner
         // so undoing it now removes folders and leaves files where they are.
         // That is the conservative direction, and the only honest one: the
         // rows it filed are no longer distinguishable from anybody else's.
+        $unfiled = $this->assignments->assignedByRun($run->id);
         $this->assignments->deleteAssignedByRun($run->id);
+
+        // The same hook every other unfiling fires (review L6), once per
+        // folder the undo took files out of.
+        foreach ($unfiled as $folderId => $attachmentIds) {
+            do_action('folderfolio_attachments_unassigned', $attachmentIds, $folderId);
+        }
 
         // Deepest first. `delete()` reparents children rather than cascading,
         // so removing a parent first would leave its children at the top level
         // and then fail to find them.
-        $created = $this->deepestFirst($run->createdFolderIds);
+        //
+        // The run's own list, and every folder marked as made by this run —
+        // the list is saved once per batch, so a batch that was interrupted
+        // left folders it had made off it (review M6).
+        $created = $this->deepestFirst(array_values(array_unique([
+            ...$run->createdFolderIds,
+            ...$this->provenance->createdBy($run->id),
+        ])));
+
+        $run->warnings = [];
 
         foreach ($created as $folderId) {
+            $name = (string) ($this->folders->find($folderId)['name'] ?? '');
+
             if ([] !== $this->assignments->attachmentIdsForFolder($folderId)) {
                 // Somebody filed something here after the import. Keeping it
-                // is the conservative half of an undo.
+                // is the conservative half of an undo — and it is said.
+                $run->warn(sprintf(
+                    /* translators: %s: folder name. */
+                    __('“%s” was kept: files were put in it after the import.', 'folderfolio'),
+                    $name
+                ));
+
+                continue;
+            }
+
+            $deleted = $this->service->delete($folderId, FolderService::CHILDREN_REPARENT);
+
+            if (is_wp_error($deleted)) {
+                // A lock put on it since, most often. Kept, and said (L6).
+                $run->warn(sprintf(
+                    /* translators: 1: folder name, 2: the reason. */
+                    __('“%1$s” was kept: %2$s', 'folderfolio'),
+                    $name,
+                    $deleted->get_error_message()
+                ));
+
                 continue;
             }
 
             $this->provenance->forget($folderId);
-            $this->service->delete($folderId, FolderService::CHILDREN_REPARENT);
         }
 
         // Provenance goes for every folder the run touched, not only the ones
@@ -388,11 +543,12 @@ final class Runner
         }
 
         $known = $this->provenance->folderIdFor($source->key(), $folder->id);
+        $madeHere = false;
 
         if (null !== $known) {
             $folderId = $known;
         } else {
-            $existing = $this->folders->findByName($folder->name, $parentId);
+            $existing = $this->folders->findByName($folder->folderName(), $parentId);
 
             if (null !== $existing) {
                 $folderId = (int) $existing['id'];
@@ -413,7 +569,7 @@ final class Runner
                 // a folder this run creates. A merged folder is somebody's own
                 // and keeps what they gave it.
                 $data = [
-                    'name' => $folder->name,
+                    'name' => $folder->folderName(),
                     'parent_id' => $parentId,
                     'sort_order' => $folder->sortOrder,
                 ];
@@ -452,9 +608,11 @@ final class Runner
                 }
                 $run->createdFolderIds[] = $folderId;
                 ++$run->foldersCreated;
+                $madeHere = true;
             }
 
-            $this->provenance->record($folderId, $source->key(), $folder->id);
+            // Marked with this run's id when this run made it (M6).
+            $this->provenance->record($folderId, $source->key(), $folder->id, $madeHere ? $run->id : null);
         }
 
         if (!in_array($folderId, $run->touchedFolderIds, true)) {
@@ -498,6 +656,29 @@ final class Runner
         $filed = $this->assignments->attachmentIdsForFolder($folderId);
         $new = array_values(array_diff($real, $filed));
 
+        // A gallery takes images, and refuses a whole batch with one file that
+        // is not (review L4): the images are filed, the rest stay where they
+        // were and are counted, as the preview counted them.
+        if ([] !== $new && (new FolderKinds())->isGallery($folderId)) {
+            $notImages = FolderKinds::notImages($new);
+
+            if ([] !== $notImages) {
+                $new = array_values(array_diff($new, $notImages));
+                $run->filesNotImages += count($notImages);
+                $run->warn(sprintf(
+                    /* translators: 1: number of files, 2: gallery name. */
+                    _n(
+                        '%1$s file is not an image and was not filed into the gallery “%2$s”.',
+                        '%1$s files are not images and were not filed into the gallery “%2$s”.',
+                        count($notImages),
+                        'folderfolio'
+                    ),
+                    number_format_i18n(count($notImages)),
+                    $folder->folderName()
+                ));
+            }
+        }
+
         if ([] === $new) {
             return $folderId;
         }
@@ -514,8 +695,14 @@ final class Runner
 
         if (is_wp_error($added)) {
             // Not fatal to the migration: the folder is made, the files stay
-            // where they were, and the report says what went wrong.
-            $run->error = $added->get_error_message();
+            // where they were, and the report says what went wrong — as a
+            // warning, not as the run's error, which says it stopped (L4).
+            $run->warn(sprintf(
+                /* translators: 1: folder name, 2: the reason. */
+                __('Files for “%1$s” were not filed: %2$s', 'folderfolio'),
+                $folder->folderName(),
+                $added->get_error_message()
+            ));
 
             return $folderId;
         }
@@ -569,6 +756,7 @@ final class Runner
 
     private function finish(Run $run): Run
     {
+        $this->store->clearStop();
         $run->status = Run::DONE;
         $run->finishedAt = current_time('mysql', true);
 

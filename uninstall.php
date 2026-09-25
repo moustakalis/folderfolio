@@ -56,6 +56,7 @@ function folderfolio_uninstall_site(): void
     delete_option('folderfolio_settings');
     delete_option('folderfolio_import_file');
     delete_option('folderfolio_import_run');
+    delete_option('folderfolio_import_stop');
 
     // Each person's rail: width, collapsed, stars, starting folder. A user
     // option since 25 Sep, so each site's copy carries that site's prefix;

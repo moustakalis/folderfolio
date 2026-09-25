@@ -37,6 +37,8 @@ export interface RunState {
     skipped_total: number;
     unreachable: Array<{ id: number; name: string; reason: string }>;
     error: string;
+    /** One folder or one file each, that did not stop the run. */
+    warnings?: string[];
     can_undo: boolean;
     /**
      * Whether the plugin this import read from is still switched on — a fact
@@ -55,6 +57,8 @@ export interface PlanCounts {
     already: number;
     skipped: number;
     unreachable: number;
+    /** Files named for a gallery that are not images: left where they are. */
+    not_images?: number;
 }
 
 /** What only an export file can say about itself — see JsonSource::facts(). */

@@ -121,7 +121,11 @@ final class TaxonomySource extends Source
             $folders[] = new SourceFolder(
                 (int) $row['term_id'],
                 0 === $parent ? null : $parent,
-                (string) $row['name']
+                // Decoded (review M7): WordPress stores a term's name through
+                // `_wp_specialchars()`, so "Sales & Marketing" sits in the table
+                // as "Sales &amp; Marketing" — and was imported that way, and
+                // failed to match a folder of yours with the real name.
+                html_entity_decode((string) $row['name'], ENT_QUOTES | ENT_HTML5, 'UTF-8')
             );
         }
 

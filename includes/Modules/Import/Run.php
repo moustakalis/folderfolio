@@ -43,6 +43,10 @@ final class Run
      * @param list<int>                                          $touchedFolderIds Created and merged-into alike.
      * @param list<int>                                          $skipped
      * @param list<array{id: int, name: string, reason: string}> $unreachable
+     * @param list<string>                                       $warnings What went wrong with one folder or one
+     *                                                                     file, without stopping the run — kept
+     *                                                                     apart from `error`, which did stop it.
+     * @param int|null                                           $lastSourceId The source folder the cursor is after.
      */
     public function __construct(
         public readonly string $id,
@@ -62,8 +66,26 @@ final class Run
         public array $unreachable = [],
         public string $startedAt = '',
         public string $finishedAt = '',
-        public string $error = ''
+        public string $error = '',
+        public array $warnings = [],
+        public ?int $lastSourceId = null,
+        public int $foldersSkipped = 0,
+        public int $filesNotImages = 0
     ) {
+    }
+
+    /**
+     * How many warnings a run keeps. The option is read on every batch, and a
+     * source with a thousand bad names needs the count and a sample, not a
+     * thousand sentences.
+     */
+    public const WARNINGS_KEPT = 50;
+
+    public function warn(string $message): void
+    {
+        if (count($this->warnings) < self::WARNINGS_KEPT) {
+            $this->warnings[] = $message;
+        }
     }
 
     public function isFinished(): bool
@@ -103,6 +125,9 @@ final class Run
             'started_at' => $this->startedAt,
             'finished_at' => $this->finishedAt,
             'error' => $this->error,
+            'warnings' => $this->warnings,
+            'folders_skipped' => $this->foldersSkipped,
+            'files_not_images' => $this->filesNotImages,
             // Undo is offered only while the folders this run made are still
             // the folders it made. Once another import has run, "undo this
             // import" stops being a sentence with one meaning.
@@ -150,7 +175,11 @@ final class Run
             $unreachable,
             (string) ($stored['started_at'] ?? ''),
             (string) ($stored['finished_at'] ?? ''),
-            (string) ($stored['error'] ?? '')
+            (string) ($stored['error'] ?? ''),
+            array_values(array_map('strval', (array) ($stored['warnings'] ?? []))),
+            isset($stored['last_source_id']) ? (int) $stored['last_source_id'] : null,
+            (int) ($stored['folders_skipped'] ?? 0),
+            (int) ($stored['files_not_images'] ?? 0)
         );
     }
 
@@ -178,6 +207,10 @@ final class Run
             'started_at' => $this->startedAt,
             'finished_at' => $this->finishedAt,
             'error' => $this->error,
+            'warnings' => $this->warnings,
+            'last_source_id' => $this->lastSourceId,
+            'folders_skipped' => $this->foldersSkipped,
+            'files_not_images' => $this->filesNotImages,
         ];
     }
 }

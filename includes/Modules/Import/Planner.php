@@ -9,6 +9,7 @@ if (!defined('ABSPATH')) {
 }
 
 use FolderFolio\Domain\AttachmentFolderRepository;
+use FolderFolio\Domain\FolderKinds;
 use FolderFolio\Domain\FolderRepository;
 
 /**
@@ -58,7 +59,8 @@ final class Planner
     public function __construct(
         private readonly FolderRepository $folders = new FolderRepository(),
         private readonly AttachmentFolderRepository $assignments = new AttachmentFolderRepository(),
-        private readonly Provenance $provenance = new Provenance()
+        private readonly Provenance $provenance = new Provenance(),
+        private readonly FolderKinds $kinds = new FolderKinds()
     ) {
     }
 
@@ -89,7 +91,7 @@ final class Planner
         $reconcile = [];
         $duplicate = [];
 
-        /** @var array<string, array{target: int|null, ids: array<int, true>}> $work by identity */
+        /** @var array<string, array{target: int|null, ids: array<int, true>, gallery: bool}> $work by identity */
         $work = [];
 
         /** @var array<int, true> $named every attachment id the source mentions */
@@ -108,7 +110,7 @@ final class Planner
             // Lowercased because findByName is case-insensitive under every
             // collation WordPress ships with, so "Logos" and "logos" in the
             // same place are one folder here whatever the source thought.
-            $key = $parentIdentity . '|' . mb_strtolower($folder->name);
+            $key = $parentIdentity . '|' . mb_strtolower($folder->folderName());
 
             if (isset($known[$folder->id])) {
                 $ours = $known[$folder->id];
@@ -141,7 +143,14 @@ final class Planner
             $slot = $identity[$folder->id];
 
             if (!isset($work[$slot])) {
-                $work[$slot] = ['target' => $ours, 'ids' => []];
+                // A gallery takes images only (tier 3 item 14): yours, or one
+                // an export file brings as a gallery. Asked here so the preview
+                // promises what the run will do (review L4).
+                $work[$slot] = [
+                    'target' => $ours,
+                    'ids' => [],
+                    'gallery' => null === $ours ? $folder->gallery : $this->kinds->isGallery($ours),
+                ];
             }
 
             foreach ($ids as $id) {
@@ -153,6 +162,7 @@ final class Planner
 
         $toAdd = 0;
         $already = 0;
+        $notImages = 0;
 
         foreach ($work as $item) {
             $ours = $item['target'];
@@ -160,6 +170,13 @@ final class Planner
             $filed = null === $ours
                 ? []
                 : array_flip($this->assignments->attachmentIdsForFolder($ours));
+
+            $refused = $item['gallery']
+                ? array_flip(FolderKinds::notImages(array_values(array_filter(
+                    array_keys($item['ids']),
+                    static fn (int $id): bool => isset($existing[$id])
+                ))))
+                : [];
 
             foreach (array_keys($item['ids']) as $id) {
                 if (!isset($existing[$id])) {
@@ -169,6 +186,12 @@ final class Planner
 
                 if (isset($filed[$id])) {
                     ++$already;
+
+                    continue;
+                }
+
+                if (isset($refused[$id])) {
+                    ++$notImages;
 
                     continue;
                 }
@@ -190,7 +213,8 @@ final class Planner
             $toAdd,
             $already,
             $skipped,
-            $tree->unreachable
+            $tree->unreachable,
+            $notImages
         );
     }
 
@@ -208,7 +232,7 @@ final class Planner
         $parentSourceId = $folder->parentId;
 
         if (null === $parentSourceId) {
-            $row = $this->folders->findByName($folder->name, null);
+            $row = $this->folders->findByName($folder->folderName(), null);
 
             return null === $row ? null : (int) $row['id'];
         }
@@ -223,7 +247,7 @@ final class Planner
             return null;
         }
 
-        $row = $this->folders->findByName($folder->name, $parentOurs);
+        $row = $this->folders->findByName($folder->folderName(), $parentOurs);
 
         return null === $row ? null : (int) $row['id'];
     }

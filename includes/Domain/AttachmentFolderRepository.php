@@ -743,6 +743,40 @@ class AttachmentFolderRepository
      *
      * @return int Rows removed.
      */
+    /**
+     * The rows one import run filed, as folder id => attachment ids — what an
+     * undo is about to remove, so it can say so (review L6).
+     *
+     * @return array<int, list<int>>
+     */
+    public function assignedByRun(string $importRun): array
+    {
+        if ($importRun === '') {
+            return [];
+        }
+
+        $wpdb = $this->wpdb;
+
+        /** @var list<array{folder_id: string, attachment_id: string}> $rows */
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own table, read by undo just before it writes; must be live.
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                'SELECT folder_id, attachment_id FROM %i WHERE import_run = %s',
+                $this->table(),
+                $importRun
+            ),
+            ARRAY_A
+        ) ?: [];
+
+        $byFolder = [];
+
+        foreach ($rows as $row) {
+            $byFolder[(int) $row['folder_id']][] = (int) $row['attachment_id'];
+        }
+
+        return $byFolder;
+    }
+
     public function deleteAssignedByRun(string $importRun): int
     {
         if ($importRun === '') {

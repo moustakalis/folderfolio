@@ -153,6 +153,29 @@ export function Report({
                 </div>
             )}
 
+            {/* One folder or one file each, that did not stop the import
+                (review L4, M8) — and, after an undo, the folders it kept and
+                why (L6). */}
+            {(run.warnings?.length ?? 0) > 0 && (
+                <div className="folderfolio-wizard__panel">
+                    <div className="folderfolio-wizard__panelTitle">
+                        {tn(
+                            'importNotesOne',
+                            'importNotesMany',
+                            run.warnings?.length ?? 0,
+                            '%s thing to look at',
+                            '%s things to look at',
+                            run.warnings?.length ?? 0
+                        )}
+                    </div>
+                    <ul className="folderfolio-wizard__panelBody folderfolio-wizard__notes">
+                        {(run.warnings ?? []).map((warning, i) => (
+                            <li key={i}>{warning}</li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+
             {run.skipped_total > 0 && (
                 <div className="folderfolio-wizard__panel">
                     <div className="folderfolio-wizard__panelTitle">

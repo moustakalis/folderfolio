@@ -199,8 +199,10 @@ final class FolderFolio
 
     /**
      * Lock a folder, or unlock it. A locked folder and everything beneath it
-     * cannot be renamed, moved, deleted or filed into by anyone without the
-     * `lock` ability.
+     * cannot be renamed, moved, reordered, deleted or have folders made inside
+     * it by anyone without the `lock` ability. Files can still be filed into
+     * it, and its colour and orders changed — a lock keeps its shape.
+     * WP-CLI passes a lock.
      *
      * @since 1.0.0
      * @return Folder|WP_Error

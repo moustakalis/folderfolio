@@ -26,7 +26,8 @@ final class SourceFolder
      *                            the folder's provenance and is what makes a
      *                            second import reconcile instead of duplicate.
      * @param int|null $parentId  Normalised: null means top level.
-     * @param string   $name      Raw, as stored. Sanitised when written.
+     * @param string   $name      Raw, as stored. `folderName()` is what is
+     *                            looked up and written.
      * @param int      $sortOrder The source's own ordering, where it had one.
      *
      * The five below are carried by one source only — a FolderFolio export
@@ -53,4 +54,39 @@ final class SourceFolder
         public readonly bool $gallery = false
     ) {
     }
+
+    /**
+     * The name this folder is looked up by and written with — review M8.
+     *
+     * `FolderService::create()` stores a name through `sanitize_text_field()`
+     * and refuses one over 191 characters. The planner and the runner looked
+     * the *raw* name up, so a name that sanitised differently — or to a
+     * sibling's name — was never found and then failed to write, and a name
+     * over 191 failed every time; one such folder ended the whole import at
+     * the same place on every rerun. Both now ask with this: sanitised, held
+     * to what a folder name may be, and never empty — a name that sanitises
+     * to nothing ("<b></b>") keeps its files under a stated placeholder
+     * rather than losing them.
+     */
+    public function folderName(): string
+    {
+        $name = trim(sanitize_text_field($this->name));
+
+        if (mb_strlen($name) > self::NAME_MAX) {
+            $name = rtrim(mb_substr($name, 0, self::NAME_MAX));
+        }
+
+        if ('' === $name) {
+            $name = sprintf(
+                /* translators: %d: the folder's id in the plugin it is being imported from. */
+                __('Untitled folder %d', 'folderfolio'),
+                $this->id
+            );
+        }
+
+        return $name;
+    }
+
+    /** What `FolderService` accepts: the `name` column is VARCHAR(191). */
+    public const NAME_MAX = 191;
 }

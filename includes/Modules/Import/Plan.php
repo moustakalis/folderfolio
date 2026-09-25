@@ -42,7 +42,8 @@ final class Plan
         public readonly int $filesToAdd,
         public readonly int $filesAlreadyFiled,
         public readonly array $skipped,
-        public readonly array $unreachable
+        public readonly array $unreachable,
+        public readonly int $filesNotImages = 0
     ) {
     }
 
@@ -72,6 +73,8 @@ final class Plan
                 'duplicate' => count($this->duplicate),
                 'files' => $this->filesToAdd,
                 'already' => $this->filesAlreadyFiled,
+                // Not images, named for a gallery: left where they are (L4).
+                'not_images' => $this->filesNotImages,
                 'skipped' => count($this->skipped),
                 'unreachable' => count($this->unreachable),
             ],

@@ -162,6 +162,22 @@ export function Preview({
                       )
                     : t('importFilesDetail', 'Added, never moved: nothing leaves a folder you made.'),
         },
+        (counts.not_images ?? 0) > 0
+            ? {
+                  label: tn(
+                      'importNotImagesOne',
+                      'importNotImagesMany',
+                      counts.not_images ?? 0,
+                      '%s file left out of a gallery',
+                      '%s files left out of a gallery',
+                      counts.not_images ?? 0
+                  ),
+                  detail: t(
+                      'importNotImagesDetail',
+                      'A gallery holds images only. These are not images, so they stay where they are.'
+                  ),
+              }
+            : null,
         counts.skipped > 0
             ? {
                   label: tn(

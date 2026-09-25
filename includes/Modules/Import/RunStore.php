@@ -25,8 +25,24 @@ final class RunStore
 {
     public const OPTION = 'folderfolio_import_run';
 
+    /**
+     * A request to stop, kept apart from the run record — review M5.
+     *
+     * Stop used to write `stopping` into the run record, and the batch in
+     * flight — which had read the record before Stop was pressed — saved it
+     * back as `running` a moment later, so the import carried on. The batch
+     * never writes this option; it only reads it.
+     */
+    public const STOP = 'folderfolio_import_stop';
+
+    /**
+     * Read live: another request (a second tab, the CLI, the batch in flight)
+     * may have written it since this one started, and a non-autoloaded
+     * option is otherwise cached for the rest of the request.
+     */
     public function current(): ?Run
     {
+        wp_cache_delete(self::OPTION, 'options');
         $stored = get_option(self::OPTION, null);
 
         if (!is_array($stored)) {
@@ -34,7 +50,32 @@ final class RunStore
         }
 
         /** @var array<string, mixed> $stored */
-        return Run::fromArray($stored);
+        $run = Run::fromArray($stored);
+
+        // Say "stopping" as soon as it has been asked for, whatever the record
+        // says — the record is the batch's to write.
+        if (null !== $run && !$run->isFinished() && $this->stopRequested($run->id)) {
+            $run->status = Run::STOPPING;
+        }
+
+        return $run;
+    }
+
+    public function requestStop(string $runId): void
+    {
+        update_option(self::STOP, $runId, false);
+    }
+
+    public function stopRequested(string $runId): bool
+    {
+        wp_cache_delete(self::STOP, 'options');
+
+        return get_option(self::STOP, '') === $runId;
+    }
+
+    public function clearStop(): void
+    {
+        delete_option(self::STOP);
     }
 
     public function save(Run $run): void
@@ -45,5 +86,6 @@ final class RunStore
     public function clear(): void
     {
         delete_option(self::OPTION);
+        delete_option(self::STOP);
     }
 }
