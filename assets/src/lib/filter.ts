@@ -182,6 +182,9 @@ interface RankedModel {
 
 interface MediaCollection {
     comparator?: unknown;
+    length?: number;
+    models?: unknown[];
+    reset?: (models: unknown[]) => unknown;
     props: {
         get(key: string): unknown;
         on(event: string, callback: () => void): void;
@@ -204,7 +207,7 @@ function mediaModels(): WpMediaModels | undefined {
  * still exists: `set()` sorts right after. The offset is how many the query
  * already holds, so page two starts at 80. Done once per page load.
  */
-function stampServerOrder(): boolean {
+export function stampServerOrder(): boolean {
     const Query = mediaModels()?.Query;
 
     if (!Query) {
@@ -262,7 +265,19 @@ export function keepServerOrder(collection: MediaCollection): void {
         const folderId = raw === '' || raw === null || raw === undefined ? null : Number(raw);
 
         if (folderId !== null && folderId > 0) {
+            const late = collection.comparator !== byServerOrder && (collection.length ?? 0) > 0;
+
             collection.comparator = byServerOrder;
+
+            // Attached after the first page had arrived: put what is already
+            // there in the server's order too. The stamps are on it as long as
+            // stampServerOrder() ran before that page was parsed, which is why
+            // the rail calls it on mount (trap 132). A reset, not a sort: the
+            // grid's view re-renders its tiles on `reset` and ignores `sort`,
+            // so a sorted collection still showed the tiles in date order.
+            if (late && collection.models) {
+                collection.reset?.(collection.models.slice());
+            }
         } else if (collection.comparator === byServerOrder) {
             collection.comparator = coreComparator;
         }

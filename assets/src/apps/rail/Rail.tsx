@@ -33,7 +33,7 @@ import {
 import { useRail } from './store';
 import { can } from '../../lib/can';
 import { useIsNarrow } from '../../lib/narrow';
-import { applyFolderFilter, FOLDER_QUERY_VAR, keepServerOrder, showUploads, watchFolderLinks } from '../../lib/filter';
+import { applyFolderFilter, FOLDER_QUERY_VAR, keepServerOrder, showUploads, stampServerOrder, watchFolderLinks } from '../../lib/filter';
 import { isMedia, t } from '../../core/api';
 import { watchListWidth } from '../../lib/list-width';
 
@@ -279,33 +279,70 @@ export function Rail({
      * a folder's own file order and its Custom positions were re-sorted to
      * newest first on arrival — see keepServerOrder() in lib/filter.ts. Attached
      * once to the grid's collection; list mode has none and renders on the
-     * server. media-grid.js builds the frame on DOM ready, which is almost
-     * always before this mounts; the short retry is for the rest.
+     * server. media-grid.js builds the frame from a ready handler, which can be
+     * after this mounts — the observer below is what finds it (trap 132).
      */
     useEffect(() => {
-        let tries = 0;
-        let timer: ReturnType<typeof setTimeout> | undefined;
+        // The stamp goes on the Query now, before the frame exists: a page the
+        // server sends before it is in place carries no order to keep.
+        stampServerOrder();
 
-        const attach = () => {
+        const attach = (): boolean => {
             const collection = window.wp?.media?.frame?.content?.get?.()?.collection;
 
-            if (collection?.props) {
-                keepServerOrder(collection as Parameters<typeof keepServerOrder>[0]);
-                // And an upload made in a folder shows while it uploads —
-                // showUploads() has why core does not.
-                showUploads(collection as Parameters<typeof showUploads>[0]);
-
-                return;
+            if (!collection?.props) {
+                return false;
             }
 
-            if (++tries < 20 && document.querySelector('.media-frame')) {
-                timer = setTimeout(attach, 250);
-            }
+            keepServerOrder(collection as Parameters<typeof keepServerOrder>[0]);
+            // And an upload made in a folder shows while it uploads —
+            // showUploads() has why core does not.
+            showUploads(collection as Parameters<typeof showUploads>[0]);
+
+            return true;
         };
 
-        attach();
+        if (attach()) {
+            return;
+        }
 
-        return () => clearTimeout(timer);
+        /*
+         * Not there yet: watch for it, rather than retry on a timer.
+         *
+         * The rail mounts before DOMContentLoaded (the bundle is deferred), and
+         * media-grid.js builds the frame from a ready handler — measured 25 Sep
+         * in the rig, this effect at ~208ms and the frame a few milliseconds
+         * later. The old retry ran only if a frame already existed, so it
+         * gave up, and the grid kept a folder's files in date order and never
+         * showed an upload in its folder; it had been passing by the margin of
+         * an effect's timing (trap 132). A timer that did find the frame found
+         * it after the first page had been drawn, and the tiles then jumped.
+         * A MutationObserver's callback runs as a microtask after the frame is
+         * inserted — before the first page can come back from the server.
+         *
+         * Only where a grid is coming: `#wp-media-grid` is in the server's
+         * markup on the grid, and list mode has neither it nor a frame.
+         */
+        const root = document.getElementById('wp-media-grid') ?? document.querySelector('.media-frame')?.parentElement;
+
+        if (!root) {
+            return;
+        }
+
+        const observer = new MutationObserver(() => {
+            if (attach()) {
+                observer.disconnect();
+            }
+        });
+
+        observer.observe(root, { childList: true, subtree: true });
+
+        const timer = setTimeout(() => observer.disconnect(), 10_000);
+
+        return () => {
+            observer.disconnect();
+            clearTimeout(timer);
+        };
     }, []);
 
     useEffect(() => {
@@ -364,6 +401,10 @@ export function Rail({
         }
     }, [nodes, selectedId]);
 
+    const scrollRef = useRef<HTMLDivElement>(null);
+
+    useStickyControls(scrollRef);
+
     return (
         <>
             {/*
@@ -403,40 +444,53 @@ export function Rail({
             <div className="folderfolio-rail__app">
                 <Header />
                 <FixedRows />
-                {/* This person's shortcuts — tier 2 item 10. Nothing without a star. */}
-                {isError ? null : <Starred nodes={nodes} />}
-                {/* Saved views — tier 3 item 13. Media only for now (13c). */}
-                {isError || !isMedia() ? null : <SmartGroup nodes={nodes} />}
-                <RailControls
-                    selected={selectedNode}
-                    nodes={nodes}
-                    onDelete={() => selectedNode && startDelete(selectedNode)}
-                />
 
-                <div className="folderfolio-rail__body">
-                    {isError ? (
-                        <div className="folderfolio-rail__error" role="alert">
-                            <p>{t('treeFailed', 'Could not load your folders.')}</p>
-                            <p className="folderfolio-rail__error-detail">
-                                {t('treeFailedWhere', 'The request to /folderfolio/v1/folders did not succeed.')}
-                            </p>
-                            <button type="button" className="folderfolio-rail__ghost" onClick={() => void refetch()}>
-                                {t('retry', 'Retry')}
-                            </button>
-                        </div>
-                    ) : query.trim() !== '' ? (
-                        <Results nodes={nodes} />
-                    ) : narrow ? (
-                        <Levels nodes={nodes} loading={isPending} />
-                    ) : (
-                        <Tree
-                            nodes={nodes}
-                            loading={isPending}
-                            onSaveEdit={saveEdit}
-                            onCancelEdit={() => edit(null)}
-                            onDelete={startDelete}
-                        />
-                    )}
+                {/*
+                  One scroller from here down — Nick, 25 Sep, option A on board
+                  NF7bQktuksgBSi4rCfoLvf. Starred and Smart used to sit in the
+                  fixed chrome above the search line, so every row in them came
+                  out of the folder list: 31.8px of it at a 669px-tall phone,
+                  none with five of each. Now they scroll away above the search
+                  line, which sticks at the top of the scroller (and *Top level*
+                  sticks beneath it), so the fixed chrome is the header, the two
+                  fixed rows and the footer whatever anybody has starred.
+                */}
+                <div className="folderfolio-rail__scroll" ref={scrollRef}>
+                    {/* This person's shortcuts — tier 2 item 10. Nothing without a star. */}
+                    {isError ? null : <Starred nodes={nodes} />}
+                    {/* Saved views — tier 3 item 13. Media only for now (13c). */}
+                    {isError || !isMedia() ? null : <SmartGroup nodes={nodes} />}
+                    <RailControls
+                        selected={selectedNode}
+                        nodes={nodes}
+                        onDelete={() => selectedNode && startDelete(selectedNode)}
+                    />
+
+                    <div className="folderfolio-rail__body">
+                        {isError ? (
+                            <div className="folderfolio-rail__error" role="alert">
+                                <p>{t('treeFailed', 'Could not load your folders.')}</p>
+                                <p className="folderfolio-rail__error-detail">
+                                    {t('treeFailedWhere', 'The request to /folderfolio/v1/folders did not succeed.')}
+                                </p>
+                                <button type="button" className="folderfolio-rail__ghost" onClick={() => void refetch()}>
+                                    {t('retry', 'Retry')}
+                                </button>
+                            </div>
+                        ) : query.trim() !== '' ? (
+                            <Results nodes={nodes} />
+                        ) : narrow ? (
+                            <Levels nodes={nodes} loading={isPending} />
+                        ) : (
+                            <Tree
+                                nodes={nodes}
+                                loading={isPending}
+                                onSaveEdit={saveEdit}
+                                onCancelEdit={() => edit(null)}
+                                onDelete={startDelete}
+                            />
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -607,4 +661,64 @@ function useLateMount(find: () => HTMLElement | null): HTMLElement | null {
     }, [find, mount]);
 
     return mount;
+}
+
+/**
+ * The search line is sticky inside the scroller; two things follow from it.
+ *
+ * `--ff-controls-h` — its height, published on the scroller, which is where
+ * the level view's *Top level* bar sticks (under it, not at the top) and how
+ * far a row focused by the keyboard is kept below the scroller's top edge. A
+ * number measured rather than restated in CSS: the line is 52px on a desktop
+ * and 66 on a phone, and restating it would be a second copy of the control
+ * sizes to drift.
+ *
+ * `is-stuck` — set while the line is pinned with rows passing under it, which
+ * is when it carries the edge shadow the scroller's own top edge used to (the
+ * opaque band covers that one). Not while Starred and Smart are still sliding
+ * away above it: then the edge the content is cut at is the scroller's, and
+ * the scroller's own shadow is the one showing.
+ */
+function useStickyControls(scrollRef: React.RefObject<HTMLDivElement>): void {
+    useEffect(() => {
+        const scroller = scrollRef.current;
+        const controls = scroller?.querySelector<HTMLElement>(':scope > .folderfolio-rail__controls');
+
+        if (!scroller || !controls) {
+            return;
+        }
+
+        const measure = () => {
+            scroller.style.setProperty('--ff-controls-h', `${controls.getBoundingClientRect().height}px`);
+        };
+
+        const stuck = () => {
+            // Measured here as well: a sheet opened in a background tab gets
+            // its ResizeObserver callback only when the tab is next painted,
+            // and a scroll is the moment the number is needed.
+            measure();
+
+            const pinned =
+                scroller.scrollTop > 0 &&
+                controls.getBoundingClientRect().top - scroller.getBoundingClientRect().top < 0.5;
+
+            controls.classList.toggle('is-stuck', pinned);
+        };
+
+        measure();
+        stuck();
+
+        const resize = new ResizeObserver(() => {
+            measure();
+            stuck();
+        });
+
+        resize.observe(controls);
+        scroller.addEventListener('scroll', stuck, { passive: true });
+
+        return () => {
+            resize.disconnect();
+            scroller.removeEventListener('scroll', stuck);
+        };
+    }, [scrollRef]);
 }

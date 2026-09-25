@@ -211,12 +211,48 @@
  * wrapped — which is why the field's own margin is overridden here rather
  * than removed from it.
  */
+/*
+ * The search line — sticky at the top of the rail's scroller since 25 Sep
+ * (option A): Starred and Smart scroll away above it, the folders pass under
+ * it. So it is a band now, not a line of controls in the column's margin: the
+ * inset is padding, the panel colour fills it so rows do not show through its
+ * edges, and it carries the hairline that closes it — which used to be the
+ * folder scroller's top border, and would now scroll away with the first row.
+ *
+ * z-index 3: over the rows' own positioned parts (1) and the level view's
+ * pinned bar (2), which slide under it. Its menus are on the body
+ * (AnchoredMenu), not inside it — this band is a stacking context and sits in
+ * a scroller, and a menu left here would be clipped by the one and drawn under
+ * core's media toolbar by the other.
+ */
 .folderfolio-rail__controls {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 10px 12px;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: 10px 12px;
+  background: var(--ff-panel);
+  border-bottom: 1px solid var(--ff-line);
+}
+
+/* Pinned, with rows passing under it: the scroller's top-edge shadow, drawn
+   under the band instead (the band covers the scroller's own). */
+.folderfolio-rail__controls.is-stuck::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: 100%;
+  height: 7px;
+  background: radial-gradient(farthest-side at 50% 0, rgba(0, 0, 0, 0.16), transparent);
+  pointer-events: none;
+}
+
+/* The level view's pinned bar is the top edge there, as it always was. */
+.folderfolio-rail__scroll:has(.folderfolio-levels__head) .folderfolio-rail__controls.is-stuck::after {
+  content: none;
 }
 
 .folderfolio-rail__controls .folderfolio-rail__search {
@@ -805,8 +841,8 @@
 
 /**
  * This person's shortcuts, between Unassigned and the search — shown only once
- * they have a star. Five rows, then it scrolls: a list that grew without end
- * would push the tree off the rail.
+ * they have a star. At the top of the rail's scroller, above the sticky search
+ * line, so it scrolls away rather than taking the folders' room.
  */
 .folderfolio-rail__starred {
   display: grid;
@@ -826,8 +862,14 @@
 
 .folderfolio-rail__starred-list {
   display: grid;
-  max-height: calc(var(--ff-row-h) * 5);
-  overflow-y: auto;
+
+  /*
+   * No cap of its own since 25 Sep (option A). It had five rows and then
+   * scrolled — a scroller inside the rail's scroller, which on a phone is a
+   * list you cannot scroll past without first scrolling to its end. The group
+   * is inside the rail's one scroller now, so however long it grows it
+   * scrolls away above the search line instead of taking the folders' room.
+   */
 
   /*
    * No inset of its own: its rows are `.folderfolio-rail__fixed-row`s, full

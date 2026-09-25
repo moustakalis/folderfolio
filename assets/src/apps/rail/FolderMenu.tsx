@@ -61,7 +61,7 @@ import {
 import { downloadFolder } from './download';
 import { planSiblingMove } from './move';
 import { heldLabel, mayPaste, planPaste, stillThere, usePaste, type Where } from './paste';
-import { Menu } from './Menu';
+import { AnchoredMenu, Menu } from './Menu';
 import type { FolderNode } from './queries';
 import { useReorderFolders, useSetFolderColor, useSetFolderKind, useSetFolderMark, useSetFolderSort } from './queries';
 import { hasLockInside, isBlocked, lockingName } from './locks';
@@ -981,7 +981,17 @@ function FolderMenuItems({ flyout = false, folder, ordered, onDelete, onClose }:
  * from its left edge would hang off the rail entirely. `Menu` supplies
  * Escape, the outside click, and focus returning to the button.
  */
-export function FolderMenu(props: FolderMenuProps) {
+export function FolderMenu({ anchor, ...props }: FolderMenuProps & { anchor?: HTMLElement | null }) {
+    // The control line's door below 782px is pinned to its button on the
+    // body — see AnchoredMenu for why a menu cannot stay inside that line.
+    if (anchor !== undefined) {
+        return (
+            <AnchoredMenu anchor={anchor} className="folderfolio-menu--folder" label={props.folder.name} onClose={props.onClose}>
+                <FolderMenuItems {...props} />
+            </AnchoredMenu>
+        );
+    }
+
     return (
         <Menu className="folderfolio-menu--folder" onClose={props.onClose}>
             <FolderMenuItems {...props} />

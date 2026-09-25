@@ -198,27 +198,29 @@ body.folderfolio-has-rail .folderfolio-rail {
   display: none;
 }
 
-/* The scrolling region. min-height:0 on both this and the rail is what lets it
-   scroll instead of growing the flex column past the viewport. */
-.folderfolio-rail__body {
+/*
+ * The scrolling region — Starred, Smart, the search line and the folders, one
+ * scroller since 25 Sep (Nick, option A on board NF7bQktuksgBSi4rCfoLvf).
+ * min-height:0 on both this and the rail is what lets it scroll instead of
+ * growing the flex column past the viewport.
+ *
+ * It used to be `__body` alone, with Starred, Smart and the search line fixed
+ * above it — and everything fixed above the one scroller comes out of it
+ * (trap 127). At a 669px-tall phone the sheet's 75dvh left the folders 31.8px
+ * with one star and one smart folder, and nothing with five of each; the wide
+ * rail at 720px tall was down to 14px. Now the fixed chrome is the header and
+ * the two fixed rows, the same whatever anybody has starred, and the groups
+ * scroll away above the search line, which sticks (`__controls`).
+ */
+.folderfolio-rail__scroll {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 6px 0 12px;
 
-  /**
-   * The hairline that closes the search band.
-   *
-   * Every other band in the rail ends in one — header, toolbar, fixed rows —
-   * and the search did not, so the field appeared to float above the tree
-   * rather than to sit in a band of its own. It goes on the tree's top edge
-   * rather than the field's bottom because the field is inset by 12px each
-   * side and the rule is full bleed, like the other three; and because a
-   * border on a scrolling box stays at its edge instead of scrolling away
-   * with the first row.
-   */
-  border-top: 1px solid var(--ff-line);
+  /* A row the keyboard focuses is brought into view below the pinned search
+     line, not under it. The height is measured — see useStickyControls. */
+  scroll-padding-top: var(--ff-controls-h, 0px);
 
   /**
    * The two edges say when there is more.
@@ -248,14 +250,11 @@ body.folderfolio-has-rail .folderfolio-rail {
    * Measured down the middle of the rail: 255 all the way at rest; 219 at the
    * darkest row when scrolled, over a 7px ramp back to 255.
    *
-   * The positioning area is the padding box, so both sit *inside* the border
-   * above rather than under it.
-   *
-   * One blind spot, and it is deliberate: in the level view the pinned header
-   * is opaque and sits exactly where the top shadow is drawn, so it covers it.
-   * The header is the top edge there — rows visibly slide under it — so the
-   * cue is not lost; giving it a shadow of its own would mean a sentinel and
-   * an observer to know when it is stuck, which is script, and this is not.
+   * The top one shows while Starred and Smart are sliding away above the
+   * search line. Once the line is pinned it covers this edge, and the line
+   * carries the shadow itself (`__controls.is-stuck`) — except in the level
+   * view, where the pinned *Top level* bar is the top edge and rows visibly
+   * slide under it, as before.
    */
   background:
     linear-gradient(var(--ff-panel) 30%, transparent) top / 100% 14px,
@@ -266,6 +265,11 @@ body.folderfolio-has-rail .folderfolio-rail {
       bottom / 100% 7px;
   background-repeat: no-repeat;
   background-attachment: local, local, scroll, scroll;
+}
+
+/* The folders, below the search line. Not a scroller of its own any more. */
+.folderfolio-rail__body {
+  padding: 6px 0 12px;
 }
 
 /**
@@ -845,22 +849,18 @@ body.folderfolio-resizing * {
     position: sticky;
 
     /**
-     * Zero, and the scrollport's top padding is what makes it mean zero.
+     * Under the pinned search line, whose height the rail measures
+     * (`--ff-controls-h`, useStickyControls) — since 25 Sep the line and the
+     * folders share one scroller, and the line sticks at its top.
      *
-     * A sticky offset is measured from the scrollport's **padding** box, so
-     * while `.folderfolio-rail__body` carried `padding: 6px 0 12px` over its
-     * 1px top border, `top: 0` pinned the band seven pixels down from the
-     * hairline and scrolled rows kept drawing in the strip above it — measured
-     * body top 353.4, band stuck at 360.4. `top: -6px` cancelled the six but
-     * left the band floating by the same six at the top of the scroll, where
-     * nothing is stuck and the padding is simply there.
-     *
-     * So the padding goes instead (see `:has(.folderfolio-levels__head)`
-     * above) and the offset is honest again: stuck and unstuck now agree, both
-     * one pixel below the scrollport's border box. The two are tied, and this
-     * note is the only thing tying them.
+     * A sticky offset is measured from the scrollport's **padding** box, and
+     * the scroller has none, so the band meets the line's own bottom rule both
+     * stuck and at rest. At rest it is there because `__body` gives up its top
+     * padding when a band is in it (`:has(.folderfolio-levels__head)` above);
+     * the two agreeing is what the 20 Sep report was about (a six-pixel gap in
+     * one state and not the other), and `responsive.spec.ts` holds both.
      */
-    top: 0;
+    top: var(--ff-controls-h, 0px);
 
     /**
      * Two, not one, and the one is why the rows showed through it.

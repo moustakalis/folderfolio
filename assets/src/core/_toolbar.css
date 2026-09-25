@@ -102,6 +102,24 @@
   border-color: var(--ff-off);
 }
 
+/**
+ * The control line's menus, on the body and pinned to their button
+ * (AnchoredMenu, 25 Sep). `useAnchoredPanel` writes `left` and one of `top` or
+ * `bottom`; `--ff-room` is the height it found. Two classes, to out-rank
+ * `.folderfolio-menu`'s `absolute; top: 100%` and `--end`'s and `--folder`'s
+ * `right: 0`. Out-ranked rather than tied, though this file comes last: the
+ * row menu's own version of this rule was the fourth time a tie lost (trap 79).
+ */
+.folderfolio-menu.folderfolio-menu--anchored {
+  position: fixed;
+  top: auto;
+  right: auto;
+  box-sizing: border-box;
+  z-index: 100000;
+  max-height: var(--ff-room, none);
+  overflow-y: auto;
+}
+
 /* The panel sets its own gutter, so its rows take it too — a menu item's own
    10px against the heading's 12px is a 2px stagger down the left edge. */
 .folderfolio-menu--folder .folderfolio-menu__item {

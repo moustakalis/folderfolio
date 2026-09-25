@@ -67,7 +67,13 @@ export interface AnchoredPanel<T extends HTMLElement> {
  */
 export function useAnchoredPanel<T extends HTMLElement>(
     anchor: HTMLElement | null,
-    onClose: () => void
+    onClose: () => void,
+    /**
+     * Which edge of the trigger the panel hangs from. `end` for the control
+     * line's menus, which sit at the rail's right edge and open back across
+     * it, as they did while they were inside it (25 Sep).
+     */
+    align: 'start' | 'end' = 'start'
 ): AnchoredPanel<T> {
     const ref = useRef<T>(null);
     const [at, setAt] = useState<
@@ -84,7 +90,7 @@ export function useAnchoredPanel<T extends HTMLElement>(
             const width = ref.current?.offsetWidth ?? ASSUMED_WIDTH;
             const left = Math.max(
                 MARGIN,
-                Math.min(box.left, window.innerWidth - width - MARGIN)
+                Math.min(align === 'end' ? box.right - width : box.left, window.innerWidth - width - MARGIN)
             );
 
             /*
@@ -123,6 +129,15 @@ export function useAnchoredPanel<T extends HTMLElement>(
             const panel = ref.current;
             const natural = panel ? panel.scrollHeight + panel.offsetHeight - panel.clientHeight : 0;
             const usable = window.innerHeight - 2 * MARGIN;
+
+            // Whole below, when it fits there: the flip below is for a panel
+            // that would be squeezed, and the Sort menu — 133px under a
+            // trigger with 287px beneath it — was flipped above for nothing.
+            if (natural > 0 && natural <= below) {
+                setAt({ top: box.bottom + 2, left, room: natural });
+
+                return;
+            }
 
             if (natural > 0 && natural <= usable && natural > below) {
                 setAt(
@@ -183,7 +198,7 @@ export function useAnchoredPanel<T extends HTMLElement>(
             window.removeEventListener('resize', place);
             window.removeEventListener('scroll', place, true);
         };
-    }, [anchor]);
+    }, [anchor, align]);
 
     useEffect(() => {
         const onKey = (event: KeyboardEvent) => {

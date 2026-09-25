@@ -635,33 +635,40 @@ test.describe('the rail across viewport widths', () => {
         const band = page.locator('.folderfolio-levels__head');
         await expect(band).toBeVisible();
 
+        // Since 25 Sep (option A) the band sits under the pinned search line,
+        // inside one scroller with it, and meets the line's bottom rule.
         const gap = async () =>
             page.evaluate(() => {
-                const body = document.querySelector('.folderfolio-rail__body');
+                const scroller = document.querySelector('.folderfolio-rail__scroll');
+                const controls = document.querySelector('.folderfolio-rail__controls');
                 const head = document.querySelector('.folderfolio-levels__head');
-                if (!(body instanceof HTMLElement) || !(head instanceof HTMLElement)) {
+                if (!(scroller instanceof HTMLElement) || !(controls instanceof HTMLElement) || !(head instanceof HTMLElement)) {
                     return null;
                 }
                 return {
-                    gap: head.getBoundingClientRect().top - body.getBoundingClientRect().top,
-                    scrollable: body.scrollHeight - body.clientHeight,
+                    gap: head.getBoundingClientRect().top - controls.getBoundingClientRect().bottom,
+                    pinned: controls.getBoundingClientRect().top - scroller.getBoundingClientRect().top,
+                    scrollable: scroller.scrollHeight - scroller.clientHeight,
                 };
             });
 
         const atRest = await gap();
         expect(atRest).not.toBeNull();
-        expect(atRest!.gap).toBeCloseTo(1, 1);
+        expect(atRest!.gap).toBeCloseTo(0, 1);
         // The state the fix is *about* only exists if there is a scroll to be
         // at the top of; if this ever goes to zero the assertion below is vacuous.
         expect(atRest!.scrollable).toBeGreaterThan(0);
 
         await page.evaluate(() => {
-            document.querySelector('.folderfolio-rail__body')!.scrollTop = 120;
+            const scroller = document.querySelector('.folderfolio-rail__scroll')!;
+            scroller.scrollTop = 120;
+            scroller.dispatchEvent(new Event('scroll'));
         });
         await page.waitForTimeout(150);
 
         const stuck = await gap();
-        expect(stuck!.gap).toBeCloseTo(1, 1);
+        expect(stuck!.gap).toBeCloseTo(0, 1);
+        expect(stuck!.pinned).toBeCloseTo(0, 1);
     });
 
     /**

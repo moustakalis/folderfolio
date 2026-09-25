@@ -39,7 +39,7 @@ import {
     ChevronsUpDownIcon,
     EllipsisIcon,
 } from './icons';
-import { Menu } from './Menu';
+import { AnchoredMenu } from './Menu';
 import type { FolderNode } from './queries';
 import { Search } from './Search';
 import { SORT_LABELS, sortTree, useRail } from './store';
@@ -64,6 +64,9 @@ export function RailControls({
     const collapseAll = useRail((s) => s.collapseAll);
     const [sortOpen, setSortOpen] = useState(false);
     const [moreOpen, setMoreOpen] = useState(false);
+    // The buttons the two menus are pinned to (AnchoredMenu).
+    const [sortButton, setSortButton] = useState<HTMLButtonElement | null>(null);
+    const [moreButton, setMoreButton] = useState<HTMLButtonElement | null>(null);
 
     // Only a real folder has a menu. All media and Unassigned are selections
     // but not folders, which is exactly the case a disabled state is for.
@@ -143,6 +146,7 @@ export function RailControls({
                 disabled and carries no permission. */}
             <div className="folderfolio-rail__control-wrap">
                 <button
+                    ref={setSortButton}
                     type="button"
                     className="folderfolio-rail__control"
                     aria-haspopup="menu"
@@ -155,7 +159,12 @@ export function RailControls({
                 </button>
 
                 {sortOpen ? (
-                    <Menu className="folderfolio-menu--end" onClose={() => setSortOpen(false)}>
+                    <AnchoredMenu
+                        anchor={sortButton}
+                        className="folderfolio-menu--end"
+                        label={t('sort', 'Sort')}
+                        onClose={() => setSortOpen(false)}
+                    >
                         {SORT_LABELS.map((option) => (
                             <button
                                 key={option.value}
@@ -174,13 +183,14 @@ export function RailControls({
                                 {t(option.label, option.fallback)}
                             </button>
                         ))}
-                    </Menu>
+                    </AnchoredMenu>
                 ) : null}
             </div>
 
             {narrow ? (
                 <div className="folderfolio-rail__control-wrap">
                     <button
+                        ref={setMoreButton}
                         type="button"
                         className="folderfolio-rail__control"
                         disabled={!actable || !canOpenMenu}
@@ -195,6 +205,7 @@ export function RailControls({
 
                     {moreOpen && selected ? (
                         <FolderMenu
+                            anchor={moreButton}
                             folder={selected}
                             ordered={ordered}
                             onDelete={onDelete}
