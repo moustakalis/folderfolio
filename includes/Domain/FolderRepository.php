@@ -549,6 +549,45 @@ class FolderRepository
     }
 
     /**
+     * Delete every meta row (lock, pin, sorts, kind, provenance) of these
+     * folders — review M13.
+     *
+     * Called in the same transaction as the folder delete. Left behind, the
+     * rows outlive the folder, and on a server that hands a deleted id out
+     * again (MySQL 5.7 after a restart re-reads AUTO_INCREMENT from the table)
+     * the next new folder was born locked, pinned and a gallery, and a re-run
+     * import filed into it.
+     *
+     * @param list<int> $ids
+     * @return int|WP_Error Meta rows removed.
+     */
+    public function deleteMeta(array $ids): int|WP_Error
+    {
+        $ids = array_values(array_filter(array_map('intval', $ids), static fn (int $id): bool => $id > 0));
+
+        if ($ids === []) {
+            return 0;
+        }
+
+        $wpdb = $this->wpdb;
+        $placeholders = implode(', ', array_fill(0, count($ids), '%d'));
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- a write to our own table, bumped below; $placeholders is one %d per id, all bound here.
+        $deleted = $wpdb->query($wpdb->prepare("DELETE FROM %i WHERE folder_id IN ({$placeholders})", $wpdb->prefix . 'folderfolio_folder_meta', ...$ids));
+
+        if ($deleted === false) {
+            return new WP_Error(
+                'folderfolio_folder_delete_failed',
+                __('The folder could not be deleted.', 'folderfolio')
+            );
+        }
+
+        wp_cache_set_last_changed('folderfolio');
+
+        return (int) $deleted;
+    }
+
+    /**
      * Delete a folder.
      *
      * @return bool|WP_Error

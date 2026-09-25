@@ -1191,12 +1191,23 @@ class FolderService
 
         // Validated before the transaction opens: nothing here writes, and a
         // request that is going to be refused should not cost a transaction.
+        //
+        // A cascade deletes everything under the folder too, so a destination
+        // inside it would be filled and then deleted, and the files would end
+        // up in no folder while the call said it succeeded (review M3). A
+        // reparent keeps the children, so one of them is a fine destination.
+        $destination = $reassignAttachmentsTo === null ? null : $this->folders->find($reassignAttachmentsTo);
+
         if (
             $reassignAttachmentsTo !== null
             && (
                 $reassignAttachmentsTo === $id
-                || $this->folders->find($reassignAttachmentsTo) === null
-                || $this->wrongType($this->folders->find($reassignAttachmentsTo), $folder->objectType) !== null
+                || $destination === null
+                || $this->wrongType($destination, $folder->objectType) !== null
+                || (
+                    $children === self::CHILDREN_CASCADE
+                    && FolderPath::isWithin((string) $destination['path'], $folder->path)
+                )
             )
         ) {
             return new WP_Error(
@@ -1248,6 +1259,12 @@ class FolderService
                     return $deleted;
                 }
 
+                $meta = $this->folders->deleteMeta($ids);
+
+                if (is_wp_error($meta)) {
+                    return $meta;
+                }
+
                 Transaction::after(static function () use ($id, $children, $ids): void {
                     do_action('folderfolio_folder_deleted', $id, $children, $ids);
                 });
@@ -1277,6 +1294,12 @@ class FolderService
 
             if (is_wp_error($removed)) {
                 return $removed;
+            }
+
+            $meta = $this->folders->deleteMeta([$id]);
+
+            if (is_wp_error($meta)) {
+                return $meta;
             }
 
             Transaction::after(static function () use ($id, $children): void {

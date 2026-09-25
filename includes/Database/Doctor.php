@@ -46,6 +46,7 @@ final class Doctor
             $this->depthDrift(),
             $this->cycles(),
             $this->orphanedAssignments(),
+            $this->orphanedMeta(),
             $this->assignmentsWithoutMedia(),
             $this->storageEngine(),
         ]));
@@ -298,6 +299,35 @@ final class Doctor
             'orphaned_assignment',
             'warning',
             __('Assignments pointing at a folder that no longer exists.', 'folderfolio'),
+            $ids
+        );
+    }
+
+    /**
+     * Folder meta (lock, pin, sorts, kind, provenance) for a folder that no
+     * longer exists — left by deletes before review M13.
+     *
+     * @return Finding|null
+     */
+    private function orphanedMeta(): ?array
+    {
+        global $wpdb;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- our own tables; a health check must read live rows, never a cache.
+        $ids = $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT DISTINCT m.folder_id FROM %i AS m
+                 LEFT JOIN %i AS f ON f.id = m.folder_id
+                 WHERE f.id IS NULL",
+                $wpdb->prefix . 'folderfolio_folder_meta',
+                $this->folders()
+            )
+        ) ?: [];
+
+        return $this->finding(
+            'orphaned_meta',
+            'warning',
+            __('Folder settings (lock, pin, sort, kind) kept for a folder that no longer exists.', 'folderfolio'),
             $ids
         );
     }

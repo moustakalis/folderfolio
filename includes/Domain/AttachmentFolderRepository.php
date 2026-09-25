@@ -775,7 +775,9 @@ class AttachmentFolderRepository
      * delete, a migration, or a version of this plugin before that hook
      * existed.
      *
-     * Doctor reports both and repairs neither; this is the repair, run from
+     * And a third, since review M13: folder meta whose folder is gone.
+     *
+     * Doctor reports all three and repairs none; this is the repair, run from
      * the Status tab by somebody who has read what it found. Both statements
      * are NOT EXISTS rather than joins, because a LEFT JOIN … IS NULL delete
      * needs a different syntax on MySQL and MariaDB.
@@ -813,6 +815,21 @@ class AttachmentFolderRepository
                 $table,
                 $wpdb->posts,
                 $table
+            )
+        );
+
+        // And meta rows whose folder is gone (review M13): left by deletes
+        // before the delete took them with it.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- a write to our own table; changed() bumps the 'folderfolio' last_changed key.
+        $removed += (int) $wpdb->query(
+            $wpdb->prepare(
+                'DELETE FROM %i
+                 WHERE NOT EXISTS (
+                     SELECT 1 FROM %i f WHERE f.id = %i.folder_id
+                 )',
+                $wpdb->prefix . 'folderfolio_folder_meta',
+                $folders,
+                $wpdb->prefix . 'folderfolio_folder_meta'
             )
         );
 

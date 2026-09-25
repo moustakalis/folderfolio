@@ -144,8 +144,9 @@ class Schema
         //
         // It shipped with PRIMARY KEY (folder_id) - one meta row per folder,
         // ever. dbDelta adds columns and indexes but will not alter a primary
-        // key, so the table has to go and come back. Nothing reads or writes it
-        // yet; the row count is checked anyway rather than assumed.
+        // key, so the table has to go and come back — only while it is empty,
+        // which `dropIfEmpty()` checks rather than assumes: it holds locks,
+        // pins, sorts, kinds and import provenance since tier 2.
         $table_meta = $wpdb->prefix . 'folderfolio_folder_meta';
 
         $this->dropIfEmpty($table_meta);
