@@ -153,6 +153,13 @@ final class Transaction
         }
 
         if ($outermost) {
+            // Once more, now that other connections can see the rows (review
+            // M4). Every write inside bumped the key while the transaction was
+            // open, so another request — a gallery render during a long paste
+            // — could read the old rows and cache them under the new key; with
+            // a persistent object cache nothing else would ever move it on.
+            // Before the hooks, so a listener reading folders reads fresh.
+            self::changed();
             self::fire();
         }
 
@@ -246,12 +253,26 @@ final class Transaction
         if ($outermost) {
             // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- transaction control, not a data read; nothing to cache.
             $wpdb->query('ROLLBACK');
-
-            return;
+        } else {
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- transaction control, not a data read; nothing to cache.
+            $wpdb->query($wpdb->prepare('ROLLBACK TO SAVEPOINT %i', $savepoint));
         }
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- transaction control, not a data read; nothing to cache.
-        $wpdb->query($wpdb->prepare('ROLLBACK TO SAVEPOINT %i', $savepoint));
+        // Anything this request cached from inside the undone work is under a
+        // key the rollback left current; move it on.
+        self::changed();
+    }
+
+    /**
+     * Bump the cache key every FolderFolio reader keys on.
+     *
+     * Guarded, because the unit suite loads this class without WordPress.
+     */
+    private static function changed(): void
+    {
+        if (function_exists('wp_cache_set_last_changed')) {
+            wp_cache_set_last_changed('folderfolio');
+        }
     }
 
     /**
