@@ -6,7 +6,7 @@
  * everything between the top edge and the footer.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { Content, ContentCards } from './Content';
@@ -22,6 +22,7 @@ import { watchDrags } from './drag';
 import { watchTileDrops } from './file-order';
 import { RailControls } from './RailControls';
 import { Tree } from './Tree';
+import { EditActionsContext, type EditActions } from './Row';
 import {
     useCreateFolder,
     useDeleteFolder,
@@ -405,6 +406,12 @@ export function Rail({
 
     useStickyControls(scrollRef);
 
+    // Both renderers' name inputs save and cancel through this (review H2).
+    const editActions = useMemo<EditActions>(
+        () => ({ save: saveEdit, cancel: () => edit(null) }),
+        [saveEdit, edit]
+    );
+
     return (
         <>
             {/*
@@ -441,6 +448,7 @@ export function Rail({
             */}
             {isError ? null : <LibraryToolbar nodes={nodes} />}
 
+            <EditActionsContext.Provider value={editActions}>
             <div className="folderfolio-rail__app">
                 <Header />
                 <FixedRows />
@@ -493,6 +501,7 @@ export function Rail({
                     </div>
                 </div>
             </div>
+            </EditActionsContext.Provider>
 
             {/*
               The footer's folder total. The footer is server-rendered by

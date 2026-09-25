@@ -195,7 +195,7 @@ export function Levels({ nodes, loading }: LevelsProps) {
                   its input belongs at the top of that level rather than
                   wherever the tree would have put it.
                 */}
-                {editing?.mode === 'create' ? <CreateRow depth={0} /> : null}
+                {editing?.mode === 'create' ? <CreateRow depth={0} buttons /> : null}
 
                 {rows.map((node) => (
                     <LevelRow
@@ -268,6 +268,9 @@ function LevelHeader({
     // toolbar picker while this header is on screen, and `aria-current` is the
     // only thing that says so.
     const selectedId = useRail((s) => s.selectedId);
+    const renaming = useRail(
+        (s) => s.editing?.mode === 'rename' && s.editing.folderId === standing.node?.id
+    );
 
     const node = standing.node;
 
@@ -311,6 +314,20 @@ function LevelHeader({
                 </span>
             </button>
 
+            {/*
+              Renaming the folder the sheet is standing in. Tapping a folder
+              with children walks into it, so the folder being renamed is this
+              title rather than a row below — and the field has to be here, or
+              Rename opened nothing anyone could see (review H2).
+            */}
+            {renaming ? (
+                <div className="folderfolio-levels__here is-renaming" style={swatchStyle(node.color)}>
+                    <span className="folderfolio-row__icon">
+                        <FolderOpenIcon />
+                    </span>
+                    <NameInput label={t('renameFolder', 'Rename folder')} buttons />
+                </div>
+            ) : (
             <button
                 type="button"
                 className="folderfolio-levels__here"
@@ -325,6 +342,7 @@ function LevelHeader({
                 <RowMarks id={node.id} pinned={node.pinned} lockedBy={node.locked_by} gallery={node.kind === 'gallery'} />
                 <span className="folderfolio-row__count">{node.total_count}</span>
             </button>
+            )}
         </div>
     );
 }
@@ -351,7 +369,7 @@ function LevelRow({
                     <span className="folderfolio-row__icon">
                         <FolderIcon />
                     </span>
-                    <NameInput label={t('renameFolder', 'Rename folder')} />
+                    <NameInput label={t('renameFolder', 'Rename folder')} buttons />
                 </div>
             </li>
         );

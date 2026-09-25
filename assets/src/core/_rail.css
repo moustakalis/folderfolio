@@ -926,6 +926,17 @@ body.folderfolio-resizing * {
     font-weight: 600;
   }
 
+  /* The title while it is being renamed (review H2): the field and its two
+     buttons take the name's track, and the bar is no longer a button. */
+  .folderfolio-levels__here.is-renaming {
+    grid-template-columns: auto minmax(0, 1fr);
+    cursor: default;
+  }
+
+  .folderfolio-levels__here.is-renaming:hover {
+    background: none;
+  }
+
   .folderfolio-levels__up:hover,
   .folderfolio-levels__here:hover {
     background: var(--ff-hover);

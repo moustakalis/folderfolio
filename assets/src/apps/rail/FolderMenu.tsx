@@ -1012,9 +1012,41 @@ export function FolderMenu({ anchor, ...props }: FolderMenuProps & { anchor?: HT
  */
 export function RowMenu({
     anchor,
+    onDismiss,
     ...props
-}: FolderMenuProps & { anchor: HTMLElement | null }) {
+}: FolderMenuProps & {
+    anchor: HTMLElement | null;
+    /** Closed because focus went elsewhere: close, and leave focus there. */
+    onDismiss: () => void;
+}) {
     const { ref, style } = useAnchoredPanel<HTMLDivElement>(anchor, props.onClose);
+
+    /*
+     * Keyboard entry and exit — review H3.
+     *
+     * Focus goes to the first item when the menu opens, as `Menu` and
+     * `AnchoredMenu` already do; Escape (from `useAnchoredPanel`) closes it
+     * and `Row` puts focus back on the ⋮. Tabbing to anything outside closes
+     * it too, and leaves focus where it went. That is a `focusin` somewhere
+     * else rather than a `blur` here: a click on a button does not focus it
+     * in Safari, so a blur-closed menu would close under the pointer before
+     * the click that chose a swatch.
+     */
+    useEffect(() => {
+        ref.current?.querySelector<HTMLElement>('button:not(:disabled)')?.focus({ preventScroll: true });
+
+        const onFocusIn = (event: FocusEvent) => {
+            const target = event.target as Node | null;
+
+            if (target && !ref.current?.contains(target) && !anchor?.contains(target)) {
+                onDismiss();
+            }
+        };
+
+        document.addEventListener('focusin', onFocusIn);
+
+        return () => document.removeEventListener('focusin', onFocusIn);
+    }, [anchor, onDismiss]);
 
     return createPortal(
         <div

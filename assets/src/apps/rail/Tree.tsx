@@ -8,7 +8,7 @@
  * so the tree is flattened once per render and the key handler works on that.
  */
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import { CreateRow, Row, GhostRows } from './Row';
 import { useReorderFolders, type FolderNode } from './queries';
@@ -150,6 +150,61 @@ export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: Tre
         }
     }, [visible]);
 
+    /*
+     * Focus back on the row once a name is saved or given up — review M11.
+     *
+     * The field held focus; when it unmounts, focus falls to <body>, and the
+     * row's own "move focus only if it is already in the tree" rule then
+     * declines to take it — so after F2, typing and Enter, the next Tab
+     * started from the top of wp-admin. When an edit ends with focus on the
+     * page, the focused row takes it: at once for a rename or a cancel, and
+     * for a create as soon as the new folder's row is in the tree.
+     */
+    const treeRef = useRef<HTMLUListElement>(null);
+    const restoreFocus = useRef(false);
+    const wasEditing = useRef(false);
+    const renamed = useRef<number | null>(null);
+
+    useEffect(() => {
+        if (editing) {
+            wasEditing.current = true;
+            restoreFocus.current = false;
+            renamed.current = editing.mode === 'rename' ? editing.folderId : null;
+
+            return;
+        }
+
+        if (wasEditing.current) {
+            wasEditing.current = false;
+            restoreFocus.current = true;
+        }
+
+        if (!restoreFocus.current) {
+            return;
+        }
+
+        const active = document.activeElement;
+
+        if (active && active !== document.body) {
+            // Focus went somewhere on purpose; leave it there.
+            restoreFocus.current = false;
+
+            return;
+        }
+
+        // The focused row — or, when focus reached the tree without moving
+        // the store's (a click, a `.focus()`), the row that was renamed.
+        const id = useRail.getState().focusedId ?? renamed.current;
+        const row = id === null
+            ? null
+            : treeRef.current?.querySelector<HTMLElement>(`[role="treeitem"][data-folderfolio-folder="${id}"]`);
+
+        if (row) {
+            restoreFocus.current = false;
+            row.focus();
+        }
+    }, [editing, visible]);
+
     const onKeyDown = useCallback(
         (event: React.KeyboardEvent) => {
             /**
@@ -171,6 +226,23 @@ export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: Tre
                     onCancelEdit();
                 }
 
+                return;
+            }
+
+            /*
+             * Only a row's own keys — review H3.
+             *
+             * The ⋮ button sits inside the row, and its menu is portaled to
+             * the body but is still a React child of this tree, and a React
+             * portal bubbles through the React tree, not the DOM (trap 139).
+             * So Enter and Space on the ⋮, or on any item in its menu, arrived
+             * here, were `preventDefault()`ed — which cancels a button's click
+             * — and selected or toggled the row instead. The ⋮ could not be
+             * opened from the keyboard, and nothing in its menu could be used.
+             */
+            const target = event.target as HTMLElement;
+
+            if (target.getAttribute('role') !== 'treeitem' || !event.currentTarget.contains(target)) {
                 return;
             }
 
@@ -444,6 +516,7 @@ export function Tree({ nodes, loading, onSaveEdit, onCancelEdit, onDelete }: Tre
 
     return (
         <ul
+            ref={treeRef}
             className="folderfolio-tree"
             role="tree"
             aria-label={t('folders', 'Folders')}

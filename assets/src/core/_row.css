@@ -299,6 +299,65 @@
   line-height: normal;
 }
 
+/**
+ * The narrow sheet's name field, with Save and Cancel beside it (review H2).
+ *
+ * Grid, not flex: three tracks whose sizes are stated — the field takes what
+ * is left and never pushes the buttons out, which is what `minmax(0, 1fr)`
+ * says and a flex item's `min-width: auto` would not.
+ *
+ * The buttons are as tall as the narrow row's touch target allows (36px in a
+ * 44px row). Save is the one primary action in the row, so it carries the
+ * accent; while the name is empty it is disabled and its icon is `--ff-off`,
+ * the inactive-control token, on the field's own background.
+ */
+.folderfolio-row__edit {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.folderfolio-row__edit .folderfolio-row__input.folderfolio-row__input {
+  height: 36px;
+  font-size: 16px;
+}
+
+.folderfolio-row__edit-btn {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  color: var(--ff-ink);
+  background: var(--ff-field);
+  border: 1px solid var(--ff-field-line);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.folderfolio-row__edit-btn.folderfolio-row__edit-btn--save {
+  color: var(--ff-on-sel);
+  background: var(--ff-sel);
+  border-color: var(--ff-sel);
+}
+
+.folderfolio-row__edit-btn.folderfolio-row__edit-btn--save:disabled {
+  color: var(--ff-off);
+  background: var(--ff-field);
+  border-color: var(--ff-field-line);
+  cursor: default;
+}
+
+.folderfolio-row__edit-btn:focus-visible {
+  outline: 2px solid var(--ff-sel);
+  outline-offset: 1px;
+}
+
 /* ------------------------------------------------------------------ count */
 
 /* ------------------------------------- the row's own menu — screen 03 */

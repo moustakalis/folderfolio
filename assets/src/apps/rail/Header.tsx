@@ -9,6 +9,7 @@
 
 import { BrandMark, PlusIcon } from './icons';
 import { can } from '../../lib/can';
+import { useIsNarrow } from '../../lib/narrow';
 import { useRail } from './store';
 import { t } from '../../core/api';
 
@@ -16,11 +17,19 @@ export function Header() {
     const selectedId = useRail((s) => s.selectedId);
     const expand = useRail((s) => s.expand);
     const edit = useRail((s) => s.edit);
+    const levelId = useRail((s) => s.levelId);
+    const narrow = useIsNarrow();
 
     function startCreate() {
         // `null` is All media and `0` is Unassigned — neither is a folder, so
         // both mean "at the top level". Only a positive id is a parent.
-        const parentId = selectedId !== null && selectedId > 0 ? selectedId : null;
+        //
+        // On the narrow sheet the input opens at the top of the level on
+        // screen, so that level is the parent — not the selection, which can
+        // be a folder without children shown as a row inside it (review H2).
+        const parentId = narrow
+            ? levelId
+            : selectedId !== null && selectedId > 0 ? selectedId : null;
 
         if (parentId !== null) {
             // Otherwise the new row would be created inside a folder that is

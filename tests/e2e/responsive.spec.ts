@@ -609,6 +609,128 @@ test.describe('the rail across viewport widths', () => {
     });
 
     /**
+     * On a phone a new folder or a rename can be saved — review H2.
+     *
+     * The narrow sheet reused the tree's name input, whose Enter and Escape
+     * reached the *tree's* key handler by bubbling; the sheet has no such
+     * handler and drew no Save or Cancel, so nothing typed there could ever
+     * be saved. Reproduced on the dev site at 390px before this was written.
+     *
+     * Asserted against the server's tree, not the rows, and with the parent
+     * each create landed under: the input opens at the top of the level on
+     * screen, so that level is the parent — not a leaf selected inside it.
+     */
+    test('the sheet saves a new folder and a rename, with Enter and with Save', async ({
+        page,
+    }) => {
+        await page.setViewportSize({ width: 1280, height: 900 });
+        await page.goto('/wp-admin/upload.php?mode=grid');
+        await page.locator('#folderfolio-rail').waitFor();
+        await resetFolders(page);
+
+        const brand = await createFolder(page, 'Brand');
+        await createFolder(page, 'Logos', brand.id);
+        await createFolder(page, 'Audio');
+
+        /** Every folder on the server as "parent/name", sorted. */
+        const server = () =>
+            page.evaluate(async () => {
+                const walk = (nodes: any[], parent: string, out: string[]) => {
+                    for (const n of nodes) {
+                        out.push(`${parent}/${n.name}`);
+                        walk(n.children ?? [], n.name, out);
+                    }
+                    return out;
+                };
+                const response = await window.wp.apiFetch({ path: '/folderfolio/v1/folders?object_type=attachment' });
+                return walk(response.data ?? [], '', []).sort();
+            });
+
+        try {
+            await page.setViewportSize({ width: 390, height: 844 });
+            await page.reload();
+            await page.locator('#folderfolio-rail').waitFor();
+            await page.locator('.folderfolio-rail__tab').click();
+
+            const rows = page.locator('.folderfolio-levels__row');
+            const input = page.locator('.folderfolio-levels .folderfolio-row__input');
+            const newFolder = page.locator('.folderfolio-rail__primary');
+            const actions = page.getByRole('button', { name: 'Folder actions' });
+
+            await expect(rows).toHaveText([/Audio/, /Brand/]);
+
+            // 1. New folder at the top level, saved with Enter.
+            await newFolder.click();
+            await expect(input).toBeFocused();
+            await input.fill('Posters');
+            await input.press('Enter');
+            await expect(input).toHaveCount(0);
+            await expect(rows.filter({ hasText: 'Posters' })).toHaveCount(1);
+            await expect.poll(server).toContain('/Posters');
+
+            // 2. Escape gives up and creates nothing.
+            await newFolder.click();
+            await input.fill('Never');
+            await input.press('Escape');
+            await expect(input).toHaveCount(0);
+            expect(await server()).not.toContain('/Never');
+
+            // 3. Inside Brand, saved with the on-screen Save.
+            await rows.filter({ hasText: 'Brand' }).click();
+            await expect(rows).toHaveText([/Logos/]);
+            await newFolder.click();
+            const save = page.locator('.folderfolio-levels .folderfolio-row__edit-btn--save');
+            await expect(save).toBeDisabled();
+            await input.fill('Stickers');
+            await save.click();
+            await expect(input).toHaveCount(0);
+            await expect.poll(server).toContain('Brand/Stickers');
+
+            // 4. A leaf selected inside the level: the new folder still goes
+            //    into the level on screen, where its input was drawn.
+            await rows.filter({ hasText: 'Logos' }).click();
+            await expect(page).toHaveURL(/folderfolio_folder=\d+/);
+            await expect(page.locator('.folderfolio-levels__here')).toHaveText(/Brand/);
+            await newFolder.click();
+            await input.fill('Labels');
+            await input.press('Enter');
+            await expect.poll(server).toContain('Brand/Labels');
+            expect(await server()).not.toContain('Logos/Labels');
+
+            // 5. Rename a row, with Enter.
+            await rows.filter({ hasText: 'Logos' }).click();
+            await actions.click();
+            await page.getByRole('menuitem', { name: 'Rename' }).click();
+            await expect(input).toBeFocused();
+            await input.fill('Marks');
+            await input.press('Enter');
+            await expect(rows.filter({ hasText: 'Marks' })).toHaveCount(1);
+            await expect.poll(server).toContain('Brand/Marks');
+
+            // 6. Rename the folder the sheet is standing in: its field is the
+            //    title, and Cancel puts the title back unchanged.
+            await page.locator('.folderfolio-levels__here').click();
+            await actions.click();
+            await page.getByRole('menuitem', { name: 'Rename' }).click();
+            await expect(input).toBeFocused();
+            await input.fill('Brandbook');
+            await page.locator('.folderfolio-levels__head .folderfolio-row__edit-btn:not(.folderfolio-row__edit-btn--save)').click();
+            await expect(page.locator('.folderfolio-levels__here')).toHaveText(/Brand/);
+            expect(await server()).toContain('/Brand');
+
+            await actions.click();
+            await page.getByRole('menuitem', { name: 'Rename' }).click();
+            await input.fill('Brandbook');
+            await page.locator('.folderfolio-levels__head .folderfolio-row__edit-btn--save').click();
+            await expect(page.locator('.folderfolio-levels__here')).toHaveText(/Brandbook/);
+            await expect.poll(server).toContain('/Brandbook');
+        } finally {
+            await page.setViewportSize({ width: 1280, height: 900 });
+            await resetFolders(page);
+        }
+    });
+
+    /**
      * The band that answers "where am I" meets the hairline it sits under.
      *
      * `.folderfolio-rail__body` carried `padding: 6px 0 12px`, which pushed the

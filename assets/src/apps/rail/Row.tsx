@@ -6,11 +6,13 @@
  * geometry it passes is `--ff-depth`, which the stylesheet cannot know.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 
 import {
     ChevronDownIcon,
+    CheckIcon,
     ChevronRightIcon,
+    CloseIcon,
     EllipsisVerticalIcon,
     FolderIcon,
     FolderOpenIcon,
@@ -109,6 +111,9 @@ export function Row({
      * the tree and re-create every Row — the 126ms path above.
      */
     const canOpenMenu = hasFolderMenu();
+
+    // Stable, so the menu's focus listener is not re-bound on every render.
+    const dismissMenu = useCallback(() => setMenuOpen(false), []);
 
     // The tree is a single tab stop, so focus is moved rather than tabbed to.
     // Only ever when this row is the focused one *and* focus is already inside
@@ -305,6 +310,7 @@ export function Row({
                         setMenuOpen(false);
                         menuRef.current?.focus();
                     }}
+                    onDismiss={dismissMenu}
                 />
             ) : null}
 
@@ -320,7 +326,7 @@ export function Row({
  * which folder?" is answered by position instead of by a sentence. Screen 05
  * draws it exactly here.
  */
-export function CreateRow({ depth }: { depth: number }) {
+export function CreateRow({ depth, buttons = false }: { depth: number; buttons?: boolean }) {
     return (
         <li role="none">
             <div
@@ -341,11 +347,27 @@ export function CreateRow({ depth }: { depth: number }) {
                     <FolderIcon />
                 </span>
 
-                <NameInput label={t('newFolderName', 'Name for the new folder')} />
+                <NameInput label={t('newFolderName', 'Name for the new folder')} buttons={buttons} />
             </div>
         </li>
     );
 }
+
+/**
+ * How a name being typed is saved or given up — one per rail or picker.
+ *
+ * `Rail` and the picker's `Frame` provide it; the input calls it. It used to
+ * be the tree's key handler that saved on Enter, reached by bubbling, and the
+ * narrow sheet (`Levels`) reuses this input without that handler — so on a
+ * phone a new folder or a rename could never be saved (review H2). The commit
+ * path now lives with the input, wherever it is rendered.
+ */
+export interface EditActions {
+    save: () => void;
+    cancel: () => void;
+}
+
+export const EditActionsContext = createContext<EditActions | null>(null);
 
 /**
  * The input itself, shared by both — and by the narrow-width level view,
@@ -356,13 +378,18 @@ export function CreateRow({ depth }: { depth: number }) {
  * the store means — and threading four callbacks through Tree and Row to
  * reach it would be ceremony around a fact the store already states.
  *
- * Save and Cancel are the toolbar-height buttons beside it, not blur. A field
+ * Enter saves and Escape gives up, from the input itself. Not blur: a field
  * that commits on blur loses what you typed the moment you reach for anything
  * else, and one that cancels on blur does the same in the other direction.
+ *
+ * `buttons` adds Save and Cancel beside the field, for the narrow sheet: a
+ * phone's keyboard may have no Enter worth the name, and nothing else there
+ * says how to get out.
  */
-export function NameInput({ label }: { label: string }) {
+export function NameInput({ label, buttons = false }: { label: string; buttons?: boolean }) {
     const value = useRail((s) => s.editing?.value ?? '');
     const setEditValue = useRail((s) => s.setEditValue);
+    const actions = useContext(EditActionsContext);
     const ref = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -372,19 +399,71 @@ export function NameInput({ label }: { label: string }) {
         ref.current?.select();
     }, []);
 
-    return (
+    const input = (
         <input
             ref={ref}
             type="text"
             className="folderfolio-row__input"
             aria-label={label}
             value={value}
+            enterKeyHint="done"
             onChange={(event) => setEditValue(event.target.value)}
-            // Enter and Escape reach the tree's key handler by bubbling; it
-            // owns every other key in the tree and ignores the rest while an
-            // input has focus, so arrows and typing behave normally in here.
+            onKeyDown={(event) => {
+                // Without actions (a tree nobody provided them for) the keys
+                // bubble to the tree's handler, as they always did.
+                if (!actions || event.nativeEvent.isComposing) {
+                    return;
+                }
+
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    actions.save();
+                }
+
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    actions.cancel();
+                }
+            }}
             onClick={(event) => event.stopPropagation()}
         />
+    );
+
+    if (!buttons || !actions) {
+        return input;
+    }
+
+    return (
+        <span className="folderfolio-row__edit">
+            {input}
+            <button
+                type="button"
+                className="folderfolio-row__edit-btn folderfolio-row__edit-btn--save"
+                aria-label={t('save', 'Save')}
+                title={t('save', 'Save')}
+                disabled={value.trim() === ''}
+                onClick={(event) => {
+                    event.stopPropagation();
+                    actions.save();
+                }}
+            >
+                <CheckIcon size={14} />
+            </button>
+            <button
+                type="button"
+                className="folderfolio-row__edit-btn"
+                aria-label={t('cancel', 'Cancel')}
+                title={t('cancel', 'Cancel')}
+                onClick={(event) => {
+                    event.stopPropagation();
+                    actions.cancel();
+                }}
+            >
+                <CloseIcon size={16} />
+            </button>
+        </span>
     );
 }
 

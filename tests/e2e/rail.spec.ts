@@ -260,6 +260,102 @@ test.describe('the tree keyboard', () => {
         await expect(tabbable(page)).toContainText('Brand');
     });
 
+    /**
+     * The ⋮ menu from the keyboard alone — review H3.
+     *
+     * The ⋮ sits inside the row and its menu is portaled to the body, but
+     * both are React children of the tree, and a React portal bubbles through
+     * the React tree (trap 139). The tree's Enter and Space called
+     * preventDefault(), which cancels a button's click, so the ⋮ could not be
+     * opened and nothing in its menu could be chosen without a pointer.
+     */
+    test('the ⋮ menu opens, is used and closes from the keyboard alone', async ({ page }) => {
+        const menu = page.locator('.folderfolio-menu--row');
+        const more = page.getByRole('button', { name: 'Folder actions' });
+        const focusedIn = (selector: string) =>
+            page.evaluate((sel) => !!document.activeElement?.closest(sel), selector);
+
+        await page.locator('.folderfolio-tree .folderfolio-row').first().focus();
+        await page.keyboard.press('Enter');
+        await expect(page.locator('.folderfolio-row[aria-selected="true"]')).toContainText('Brand');
+
+        // Tab from the row reaches its ⋮; Enter opens the menu, and focus is in it.
+        await page.keyboard.press('Tab');
+        await expect(more).toBeFocused();
+        await page.keyboard.press('Enter');
+        await expect(menu).toBeVisible();
+        expect(await focusedIn('.folderfolio-menu--row')).toBe(true);
+
+        // Arrows inside the menu are the menu's, not the tree's: the tree's
+        // focus does not move and the menu stays open.
+        await page.keyboard.press('ArrowDown');
+        await expect(menu).toBeVisible();
+        await expect(page.locator('.folderfolio-row[tabindex="0"]')).toContainText('Brand');
+
+        // Escape closes it and gives focus back to the ⋮.
+        await page.keyboard.press('Escape');
+        await expect(menu).toHaveCount(0);
+        await expect(more).toBeFocused();
+
+        // Space opens it too. Walk to Colour, open it with →, choose the
+        // second swatch with Enter — and the server has the colour.
+        await page.keyboard.press(' ');
+        await expect(menu).toBeVisible();
+
+        for (let i = 0; i < 30; i += 1) {
+            if (await page.evaluate(() => document.activeElement?.getAttribute('data-flyout') === 'color')) {
+                break;
+            }
+            await page.keyboard.press('Tab');
+        }
+
+        expect(await page.evaluate(() => document.activeElement?.getAttribute('data-flyout'))).toBe('color');
+        await page.keyboard.press('ArrowRight');
+        expect(await focusedIn('.folderfolio-menu--sub')).toBe(true);
+        await page.keyboard.press('Tab');
+        await page.keyboard.press('Enter');
+        await expect(menu).toHaveCount(0);
+
+        const color = await page.evaluate(async () => {
+            const response = await window.wp.apiFetch({ path: '/folderfolio/v1/folders?object_type=attachment' });
+            return (response.data as any[]).find((n) => n.name === 'Brand')?.color ?? null;
+        });
+        expect(color).not.toBeNull();
+
+        // Tabbing away closes the menu and leaves focus where it went.
+        await more.focus();
+        await page.keyboard.press('Enter');
+        await expect(menu).toBeVisible();
+        await page.locator('.folderfolio-rail__search-input').focus();
+        await expect(menu).toHaveCount(0);
+    });
+
+    /**
+     * After a rename, focus is back on the row — review M11.
+     *
+     * The field held focus and took it with it when it unmounted; the row
+     * only re-took focus if focus was still inside the tree, and by then it
+     * was on <body>, so the next Tab started from the top of wp-admin.
+     */
+    test('F2, a new name and Enter leave focus on the row', async ({ page }) => {
+        await page.locator('.folderfolio-tree .folderfolio-row').first().focus();
+        await page.keyboard.press('F2');
+
+        const input = page.locator('.folderfolio-tree .folderfolio-row__input');
+        await expect(input).toBeFocused();
+        await input.fill('Brand renamed');
+        await page.keyboard.press('Enter');
+
+        const row = page.locator('.folderfolio-tree [role="treeitem"]', { hasText: 'Brand renamed' });
+        await expect(row).toBeFocused();
+
+        // And Escape, the other way out.
+        await page.keyboard.press('F2');
+        await expect(input).toBeFocused();
+        await page.keyboard.press('Escape');
+        await expect(row).toBeFocused();
+    });
+
     test('Enter is the only key that filters', async ({ page }) => {
         await page.locator('.folderfolio-tree .folderfolio-row').first().focus();
         await page.keyboard.press('ArrowDown');
