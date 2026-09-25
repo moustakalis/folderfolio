@@ -603,7 +603,9 @@ happen, and `deleteOrphans()` does the same in past tense. Both functions
 return an `int` and **both return values are thrown away**. So the choice is
 not disable-or-not: it is **drop `$force` when the report says the tree is in
 step, and report the count** — the short-circuit exists and is being
-deliberately bypassed. Recommendation on the table, awaiting Nick.
+deliberately bypassed. **Nick took it on 25 Sep** — an honest repair: the button
+stays live, the force goes, only drifted paths are written, and the notice
+reports the real count.
 
 ### 21 Sep, after that — the box comes off and the page becomes the surface
 
@@ -1848,11 +1850,22 @@ wp i18n make-pot . languages/folderfolio.pot --slug=folderfolio --domain=folderf
 unless you pick a folder*, and *Paid elsewhere, free here* (fifteen features,
 by feature, never by vendor).
 
-**Open, awaiting Nick:** the narrow sheet, whose folder list Starred and Smart
-squeezed to 31.8px at a 669px-tall window (board `NF7bQktuksgBSi4rCfoLvf`);
-review #24, core's status links inside a folder (board
-`JNf58KfGsi2o8qdVU5Jjcf`); client-side plurals; testing `Requires at least:
-6.4`; the unused `folderfolio_user_preferences` table; tags; screenshots.
+**Answered 25 Sep** (`claude/progress-2026-09-25-the-answers.md`), in build
+order: (1) drop the unused `folderfolio_user_preferences` table, and A8 as an
+honest repair; (2) review #24 as C plus a lead-in label — inside a folder the
+status line reads *📁 In Launch: All (3) | Published (2) | Drafts (1)*, the
+links keep the folder, nothing changes without one, the date filter stays
+core's (board `JNf58KfGsi2o8qdVU5Jjcf`); (3) the narrow sheet as A — Starred,
+Smart, the search line and the folders one scroller, the search line sticky,
+*Top level* beneath it, both renderers (board `NF7bQktuksgBSi4rCfoLvf`);
+(4) plurals on the client before 1.0; (5) keep `Requires at least: 6.4` and
+give it a CI leg; (6) the settings leftovers and tier 1's debts;
+(7) `v1.0.0-rc.1` once CI is green on Playground too; (8) screenshots, taken
+by Claude in Comet on a clean Playground with CC0 photos, last — then
+`v1.0.0` and SVN.
+
+**`WP_List_Table::views()` joins its items with `" |</li>"`** — #24's label goes
+inside the first view's markup, as real text, not in an `<li>` of its own.
 
 Checks at `7fb0c73`: PHPStan clean, unit 173, integration 159 / 159 on one
 site and on a network, e2e 119 / 119 (rig), JS unit 61, Plugin Check 0.
@@ -3150,7 +3163,7 @@ at a 669px-tall window.
 | `architecture-plan.md` | Decisions, data model, REST surface, importers, developer API, gallery block, the ten phases to 1.0 | **Yes — the roadmap** |
 | `m2-importer-matrix.md` | Verified schemas and detection keys per migration source | Yes, when the importers are rewritten |
 | `research/01..04-*.md` | FileBird, Real Media Library, Folders, CatFolders — measured live and read from source | Background, and the reason for several decisions |
-| `deep-review-2026-09-16.md` | 29 numbered findings against 0.2.0 | Partly — #24 is the one still open (awaiting Nick); #26–#29 closed, #27 and #29 on 24 Sep |
+| `deep-review-2026-09-16.md` | 29 numbered findings against 0.2.0 | Partly — #24 is the one still open (decided 25 Sep: C plus a lead-in label; to build); #26–#29 closed, #27 and #29 on 24 Sep |
 | *(Claude project)* `plan-1.0-features.md` | The fourteen features 1.0 grew to hold, in three tiers | **Yes — the authority for scope** |
 | *(Claude project)* `plan-1.0-tier-1.md` | The seven the tree needs, with the source read against each; six built, one left | **Yes — the brief for the current work** |
 | *(Claude project)* `progress-2026-09-22e-the-answers.md` | Nick's answers, and the features they put into 1.0 | Yes |
