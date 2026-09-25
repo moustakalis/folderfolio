@@ -115,6 +115,16 @@ export function Row({
     // Stable, so the menu's focus listener is not re-bound on every render.
     const dismissMenu = useCallback(() => setMenuOpen(false), []);
 
+    // A row that stops being the selected one closes its menu (review L11).
+    // The menu is drawn only while the row is selected, so selecting another
+    // folder hid it without closing it — and the next time this folder was
+    // selected, its menu opened on its own.
+    useEffect(() => {
+        if (!selected) {
+            setMenuOpen(false);
+        }
+    }, [selected]);
+
     // The tree is a single tab stop, so focus is moved rather than tabbed to.
     // Only ever when this row is the focused one *and* focus is already inside
     // the tree — otherwise arrowing would steal focus from the search field.

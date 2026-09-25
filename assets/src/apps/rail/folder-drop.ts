@@ -29,11 +29,13 @@
 import { useCallback, useRef } from 'react';
 
 import { draggedFolder } from './drag';
+import { isBlocked } from './locks';
 import { clampToPinGroup } from './move';
+import { contains, height, maxDepth } from './paste';
 import { useReorderFolders, type FolderNode } from './queries';
 import { useRail } from './store';
 
-interface Visible {
+export interface Visible {
     node: FolderNode;
     depth: number;
 }
@@ -42,6 +44,82 @@ interface Visible {
 interface Target {
     index: number;
     depth: number;
+}
+
+/**
+ * The parent and the whole sibling list a drop resolves to, or null when the
+ * drop cannot go there.
+ *
+ * Whole list, because that is what POST /folders/reorder takes — and it
+ * takes it because a list cannot half-apply the way a delta can. Pure, so
+ * `tests/js` can ask it (review L10).
+ */
+export function planFolderDrop(
+    visible: Visible[],
+    roots: FolderNode[],
+    index: number,
+    depth: number,
+    draggedId: number
+): { parentId: number | null; ids: number[]; siblings: FolderNode[] } | null {
+    let parent: FolderNode | null = null;
+
+    if (depth > 0) {
+        for (let i = index - 1; i >= 0; i -= 1) {
+            if (visible[i].depth === depth - 1) {
+                parent = visible[i].node;
+
+                break;
+            }
+        }
+
+        if (!parent) {
+            return null;
+        }
+    }
+
+    if (parent && parent.id === draggedId) {
+        return null;
+    }
+
+    // The questions a paste asks, asked of a drop too (review L10):
+    // not into anything beneath itself — the rule said yes and the
+    // folder vanished until the server's refusal put it back — not
+    // deeper than the server allows, and not into a folder whose lock
+    // stops this person.
+    const draggedNode = visible.find((v) => v.node.id === draggedId)?.node;
+
+    if (parent && draggedNode && contains(draggedNode, parent.id)) {
+        return null;
+    }
+
+    if (draggedNode && depth + height(draggedNode) > maxDepth()) {
+        return null;
+    }
+
+    if (parent && isBlocked(parent)) {
+        return null;
+    }
+
+    const siblings = parent ? parent.children : roots;
+    const flatIndex = new Map(visible.map((v, i) => [v.node.id, i]));
+
+    // How many of them the gap falls after. A collapsed parent has no
+    // visible children, so every count is 0 and the folder lands
+    // first — which is the only slot the pointer can be naming when
+    // there is nothing on screen to sit between.
+    const before = siblings.filter((s) => {
+        const at = flatIndex.get(s.id);
+
+        return s.id !== draggedId && at !== undefined && at < index;
+    }).length;
+
+    const ids = siblings.map((s) => s.id).filter((id) => id !== draggedId);
+    // The dragged node from the tree, not the list it lands in: a pinned
+    // folder dropped under another parent is still pinned there.
+    const dragged = visible.find((v) => v.node.id === draggedId)?.node ?? { id: draggedId };
+    ids.splice(clampToPinGroup(siblings, dragged, before), 0, draggedId);
+
+    return { parentId: parent ? parent.id : null, ids, siblings };
 }
 
 export function useFolderDrop(visible: Visible[], roots: FolderNode[]) {
@@ -108,55 +186,8 @@ export function useFolderDrop(visible: Visible[], roots: FolderNode[]) {
         [visible]
     );
 
-    /**
-     * The parent and the whole sibling list a drop resolves to.
-     *
-     * Whole list, because that is what POST /folders/reorder takes — and it
-     * takes it because a list cannot half-apply the way a delta can.
-     */
     const plan = useCallback(
-        (index: number, depth: number, draggedId: number) => {
-            let parent: FolderNode | null = null;
-
-            if (depth > 0) {
-                for (let i = index - 1; i >= 0; i -= 1) {
-                    if (visible[i].depth === depth - 1) {
-                        parent = visible[i].node;
-
-                        break;
-                    }
-                }
-
-                if (!parent) {
-                    return null;
-                }
-            }
-
-            if (parent && parent.id === draggedId) {
-                return null;
-            }
-
-            const siblings = parent ? parent.children : roots;
-            const flatIndex = new Map(visible.map((v, i) => [v.node.id, i]));
-
-            // How many of them the gap falls after. A collapsed parent has no
-            // visible children, so every count is 0 and the folder lands
-            // first — which is the only slot the pointer can be naming when
-            // there is nothing on screen to sit between.
-            const before = siblings.filter((s) => {
-                const at = flatIndex.get(s.id);
-
-                return s.id !== draggedId && at !== undefined && at < index;
-            }).length;
-
-            const ids = siblings.map((s) => s.id).filter((id) => id !== draggedId);
-            // The dragged node from the tree, not the list it lands in: a pinned
-            // folder dropped under another parent is still pinned there.
-            const dragged = visible.find((v) => v.node.id === draggedId)?.node ?? { id: draggedId };
-            ids.splice(clampToPinGroup(siblings, dragged, before), 0, draggedId);
-
-            return { parentId: parent ? parent.id : null, ids, siblings };
-        },
+        (index: number, depth: number, draggedId: number) => planFolderDrop(visible, roots, index, depth, draggedId),
         [visible, roots]
     );
 
@@ -182,12 +213,20 @@ export function useFolderDrop(visible: Visible[], roots: FolderNode[]) {
                 return;
             }
 
+            // A gap the drop cannot use shows no rule and takes no drop.
+            if (!plan(next.index, next.depth, folder.folderId)) {
+                event.dataTransfer.dropEffect = 'none';
+                hide();
+
+                return;
+            }
+
             target.current = { index: next.index, depth: next.depth };
             marker.style.top = `${next.top}px`;
             marker.style.left = `${next.left}px`;
             marker.hidden = false;
         },
-        [resolve, hide]
+        [resolve, hide, plan]
     );
 
     const onDragLeave = useCallback(

@@ -74,11 +74,11 @@ function find<T extends Node>(nodes: T[], id: number, parent: T | null = null, d
 }
 
 /** How many levels sit below a folder: 0 for a folder with no children. */
-function height(node: Node): number {
+export function height(node: Node): number {
     return node.children.reduce((deepest, child) => Math.max(deepest, 1 + height(child)), 0);
 }
 
-function contains(node: Node, id: number): boolean {
+export function contains(node: Node, id: number): boolean {
     return node.id === id || node.children.some((child) => contains(child, id));
 }
 
@@ -89,7 +89,7 @@ function contains(node: Node, id: number): boolean {
  * comparison `FolderService::guardDepth()` makes — a root is depth 0 — so a
  * paste the menu offers is not one the server refuses on depth.
  */
-function maxDepth(): number {
+export function maxDepth(): number {
     return window.folderFolio?.maxDepth ?? 20;
 }
 

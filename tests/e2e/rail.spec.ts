@@ -396,6 +396,34 @@ test.describe('the tree keyboard', () => {
         await expect(row).toBeFocused();
     });
 
+    /**
+     * A row's ⋮ menu does not reopen by itself — review L11.
+     *
+     * The menu is drawn only while its row is selected. Selecting another
+     * folder without a pointer (here, the library's folder select) hid it
+     * without closing it, and choosing the first folder again opened it.
+     */
+    test('a ⋮ menu hidden by another selection stays closed', async ({ page }) => {
+        const menu = page.locator('.folderfolio-menu--row');
+
+        await page.locator('.folderfolio-row', { hasText: 'Brand' }).first().click();
+        await page.locator('.folderfolio-row__menu').click();
+        await expect(menu).toBeVisible();
+
+        const select = page.locator('#folderfolio-folder-filter');
+        const option = async (name: string) =>
+            (await select.locator('option', { hasText: name }).first().getAttribute('value')) ?? '';
+
+        await select.selectOption(await option('Campaigns'));
+        await expect(page.locator('.folderfolio-row[aria-selected="true"]')).toContainText('Campaigns');
+        await expect(menu).toHaveCount(0);
+
+        await select.selectOption(await option('Brand'));
+        await expect(page.locator('.folderfolio-row[aria-selected="true"]')).toContainText('Brand');
+        await page.waitForTimeout(300);
+        await expect(menu).toHaveCount(0);
+    });
+
     test('Enter is the only key that filters', async ({ page }) => {
         await page.locator('.folderfolio-tree .folderfolio-row').first().focus();
         await page.keyboard.press('ArrowDown');
