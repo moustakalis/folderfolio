@@ -1861,7 +1861,7 @@ Smart, the search line and the folders one scroller, the search line sticky,
 *Top level* beneath it, both renderers (board `NF7bQktuksgBSi4rCfoLvf`);
 ~~(4) plurals on the client~~ (`a654d7b`) — every counted label one `_n_noop()` whose translated forms all reach `tn()` with the translation's `pluralRule`; ~~(5) keep `Requires at least: 6.4` and
 give it a CI leg~~ (`258c74c`); ~~(6) the settings leftovers and tier 1's debts~~ (`0ac0ea8`);
-(7) `v1.0.0-rc.1` once CI is green on Playground too; (8) screenshots, taken
+~~(7) `v1.0.0-rc.1`~~ (tagged on `c4dea35` after the Playground e2e went 126 / 126 in 47 min; push `main`, wait for CI, then the tag); (8) screenshots, taken
 by Claude in Comet on a clean Playground with CC0 photos, last — then
 `v1.0.0` and SVN.
 
