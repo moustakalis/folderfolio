@@ -147,6 +147,10 @@ filed by hand.
 * `uninstall.php` removes every table, option, transient and meta key the
   plugin created
 
+= Credits =
+
+The photographs in the screenshots are from the [WordPress Photo Directory](https://wordpress.org/photos/) and are released under CC0.
+
 == Installation ==
 
 1. Upload the plugin to `/wp-content/plugins/folderfolio`, or install it
@@ -246,14 +250,14 @@ turns out wrong, undo removes exactly what that run created.
 
 == Screenshots ==
 
-1. The folder rail beside the Media Library, in grid mode.
-2. List mode: the folder column, and the folder filter on the toolbar.
-3. Filing media by dragging it onto a folder.
-4. The bulk folder action, with Add and Move in one control.
-5. The import wizard's plan — every folder and file it will touch, shown before anything happens.
-6. The settings screen, with the per-role capability matrix.
-7. The Folder gallery block in the editor.
-8. Narrow screens: the folder rail becomes a bar that opens on a tap.
+1. The folder rail beside the Media Library: nested folders with their counts and colours, a pinned folder and a locked one, and stars and smart folders at the top.
+2. Every folder action in one menu: move, pin, star and lock; cut, copy, or copy with its files; download the folder as a ZIP; make it an images-only gallery; give it a colour; sort what is inside it.
+3. Posts get folders of their own, and so do pages and your own post types. Inside a folder the status line counts that folder, not the whole site.
+4. A smart folder is a saved set of rules — type, size, upload date, author, filed or not — and its count is live while you edit them.
+5. Paste a list and get many folders at once, previewed before anything is created. Export the whole tree to a file and read it back in, here or on another site.
+6. Settings: which screens get folders, how a folder counts, where the library opens, and what each role may do.
+7. The Folder gallery block shows every image in a folder and stays in step with it. The folder is chosen from the same tree.
+8. On a phone the rail folds into a bar above the library. Open it and walk the folders a level at a time, with the search line pinned as you scroll.
 
 == Changelog ==
 
