@@ -1859,7 +1859,7 @@ links keep the folder, nothing changes without one, the date filter stays
 core's (board `JNf58KfGsi2o8qdVU5Jjcf`); ~~(3) the narrow sheet as A~~ (`cec1c68`) — Starred,
 Smart, the search line and the folders one scroller, the search line sticky,
 *Top level* beneath it, both renderers (board `NF7bQktuksgBSi4rCfoLvf`);
-(4) plurals on the client before 1.0; (5) keep `Requires at least: 6.4` and
+~~(4) plurals on the client~~ (`a654d7b`) — every counted label one `_n_noop()` whose translated forms all reach `tn()` with the translation's `pluralRule`; (5) keep `Requires at least: 6.4` and
 give it a CI leg; (6) the settings leftovers and tier 1's debts;
 (7) `v1.0.0-rc.1` once CI is green on Playground too; (8) screenshots, taken
 by Claude in Comet on a clean Playground with CC0 photos, last — then
@@ -1872,6 +1872,17 @@ clipped with `overflow: clip` — an `overflow: hidden` inline-block sits on its
 bottom edge (3.8px low). **The rig's server is `php -d … -S 127.0.0.1:9411`**:
 kill it with `grep -F -- "-S 127.0.0.1:9411"`, not `grep "php -S"`, before
 re-running `setup.sh`.
+
+Checks at `a654d7b`: PHPStan clean, unit 175, integration 177 / 177 on one site
+and on a network, e2e 124 / 124 (rig), JS unit 73, Plugin Check 0.
+
+**A counted label is one gettext plural since `a654d7b`.** Register it as
+`'xOne' => Plurals::forms(_n_noop('%s thing', '%s things', 'folderfolio'))` and
+read it with `tn('xOne', 'xMany', n, …)`: the config carries every form of the
+loaded translation and its `Plural-Forms` expression (`pluralRule`, added by
+`ClientConfig`), which `core/plural.ts` evaluates without `eval`. The singular
+carries the count — a singular is a form, not the number one (Russian's first
+form is also 21). `ScreenStringsTest` holds all of it.
 
 Checks at `cec1c68`: PHPStan clean, unit 173, integration 171 / 171 on one site
 and on a network, e2e 124 / 124 (rig), JS unit 61, Plugin Check 0.
